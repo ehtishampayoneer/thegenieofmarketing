@@ -28,6 +28,7 @@ export default function Home() {
   const [factIdx, setFactIdx] = useState(0);
   const timers = useRef([]);
   const [user, setUser] = useState(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -67,6 +68,7 @@ export default function Home() {
     setFactIdx(0);
     setData(null);
     setErrorMsg("");
+    setSaved(false);
 
     try {
       const res = await fetch("/api/audit", {
@@ -84,6 +86,7 @@ export default function Home() {
       setTimeout(() => {
         setData(json);
         setPhase("done");
+        saveScan(json);
       }, 600);
     } catch {
       setPhase("error");
@@ -91,10 +94,33 @@ export default function Home() {
     }
   }
 
+  async function saveScan(result) {
+    try {
+      const res = await fetch("/api/scans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: result.url,
+          finalUrl: result.finalUrl,
+          scores: result.scores,
+          accuracy: result.accuracy,
+          checks: result.checks,
+          ai: result.ai,
+          speed: result.speed,
+        }),
+      });
+      const j = await res.json();
+      if (j.ok) setSaved(true);
+    } catch {
+      // saving is best-effort; never block the result on it
+    }
+  }
+
   function reset() {
     setPhase("idle");
     setData(null);
     setErrorMsg("");
+    setSaved(false);
   }
 
   return (
@@ -157,7 +183,9 @@ export default function Home() {
         <Scanning step={SCAN_STEPS[stepIdx]} fact={FACTS[factIdx]} />
       )}
 
-      {phase === "done" && data && <Report data={data} />}
+      {phase === "done" && data && (
+        <Report data={data} loggedIn={!!user} saved={saved} />
+      )}
 
       <footer className="px-6 py-6 text-center text-sm text-genie-ink/40">
         Marketing Genie · built to make growth obvious
@@ -227,7 +255,7 @@ function Scanning({ step, fact }) {
   );
 }
 
-function Report({ data }) {
+function Report({ data, loggedIn, saved }) {
   const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy } = data;
   const label = scoreLabel(scores.overall);
 
@@ -242,6 +270,22 @@ function Report({ data }) {
           </p>
           <p className="text-sm text-genie-ink/50 break-all">{prettyHost(finalUrl)}</p>
         </div>
+
+        {!loggedIn && (
+          <div className="mt-4 bg-genie-mist border border-genie-ink/10 rounded-xl p-3 text-center text-sm">
+            <a href="/login" className="text-genie-purple font-medium hover:underline">
+              Sign in
+            </a>
+            <span className="text-genie-ink/60">
+              {" "}to save this report and track your score over time.
+            </span>
+          </div>
+        )}
+        {loggedIn && saved && (
+          <p className="mt-3 text-center text-sm text-emerald-600">
+            ✓ Saved to your history
+          </p>
+        )}
 
         {/* Sub-scores */}
         <div className="mt-8 grid sm:grid-cols-2 gap-3">
