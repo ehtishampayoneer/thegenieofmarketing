@@ -1,13 +1,13 @@
 // app/api/audit/route.js
-// Runs the real audit, then asks the AI brain to turn the raw findings into
-// a plain-English business profile + the top 3 fixes that matter most.
+// Runs the verified HTML scan AND the Google PageSpeed scan in parallel,
+// merges them, then asks the AI brain for the plain-English layer.
 
-import { runAudit } from "@/lib/audit";
+import { runAudit, runSpeed, computeScores } from "@/lib/audit";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(request) {
   let body;
@@ -20,8 +20,8 @@ export async function POST(request) {
   const { url } = body || {};
   if (!url) return json({ ok: false, error: "Enter a website address." }, 400);
 
-  // 1. The verified scan
-  const audit = await runAudit(url);
+  // 1. Run the HTML scan and the speed scan at the same time.
+  const [audit, speed] = await Promise.all([runAudit(url), runSpeed(url)]);
 
   if (!audit.ok) {
     const messages = {
@@ -36,24 +36,33 @@ export async function POST(request) {
     );
   }
 
-  // 2. The AI plain-English layer
+  // 2. Merge speed results (if we got them) and re-score.
+  let checks = audit.checks;
+  let scores = audit.scores;
+  let speedMetrics = null;
+  if (speed.ok) {
+    checks = [...audit.checks, ...speed.checks];
+    scores = computeScores(checks);
+    speedMetrics = speed.metrics;
+  }
+
+  // 3. AI plain-English layer.
   let ai = null;
   let aiProvider = null;
   try {
     const result = await callAI({
       system:
-        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. Always quantify impact in customers or money where you can. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
+        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you mention a number that is an estimate (like potential revenue or lost customers), phrase it clearly as an estimate (e.g. 'likely', 'roughly', 'an estimated'). Never state estimated money as if it were a measured fact. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
       json: true,
       maxTokens: 1200,
       temperature: 0.6,
-      prompt: buildPrompt(audit),
+      prompt: buildPrompt({ ...audit, scores }, speedMetrics),
     });
     ai = result.json;
     aiProvider = result.provider;
   } catch (e) {
-    // Never stop — return the verified scan even if the AI layer is busy.
     if (!(e instanceof AllProvidersFailedError)) {
-      // unexpected, but still degrade gracefully
+      // still degrade gracefully
     }
   }
 
@@ -61,25 +70,32 @@ export async function POST(request) {
     ok: true,
     url: audit.url,
     finalUrl: audit.finalUrl,
-    scores: audit.scores,
-    checks: audit.checks,
+    scores,
+    speed: speedMetrics, // null if PageSpeed wasn't available
+    speedAvailable: speed.ok,
+    checks,
     signals: publicSignals(audit.signals),
-    ai, // { businessName, industry, whatTheySell, summary, topFixes:[...] } or null
-    meta: { aiProvider },
+    ai,
+    meta: { engine: aiProvider }, // internal — for your debugging, not shown as a brand
   });
 }
 
-function buildPrompt(audit) {
+function buildPrompt(audit, speedMetrics) {
   const failing = audit.checks
     .filter((c) => c.status !== "pass")
     .map((c) => `- [${c.status.toUpperCase()}/${c.impact}] ${c.label}: ${c.detail}`)
     .join("\n");
 
+  const speedLine = speedMetrics
+    ? `Speed: ${speedMetrics.performance}/100, LCP ${speedMetrics.lcpSec}s, CLS ${speedMetrics.cls}`
+    : "Speed: not measured this run";
+
   return `A business website was scanned. Here is the raw data.
 
 URL: ${audit.finalUrl}
 Overall score: ${audit.scores.overall}/100
-Sub-scores: SEO ${audit.scores.seo}, Trust ${audit.scores.trust}, Technical ${audit.scores.technical}, Social ${audit.scores.social}
+Sub-scores: SEO ${audit.scores.seo}, Speed ${audit.scores.speed ?? "n/a"}, Trust ${audit.scores.trust}, Technical ${audit.scores.technical}, Social ${audit.scores.social}
+${speedLine}
 
 Page title: ${audit.signals.title || "(none)"}
 Main heading: ${audit.signals.h1Text || "(none)"}
@@ -100,7 +116,7 @@ Return ONLY this JSON shape:
     {
       "title": "short fix name",
       "whatItMeans": "1 sentence in plain English",
-      "whatItCosts": "1 sentence on what ignoring it costs, in customers or money",
+      "whatItCosts": "1 sentence on the cost of ignoring it. If you cite a number, mark it as an estimate.",
       "howToFix": "1-2 concrete sentences"
     }
   ]
@@ -109,7 +125,6 @@ Pick the 3 highest-impact fixes from the issues. If there are no issues, give 3 
 }
 
 function publicSignals(s) {
-  // Only expose what's useful to the UI, not the whole internal blob.
   return {
     host: s.host,
     title: s.title,
