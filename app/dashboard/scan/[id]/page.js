@@ -37,7 +37,8 @@ export default function ScanDetail({ params }) {
           finalUrl: s.final_url || s.url,
           speed: s.speed || null,
           speedAvailable: !!s.speed,
-          accuracy: computeAccuracy(!!s.speed),
+          gsc: s.gsc || null,
+          accuracy: computeAccuracy({ speedAvailable: !!s.speed, gscVerified: !!s.gsc }),
           ai: s.ai || null,
         });
         try {
