@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const SCAN_STEPS = [
   "Reading your website…",
@@ -26,6 +27,22 @@ export default function Home() {
   const [stepIdx, setStepIdx] = useState(0);
   const [factIdx, setFactIdx] = useState(0);
   const timers = useRef([]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
+      setUser(session?.user || null)
+    );
+    return () => sub?.subscription?.unsubscribe();
+  }, []);
+
+  async function signOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUser(null);
+  }
 
   useEffect(() => {
     if (phase !== "scanning") return;
@@ -87,14 +104,36 @@ export default function Home() {
         <span className="font-bold tracking-tight text-genie-ink">
           Marketing Genie
         </span>
-        {phase === "done" && (
-          <button
-            onClick={reset}
-            className="ml-auto text-sm text-genie-purple font-medium hover:underline"
-          >
-            Scan another site
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-4">
+          {phase === "done" && (
+            <button
+              onClick={reset}
+              className="text-sm text-genie-purple font-medium hover:underline"
+            >
+              Scan another
+            </button>
+          )}
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-genie-ink/55 hidden sm:inline">
+                {user.email}
+              </span>
+              <button
+                onClick={signOut}
+                className="text-sm text-genie-ink/55 hover:text-genie-ink"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <a
+              href="/login"
+              className="text-sm text-genie-purple font-medium hover:underline"
+            >
+              Sign in
+            </a>
+          )}
+        </div>
       </header>
 
       {phase === "idle" && (
