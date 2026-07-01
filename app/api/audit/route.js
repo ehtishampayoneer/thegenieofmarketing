@@ -66,6 +66,13 @@ export async function POST(request) {
     }
   }
 
+  // NEVER STOP: if the AI layer came back empty, build a useful analysis
+  // locally from the verified checks so the report is never blank.
+  if (!ai) {
+    ai = localFallback(checks, scores, audit.signals);
+    aiProvider = "genie-core";
+  }
+
   return json({
     ok: true,
     url: audit.url,
@@ -122,6 +129,42 @@ Return ONLY this JSON shape:
   ]
 }
 Pick the 3 highest-impact fixes from the issues. If there are no issues, give 3 growth ideas instead.`;
+}
+
+function localFallback(checks, scores, signals) {
+  const rank = { high: 0, medium: 1, low: 2 };
+  const problems = checks
+    .filter((c) => c.status !== "pass")
+    .sort((a, b) => rank[a.impact] - rank[b.impact])
+    .slice(0, 3);
+
+  const name =
+    (signals.title || "").split(/[|\-–—·]/)[0].trim() ||
+    signals.host ||
+    "This business";
+
+  const level =
+    scores.overall >= 75
+      ? "in good shape overall"
+      : scores.overall >= 60
+      ? "solid but with clear room to grow"
+      : "leaving real growth on the table";
+
+  return {
+    businessName: name,
+    industry: "",
+    whatTheySell: "",
+    summary: `${name} scores ${scores.overall}/100 and is ${level}. Fixing the items below is the fastest way to get found by more customers.`,
+    topFixes: problems.map((c) => ({
+      title: c.label,
+      whatItMeans: c.detail,
+      whatItCosts:
+        c.impact === "high"
+          ? "This is a high-impact issue — leaving it likely costs you visitors and customers."
+          : "Worth fixing to improve how you show up and convert.",
+      howToFix: "See the detail above; this is a well-known, fixable issue.",
+    })),
+  };
 }
 
 function publicSignals(s) {
