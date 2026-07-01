@@ -189,7 +189,7 @@ function Scanning({ step, fact }) {
 }
 
 function Report({ data }) {
-  const { scores, ai, checks, meta, finalUrl } = data;
+  const { scores, ai, checks, finalUrl, speed, speedAvailable } = data;
   const label = scoreLabel(scores.overall);
 
   return (
@@ -207,10 +207,25 @@ function Report({ data }) {
         {/* Sub-scores */}
         <div className="mt-8 grid sm:grid-cols-2 gap-3">
           <Bar label="🔍 SEO & Visibility" value={scores.seo} />
+          <Bar label="⚡ Speed" value={scores.speed} />
           <Bar label="🛡️ Trust" value={scores.trust} />
-          <Bar label="⚡ Technical" value={scores.technical} />
+          <Bar label="🔧 Technical" value={scores.technical} />
           <Bar label="👥 Social" value={scores.social} />
         </div>
+
+        {/* Speed metrics */}
+        {speed && (
+          <div className="mt-3 flex flex-wrap gap-2 justify-center">
+            <Metric label="Load (LCP)" value={speed.lcpSec != null ? speed.lcpSec + "s" : "—"} />
+            <Metric label="Stability (CLS)" value={speed.cls != null ? speed.cls : "—"} />
+            <Metric label="Speed" value={speed.performance + "/100"} />
+          </div>
+        )}
+        {!speedAvailable && (
+          <p className="mt-3 text-center text-xs text-genie-ink/40">
+            ⚡ Speed score pending — add a PageSpeed key to measure real load time.
+          </p>
+        )}
 
         {/* Business profile + summary */}
         {ai && (
@@ -265,11 +280,9 @@ function Report({ data }) {
           </div>
         </details>
 
-        {meta?.aiProvider && (
-          <p className="mt-6 text-center text-xs text-genie-ink/40">
-            Analysis served by {meta.aiProvider}
-          </p>
-        )}
+        <p className="mt-6 text-center text-xs text-genie-ink/40">
+          Powered by Genie AI
+        </p>
       </div>
     </section>
   );
@@ -320,6 +333,15 @@ function Bar({ label, value }) {
           style={{ width: `${value}%`, background: color, transition: "width 1s ease" }}
         />
       </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="bg-white border border-genie-ink/10 rounded-lg px-3 py-2 text-center">
+      <div className="text-xs text-genie-ink/50">{label}</div>
+      <div className="text-sm font-semibold text-genie-ink">{value}</div>
     </div>
   );
 }
