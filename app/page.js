@@ -271,9 +271,23 @@ function Report({ data }) {
                 className="flex items-start gap-3 bg-white border border-genie-ink/10 rounded-lg px-4 py-3"
               >
                 <span className="mt-0.5">{statusIcon(c.status)}</span>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-genie-ink text-sm">{c.label}</p>
                   <p className="text-sm text-genie-ink/60">{c.detail}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {c.status !== "pass" && c.difficulty && (
+                      <Chip tone={difficultyTone(c.difficulty)}>{c.difficulty}</Chip>
+                    )}
+                    {c.status !== "pass" && c.timeToFix && c.timeToFix !== "—" && (
+                      <Chip>🕒 {c.timeToFix}</Chip>
+                    )}
+                    {c.impactEstimate && (
+                      <Chip tone="emerald">▲ {c.impactEstimate} est.</Chip>
+                    )}
+                    {c.confidence != null && (
+                      <Chip tone="muted">{c.confidence}% confidence</Chip>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -368,6 +382,30 @@ function FixCard({ fix, n }) {
       )}
     </div>
   );
+}
+
+function Chip({ children, tone = "default" }) {
+  const tones = {
+    default: "bg-genie-mist text-genie-ink/70 border-genie-ink/10",
+    muted: "bg-genie-mist text-genie-ink/45 border-genie-ink/10",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    green: "bg-green-50 text-green-700 border-green-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+  };
+  return (
+    <span
+      className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function difficultyTone(d) {
+  if (d === "Easy") return "green";
+  if (d === "Hard") return "red";
+  return "amber";
 }
 
 function statusIcon(status) {
