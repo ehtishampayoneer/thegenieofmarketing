@@ -228,22 +228,7 @@ function Report({ data }) {
         )}
 
         {/* Business profile + summary */}
-        {ai && (
-          <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
-            <p className="text-sm font-semibold text-genie-purple">
-              What Genie sees
-            </p>
-            {ai.businessName && (
-              <p className="mt-2 text-genie-ink">
-                <span className="font-semibold">{ai.businessName}</span>
-                {ai.industry ? ` · ${ai.industry}` : ""}
-              </p>
-            )}
-            {ai.summary && (
-              <p className="mt-2 text-genie-ink/80 leading-relaxed">{ai.summary}</p>
-            )}
-          </div>
-        )}
+        {ai && <BusinessBrain ai={ai} />}
 
         {/* Top fixes */}
         {ai?.topFixes?.length > 0 && (
@@ -356,6 +341,114 @@ function Metric({ label, value }) {
     <div className="bg-white border border-genie-ink/10 rounded-lg px-3 py-2 text-center">
       <div className="text-xs text-genie-ink/50">{label}</div>
       <div className="text-sm font-semibold text-genie-ink">{value}</div>
+    </div>
+  );
+}
+
+function BusinessBrain({ ai }) {
+  const has = (v) => v && (Array.isArray(v) ? v.length > 0 : String(v).trim());
+  const subtitle = [ai.industry, ai.subCategory].filter(has).join(" · ");
+  const metaLine = [ai.businessType, ai.primaryMarket && `${ai.primaryMarket} (est.)`]
+    .filter(has)
+    .join(" · ");
+
+  return (
+    <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+      <p className="text-sm font-semibold text-genie-purple">What Genie sees</p>
+
+      {has(ai.businessName) && (
+        <p className="mt-2 text-lg font-bold text-genie-ink">{ai.businessName}</p>
+      )}
+      {has(subtitle) && <p className="text-sm text-genie-ink/60">{subtitle}</p>}
+      {has(metaLine) && <p className="text-sm text-genie-ink/50 mt-0.5">{metaLine}</p>}
+      {has(ai.summary) && (
+        <p className="mt-3 text-genie-ink/80 leading-relaxed">{ai.summary}</p>
+      )}
+
+      <div className="mt-5 grid sm:grid-cols-2 gap-5">
+        {has(ai.targetCustomer) && (
+          <Section title="Target customer">
+            <p className="text-sm text-genie-ink/75">{ai.targetCustomer}</p>
+          </Section>
+        )}
+
+        {ai.brandVoice && (has(ai.brandVoice.tone) || has(ai.brandVoice.note)) && (
+          <Section title="Brand voice">
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {has(ai.brandVoice.tone) && <Chip tone="default">{ai.brandVoice.tone}</Chip>}
+              {has(ai.brandVoice.formality) && (
+                <Chip tone="muted">{ai.brandVoice.formality}</Chip>
+              )}
+            </div>
+            {has(ai.brandVoice.note) && (
+              <p className="text-sm text-genie-ink/75">{ai.brandVoice.note}</p>
+            )}
+          </Section>
+        )}
+
+        {has(ai.strengths) && (
+          <Section title="Strengths">
+            <ul className="space-y-1">
+              {ai.strengths.map((s, i) => (
+                <li key={i} className="text-sm text-genie-ink/75 flex gap-2">
+                  <span className="text-emerald-600">✓</span> {s}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        {has(ai.weaknesses) && (
+          <Section title="Weaknesses">
+            <ul className="space-y-1">
+              {ai.weaknesses.map((w, i) => (
+                <li key={i} className="text-sm text-genie-ink/75 flex gap-2">
+                  <span className="text-amber-600">△</span> {w}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+      </div>
+
+      {has(ai.keywordsToOwn) && (
+        <Section title="Keywords to own" est className="mt-5">
+          <div className="flex flex-wrap gap-1.5">
+            {ai.keywordsToOwn.map((k, i) => (
+              <Chip key={i} tone="default">{k}</Chip>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {has(ai.competitors) && (
+        <Section title="Likely competitors" est className="mt-5">
+          <ul className="space-y-1.5">
+            {ai.competitors.map((c, i) => (
+              <li key={i} className="text-sm text-genie-ink/75">
+                <span className="font-medium text-genie-ink">{c.name}</span>
+                {has(c.why) && <span className="text-genie-ink/55"> — {c.why}</span>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, children, est, className = "" }) {
+  return (
+    <div className={className}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-genie-ink/45 mb-1.5">
+        {title}
+        {est && (
+          <span className="ml-1.5 normal-case tracking-normal text-genie-purple/60 font-medium">
+            · estimated
+          </span>
+        )}
+      </p>
+      {children}
     </div>
   );
 }
