@@ -110,6 +110,7 @@ export default function Home() {
           checks: result.checks,
           ai: result.ai,
           speed: result.speed,
+          gsc: result.gsc,
         }),
       });
       const j = await res.json();
