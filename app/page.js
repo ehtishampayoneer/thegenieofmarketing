@@ -141,6 +141,12 @@ export default function Home() {
           )}
           {user ? (
             <div className="flex items-center gap-3">
+              <a
+                href="/dashboard"
+                className="text-sm text-genie-purple font-medium hover:underline"
+              >
+                My scans
+              </a>
               <span className="text-sm text-genie-ink/55 hidden sm:inline">
                 {user.email}
               </span>
