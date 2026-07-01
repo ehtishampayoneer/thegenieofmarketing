@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [scans, setScans] = useState([]);
   const [host, setHost] = useState(null);
   const [email, setEmail] = useState("");
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -39,6 +40,30 @@ export default function Dashboard() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  async function deleteScan(id, label) {
+    if (!confirm(`Delete this saved scan of ${label}? This can't be undone.`)) {
+      return;
+    }
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/scans/${id}`, { method: "DELETE" });
+      const j = await res.json();
+      if (j.ok) {
+        const remaining = scans.filter((s) => s.id !== id);
+        setScans(remaining);
+        // If the selected site no longer has scans, switch to another.
+        if (!remaining.some((s) => hostOf(s) === host)) {
+          setHost(remaining[0] ? hostOf(remaining[0]) : null);
+        }
+      } else {
+        alert("Couldn't delete that scan. Please try again.");
+      }
+    } catch {
+      alert("Couldn't delete that scan. Please try again.");
+    }
+    setDeleting(null);
   }
 
   const hosts = [...new Set(scans.map(hostOf))];
@@ -74,11 +99,18 @@ export default function Dashboard() {
           )}
 
           {!loading && scans.length === 0 && (
-            <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-8 text-center">
-              <p className="text-genie-ink/70">No scans saved yet.</p>
+            <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-10 text-center">
+              <div className="w-14 h-14 rounded-2xl genie-gradient mx-auto" aria-hidden />
+              <p className="mt-4 text-lg font-semibold text-genie-ink">
+                Your growth history starts here
+              </p>
+              <p className="mt-1 text-sm text-genie-ink/55 max-w-sm mx-auto">
+                Run a scan and it’ll be saved to your account. Scan the same site
+                again over time and watch your score climb.
+              </p>
               <a
                 href="/"
-                className="mt-4 inline-block genie-gradient text-white font-semibold px-5 py-3 rounded-xl"
+                className="mt-5 inline-block genie-gradient text-white font-semibold px-5 py-3 rounded-xl"
               >
                 Run your first scan →
               </a>
@@ -131,22 +163,38 @@ export default function Dashboard() {
                 {scans.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center gap-4 bg-white border border-genie-ink/10 rounded-xl px-4 py-3"
+                    className="flex items-center gap-3 bg-white border border-genie-ink/10 rounded-xl pr-2 hover:border-genie-purple/30 hover:shadow-sm transition"
                   >
-                    <ScoreBadge value={s.overall_score} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-genie-ink text-sm truncate">
-                        {hostOf(s)}
-                      </p>
-                      <p className="text-xs text-genie-ink/50">{fmtDate(s.created_at)}</p>
-                    </div>
-                    {s.scores && (
-                      <div className="hidden sm:flex gap-3 text-xs text-genie-ink/50">
-                        <span>SEO {s.scores.seo ?? "–"}</span>
-                        <span>Trust {s.scores.trust ?? "–"}</span>
-                        <span>Speed {s.scores.speed ?? "–"}</span>
+                    <a
+                      href={`/dashboard/scan/${s.id}`}
+                      className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3"
+                    >
+                      <ScoreBadge value={s.overall_score} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-genie-ink text-sm truncate">
+                          {hostOf(s)}
+                        </p>
+                        <p className="text-xs text-genie-ink/50">{fmtDate(s.created_at)}</p>
                       </div>
-                    )}
+                      {s.scores && (
+                        <div className="hidden sm:flex gap-3 text-xs text-genie-ink/50">
+                          <span>SEO {s.scores.seo ?? "–"}</span>
+                          <span>Trust {s.scores.trust ?? "–"}</span>
+                          <span>Speed {s.scores.speed ?? "–"}</span>
+                        </div>
+                      )}
+                      <span className="text-genie-ink/30 text-sm hidden sm:inline">
+                        View →
+                      </span>
+                    </a>
+                    <button
+                      onClick={() => deleteScan(s.id, hostOf(s))}
+                      disabled={deleting === s.id}
+                      aria-label="Delete scan"
+                      className="p-2 rounded-lg text-genie-ink/30 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -191,6 +239,16 @@ function TrendChart({ points }) {
           </text>
         </g>
       ))}
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
   );
 }
