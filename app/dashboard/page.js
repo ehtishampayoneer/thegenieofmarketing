@@ -1,16 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function Dashboard() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [scans, setScans] = useState([]);
   const [host, setHost] = useState(null);
   const [email, setEmail] = useState("");
   const [deleting, setDeleting] = useState(null);
+  const [conn, setConn] = useState(null); // google connection status
+  const [banner, setBanner] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("connected")) setBanner("✓ Google Search Console connected.");
+    else if (searchParams.get("connect_error"))
+      setBanner("Couldn't complete the Google connection. Please try again.");
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;
@@ -31,6 +48,11 @@ export default function Dashboard() {
           if (first) setHost(hostOf(first));
         }
       } catch {}
+      try {
+        const cRes = await fetch("/api/connect/google");
+        const cJson = await cRes.json();
+        if (active) setConn(cJson);
+      } catch {}
       if (active) setLoading(false);
     })();
     return () => { active = false; };
@@ -40,6 +62,19 @@ export default function Dashboard() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  async function disconnectGoogle() {
+    if (!confirm("Disconnect Google Search Console? Genie will go back to estimated data.")) {
+      return;
+    }
+    try {
+      await fetch("/api/connect/google", { method: "DELETE" });
+      setConn({ ok: true, connected: false });
+      setBanner("Google disconnected.");
+    } catch {
+      alert("Couldn't disconnect. Try again.");
+    }
   }
 
   async function deleteScan(id, label) {
@@ -93,6 +128,14 @@ export default function Dashboard() {
       <section className="flex-1 px-6 pb-10">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-2xl font-extrabold text-genie-ink">Your scans</h1>
+
+          {banner && (
+            <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
+              {banner}
+            </div>
+          )}
+
+          <ConnectionCard conn={conn} onDisconnect={disconnectGoogle} />
 
           {loading && (
             <p className="mt-8 text-center text-genie-ink/50">Loading your history…</p>
@@ -240,6 +283,46 @@ function TrendChart({ points }) {
         </g>
       ))}
     </svg>
+  );
+}
+
+function ConnectionCard({ conn, onDisconnect }) {
+  const connected = conn?.connected;
+  return (
+    <div className="mt-5 bg-white border border-genie-ink/10 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-genie-mist border border-genie-ink/10 flex items-center justify-center text-lg">
+          🔍
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-genie-ink text-sm">Google Search Console</p>
+          {connected ? (
+            <p className="text-xs text-emerald-700 truncate">
+              Connected{conn.email ? ` · ${conn.email}` : ""}
+            </p>
+          ) : (
+            <p className="text-xs text-genie-ink/55">
+              Connect to swap estimated keywords & traffic for real data (+15% accuracy).
+            </p>
+          )}
+        </div>
+        {connected ? (
+          <button
+            onClick={onDisconnect}
+            className="text-sm text-genie-ink/55 hover:text-red-500 transition"
+          >
+            Disconnect
+          </button>
+        ) : (
+          <a
+            href="/api/connect/google/start"
+            className="genie-gradient text-white text-sm font-semibold px-4 py-2 rounded-xl whitespace-nowrap"
+          >
+            Connect
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 
