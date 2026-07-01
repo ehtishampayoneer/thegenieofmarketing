@@ -31,6 +31,22 @@ export async function POST(request) {
     return json({ ok: false, error: "Missing scan data." }, 400);
   }
 
+  // MEMORY: find the most recent previous scan of the SAME site to compare against.
+  const host = hostOf(finalUrl || url);
+  let comparison = null;
+  try {
+    const { data: prior } = await supabase
+      .from("scans")
+      .select("overall_score, checks, created_at, final_url, url")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const prev = (prior || []).find((s) => hostOf(s.final_url || s.url) === host);
+    if (prev) comparison = compareScans(prev, { overall: scores.overall, checks });
+  } catch {
+    // comparison is best-effort
+  }
+
   const { data, error } = await supabase
     .from("scans")
     .insert({
@@ -48,7 +64,41 @@ export async function POST(request) {
     .single();
 
   if (error) return json({ ok: false, error: error.message }, 500);
-  return json({ ok: true, id: data.id, createdAt: data.created_at });
+  return json({ ok: true, id: data.id, createdAt: data.created_at, comparison });
+}
+
+function compareScans(prev, current) {
+  const prevChecks = Array.isArray(prev.checks) ? prev.checks : [];
+  const curChecks = Array.isArray(current.checks) ? current.checks : [];
+  const prevMap = new Map(prevChecks.map((c) => [c.id, c.status]));
+
+  const improved = [];
+  const regressed = [];
+  for (const c of curChecks) {
+    const was = prevMap.get(c.id);
+    if (was === undefined) continue;
+    const wasPass = was === "pass";
+    const nowPass = c.status === "pass";
+    if (!wasPass && nowPass) improved.push(c.label);
+    else if (wasPass && !nowPass) regressed.push(c.label);
+  }
+
+  return {
+    prevScore: prev.overall_score ?? null,
+    newScore: current.overall ?? null,
+    delta: (current.overall ?? 0) - (prev.overall_score ?? 0),
+    prevDate: prev.created_at,
+    improved: improved.slice(0, 6),
+    regressed: regressed.slice(0, 6),
+  };
+}
+
+function hostOf(u) {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return u || "";
+  }
 }
 
 // List the signed-in user's past scans (newest first, lightweight fields only).
