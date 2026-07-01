@@ -29,6 +29,7 @@ export default function Home() {
   const timers = useRef([]);
   const [user, setUser] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [comparison, setComparison] = useState(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -69,6 +70,7 @@ export default function Home() {
     setData(null);
     setErrorMsg("");
     setSaved(false);
+    setComparison(null);
 
     try {
       const res = await fetch("/api/audit", {
@@ -110,7 +112,10 @@ export default function Home() {
         }),
       });
       const j = await res.json();
-      if (j.ok) setSaved(true);
+      if (j.ok) {
+        setSaved(true);
+        if (j.comparison) setComparison(j.comparison);
+      }
     } catch {
       // saving is best-effort; never block the result on it
     }
@@ -121,6 +126,7 @@ export default function Home() {
     setData(null);
     setErrorMsg("");
     setSaved(false);
+    setComparison(null);
   }
 
   return (
@@ -190,7 +196,7 @@ export default function Home() {
       )}
 
       {phase === "done" && data && (
-        <Report data={data} loggedIn={!!user} saved={saved} />
+        <Report data={data} loggedIn={!!user} saved={saved} comparison={comparison} />
       )}
 
       <footer className="px-6 py-6 text-center text-sm text-genie-ink/40">
@@ -261,7 +267,52 @@ function Scanning({ step, fact }) {
   );
 }
 
-function Report({ data, loggedIn, saved }) {
+function SinceLastScan({ c }) {
+  const up = c.delta > 0;
+  const flat = c.delta === 0;
+  const when = (() => {
+    try {
+      return new Date(c.prevDate).toLocaleDateString(undefined, {
+        month: "short", day: "numeric",
+      });
+    } catch {
+      return "last time";
+    }
+  })();
+  return (
+    <div className="mt-5 bg-white border border-genie-purple/20 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-genie-purple">
+          Since your last scan · {when}
+        </p>
+        <span
+          className="text-sm font-bold"
+          style={{ color: up ? "#059669" : flat ? "#6B7280" : "#EF4444" }}
+        >
+          {c.prevScore} → {c.newScore} ({c.delta >= 0 ? "+" : ""}{c.delta})
+        </span>
+      </div>
+      {c.improved?.length > 0 && (
+        <p className="mt-2 text-sm text-emerald-700">
+          ✓ Fixed: {c.improved.join(", ")}
+        </p>
+      )}
+      {c.regressed?.length > 0 && (
+        <p className="mt-1 text-sm text-red-600">
+          △ Slipped: {c.regressed.join(", ")}
+        </p>
+      )}
+      {(!c.improved || c.improved.length === 0) &&
+        (!c.regressed || c.regressed.length === 0) && (
+          <p className="mt-2 text-sm text-genie-ink/55">
+            No individual checks changed since last time — steady.
+          </p>
+        )}
+    </div>
+  );
+}
+
+function Report({ data, loggedIn, saved, comparison }) {
   const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy } = data;
   const label = scoreLabel(scores.overall);
 
@@ -276,6 +327,8 @@ function Report({ data, loggedIn, saved }) {
           </p>
           <p className="text-sm text-genie-ink/50 break-all">{prettyHost(finalUrl)}</p>
         </div>
+
+        {comparison && <SinceLastScan c={comparison} />}
 
         {!loggedIn && (
           <div className="mt-4 bg-genie-mist border border-genie-ink/10 rounded-xl p-3 text-center text-sm">
