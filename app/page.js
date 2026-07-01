@@ -1,160 +1,371 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
+const SCAN_STEPS = [
+  "Reading your website…",
+  "Checking what Google sees…",
+  "Analyzing your headings & content…",
+  "Checking your trust signals…",
+  "Reviewing your social presence…",
+  "Calculating your growth score…",
+];
+
+const FACTS = [
+  "53% of visitors leave if a page takes more than 3 seconds to load.",
+  "Businesses with blogs get 67% more leads than those without.",
+  "88% of consumers trust online reviews as much as personal recommendations.",
+  "The first result on Google gets 10x more clicks than position 10.",
+];
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | done | error
-  const [result, setResult] = useState(null);
-  const [provider, setProvider] = useState(null);
+  const [phase, setPhase] = useState("idle"); // idle | scanning | done | error
+  const [data, setData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [stepIdx, setStepIdx] = useState(0);
+  const [factIdx, setFactIdx] = useState(0);
+  const timers = useRef([]);
 
-  function normalizeUrl(raw) {
-    let u = raw.trim();
-    if (!u) return "";
-    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
-    return u;
-  }
+  useEffect(() => {
+    if (phase !== "scanning") return;
+    const t1 = setInterval(
+      () => setStepIdx((i) => Math.min(i + 1, SCAN_STEPS.length - 1)),
+      900
+    );
+    const t2 = setInterval(() => setFactIdx((i) => (i + 1) % FACTS.length), 3500);
+    timers.current = [t1, t2];
+    return () => timers.current.forEach(clearInterval);
+  }, [phase]);
 
   async function analyze() {
-    const clean = normalizeUrl(url);
+    const clean = url.trim();
     if (!clean) {
-      setStatus("error");
+      setPhase("error");
       setErrorMsg("Enter your website address to begin.");
       return;
     }
-
-    setStatus("loading");
-    setResult(null);
-    setProvider(null);
+    setPhase("scanning");
+    setStepIdx(0);
+    setFactIdx(0);
+    setData(null);
     setErrorMsg("");
 
     try {
-      const res = await fetch("/api/ai", {
+      const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system:
-            "You are Genie, a sharp business growth advisor. Reply in plain English at a 7th-grade reading level. No jargon.",
-          prompt:
-            "In exactly 2 short sentences, give a confident first impression of what this business likely does and its single biggest growth opportunity, based only on the domain name: " +
-            clean,
-          temperature: 0.7,
-          maxTokens: 200,
-        }),
+        body: JSON.stringify({ url: clean }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok || data.ok === false) {
-        setStatus("error");
-        setErrorMsg(
-          data.message ||
-            "The Genie is busy right now. Give it a moment and try again."
-        );
+      const json = await res.json();
+      if (!res.ok || json.ok === false) {
+        setPhase("error");
+        setErrorMsg(json.message || "Couldn't scan that site. Try another.");
         return;
       }
-
-      setResult(data.text);
-      setProvider(data.meta?.provider || null);
-      setStatus("done");
-    } catch (e) {
-      setStatus("error");
+      // brief beat so the scan animation doesn't feel skipped
+      setTimeout(() => {
+        setData(json);
+        setPhase("done");
+      }, 600);
+    } catch {
+      setPhase("error");
       setErrorMsg("Something interrupted the connection. Try again.");
     }
   }
 
-  function onKeyDown(e) {
-    if (e.key === "Enter") analyze();
+  function reset() {
+    setPhase("idle");
+    setData(null);
+    setErrorMsg("");
   }
 
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Top bar */}
       <header className="px-6 py-5 flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg genie-gradient" aria-hidden />
         <span className="font-bold tracking-tight text-genie-ink">
           Marketing Genie
         </span>
+        {phase === "done" && (
+          <button
+            onClick={reset}
+            className="ml-auto text-sm text-genie-purple font-medium hover:underline"
+          >
+            Scan another site
+          </button>
+        )}
       </header>
 
-      {/* Hero */}
-      <section className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-widest text-genie-purple/70">
-            Your AI growth operator
-          </p>
+      {phase === "idle" && (
+        <Hero
+          url={url}
+          setUrl={setUrl}
+          onAnalyze={analyze}
+        />
+      )}
 
-          <h1 className="mt-4 text-4xl sm:text-6xl font-extrabold tracking-tight text-genie-ink leading-[1.05]">
-            Paste your URL.
-            <br />
-            <span className="bg-gradient-to-r from-genie-purple to-genie-emerald bg-clip-text text-transparent">
-              Watch your business grow.
-            </span>
-          </h1>
+      {phase === "error" && (
+        <Hero
+          url={url}
+          setUrl={setUrl}
+          onAnalyze={analyze}
+          error={errorMsg}
+        />
+      )}
 
-          <p className="mt-5 text-lg text-genie-ink/70 max-w-xl mx-auto">
-            Drop your website in below for an instant first read from the Genie.
-            No signup. No credit card.
-          </p>
+      {phase === "scanning" && (
+        <Scanning step={SCAN_STEPS[stepIdx]} fact={FACTS[factIdx]} />
+      )}
 
-          {/* Input */}
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
-            <input
-              type="text"
-              inputMode="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="yourbusiness.com"
-              className="flex-1 px-5 py-4 rounded-xl border border-genie-ink/15 bg-white text-genie-ink placeholder:text-genie-ink/40 outline-none focus:ring-2 focus:ring-genie-purple/40 focus:border-genie-purple/40 transition"
-              aria-label="Your website address"
-            />
-            <button
-              onClick={analyze}
-              disabled={status === "loading"}
-              className="genie-gradient text-white font-semibold px-6 py-4 rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {status === "loading" ? "Reading…" : "Ask the Genie →"}
-            </button>
-          </div>
-
-          <p className="mt-4 text-sm text-genie-ink/50">
-            🔒 Private · Nothing saved · Powered by a multi-AI brain
-          </p>
-
-          {/* Result */}
-          {status === "done" && result && (
-            <div className="mt-8 text-left bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-genie-purple">
-                  Genie’s first impression
-                </span>
-                {provider && (
-                  <span className="text-xs font-medium text-genie-ink/40 bg-genie-mist border border-genie-ink/10 rounded-full px-2.5 py-1">
-                    served by {provider}
-                  </span>
-                )}
-              </div>
-              <p className="text-genie-ink leading-relaxed">{result}</p>
-              <p className="mt-4 text-sm text-genie-ink/50">
-                This is a 10-second taste. The full 60-point growth report is
-                next.
-              </p>
-            </div>
-          )}
-
-          {status === "error" && (
-            <div className="mt-8 text-left bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <p className="text-amber-800">{errorMsg}</p>
-            </div>
-          )}
-        </div>
-      </section>
+      {phase === "done" && data && <Report data={data} />}
 
       <footer className="px-6 py-6 text-center text-sm text-genie-ink/40">
         Marketing Genie · built to make growth obvious
       </footer>
     </main>
   );
+}
+
+function Hero({ url, setUrl, onAnalyze, error }) {
+  return (
+    <section className="flex-1 flex items-center justify-center px-6">
+      <div className="w-full max-w-2xl text-center">
+        <p className="text-sm font-semibold uppercase tracking-widest text-genie-purple/70">
+          Your AI growth operator
+        </p>
+        <h1 className="mt-4 text-4xl sm:text-6xl font-extrabold tracking-tight text-genie-ink leading-[1.05]">
+          Paste your URL.
+          <br />
+          <span className="bg-gradient-to-r from-genie-purple to-genie-emerald bg-clip-text text-transparent">
+            Watch your business grow.
+          </span>
+        </h1>
+        <p className="mt-5 text-lg text-genie-ink/70 max-w-xl mx-auto">
+          Drop your website in below for a free, instant growth scan. No signup.
+          No credit card.
+        </p>
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
+          <input
+            type="text"
+            inputMode="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onAnalyze()}
+            placeholder="yourbusiness.com"
+            className="flex-1 px-5 py-4 rounded-xl border border-genie-ink/15 bg-white text-genie-ink placeholder:text-genie-ink/40 outline-none focus:ring-2 focus:ring-genie-purple/40 transition"
+            aria-label="Your website address"
+          />
+          <button
+            onClick={onAnalyze}
+            className="genie-gradient text-white font-semibold px-6 py-4 rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition"
+          >
+            Scan my site →
+          </button>
+        </div>
+        <p className="mt-4 text-sm text-genie-ink/50">
+          🔒 Private · Real-time scan · Powered by a multi-AI brain
+        </p>
+        {error && (
+          <div className="mt-6 text-left bg-amber-50 border border-amber-200 rounded-2xl p-5 max-w-xl mx-auto">
+            <p className="text-amber-800">{error}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Scanning({ step, fact }) {
+  return (
+    <section className="flex-1 flex items-center justify-center px-6">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 rounded-2xl genie-gradient mx-auto animate-pulse" />
+        <p className="mt-6 text-xl font-semibold text-genie-ink">{step}</p>
+        <p className="mt-6 text-genie-ink/60 italic min-h-[3rem]">{fact}</p>
+      </div>
+    </section>
+  );
+}
+
+function Report({ data }) {
+  const { scores, ai, checks, meta, finalUrl } = data;
+  const label = scoreLabel(scores.overall);
+
+  return (
+    <section className="flex-1 px-6 pb-10">
+      <div className="max-w-3xl mx-auto">
+        {/* Score header */}
+        <div className="text-center mt-2">
+          <Ring value={scores.overall} />
+          <p className="mt-2 text-lg font-semibold" style={{ color: label.color }}>
+            {label.text}
+          </p>
+          <p className="text-sm text-genie-ink/50 break-all">{prettyHost(finalUrl)}</p>
+        </div>
+
+        {/* Sub-scores */}
+        <div className="mt-8 grid sm:grid-cols-2 gap-3">
+          <Bar label="🔍 SEO & Visibility" value={scores.seo} />
+          <Bar label="🛡️ Trust" value={scores.trust} />
+          <Bar label="⚡ Technical" value={scores.technical} />
+          <Bar label="👥 Social" value={scores.social} />
+        </div>
+
+        {/* Business profile + summary */}
+        {ai && (
+          <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+            <p className="text-sm font-semibold text-genie-purple">
+              What Genie sees
+            </p>
+            {ai.businessName && (
+              <p className="mt-2 text-genie-ink">
+                <span className="font-semibold">{ai.businessName}</span>
+                {ai.industry ? ` · ${ai.industry}` : ""}
+              </p>
+            )}
+            {ai.summary && (
+              <p className="mt-2 text-genie-ink/80 leading-relaxed">{ai.summary}</p>
+            )}
+          </div>
+        )}
+
+        {/* Top fixes */}
+        {ai?.topFixes?.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-genie-ink mb-3">
+              🔥 Your highest-impact fixes
+            </h2>
+            <div className="space-y-3">
+              {ai.topFixes.map((f, i) => (
+                <FixCard key={i} fix={f} n={i + 1} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Full checklist */}
+        <details className="mt-8 group">
+          <summary className="cursor-pointer text-genie-purple font-medium">
+            See all {checks.length} checks
+          </summary>
+          <div className="mt-3 space-y-1">
+            {checks.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-start gap-3 bg-white border border-genie-ink/10 rounded-lg px-4 py-3"
+              >
+                <span className="mt-0.5">{statusIcon(c.status)}</span>
+                <div>
+                  <p className="font-medium text-genie-ink text-sm">{c.label}</p>
+                  <p className="text-sm text-genie-ink/60">{c.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        {meta?.aiProvider && (
+          <p className="mt-6 text-center text-xs text-genie-ink/40">
+            Analysis served by {meta.aiProvider}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Ring({ value }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  const color = scoreLabel(value).color;
+  return (
+    <div className="relative inline-block">
+      <svg width="140" height="140" className="-rotate-90">
+        <circle cx="70" cy="70" r={r} fill="none" stroke="#E5E7EB" strokeWidth="12" />
+        <circle
+          cx="70"
+          cy="70"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 1s ease" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-extrabold text-genie-ink">{value}</span>
+        <span className="text-xs text-genie-ink/50">/ 100</span>
+      </div>
+    </div>
+  );
+}
+
+function Bar({ label, value }) {
+  if (value === null || value === undefined) return null;
+  const color = scoreLabel(value).color;
+  return (
+    <div className="bg-white border border-genie-ink/10 rounded-xl px-4 py-3">
+      <div className="flex justify-between text-sm font-medium text-genie-ink">
+        <span>{label}</span>
+        <span>{value}</span>
+      </div>
+      <div className="mt-2 h-2 rounded-full bg-genie-ink/10 overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${value}%`, background: color, transition: "width 1s ease" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FixCard({ fix, n }) {
+  return (
+    <div className="bg-white border border-genie-ink/10 rounded-2xl p-5 shadow-sm">
+      <p className="font-semibold text-genie-ink">
+        {n}. {fix.title}
+      </p>
+      {fix.whatItMeans && (
+        <p className="mt-2 text-sm text-genie-ink/80">{fix.whatItMeans}</p>
+      )}
+      {fix.whatItCosts && (
+        <p className="mt-2 text-sm text-genie-emerald font-medium">
+          {fix.whatItCosts}
+        </p>
+      )}
+      {fix.howToFix && (
+        <p className="mt-2 text-sm text-genie-ink/60">
+          <span className="font-medium text-genie-ink/80">How: </span>
+          {fix.howToFix}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function statusIcon(status) {
+  if (status === "pass") return "✅";
+  if (status === "warn") return "⚠️";
+  return "❌";
+}
+
+function scoreLabel(v) {
+  if (v >= 90) return { text: "Excellent", color: "#10B981" };
+  if (v >= 75) return { text: "Good Progress", color: "#059669" };
+  if (v >= 60) return { text: "Needs Attention", color: "#F59E0B" };
+  if (v >= 40) return { text: "Significant Issues", color: "#F97316" };
+  return { text: "Critical Problems", color: "#EF4444" };
+}
+
+function prettyHost(u) {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return u;
+  }
 }
