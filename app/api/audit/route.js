@@ -5,6 +5,9 @@
 import { runAudit, runSpeed, computeScores } from "@/lib/audit";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { computeAccuracy } from "@/lib/accuracy";
+import { createClient } from "@/lib/supabase/server";
+import { getValidAccessToken } from "@/lib/google";
+import { getGscData } from "@/lib/gsc";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,17 +50,46 @@ export async function POST(request) {
     speedMetrics = speed.metrics;
   }
 
+  // 2b. Real Search Console data — only if the signed-in user owns this site.
+  let gsc = null;
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: conn } = await supabase
+        .from("connections")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("provider", "google")
+        .maybeSingle();
+      if (conn) {
+        const token = await getValidAccessToken(supabase, conn);
+        if (token) {
+          const g = await getGscData(token, audit.signals.host);
+          if (g?.available) {
+            gsc = g;
+            if (g.site && g.site !== conn.gsc_site) {
+              await supabase.from("connections").update({ gsc_site: g.site }).eq("id", conn.id);
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // GSC is additive; never block the scan on it.
+  }
+
   // 3. AI plain-English layer.
   let ai = null;
   let aiProvider = null;
   try {
     const result = await callAI({
       system:
-        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you give a number that is an estimate (potential revenue, lost customers, impact), phrase it clearly as an estimate ('likely', 'roughly', 'an estimated'). Competitors, keyword suggestions, and primary market are your INFERENCES from the page — treat them as informed guesses, not facts. Never state estimates as measured facts. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
+        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you give a number that is an estimate (potential revenue, lost customers, impact), phrase it clearly as an estimate ('likely', 'roughly', 'an estimated'). Competitors, keyword suggestions, and primary market are your INFERENCES from the page — treat them as informed guesses, not facts. If real Search Console keywords are provided, treat those as VERIFIED fact. Never state estimates as measured facts. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
       json: true,
       maxTokens: 1800,
       temperature: 0.6,
-      prompt: buildPrompt({ ...audit, scores }, speedMetrics),
+      prompt: buildPrompt({ ...audit, scores }, speedMetrics, gsc),
     });
     ai = result.json;
     aiProvider = result.provider;
@@ -81,7 +113,8 @@ export async function POST(request) {
     scores,
     speed: speedMetrics, // null if PageSpeed wasn't available
     speedAvailable: speed.ok,
-    accuracy: computeAccuracy(speed.ok),
+    gsc, // real Search Console data, or null
+    accuracy: computeAccuracy({ speedAvailable: speed.ok, gscVerified: !!gsc }),
     checks,
     signals: publicSignals(audit.signals),
     ai,
@@ -89,7 +122,7 @@ export async function POST(request) {
   });
 }
 
-function buildPrompt(audit, speedMetrics) {
+function buildPrompt(audit, speedMetrics, gsc) {
   const failing = audit.checks
     .filter((c) => c.status !== "pass")
     .map((c) => `- [${c.status.toUpperCase()}/${c.impact}] ${c.label}: ${c.detail}`)
@@ -99,12 +132,17 @@ function buildPrompt(audit, speedMetrics) {
     ? `Speed: ${speedMetrics.performance}/100, LCP ${speedMetrics.lcpSec}s, CLS ${speedMetrics.cls}`
     : "Speed: not measured this run";
 
+  const gscLine = gsc?.available
+    ? `\nREAL Search Console data (VERIFIED — use these actual keywords, do not invent):\nTop queries: ${gsc.topQueries.slice(0, 10).map((q) => `"${q.query}" (pos ${q.position}, ${q.clicks} clicks, ${q.impressions} impressions)`).join("; ")}\nFor keywordsToOwn, suggest NEW keywords they don't already rank well for, not ones above.`
+    : "";
+
   return `A business website was scanned. Here is the raw data.
 
 URL: ${audit.finalUrl}
 Overall score: ${audit.scores.overall}/100
 Sub-scores: SEO ${audit.scores.seo}, Speed ${audit.scores.speed ?? "n/a"}, Trust ${audit.scores.trust}, Technical ${audit.scores.technical}, Social ${audit.scores.social}
 ${speedLine}
+${gscLine}
 
 Page title: ${audit.signals.title || "(none)"}
 Meta description: ${audit.signals.metaDesc || "(none)"}
