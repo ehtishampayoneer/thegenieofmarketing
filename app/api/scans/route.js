@@ -26,7 +26,7 @@ export async function POST(request) {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
-  const { url, finalUrl, scores, accuracy, checks, ai, speed } = body || {};
+  const { url, finalUrl, scores, accuracy, checks, ai, speed, gsc } = body || {};
   if (!url || !scores) {
     return json({ ok: false, error: "Missing scan data." }, 400);
   }
@@ -59,6 +59,7 @@ export async function POST(request) {
       checks: checks || null,
       ai: ai || null,
       speed: speed || null,
+      gsc: gsc || null,
     })
     .select("id, created_at")
     .single();
