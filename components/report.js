@@ -50,7 +50,7 @@ function SinceLastScan({ c }) {
 }
 
 export function Report({ data, loggedIn, saved, comparison }) {
-  const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy } = data;
+  const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy, gsc } = data;
   const label = scoreLabel(scores.overall);
 
   return (
@@ -109,7 +109,9 @@ export function Report({ data, loggedIn, saved, comparison }) {
         {/* Business profile + summary */}
         {accuracy && <AccuracyBar accuracy={accuracy} />}
 
-        {ai && <BusinessBrain ai={ai} />}
+        {gsc?.available && <GscPanel gsc={gsc} />}
+
+        {ai && <BusinessBrain ai={ai} gsc={gsc} />}
 
         {/* Top fixes */}
         {ai?.topFixes?.length > 0 && (
@@ -271,8 +273,9 @@ function AccuracyBar({ accuracy }) {
   );
 }
 
-function BusinessBrain({ ai }) {
+function BusinessBrain({ ai, gsc }) {
   const has = (v) => v && (Array.isArray(v) ? v.length > 0 : String(v).trim());
+  const realKw = gsc?.available ? gsc.topQueries.slice(0, 8) : null;
   const subtitle = [ai.industry, ai.subCategory].filter(has).join(" · ");
   const metaLine = [ai.businessType, ai.primaryMarket && `${ai.primaryMarket} (est.)`]
     .filter(has)
@@ -337,8 +340,29 @@ function BusinessBrain({ ai }) {
         )}
       </div>
 
-      {has(ai.keywordsToOwn) && (
-        <Section title="Keywords to own" est className="mt-5">
+      {realKw && realKw.length > 0 ? (
+        <Section title="Keywords you rank for" verified className="mt-5">
+          <div className="flex flex-wrap gap-1.5">
+            {realKw.map((k, i) => (
+              <Chip key={i} tone="green">
+                {k.query} · #{Math.round(k.position)}
+              </Chip>
+            ))}
+          </div>
+        </Section>
+      ) : (
+        has(ai.keywordsToOwn) && (
+          <Section title="Keywords to own" est className="mt-5">
+            <div className="flex flex-wrap gap-1.5">
+              {ai.keywordsToOwn.map((k, i) => (
+                <Chip key={i} tone="default">{k}</Chip>
+              ))}
+            </div>
+          </Section>
+        )
+      )}
+      {realKw && realKw.length > 0 && has(ai.keywordsToOwn) && (
+        <Section title="New keywords to target" est className="mt-5">
           <div className="flex flex-wrap gap-1.5">
             {ai.keywordsToOwn.map((k, i) => (
               <Chip key={i} tone="default">{k}</Chip>
@@ -363,7 +387,7 @@ function BusinessBrain({ ai }) {
   );
 }
 
-function Section({ title, children, est, className = "" }) {
+function Section({ title, children, est, verified, className = "" }) {
   return (
     <div className={className}>
       <p className="text-xs font-semibold uppercase tracking-wide text-genie-ink/45 mb-1.5">
@@ -373,10 +397,97 @@ function Section({ title, children, est, className = "" }) {
             · estimated
           </span>
         )}
+        {verified && (
+          <span className="ml-1.5 normal-case tracking-normal text-emerald-600 font-medium">
+            · verified
+          </span>
+        )}
       </p>
       {children}
     </div>
   );
+}
+
+function GscPanel({ gsc }) {
+  const t = gsc.totals || {};
+  return (
+    <div className="mt-8 bg-white border border-emerald-200 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-semibold text-emerald-700">
+          Real Search Console data
+        </p>
+        <Chip tone="green">✓ verified</Chip>
+      </div>
+      <p className="text-xs text-genie-ink/50 mt-1">Last 28 days · {prettySite(gsc.site)}</p>
+
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Metric label="Clicks" value={fmt(t.clicks)} />
+        <Metric label="Impressions" value={fmt(t.impressions)} />
+        <Metric label="Avg CTR" value={`${t.ctr ?? 0}%`} />
+        <Metric label="Avg position" value={t.position ?? "–"} />
+      </div>
+
+      {gsc.opportunities?.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-genie-ink/45 mb-2">
+            🔥 Quick-win keyword opportunities
+          </p>
+          <div className="space-y-2">
+            {gsc.opportunities.map((o, i) => (
+              <div key={i} className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-sm font-medium text-genie-ink">“{o.query}”</p>
+                <p className="text-xs text-genie-ink/70 mt-0.5">
+                  Seen {fmt(o.impressions)} times, ranking #{Math.round(o.position)}, but only{" "}
+                  {o.ctr}% click. Improving your title/meta could capture far more of these.
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {gsc.topQueries?.length > 0 && (
+        <details className="mt-5">
+          <summary className="cursor-pointer text-sm text-emerald-700 font-medium">
+            Top {Math.min(gsc.topQueries.length, 25)} keywords
+          </summary>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-genie-ink/45 text-xs">
+                  <th className="text-left font-medium pb-2">Keyword</th>
+                  <th className="text-right font-medium pb-2">Clicks</th>
+                  <th className="text-right font-medium pb-2">Impr.</th>
+                  <th className="text-right font-medium pb-2">CTR</th>
+                  <th className="text-right font-medium pb-2">Pos.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gsc.topQueries.map((q, i) => (
+                  <tr key={i} className="border-t border-genie-ink/5">
+                    <td className="py-1.5 pr-2 text-genie-ink/80">{q.query}</td>
+                    <td className="py-1.5 text-right text-genie-ink/70">{fmt(q.clicks)}</td>
+                    <td className="py-1.5 text-right text-genie-ink/70">{fmt(q.impressions)}</td>
+                    <td className="py-1.5 text-right text-genie-ink/70">{q.ctr}%</td>
+                    <td className="py-1.5 text-right text-genie-ink/70">{Math.round(q.position)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function fmt(n) {
+  if (n == null) return "–";
+  return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+}
+function prettySite(s) {
+  if (!s) return "";
+  return s.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
 function FixCard({ fix, n }) {
