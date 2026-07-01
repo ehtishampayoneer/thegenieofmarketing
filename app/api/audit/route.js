@@ -52,9 +52,9 @@ export async function POST(request) {
   try {
     const result = await callAI({
       system:
-        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you mention a number that is an estimate (like potential revenue or lost customers), phrase it clearly as an estimate (e.g. 'likely', 'roughly', 'an estimated'). Never state estimated money as if it were a measured fact. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
+        "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you give a number that is an estimate (potential revenue, lost customers, impact), phrase it clearly as an estimate ('likely', 'roughly', 'an estimated'). Competitors, keyword suggestions, and primary market are your INFERENCES from the page — treat them as informed guesses, not facts. Never state estimates as measured facts. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
       json: true,
-      maxTokens: 1200,
+      maxTokens: 1800,
       temperature: 0.6,
       prompt: buildPrompt({ ...audit, scores }, speedMetrics),
     });
@@ -105,19 +105,35 @@ Sub-scores: SEO ${audit.scores.seo}, Speed ${audit.scores.speed ?? "n/a"}, Trust
 ${speedLine}
 
 Page title: ${audit.signals.title || "(none)"}
+Meta description: ${audit.signals.metaDesc || "(none)"}
 Main heading: ${audit.signals.h1Text || "(none)"}
 
 Issues found:
 ${failing || "(no major issues)"}
 
 Page text excerpt:
-"""${audit.pageText.slice(0, 1500)}"""
+"""${audit.pageText.slice(0, 2500)}"""
 
-Return ONLY this JSON shape:
+Return ONLY this JSON shape (fill every field; use best inference where data is thin):
 {
   "businessName": "best guess at the business name",
   "industry": "short industry label",
+  "subCategory": "more specific niche within that industry",
+  "businessType": "one of: E-commerce, Local service, SaaS, Content/Media, Marketplace, Agency, Other",
   "whatTheySell": "one short sentence",
+  "primaryMarket": "best-guess country or region (an estimate)",
+  "targetCustomer": "1-2 sentences describing their likely ideal customer",
+  "brandVoice": {
+    "tone": "2-4 words, e.g. 'Warm, aspirational'",
+    "formality": "one of: Casual, Balanced, Formal",
+    "note": "one short sentence on their writing style"
+  },
+  "competitors": [
+    { "name": "likely competitor (inferred)", "why": "short reason" }
+  ],
+  "keywordsToOwn": ["5 to 8 short keyword phrases they should rank for"],
+  "strengths": ["2 to 4 real strengths visible from the page"],
+  "weaknesses": ["2 to 4 weaknesses, drawn from the issues above"],
   "summary": "2-3 plain sentences: what this business is and its single biggest growth opportunity",
   "topFixes": [
     {
@@ -128,7 +144,7 @@ Return ONLY this JSON shape:
     }
   ]
 }
-Pick the 3 highest-impact fixes from the issues. If there are no issues, give 3 growth ideas instead.`;
+Competitors: give 2-3 plausible inferred guesses based on the industry. Pick the 3 highest-impact fixes from the issues. If there are no issues, give 3 growth ideas instead.`;
 }
 
 function localFallback(checks, scores, signals) {
@@ -153,7 +169,16 @@ function localFallback(checks, scores, signals) {
   return {
     businessName: name,
     industry: "",
+    subCategory: "",
+    businessType: "",
     whatTheySell: "",
+    primaryMarket: "",
+    targetCustomer: "",
+    brandVoice: null,
+    competitors: [],
+    keywordsToOwn: [],
+    strengths: [],
+    weaknesses: problems.map((c) => c.label),
     summary: `${name} scores ${scores.overall}/100 and is ${level}. Fixing the items below is the fastest way to get found by more customers.`,
     topFixes: problems.map((c) => ({
       title: c.label,
