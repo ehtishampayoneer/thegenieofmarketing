@@ -189,7 +189,7 @@ function Scanning({ step, fact }) {
 }
 
 function Report({ data }) {
-  const { scores, ai, checks, finalUrl, speed, speedAvailable } = data;
+  const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy } = data;
   const label = scoreLabel(scores.overall);
 
   return (
@@ -228,6 +228,8 @@ function Report({ data }) {
         )}
 
         {/* Business profile + summary */}
+        {accuracy && <AccuracyBar accuracy={accuracy} />}
+
         {ai && <BusinessBrain ai={ai} />}
 
         {/* Top fixes */}
@@ -341,6 +343,51 @@ function Metric({ label, value }) {
     <div className="bg-white border border-genie-ink/10 rounded-lg px-3 py-2 text-center">
       <div className="text-xs text-genie-ink/50">{label}</div>
       <div className="text-sm font-semibold text-genie-ink">{value}</div>
+    </div>
+  );
+}
+
+function AccuracyBar({ accuracy }) {
+  const { percent, sources } = accuracy;
+  const meta = {
+    verified: { tone: "green", icon: "✓", word: "Verified" },
+    estimated: { tone: "amber", icon: "≈", word: "Estimated" },
+    missing: { tone: "muted", icon: "○", word: "Not connected" },
+  };
+  return (
+    <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-genie-purple">Genie accuracy</p>
+        <span className="text-lg font-extrabold text-genie-ink">{percent}%</span>
+      </div>
+      <div className="mt-2 h-2.5 rounded-full bg-genie-ink/10 overflow-hidden">
+        <div
+          className="h-full genie-gradient"
+          style={{ width: `${percent}%`, transition: "width 1s ease" }}
+        />
+      </div>
+      <p className="mt-2 text-sm text-genie-ink/55">
+        Genie is working with partial data. Connecting your accounts raises accuracy
+        and swaps estimates for exact numbers.
+      </p>
+      <div className="mt-4 space-y-2">
+        {sources.map((s) => {
+          const m = meta[s.status];
+          return (
+            <div key={s.key} className="flex items-center gap-3">
+              <Chip tone={m.tone}>
+                {m.icon} {m.word}
+              </Chip>
+              <span className="text-sm text-genie-ink/75 flex-1">{s.label}</span>
+              {s.status === "missing" && s.unlock && (
+                <span className="text-xs font-medium text-genie-purple/70 whitespace-nowrap">
+                  {s.unlock} · +{s.gain}%
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
