@@ -31,6 +31,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [saved, setSaved] = useState(false);
   const [comparison, setComparison] = useState(null);
+  const [savedScanId, setSavedScanId] = useState(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -72,6 +73,7 @@ export default function Home() {
     setErrorMsg("");
     setSaved(false);
     setComparison(null);
+    setSavedScanId(null);
 
     try {
       const res = await fetch("/api/audit", {
@@ -116,6 +118,7 @@ export default function Home() {
       const j = await res.json();
       if (j.ok) {
         setSaved(true);
+        if (j.id) setSavedScanId(j.id);
         if (j.comparison) setComparison(j.comparison);
       }
     } catch {
@@ -204,7 +207,7 @@ export default function Home() {
       )}
 
       {phase === "done" && data && (
-        <Report data={data} loggedIn={!!user} saved={saved} comparison={comparison} />
+        <Report data={data} loggedIn={!!user} saved={saved} comparison={comparison} scanId={savedScanId} />
       )}
 
       <footer className="px-6 py-6 text-center text-sm text-genie-ink/40">
