@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { businessesFromScans, businessName } from "@/lib/business";
 
 const QUICK_PROMPTS = [
   "What should I fix first?",
@@ -11,9 +12,18 @@ const QUICK_PROMPTS = [
   "Write me a plan for this week",
 ];
 
+function greeting(name) {
+  return {
+    role: "assistant",
+    content: `Hi! I'm Genie. I know ${name} from your scans — ask me anything about growing it. What's on your mind?`,
+  };
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [businesses, setBusinesses] = useState([]);
+  const [host, setHost] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,20 +37,36 @@ export default function ChatPage() {
         router.replace("/login");
         return;
       }
+      let list = [];
+      try {
+        const res = await fetch("/api/scans");
+        const j = await res.json();
+        if (j.ok) list = businessesFromScans(j.scans || []);
+      } catch {}
+      setBusinesses(list);
+      const first = list[0];
+      setHost(first?.host || null);
+      setMessages([greeting(first ? businessName(first) : "your business")]);
       setReady(true);
-      setMessages([
-        {
-          role: "assistant",
-          content:
-            "Hi! I'm Genie. I know your business from your scans — ask me anything about growing it. What's on your mind?",
-        },
-      ]);
     })();
   }, [router]);
 
+  // Reliable auto-scroll: wait for paint, then scroll to bottom.
   useEffect(() => {
-    scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
+    const el = scrollRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
   }, [messages, busy]);
+
+  function switchBusiness(newHost) {
+    setHost(newHost);
+    const b = businesses.find((x) => x.host === newHost);
+    setMessages([greeting(b ? businessName(b) : newHost)]);
+    setInput("");
+  }
 
   async function send(text) {
     const content = (text ?? input).trim();
@@ -53,22 +79,15 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, host }),
       });
       const j = await res.json();
-      if (j.ok) {
-        setMessages((m) => [...m, { role: "assistant", content: j.reply }]);
-      } else {
-        setMessages((m) => [
-          ...m,
-          { role: "assistant", content: j.message || "Sorry, something went wrong. Try again." },
-        ]);
-      }
-    } catch {
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: "Connection hiccup — try that again." },
+        { role: "assistant", content: j.ok ? j.reply : j.message || "Sorry, something went wrong. Try again." },
       ]);
+    } catch {
+      setMessages((m) => [...m, { role: "assistant", content: "Connection hiccup — try that again." }]);
     }
     setBusy(false);
   }
@@ -83,11 +102,24 @@ export default function ChatPage() {
 
   return (
     <main className="min-h-screen flex flex-col">
-      <header className="px-6 py-5 flex items-center gap-2 border-b border-genie-ink/10">
+      <header className="px-6 py-4 flex items-center gap-3 border-b border-genie-ink/10">
         <a href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg genie-gradient" aria-hidden />
-          <span className="font-bold tracking-tight text-genie-ink">Marketing Genie</span>
+          <span className="font-bold tracking-tight text-genie-ink hidden sm:inline">Marketing Genie</span>
         </a>
+        {businesses.length > 0 && (
+          <select
+            value={host || ""}
+            onChange={(e) => switchBusiness(e.target.value)}
+            className="text-sm border border-genie-ink/15 rounded-lg px-2 py-1.5 bg-white outline-none focus:ring-2 focus:ring-genie-purple/40"
+          >
+            {businesses.map((b) => (
+              <option key={b.host} value={b.host}>
+                {businessName(b)}
+              </option>
+            ))}
+          </select>
+        )}
         <a href="/dashboard" className="ml-auto text-sm text-genie-purple font-medium hover:underline">
           ← Dashboard
         </a>
@@ -138,7 +170,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Ask Genie anything about your business…"
+              placeholder="Ask Genie anything…"
               className="flex-1 px-4 py-3 rounded-xl border border-genie-ink/15 bg-white outline-none focus:ring-2 focus:ring-genie-purple/40 transition"
             />
             <button
