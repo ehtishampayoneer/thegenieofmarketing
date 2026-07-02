@@ -115,6 +115,9 @@ function Dashboard() {
           <span className="font-bold tracking-tight text-genie-ink">Marketing Genie</span>
         </a>
         <div className="ml-auto flex items-center gap-4">
+          <a href="/chat" className="text-sm text-genie-purple font-medium hover:underline">
+            Ask Genie
+          </a>
           <a href="/" className="text-sm text-genie-purple font-medium hover:underline">
             New scan
           </a>
