@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { hostOf } from "@/lib/business";
 
 // components/report.js
@@ -55,127 +55,393 @@ function SinceLastScan({ c }) {
 export function Report({ data, loggedIn, saved, comparison, scanId }) {
   const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy, gsc } = data;
   const label = scoreLabel(scores.overall);
+  const host = hostOf(finalUrl || "");
+
+  const [tab, setTab] = useState("overview");
+  const [revealed, setRevealed] = useState(false);
+  const [actions, setActions] = useState([]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 40);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!loggedIn) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/actions?status=proposed");
+        const j = await res.json();
+        if (active && j.ok) {
+          const scoped = (j.actions || []).filter(
+            (a) => (scanId && a.scan_id === scanId) || a.target?.host === host
+          );
+          setActions(sortByPriority(scoped));
+        }
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [loggedIn, scanId, host]);
+
+  const failing = checks.filter((c) => c.status !== "pass");
+  const highImpactFails = failing.filter((c) => c.impact === "high" && c.status === "fail").length;
+  const status = deriveStatus({ actions, overall: scores.overall, highImpactFails });
+
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "fixes", label: "Fixes", badge: failing.length },
+    { id: "opportunities", label: "Opportunities" },
+    { id: "content", label: "Content" },
+    { id: "actions", label: "Actions", badge: actions.length },
+  ];
+
+  const goNext = () => setTab(actions.length ? "actions" : "fixes");
 
   return (
     <section className="flex-1 px-6 pb-10">
-      <div className="max-w-3xl mx-auto">
-        {/* Score header */}
-        <div className="text-center mt-2">
-          <Ring value={scores.overall} />
-          <p className="mt-2 text-lg font-semibold" style={{ color: label.color }}>
-            {label.text}
-          </p>
-          <p className="text-sm text-genie-ink/50 break-all">{prettyHost(finalUrl)}</p>
-        </div>
+      <div
+        className={`max-w-3xl mx-auto transition-all duration-700 ${
+          revealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+        }`}
+      >
+        <p className="text-center text-sm text-genie-purple/70 mt-1 mb-3">
+          ✨ Genie has analyzed your business. Here's your command center.
+        </p>
+
+        <StatusStrip status={status} onAct={goNext} />
+
+        <IdentityTop
+          ai={ai}
+          host={prettyHost(finalUrl)}
+          scores={scores}
+          label={label}
+          accuracy={accuracy}
+          onNext={goNext}
+        />
 
         {comparison && <SinceLastScan c={comparison} />}
-
         {!loggedIn && (
           <div className="mt-4 bg-genie-mist border border-genie-ink/10 rounded-xl p-3 text-center text-sm">
-            <a href="/login" className="text-genie-purple font-medium hover:underline">
-              Sign in
-            </a>
-            <span className="text-genie-ink/60">
-              {" "}to save this report and track your score over time.
-            </span>
+            <a href="/login" className="text-genie-purple font-medium hover:underline">Sign in</a>
+            <span className="text-genie-ink/60"> to save this report and track your score over time.</span>
           </div>
         )}
         {loggedIn && saved && (
-          <p className="mt-3 text-center text-sm text-emerald-600">
-            ✓ Saved to your history
-          </p>
+          <p className="mt-3 text-center text-sm text-emerald-600">✓ Saved to your history</p>
         )}
 
-        {/* Sub-scores */}
-        <div className="mt-8 grid sm:grid-cols-2 gap-3">
-          <Bar label="🔍 SEO & Visibility" value={scores.seo} />
-          <Bar label="⚡ Speed" value={scores.speed} />
-          <Bar label="🛡️ Trust" value={scores.trust} />
-          <Bar label="🔧 Technical" value={scores.technical} />
-          <Bar label="👥 Social" value={scores.social} />
+        <TabBar tabs={TABS} active={tab} onChange={setTab} />
+
+        <div className="mt-5">
+          {tab === "overview" && (
+            <OverviewTab data={data} actions={actions} failing={failing} highImpactFails={highImpactFails} setTab={setTab} />
+          )}
+          {tab === "fixes" && <FixesTab ai={ai} checks={checks} />}
+          {tab === "opportunities" && <OpportunitiesTab data={data} />}
+          {tab === "content" && <ContentEngine data={data} scanId={scanId} />}
+          {tab === "actions" && <ActionsTab actions={actions} host={host} loggedIn={loggedIn} />}
         </div>
 
-        {/* Speed metrics */}
-        {speed && (
-          <div className="mt-3 flex flex-wrap gap-2 justify-center">
-            <Metric label="Load (LCP)" value={speed.lcpSec != null ? speed.lcpSec + "s" : "—"} />
-            <Metric label="Stability (CLS)" value={speed.cls != null ? speed.cls : "—"} />
-            <Metric label="Speed" value={speed.performance + "/100"} />
-          </div>
-        )}
-        {!speedAvailable && (
-          <p className="mt-3 text-center text-xs text-genie-ink/40">
-            ⚡ Speed score pending — add a PageSpeed key to measure real load time.
-          </p>
-        )}
-
-        {/* Business profile + summary */}
-        {accuracy && <AccuracyBar accuracy={accuracy} />}
-
-        {gsc?.available && <GscPanel gsc={gsc} />}
-
-        {ai && <BusinessBrain ai={ai} gsc={gsc} />}
-
-        {/* Top fixes */}
-        {ai?.topFixes?.length > 0 && (
-          <div className="mt-8">
-            <h2 className="text-xl font-bold text-genie-ink mb-3">
-              🔥 Your highest-impact fixes
-            </h2>
-            <div className="space-y-3">
-              {ai.topFixes.map((f, i) => (
-                <FixCard key={i} fix={f} n={i + 1} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Opportunity Engine */}
-        <OpportunityEngine data={data} />
-
-        {/* Content Engine */}
-        <ContentEngine data={data} scanId={scanId} />
-
-        {/* Full checklist */}
-        <details className="mt-8 group">
-          <summary className="cursor-pointer text-genie-purple font-medium">
-            See all {checks.length} checks
-          </summary>
-          <div className="mt-3 space-y-1">
-            {checks.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-start gap-3 bg-white border border-genie-ink/10 rounded-lg px-4 py-3"
-              >
-                <span className="mt-0.5">{statusIcon(c.status)}</span>
-                <div className="flex-1">
-                  <p className="font-medium text-genie-ink text-sm">{c.label}</p>
-                  <p className="text-sm text-genie-ink/60">{c.detail}</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {c.status !== "pass" && c.difficulty && (
-                      <Chip tone={difficultyTone(c.difficulty)}>{c.difficulty}</Chip>
-                    )}
-                    {c.status !== "pass" && c.timeToFix && c.timeToFix !== "—" && (
-                      <Chip>🕒 {c.timeToFix}</Chip>
-                    )}
-                    {c.impactEstimate && (
-                      <Chip tone="emerald">▲ {c.impactEstimate} est.</Chip>
-                    )}
-                    {c.confidence != null && (
-                      <Chip tone="muted">{c.confidence}% confidence</Chip>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </details>
-
-        <p className="mt-6 text-center text-xs text-genie-ink/40">
-          Powered by Genie AI
-        </p>
+        <p className="mt-8 text-center text-xs text-genie-ink/40">Powered by Genie AI</p>
       </div>
     </section>
+  );
+}
+
+// ----- Genie Status Strip (defined state machine) -----
+const STATUS_STATES = {
+  idle: {
+    cls: "bg-blue-50 border-blue-200 text-blue-800",
+    icon: "🔵",
+    msg: () => "Genie is idle — everything's reviewed. Run a new scan to give her work.",
+  },
+  pending_approval: {
+    cls: "bg-amber-50 border-amber-200 text-amber-800",
+    icon: "🟡",
+    msg: (s) => `${s.count} item${s.count > 1 ? "s" : ""} waiting for your approval.`,
+  },
+  opportunity: {
+    cls: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    icon: "🟢",
+    msg: (s) => `Genie found ${s.count} high-impact fix${s.count > 1 ? "es" : ""} worth acting on — want to see them?`,
+  },
+  attention: {
+    cls: "bg-red-50 border-red-200 text-red-800",
+    icon: "🔴",
+    msg: (s) => `Something needs attention: ${s.detail}`,
+  },
+  working: {
+    cls: "bg-genie-purple/5 border-genie-purple/20 text-genie-purple",
+    icon: "⏳",
+    msg: () => "Genie is working…",
+  },
+};
+
+function deriveStatus({ actions, overall, highImpactFails }) {
+  if (actions.length > 0) return { state: "pending_approval", count: actions.length, actionable: true };
+  if (overall < 40) return { state: "attention", detail: "your score is in the critical range", actionable: true };
+  if (highImpactFails > 0) return { state: "opportunity", count: highImpactFails, actionable: true };
+  return { state: "idle", actionable: false };
+}
+
+function StatusStrip({ status, onAct }) {
+  const st = STATUS_STATES[status.state] || STATUS_STATES.idle;
+  return (
+    <div className={`mt-2 rounded-xl border px-4 py-3 flex items-center gap-3 ${st.cls}`}>
+      <span className="text-lg leading-none">{st.icon}</span>
+      <span className="text-sm font-medium flex-1">{st.msg(status)}</span>
+      {status.actionable && (
+        <button onClick={onAct} className="text-sm font-semibold underline whitespace-nowrap">
+          View
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ----- Identity top -----
+function IdentityTop({ ai, host, scores, label, accuracy, onNext }) {
+  return (
+    <div className="mt-3 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-5 flex-col sm:flex-row">
+        <Ring value={scores.overall} />
+        <div className="flex-1 text-center sm:text-left">
+          <p className="text-xs uppercase tracking-wide text-genie-ink/45 break-all">{host}</p>
+          <h1 className="text-2xl font-extrabold text-genie-ink">{ai?.businessName || host}</h1>
+          {[ai?.industry, ai?.subCategory].filter(Boolean).length > 0 && (
+            <p className="text-sm text-genie-ink/60">
+              {[ai?.industry, ai?.subCategory].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          <p className="mt-1 text-sm font-semibold" style={{ color: label.color }}>{label.text}</p>
+          <button
+            onClick={onNext}
+            className="mt-3 genie-gradient text-white font-semibold px-5 py-2.5 rounded-xl active:scale-[0.99]"
+          >
+            Show me what to do next →
+          </button>
+        </div>
+      </div>
+      {accuracy && <SlimAccuracy accuracy={accuracy} />}
+    </div>
+  );
+}
+
+function SlimAccuracy({ accuracy }) {
+  return (
+    <div className="mt-5 pt-4 border-t border-genie-ink/5">
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-genie-ink/50">Genie accuracy</span>
+        <span className="font-semibold text-genie-ink">{accuracy.percent}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-genie-ink/10 overflow-hidden">
+        <div className="h-full genie-gradient" style={{ width: `${accuracy.percent}%`, transition: "width 1s ease" }} />
+      </div>
+    </div>
+  );
+}
+
+// ----- Tab bar (scrollable pills on mobile) -----
+function TabBar({ tabs, active, onChange }) {
+  return (
+    <div className="mt-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={`whitespace-nowrap text-sm font-medium px-4 py-2 rounded-full border transition ${
+            active === t.id
+              ? "genie-gradient text-white border-transparent"
+              : "bg-white text-genie-ink/70 border-genie-ink/15 hover:border-genie-purple/40"
+          }`}
+        >
+          {t.label}
+          {t.badge ? ` (${t.badge})` : ""}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ----- Overview tab (summarizes every other tab) -----
+function OverviewTab({ data, actions, failing, highImpactFails, setTab }) {
+  const { scores, speed, speedAvailable, ai, gsc } = data;
+  return (
+    <div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Bar label="🔍 SEO & Visibility" value={scores.seo} />
+        <Bar label="⚡ Speed" value={scores.speed} />
+        <Bar label="🛡️ Trust" value={scores.trust} />
+        <Bar label="🔧 Technical" value={scores.technical} />
+        <Bar label="👥 Social" value={scores.social} />
+      </div>
+      {speed && (
+        <div className="mt-3 flex flex-wrap gap-2 justify-center">
+          <Metric label="Load (LCP)" value={speed.lcpSec != null ? speed.lcpSec + "s" : "—"} />
+          <Metric label="Stability (CLS)" value={speed.cls != null ? speed.cls : "—"} />
+          <Metric label="Speed" value={speed.performance + "/100"} />
+        </div>
+      )}
+      {!speedAvailable && (
+        <p className="mt-3 text-center text-xs text-genie-ink/40">
+          ⚡ Speed score pending — add a PageSpeed key to measure real load time.
+        </p>
+      )}
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <SummaryCard title="Fixes" value={`${failing.length} to address`} sub={`${highImpactFails} high-impact`} onClick={() => setTab("fixes")} />
+        <SummaryCard title="Opportunities" value="Discover growth →" onClick={() => setTab("opportunities")} />
+        <SummaryCard title="Content" value="Genie can write for you →" onClick={() => setTab("content")} />
+        <SummaryCard title="Actions" value={`${actions.length} pending`} onClick={() => setTab("actions")} />
+      </div>
+
+      {ai && <BusinessBrain ai={ai} gsc={gsc} />}
+    </div>
+  );
+}
+
+function SummaryCard({ title, value, sub, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-left bg-white border border-genie-ink/10 rounded-xl p-4 hover:border-genie-purple/30 hover:shadow-sm transition"
+    >
+      <p className="text-xs uppercase tracking-wide text-genie-ink/45">{title}</p>
+      <p className="text-sm font-semibold text-genie-ink mt-0.5">{value}</p>
+      {sub && <p className="text-xs text-genie-ink/50">{sub}</p>}
+    </button>
+  );
+}
+
+// ----- Fixes tab -----
+function FixesTab({ ai, checks }) {
+  const fails = checks.filter((c) => c.status === "fail");
+  const warns = checks.filter((c) => c.status === "warn");
+  const passes = checks.filter((c) => c.status === "pass");
+  return (
+    <div>
+      {ai?.topFixes?.length > 0 && (
+        <div className="mb-5">
+          <h3 className="text-sm font-semibold text-genie-ink mb-2">🔥 Highest-impact fixes</h3>
+          <div className="space-y-3">
+            {ai.topFixes.map((f, i) => <FixCard key={i} fix={f} n={i + 1} />)}
+          </div>
+        </div>
+      )}
+      {fails.length > 0 && <CheckGroup title={`Failing (${fails.length})`} items={fails} />}
+      {warns.length > 0 && <CheckGroup title={`Needs attention (${warns.length})`} items={warns} />}
+      {passes.length > 0 && (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm text-genie-purple font-medium">
+            Passing ({passes.length})
+          </summary>
+          <div className="mt-2 space-y-1">
+            {passes.map((c) => <CheckRow key={c.id} c={c} />)}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function CheckGroup({ title, items }) {
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-genie-ink/45 mb-2">{title}</p>
+      <div className="space-y-1">
+        {items.map((c) => <CheckRow key={c.id} c={c} />)}
+      </div>
+    </div>
+  );
+}
+
+function CheckRow({ c }) {
+  return (
+    <div className="flex items-start gap-3 bg-white border border-genie-ink/10 rounded-lg px-4 py-3">
+      <span className="mt-0.5">{statusIcon(c.status)}</span>
+      <div className="flex-1">
+        <p className="font-medium text-genie-ink text-sm">{c.label}</p>
+        <p className="text-sm text-genie-ink/60">{c.detail}</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {c.status !== "pass" && c.difficulty && <Chip tone={difficultyTone(c.difficulty)}>{c.difficulty}</Chip>}
+          {c.status !== "pass" && c.timeToFix && c.timeToFix !== "—" && <Chip>🕒 {c.timeToFix}</Chip>}
+          {c.impactEstimate && <Chip tone="emerald">▲ {c.impactEstimate} est.</Chip>}
+          {c.confidence != null && <Chip tone="muted">{c.confidence}% confidence</Chip>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----- Opportunities tab -----
+function OpportunitiesTab({ data }) {
+  return (
+    <div>
+      {data.gsc?.available && <GscPanel gsc={data.gsc} />}
+      <OpportunityEngine data={data} />
+    </div>
+  );
+}
+
+// ----- Actions tab -----
+const PRIORITY_META = {
+  high: { label: "High-impact", icon: "🔥", tone: "red" },
+  quick_win: { label: "Quick win", icon: "⚡", tone: "green" },
+  strategic: { label: "Strategic", icon: "🧠", tone: "default" },
+  low: { label: "Low", icon: "💤", tone: "muted" },
+  medium: { label: "Normal", icon: "", tone: "muted" },
+};
+
+function PriorityTag({ priority }) {
+  const m = PRIORITY_META[priority] || PRIORITY_META.medium;
+  return <Chip tone={m.tone}>{m.icon ? m.icon + " " : ""}{m.label}</Chip>;
+}
+
+function sortByPriority(arr) {
+  const order = { high: 0, quick_win: 1, strategic: 2, medium: 3, low: 4 };
+  return [...arr].sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
+}
+
+function actionIcon(t) {
+  return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : "⚡";
+}
+
+function ActionsTab({ actions, host, loggedIn }) {
+  if (!loggedIn) {
+    return (
+      <div className="bg-white border border-genie-ink/10 rounded-2xl p-6 text-center text-sm text-genie-ink/60">
+        <a href="/login" className="text-genie-purple font-medium hover:underline">Sign in</a> to see and approve the actions Genie generates.
+      </div>
+    );
+  }
+  if (actions.length === 0) {
+    return (
+      <div className="bg-white border border-genie-ink/10 rounded-2xl p-6 text-center text-sm text-genie-ink/60">
+        No pending actions yet. Generate an article or opportunities and they'll appear here for approval.
+      </div>
+    );
+  }
+  const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
+  return (
+    <div className="space-y-2">
+      {actions.map((a) => (
+        <a
+          key={a.id}
+          href={`/dashboard/action/${a.id}${bizParam}`}
+          className="flex items-center gap-3 bg-white border border-genie-ink/10 rounded-xl px-3 py-3 hover:border-genie-purple/30 hover:shadow-sm transition"
+        >
+          <span className="text-lg">{actionIcon(a.type)}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-genie-ink truncate">{a.title || a.type}</p>
+            <p className="text-xs text-genie-ink/45 capitalize">{String(a.type).replace("_", " ")}</p>
+          </div>
+          <PriorityTag priority={a.priority} />
+          <span className="text-xs text-genie-ink/30 hidden sm:inline">View →</span>
+        </a>
+      ))}
+    </div>
   );
 }
 
