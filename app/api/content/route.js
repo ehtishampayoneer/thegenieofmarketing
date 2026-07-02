@@ -19,7 +19,7 @@ export async function POST(request) {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
-  const { ai, gsc, topic, scanId } = body || {};
+  const { ai, gsc, topic, scanId, host } = body || {};
   if (!ai) return json({ ok: false, error: "Missing business context." }, 400);
 
   let data = null;
@@ -59,7 +59,7 @@ export async function POST(request) {
           type: "article",
           title: `Article: ${data.article.title || "Untitled"}`,
           payload: data.article,
-          target: { platform: "website" },
+          target: { platform: "website", host: host || null },
           status: "proposed",
         });
       }
@@ -71,7 +71,7 @@ export async function POST(request) {
           type: "social_post",
           title: `${platform} post`,
           payload: { platform, text },
-          target: { platform: platform.toLowerCase() },
+          target: { platform: platform.toLowerCase(), host: host || null },
           status: "proposed",
         });
       (social.twitter || []).forEach((t) => pushSocial("Twitter/X", t));
