@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { businessesFromScans, businessName, hostOf as bHostOf } from "@/lib/business";
 
 export default function DashboardPage() {
   return (
@@ -28,6 +29,13 @@ function Dashboard() {
     if (searchParams.get("connected")) setBanner("✓ Google Search Console connected.");
     else if (searchParams.get("connect_error"))
       setBanner("Couldn't complete the Google connection. Please try again.");
+  }, [searchParams]);
+
+  // Preserve selected business from the URL (?business=host), e.g. returning
+  // from an action detail page.
+  useEffect(() => {
+    const b = searchParams.get("business");
+    if (b) setHost(b);
   }, [searchParams]);
 
   useEffect(() => {
@@ -119,6 +127,19 @@ function Dashboard() {
   }
 
   const hosts = [...new Set(scans.map(hostOf))];
+  const businesses = businessesFromScans(scans);
+  const selectedBiz = businesses.find((b) => b.host === host);
+  const selectedScanIds = new Set(selectedBiz?.scanIds || []);
+
+  // Actions belonging to the selected business (by linked scan or stored host).
+  const bizActions = actions.filter(
+    (a) => selectedScanIds.has(a.scan_id) || a.target?.host === host
+  );
+  // Actions we couldn't tie to any current business.
+  const unassignedActions = actions.filter(
+    (a) => !a.scan_id && !a.target?.host
+  );
+
   const hostScans = scans
     .filter((s) => hostOf(s) === host)
     .slice()
@@ -157,8 +178,21 @@ function Dashboard() {
 
           <ConnectionCard conn={conn} onDisconnect={disconnectGoogle} />
 
-          {actions.length > 0 && (
-            <PendingActions actions={actions} onDismiss={dismissAction} />
+          {bizActions.length > 0 && (
+            <PendingActions
+              actions={bizActions}
+              onDismiss={dismissAction}
+              host={host}
+              title={`Genie wants to do these for ${host || "this business"}`}
+            />
+          )}
+          {unassignedActions.length > 0 && (
+            <PendingActions
+              actions={unassignedActions}
+              onDismiss={dismissAction}
+              host={host}
+              title="Unassigned actions"
+            />
           )}
 
           {loading && (
@@ -310,35 +344,30 @@ function TrendChart({ points }) {
   );
 }
 
-function PendingActions({ actions, onDismiss }) {
+function PendingActions({ actions, onDismiss, host, title }) {
   const icon = (t) =>
     t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
     t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : "⚡";
+  const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
   return (
     <div className="mt-5 bg-white border border-genie-purple/20 rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center gap-2 mb-1">
-        <p className="text-sm font-semibold text-genie-purple">
-          Genie wants to do these ({actions.length})
-        </p>
-      </div>
+      <p className="text-sm font-semibold text-genie-purple mb-1">
+        {title} ({actions.length})
+      </p>
       <p className="text-xs text-genie-ink/50 mb-3">
         Approve and Genie publishes them for you — auto-execution arrives with the publishing integrations.
       </p>
       <div className="space-y-2">
         {actions.map((a) => (
-          <div key={a.id} className="flex items-center gap-3 border border-genie-ink/10 rounded-xl px-3 py-2.5">
-            <span className="text-lg">{icon(a.type)}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-genie-ink truncate">{a.title || a.type}</p>
-              <p className="text-xs text-genie-ink/45 capitalize">{a.type.replace("_", " ")} · proposed</p>
-            </div>
-            <button
-              disabled
-              title="Auto-publish arrives with the WordPress & Shopify integrations"
-              className="text-xs genie-gradient text-white font-medium px-3 py-1.5 rounded-lg opacity-70 cursor-not-allowed whitespace-nowrap"
-            >
-              Approve · soon
-            </button>
+          <div key={a.id} className="flex items-center gap-3 border border-genie-ink/10 rounded-xl px-3 py-2.5 hover:border-genie-purple/30 transition">
+            <a href={`/dashboard/action/${a.id}${bizParam}`} className="flex items-center gap-3 flex-1 min-w-0">
+              <span className="text-lg">{icon(a.type)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-genie-ink truncate">{a.title || a.type}</p>
+                <p className="text-xs text-genie-ink/45 capitalize">{a.type.replace("_", " ")} · proposed</p>
+              </div>
+              <span className="text-xs text-genie-ink/30 hidden sm:inline">View →</span>
+            </a>
             <button
               onClick={() => onDismiss(a.id)}
               className="text-xs text-genie-ink/40 hover:text-red-500"
