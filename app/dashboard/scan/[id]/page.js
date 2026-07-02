@@ -91,7 +91,7 @@ export default function ScanDetail({ params }) {
               Scanned {when}
             </p>
           )}
-          <Report data={data} loggedIn={true} saved={false} comparison={null} />
+          <Report data={data} loggedIn={true} saved={false} comparison={null} scanId={params.id} />
         </>
       )}
     </main>
