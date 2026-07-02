@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { hostOf } from "@/lib/business";
 
 // components/report.js
 // Shared report renderer — used by both the live homepage scan and the
@@ -51,7 +52,7 @@ function SinceLastScan({ c }) {
   );
 }
 
-export function Report({ data, loggedIn, saved, comparison }) {
+export function Report({ data, loggedIn, saved, comparison, scanId }) {
   const { scores, ai, checks, finalUrl, speed, speedAvailable, accuracy, gsc } = data;
   const label = scoreLabel(scores.overall);
 
@@ -133,7 +134,7 @@ export function Report({ data, loggedIn, saved, comparison }) {
         <OpportunityEngine data={data} />
 
         {/* Content Engine */}
-        <ContentEngine data={data} />
+        <ContentEngine data={data} scanId={scanId} />
 
         {/* Full checklist */}
         <details className="mt-8 group">
@@ -683,7 +684,7 @@ function OpportunityResults({ opps }) {
   );
 }
 
-function ContentEngine({ data }) {
+function ContentEngine({ data, scanId }) {
   const [state, setState] = useState("idle"); // idle | loading | done | error
   const [content, setContent] = useState(null);
   const [err, setErr] = useState("");
@@ -697,7 +698,12 @@ function ContentEngine({ data }) {
       const res = await fetch("/api/content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ai: data.ai, gsc: data.gsc }),
+        body: JSON.stringify({
+          ai: data.ai,
+          gsc: data.gsc,
+          scanId: scanId || null,
+          host: hostOf(data.finalUrl || ""),
+        }),
       });
       const j = await res.json();
       if (!res.ok || !j.ok) {
