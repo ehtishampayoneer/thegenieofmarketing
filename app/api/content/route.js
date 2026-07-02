@@ -52,6 +52,12 @@ export async function POST(request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const rows = [];
+      // Validate AI priorities; reject unknowns → 'medium'.
+      const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
+      const validate = (p) => (VALID.has(p) ? p : "medium");
+      const articlePriority = validate(data.articlePriority);
+      const socialPriority = validate(data.socialPriority);
+
       if (data.article) {
         rows.push({
           user_id: user.id,
@@ -60,6 +66,7 @@ export async function POST(request) {
           title: `Article: ${data.article.title || "Untitled"}`,
           payload: data.article,
           target: { platform: "website", host: host || null },
+          priority: articlePriority,
           status: "proposed",
         });
       }
@@ -72,6 +79,7 @@ export async function POST(request) {
           title: `${platform} post`,
           payload: { platform, text },
           target: { platform: platform.toLowerCase(), host: host || null },
+          priority: socialPriority,
           status: "proposed",
         });
       (social.twitter || []).forEach((t) => pushSocial("Twitter/X", t));
@@ -109,8 +117,17 @@ ${voice}
 ${kw}
 ${topic ? `Write about this specific topic: "${topic}".` : "Choose a high-value article topic that would attract this business's ideal customers via Google search."}
 
+Also assign a PRIORITY to the article and to the social posts. Use EXACTLY one of these literal values:
+- "high" = high impact AND the user should act soon
+- "quick_win" = easy + fast + still meaningful impact
+- "strategic" = long-term compounding value, not urgent
+- "low" = nice-to-have, no urgency
+Base it on impact + effort.
+
 Write a complete, ready-to-publish blog article AND the social posts derived from it. Return ONLY this JSON:
 {
+  "articlePriority": "high | quick_win | strategic | low",
+  "socialPriority": "high | quick_win | strategic | low",
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",
