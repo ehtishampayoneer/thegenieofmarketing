@@ -20,7 +20,7 @@ export async function GET(request) {
   const status = new URL(request.url).searchParams.get("status");
   let q = supabase
     .from("actions")
-    .select("id, type, title, status, payload, created_at, scan_id")
+    .select("id, type, title, status, priority, payload, target, created_at, scan_id")
     .order("created_at", { ascending: false })
     .limit(100);
   if (status) q = q.eq("status", status);
