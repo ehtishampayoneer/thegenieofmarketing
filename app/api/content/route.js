@@ -5,6 +5,7 @@
 // temporary stopgap until the WordPress/Shopify write integrations land.
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function POST(request) {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
-  const { ai, gsc, topic } = body || {};
+  const { ai, gsc, topic, scanId } = body || {};
   if (!ai) return json({ ok: false, error: "Missing business context." }, 400);
 
   let data = null;
@@ -42,7 +43,52 @@ export async function POST(request) {
   }
 
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
-  return json({ ok: true, content: data, meta: { engine: provider } });
+
+  // Persist everything Genie generated as PROPOSED actions (the autopilot spine).
+  // Ephemeral no more — these are ready for approval + auto-publish (F2/F3).
+  let actionIds = [];
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const rows = [];
+      if (data.article) {
+        rows.push({
+          user_id: user.id,
+          scan_id: scanId || null,
+          type: "article",
+          title: `Article: ${data.article.title || "Untitled"}`,
+          payload: data.article,
+          target: { platform: "website" },
+          status: "proposed",
+        });
+      }
+      const social = data.social || {};
+      const pushSocial = (platform, text) =>
+        rows.push({
+          user_id: user.id,
+          scan_id: scanId || null,
+          type: "social_post",
+          title: `${platform} post`,
+          payload: { platform, text },
+          target: { platform: platform.toLowerCase() },
+          status: "proposed",
+        });
+      (social.twitter || []).forEach((t) => pushSocial("Twitter/X", t));
+      if (social.linkedin) pushSocial("LinkedIn", social.linkedin);
+      (social.instagram || []).forEach((t) => pushSocial("Instagram", t));
+      (social.facebook || []).forEach((t) => pushSocial("Facebook", t));
+
+      if (rows.length) {
+        const { data: inserted } = await supabase.from("actions").insert(rows).select("id");
+        actionIds = (inserted || []).map((r) => r.id);
+      }
+    }
+  } catch {
+    // saving is best-effort; never block returning the content
+  }
+
+  return json({ ok: true, content: data, actionIds, meta: { engine: provider } });
 }
 
 function buildPrompt({ ai, gsc, topic }) {
