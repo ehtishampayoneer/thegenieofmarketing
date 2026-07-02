@@ -150,6 +150,12 @@ export default function Home() {
           {user ? (
             <div className="flex items-center gap-3">
               <a
+                href="/chat"
+                className="text-sm text-genie-purple font-medium hover:underline"
+              >
+                Ask Genie
+              </a>
+              <a
                 href="/dashboard"
                 className="text-sm text-genie-purple font-medium hover:underline"
               >
