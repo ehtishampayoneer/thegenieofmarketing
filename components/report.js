@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 // components/report.js
 // Shared report renderer — used by both the live homepage scan and the
 // saved-scan detail view (/dashboard/scan/[id]).
@@ -126,6 +128,12 @@ export function Report({ data, loggedIn, saved, comparison }) {
             </div>
           </div>
         )}
+
+        {/* Opportunity Engine */}
+        <OpportunityEngine data={data} />
+
+        {/* Content Engine */}
+        <ContentEngine data={data} />
 
         {/* Full checklist */}
         <details className="mt-8 group">
@@ -488,6 +496,363 @@ function fmt(n) {
 function prettySite(s) {
   if (!s) return "";
   return s.replace(/^sc-domain:/, "").replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function OpportunityEngine({ data }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [opps, setOpps] = useState(null);
+  const [err, setErr] = useState("");
+
+  if (!data?.ai) return null;
+
+  async function discover() {
+    setState("loading");
+    setErr("");
+    try {
+      const res = await fetch("/api/opportunities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          finalUrl: data.finalUrl,
+          ai: data.ai,
+          checks: data.checks,
+          gsc: data.gsc,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        setState("error");
+        setErr(j.message || "Couldn't generate opportunities. Try again.");
+        return;
+      }
+      setOpps(j.opportunities);
+      setState("done");
+    } catch {
+      setState("error");
+      setErr("Something interrupted it. Try again.");
+    }
+  }
+
+  return (
+    <div className="mt-8">
+      {state !== "done" && (
+        <div className="bg-white border border-genie-purple/20 rounded-2xl p-6 text-center shadow-sm">
+          <p className="text-lg font-bold text-genie-ink">
+            🚀 Discover your growth opportunities
+          </p>
+          <p className="mt-1 text-sm text-genie-ink/60 max-w-md mx-auto">
+            Genie maps keyword, competitor, content, product & partnership
+            opportunities — with estimated revenue upside.
+          </p>
+          <button
+            onClick={discover}
+            disabled={state === "loading"}
+            className="mt-4 genie-gradient text-white font-semibold px-5 py-3 rounded-xl disabled:opacity-70"
+          >
+            {state === "loading" ? "Genie is thinking…" : "Find my opportunities →"}
+          </button>
+          {state === "error" && (
+            <p className="mt-3 text-sm text-amber-700">{err}</p>
+          )}
+        </div>
+      )}
+      {state === "done" && opps && <OpportunityResults opps={opps} />}
+    </div>
+  );
+}
+
+function OpportunityResults({ opps }) {
+  const has = (v) => v && (Array.isArray(v) ? v.length > 0 : true);
+  const demandTone = (d) =>
+    d === "High" ? "green" : d === "Medium" ? "amber" : "muted";
+
+  return (
+    <div className="bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-genie-ink">🚀 Growth opportunities</h2>
+
+      {opps.totalOpportunity?.range && (
+        <div className="mt-3 rounded-xl bg-gradient-to-r from-genie-purple/5 to-genie-emerald/5 border border-genie-ink/10 p-4">
+          <p className="text-xs uppercase tracking-wide text-genie-ink/45">
+            Total opportunity · estimated
+          </p>
+          <p className="text-2xl font-extrabold text-genie-ink mt-0.5">
+            {opps.totalOpportunity.range}
+          </p>
+          {opps.totalOpportunity.basis && (
+            <p className="text-sm text-genie-ink/55 mt-1">{opps.totalOpportunity.basis}</p>
+          )}
+        </div>
+      )}
+
+      {has(opps.verifiedKeywordWins) && (
+        <Section title="Quick-win keywords" verified className="mt-5">
+          <div className="space-y-2">
+            {opps.verifiedKeywordWins.map((k, i) => (
+              <div key={i} className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-sm font-medium text-genie-ink">“{k.keyword}”</p>
+                <p className="text-xs text-genie-ink/70 mt-0.5">{k.detail}</p>
+                <p className="text-xs text-emerald-700 mt-1">{k.action}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {has(opps.keywordOpportunities) && (
+        <Section title="Keyword opportunities" est className="mt-5">
+          <div className="space-y-2">
+            {opps.keywordOpportunities.map((k, i) => (
+              <div key={i} className="border border-genie-ink/10 rounded-xl p-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-genie-ink">{k.keyword}</p>
+                  <div className="flex gap-1.5">
+                    {k.demand && <Chip tone={demandTone(k.demand)}>{k.demand} demand</Chip>}
+                    {k.competition && <Chip tone="muted">{k.competition} comp.</Chip>}
+                  </div>
+                </div>
+                {k.rationale && <p className="text-xs text-genie-ink/60 mt-1">{k.rationale}</p>}
+                {k.estValue && (
+                  <p className="text-xs text-genie-emerald font-medium mt-1">
+                    ~{k.estValue} est.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {has(opps.competitorWeaknesses) && (
+        <Section title="Competitor weaknesses" est className="mt-5">
+          <ul className="space-y-2">
+            {opps.competitorWeaknesses.map((c, i) => (
+              <li key={i} className="text-sm text-genie-ink/75">
+                <span className="font-medium text-genie-ink">{c.competitor}</span>
+                {c.gap && <> — {c.gap}.</>}
+                {c.howToExploit && (
+                  <span className="text-genie-ink/55"> {c.howToExploit}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {has(opps.contentGaps) && (
+        <Section title="Content gaps" est className="mt-5">
+          <ul className="space-y-2">
+            {opps.contentGaps.map((c, i) => (
+              <li key={i} className="text-sm text-genie-ink/75 flex items-start gap-2">
+                {c.estDemand && <Chip tone={demandTone(c.estDemand)}>{c.estDemand}</Chip>}
+                <span>
+                  <span className="font-medium text-genie-ink">{c.topic}</span>
+                  {c.rationale && <span className="text-genie-ink/55"> — {c.rationale}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {has(opps.productOpportunities) && (
+        <Section title="Product opportunities" est className="mt-5">
+          <ul className="space-y-1.5">
+            {opps.productOpportunities.map((p, i) => (
+              <li key={i} className="text-sm text-genie-ink/75">
+                <span className="font-medium text-genie-ink">{p.idea}</span>
+                {p.rationale && <span className="text-genie-ink/55"> — {p.rationale}</span>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {has(opps.partnershipOpportunities) && (
+        <Section title="Partnership opportunities" est className="mt-5">
+          <ul className="space-y-1.5">
+            {opps.partnershipOpportunities.map((p, i) => (
+              <li key={i} className="text-sm text-genie-ink/75">
+                <span className="font-medium text-genie-ink">{p.partnerType}</span>
+                {p.rationale && <span className="text-genie-ink/55"> — {p.rationale}</span>}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function ContentEngine({ data }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [content, setContent] = useState(null);
+  const [err, setErr] = useState("");
+
+  if (!data?.ai) return null;
+
+  async function write() {
+    setState("loading");
+    setErr("");
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai: data.ai, gsc: data.gsc }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) {
+        setState("error");
+        setErr(j.message || "Couldn't write the content. Try again.");
+        return;
+      }
+      setContent(j.content);
+      setState("done");
+    } catch {
+      setState("error");
+      setErr("Something interrupted it. Try again.");
+    }
+  }
+
+  return (
+    <div className="mt-8">
+      {state !== "done" && (
+        <div className="bg-white border border-genie-purple/20 rounded-2xl p-6 text-center shadow-sm">
+          <p className="text-lg font-bold text-genie-ink">✍️ Let Genie write your next article</p>
+          <p className="mt-1 text-sm text-genie-ink/60 max-w-md mx-auto">
+            Genie writes a complete, SEO-ready article plus the social posts to
+            promote it — in your brand voice. Then publishes it for you.
+          </p>
+          <button
+            onClick={write}
+            disabled={state === "loading"}
+            className="mt-4 genie-gradient text-white font-semibold px-5 py-3 rounded-xl disabled:opacity-70"
+          >
+            {state === "loading" ? "Genie is writing…" : "Write my next article →"}
+          </button>
+          {state === "error" && <p className="mt-3 text-sm text-amber-700">{err}</p>}
+        </div>
+      )}
+      {state === "done" && content && (
+        <ContentResults content={content} onRegenerate={write} />
+      )}
+    </div>
+  );
+}
+
+function ContentResults({ content, onRegenerate }) {
+  const a = content.article || {};
+  const social = content.social || {};
+  const socialBlocks = [
+    ...(social.twitter || []).map((t) => ({ platform: "Twitter/X", text: t })),
+    ...(social.linkedin ? [{ platform: "LinkedIn", text: social.linkedin }] : []),
+    ...(social.instagram || []).map((t) => ({ platform: "Instagram", text: t })),
+    ...(social.facebook || []).map((t) => ({ platform: "Facebook", text: t })),
+  ];
+
+  return (
+    <div className="bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-genie-ink">✍️ Genie wrote this for you</h2>
+        <button onClick={onRegenerate} className="text-sm text-genie-purple hover:underline">
+          Rewrite
+        </button>
+      </div>
+
+      {/* Article */}
+      <div className="mt-4 border border-genie-ink/10 rounded-xl p-5">
+        <h3 className="text-lg font-bold text-genie-ink">{a.title}</h3>
+        <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+          {a.targetKeyword && <Chip tone="green">🎯 {a.targetKeyword}</Chip>}
+          {a.wordCount && <Chip tone="muted">{a.wordCount} words</Chip>}
+        </div>
+        {a.metaDescription && (
+          <p className="mt-2 text-sm text-genie-ink/55 italic">{a.metaDescription}</p>
+        )}
+        <div className="mt-3 max-h-72 overflow-y-auto pr-1 border-t border-genie-ink/5 pt-3">
+          <Markdown text={a.body || ""} />
+        </div>
+        <PublishActions
+          label="Auto-publish to your website"
+          copyText={`# ${a.title}\n\n${a.body || ""}`}
+          copyLabel="article"
+        />
+      </div>
+
+      {/* Social posts */}
+      {socialBlocks.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-genie-ink/45 mb-2">
+            Social posts to promote it
+          </p>
+          <div className="space-y-2">
+            {socialBlocks.map((b, i) => (
+              <div key={i} className="border border-genie-ink/10 rounded-xl p-3">
+                <Chip tone="default">{b.platform}</Chip>
+                <p className="mt-2 text-sm text-genie-ink/80 whitespace-pre-wrap">{b.text}</p>
+                <PublishActions
+                  label={`Auto-post to ${b.platform}`}
+                  copyText={b.text}
+                  copyLabel="post"
+                  compact
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// The vision-first action row: Auto-publish is the primary (coming soon);
+// copy is an explicitly TEMPORARY stopgap until write-integrations land.
+function PublishActions({ label, copyText, copyLabel, compact }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(copyText || "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  }
+  return (
+    <div className={`flex items-center gap-3 flex-wrap ${compact ? "mt-2" : "mt-4"}`}>
+      <button
+        disabled
+        title="Auto-publishing arrives with the WordPress & Shopify integrations"
+        className="genie-gradient text-white font-semibold px-4 py-2 rounded-xl opacity-70 cursor-not-allowed flex items-center gap-2"
+      >
+        🚀 {label}
+        <span className="text-[10px] bg-white/25 rounded-full px-2 py-0.5">coming soon</span>
+      </button>
+      <button onClick={copy} className="text-xs text-genie-ink/45 hover:text-genie-ink underline">
+        {copied ? "Copied!" : `Copy ${copyLabel} (temporary)`}
+      </button>
+    </div>
+  );
+}
+
+// Minimal markdown → JSX (headings, bold, paragraphs, list items).
+function Markdown({ text }) {
+  const lines = String(text).split("\n");
+  const out = [];
+  lines.forEach((line, i) => {
+    const l = line.trim();
+    if (!l) return;
+    if (l.startsWith("### ")) out.push(<h5 key={i} className="font-semibold text-genie-ink mt-3">{l.slice(4)}</h5>);
+    else if (l.startsWith("## ")) out.push(<h4 key={i} className="font-bold text-genie-ink mt-4">{l.slice(3)}</h4>);
+    else if (l.startsWith("# ")) out.push(<h3 key={i} className="text-lg font-bold text-genie-ink mt-4">{l.slice(2)}</h3>);
+    else if (l.startsWith("- ") || l.startsWith("* ")) out.push(<li key={i} className="text-sm text-genie-ink/75 ml-4 list-disc">{stripBold(l.slice(2))}</li>);
+    else out.push(<p key={i} className="text-sm text-genie-ink/75 mt-2 leading-relaxed">{stripBold(l)}</p>);
+  });
+  return <div>{out}</div>;
+}
+function stripBold(s) {
+  // render **bold** as <strong>
+  const parts = String(s).split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p
+  );
 }
 
 function FixCard({ fix, n }) {
