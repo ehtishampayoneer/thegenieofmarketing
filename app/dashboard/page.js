@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { businessesFromScans, businessName, hostOf as bHostOf } from "@/lib/business";
+import AppShell from "@/components/shell/AppShell";
 
 export default function DashboardPage() {
   return (
@@ -145,30 +146,46 @@ function Dashboard() {
     .slice()
     .reverse(); // oldest -> newest for the trend line
 
-  return (
-    <main className="min-h-screen flex flex-col">
-      <header className="px-6 py-5 flex items-center gap-2">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg genie-gradient" aria-hidden />
-          <span className="font-bold tracking-tight text-genie-ink">Marketing Genie</span>
-        </a>
-        <div className="ml-auto flex items-center gap-4">
-          <a href="/chat" className="text-sm text-genie-purple font-medium hover:underline">
-            Ask Genie
-          </a>
-          <a href="/" className="text-sm text-genie-purple font-medium hover:underline">
-            New scan
-          </a>
-          <span className="text-sm text-genie-ink/55 hidden sm:inline">{email}</span>
-          <button onClick={signOut} className="text-sm text-genie-ink/55 hover:text-genie-ink">
-            Sign out
-          </button>
-        </div>
-      </header>
+  const view = searchParams.get("view") || "home";
+  const navMap = { home: "home", actions: "actions", content: "content", opportunities: "opportunities", integrations: "integrations", settings: "settings" };
+  const navId = navMap[view] || "home";
 
-      <section className="flex-1 px-6 pb-10">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-2xl font-extrabold text-genie-ink">Your scans</h1>
+  const pendingCount = bizActions.length;
+  const status = pendingCount > 0
+    ? { state: "pending_approval", message: `${pendingCount} item${pendingCount > 1 ? "s" : ""} waiting for your approval.`, actionable: false }
+    : { state: "idle", message: "Genie is idle — run a new scan to give her work.", actionable: false };
+
+  const genieProps = {
+    host,
+    suggestionCount: pendingCount,
+    contextChips: [
+      { label: host || "no business", active: true },
+      { label: "Today", active: false },
+    ],
+    quickActions: [
+      { label: "What should I do first?", prompt: `What should I do first for ${host || "my business"}?` },
+      { label: "Summarize this business", prompt: `Give me a quick summary of ${host || "my business"} and its biggest opportunity.` },
+    ],
+  };
+
+  return (
+    <AppShell
+      nav={navId}
+      businesses={businesses}
+      activeHost={host}
+      onSelectBusiness={setHost}
+      status={status}
+      genie={genieProps}
+    >
+      {view !== "home" ? (
+        <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
+          <div className="w-12 h-12 rounded-2xl grad-genie mx-auto" aria-hidden />
+          <p className="mt-4 text-lg font-bold text-ink-900 capitalize">{view}</p>
+          <p className="mt-1 text-sm text-ink-400">This section moves into the new command center next.</p>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-2xl font-extrabold text-ink-900">Your scans</h1>
 
           {banner && (
             <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
@@ -301,9 +318,9 @@ function Dashboard() {
               </div>
             </>
           )}
-        </div>
-      </section>
-    </main>
+        </>
+      )}
+    </AppShell>
   );
 }
 
