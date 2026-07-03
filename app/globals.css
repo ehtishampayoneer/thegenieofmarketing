@@ -6,33 +6,70 @@
   color-scheme: light;
 }
 
-html,
-body {
-  background: #fafafa;
-  color: #111827;
+html, body {
+  background: #F6F6FB;
+  color: #0F1222;
 }
 
-/* Signature: slow-drifting purple→emerald gradient used on the CTA */
-@keyframes genie-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
+/* ---- Brand gradients ---- */
 .genie-gradient {
   background-image: linear-gradient(110deg, #6b21a8, #7c3aed, #059669, #6b21a8);
   background-size: 280% 280%;
   animation: genie-shift 8s ease infinite;
 }
+.grad-genie { background-image: linear-gradient(135deg, #6D28D9, #4F46E5); }
+.grad-growth { background-image: linear-gradient(135deg, #059669, #0D9488); }
+.grad-accent { background-image: linear-gradient(135deg, #7C3AED, #DB2777); }
+
+@keyframes genie-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ---- Aware Orb state machine ---- */
+.orb {
+  position: relative;
+  border-radius: 9999px;
+  background-image: linear-gradient(135deg, #7C3AED, #4F46E5);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+.orb-idle { animation: orbPulse 2.4s ease-in-out infinite; }
+.orb-attention {
+  background-image: linear-gradient(135deg, #EF4444, #B91C1C);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  animation: orbPulse 2s ease-in-out infinite;
+}
+.orb-thinking { animation: orbPulse 1.2s ease-in-out infinite; }
+.orb-thinking::before {
+  content: "";
+  position: absolute; inset: -1px; border-radius: 9999px;
+  background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.85), transparent 40%);
+  animation: orbShimmer 1.2s linear infinite;
+}
+.orb-working::after {
+  content: "";
+  position: absolute; inset: -4px; border-radius: 9999px;
+  border: 2px solid rgba(124, 58, 237, 0.2);
+  border-top-color: #7C3AED;
+  animation: orbSpin 0.9s linear infinite;
+}
+
+@keyframes orbPulse { 0%,100% { transform: scale(1); opacity: 0.92; } 50% { transform: scale(1.08); opacity: 1; } }
+@keyframes orbShimmer { to { transform: rotate(360deg); } }
+@keyframes orbSpin { to { transform: rotate(360deg); } }
+
+/* Panel slide */
+@keyframes badgePop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.badge-pop { animation: badgePop 0.3s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .genie-gradient {
-    animation: none;
+  .genie-gradient, .orb-idle, .orb-attention, .orb-thinking,
+  .orb-thinking::before, .orb-working::after, .badge-pop {
+    animation: none !important;
   }
 }
+
+/* thin scrollbars for panels */
+.thin-scroll::-webkit-scrollbar { width: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: rgba(16,18,34,0.12); border-radius: 999px; }
