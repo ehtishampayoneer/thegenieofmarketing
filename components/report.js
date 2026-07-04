@@ -99,53 +99,47 @@ export function Report({ data, loggedIn, saved, comparison, scanId }) {
   const goNext = () => setTab(actions.length ? "actions" : "fixes");
 
   return (
-    <section className="flex-1 px-6 pb-10">
-      <div
-        className={`max-w-3xl mx-auto transition-all duration-700 ${
-          revealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-        }`}
-      >
-        <p className="text-center text-sm text-genie-purple/70 mt-1 mb-3">
-          ✨ Genie has analyzed your business. Here's your command center.
-        </p>
+    <div
+      className={`transition-all duration-700 ${
+        revealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+      }`}
+    >
+      <p className="text-sm text-brand-violet/70 mb-3">
+        ✨ Genie has analyzed your business. Here's your command center.
+      </p>
 
-        <StatusStrip status={status} onAct={goNext} />
+      <IdentityTop
+        ai={ai}
+        host={prettyHost(finalUrl)}
+        scores={scores}
+        label={label}
+        accuracy={accuracy}
+        onNext={goNext}
+      />
 
-        <IdentityTop
-          ai={ai}
-          host={prettyHost(finalUrl)}
-          scores={scores}
-          label={label}
-          accuracy={accuracy}
-          onNext={goNext}
-        />
-
-        {comparison && <SinceLastScan c={comparison} />}
-        {!loggedIn && (
-          <div className="mt-4 bg-genie-mist border border-genie-ink/10 rounded-xl p-3 text-center text-sm">
-            <a href="/login" className="text-genie-purple font-medium hover:underline">Sign in</a>
-            <span className="text-genie-ink/60"> to save this report and track your score over time.</span>
-          </div>
-        )}
-        {loggedIn && saved && (
-          <p className="mt-3 text-center text-sm text-emerald-600">✓ Saved to your history</p>
-        )}
-
-        <TabBar tabs={TABS} active={tab} onChange={setTab} />
-
-        <div className="mt-5">
-          {tab === "overview" && (
-            <OverviewTab data={data} actions={actions} failing={failing} highImpactFails={highImpactFails} setTab={setTab} />
-          )}
-          {tab === "fixes" && <FixesTab ai={ai} checks={checks} />}
-          {tab === "opportunities" && <OpportunitiesTab data={data} />}
-          {tab === "content" && <ContentEngine data={data} scanId={scanId} />}
-          {tab === "actions" && <ActionsTab actions={actions} host={host} loggedIn={loggedIn} />}
+      {comparison && <SinceLastScan c={comparison} />}
+      {!loggedIn && (
+        <div className="mt-4 bg-surface2 border border-ink-900/[0.06] rounded-xl p-3 text-center text-sm">
+          <a href="/login" className="text-brand-violet font-medium hover:underline">Sign in</a>
+          <span className="text-ink-600"> to save this report and track your score over time.</span>
         </div>
+      )}
+      {loggedIn && saved && (
+        <p className="mt-3 text-center text-sm text-emerald-600">✓ Saved to your history</p>
+      )}
 
-        <p className="mt-8 text-center text-xs text-genie-ink/40">Powered by Genie AI</p>
+      <TabBar tabs={TABS} active={tab} onChange={setTab} />
+
+      <div className="mt-5">
+        {tab === "overview" && (
+          <OverviewTab data={data} actions={actions} failing={failing} highImpactFails={highImpactFails} setTab={setTab} />
+        )}
+        {tab === "fixes" && <FixesTab ai={ai} checks={checks} />}
+        {tab === "opportunities" && <OpportunitiesTab data={data} />}
+        {tab === "content" && <ContentEngine data={data} scanId={scanId} />}
+        {tab === "actions" && <ActionsTab actions={actions} host={host} loggedIn={loggedIn} />}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -203,40 +197,46 @@ function StatusStrip({ status, onAct }) {
 // ----- Identity top -----
 function IdentityTop({ ai, host, scores, label, accuracy, onNext }) {
   return (
-    <div className="mt-3 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
-      <div className="flex items-center gap-5 flex-col sm:flex-row">
-        <Ring value={scores.overall} />
+    <div className="mt-1 rounded-2xl p-6 shadow-lg grad-genie text-white overflow-hidden relative">
+      <div className="flex items-center gap-6 flex-col sm:flex-row">
+        <Ring value={scores.overall} onGradient />
         <div className="flex-1 text-center sm:text-left">
-          <p className="text-xs uppercase tracking-wide text-genie-ink/45 break-all">{host}</p>
-          <h1 className="text-2xl font-extrabold text-genie-ink">{ai?.businessName || host}</h1>
+          <p className="text-xs uppercase tracking-widest text-white/60 break-all">{host}</p>
+          <h1 className="text-2xl font-extrabold">{ai?.businessName || host}</h1>
           {[ai?.industry, ai?.subCategory].filter(Boolean).length > 0 && (
-            <p className="text-sm text-genie-ink/60">
+            <p className="text-sm text-white/70">
               {[ai?.industry, ai?.subCategory].filter(Boolean).join(" · ")}
             </p>
           )}
-          <p className="mt-1 text-sm font-semibold" style={{ color: label.color }}>{label.text}</p>
+          <p className="mt-1 text-sm font-semibold text-white/90">{label.text}</p>
           <button
             onClick={onNext}
-            className="mt-3 genie-gradient text-white font-semibold px-5 py-2.5 rounded-xl active:scale-[0.99]"
+            className="mt-4 bg-white text-brand-indigo font-semibold px-5 py-2.5 rounded-xl active:scale-[0.99] shadow-sm hover:shadow-md transition"
           >
             Show me what to do next →
           </button>
         </div>
       </div>
-      {accuracy && <SlimAccuracy accuracy={accuracy} />}
+      {accuracy && <SlimAccuracy accuracy={accuracy} onGradient />}
     </div>
   );
 }
 
-function SlimAccuracy({ accuracy }) {
+function SlimAccuracy({ accuracy, onGradient }) {
+  const muted = onGradient ? "text-white/60" : "text-ink-400";
+  const strong = onGradient ? "text-white" : "text-ink-900";
+  const track = onGradient ? "bg-white/20" : "bg-ink-900/10";
   return (
-    <div className="mt-5 pt-4 border-t border-genie-ink/5">
+    <div className={`mt-5 pt-4 border-t ${onGradient ? "border-white/15" : "border-ink-900/5"}`}>
       <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-genie-ink/50">Genie accuracy</span>
-        <span className="font-semibold text-genie-ink">{accuracy.percent}%</span>
+        <span className={muted}>Genie accuracy</span>
+        <span className={`font-mono font-semibold ${strong}`}>{accuracy.percent}%</span>
       </div>
-      <div className="h-1.5 rounded-full bg-genie-ink/10 overflow-hidden">
-        <div className="h-full genie-gradient" style={{ width: `${accuracy.percent}%`, transition: "width 1s ease" }} />
+      <div className={`h-1.5 rounded-full overflow-hidden ${track}`}>
+        <div
+          className={onGradient ? "h-full bg-white" : "h-full grad-genie"}
+          style={{ width: `${accuracy.percent}%`, transition: "width 1s ease" }}
+        />
       </div>
     </div>
   );
@@ -252,12 +252,12 @@ function TabBar({ tabs, active, onChange }) {
           onClick={() => onChange(t.id)}
           className={`whitespace-nowrap text-sm font-medium px-4 py-2 rounded-full border transition ${
             active === t.id
-              ? "genie-gradient text-white border-transparent"
-              : "bg-white text-genie-ink/70 border-genie-ink/15 hover:border-genie-purple/40"
+              ? "grad-genie text-white border-transparent shadow-sm"
+              : "bg-surface text-ink-600 border-ink-900/[0.08] hover:border-brand-violet/40"
           }`}
         >
           {t.label}
-          {t.badge ? ` (${t.badge})` : ""}
+          {t.badge ? <span className="font-mono"> {t.badge}</span> : ""}
         </button>
       ))}
     </div>
@@ -270,11 +270,11 @@ function OverviewTab({ data, actions, failing, highImpactFails, setTab }) {
   return (
     <div>
       <div className="grid sm:grid-cols-2 gap-3">
-        <Bar label="🔍 SEO & Visibility" value={scores.seo} />
-        <Bar label="⚡ Speed" value={scores.speed} />
-        <Bar label="🛡️ Trust" value={scores.trust} />
-        <Bar label="🔧 Technical" value={scores.technical} />
-        <Bar label="👥 Social" value={scores.social} />
+        <Bar label="SEO & Visibility" value={scores.seo} cat="seo" />
+        <Bar label="Speed" value={scores.speed} cat="speed" />
+        <Bar label="Trust" value={scores.trust} cat="trust" />
+        <Bar label="Technical" value={scores.technical} cat="technical" />
+        <Bar label="Social" value={scores.social} cat="social" />
       </div>
       {speed && (
         <div className="mt-3 flex flex-wrap gap-2 justify-center">
@@ -405,7 +405,7 @@ function sortByPriority(arr) {
 
 function actionIcon(t) {
   return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : "⚡";
 }
 
 function ActionsTab({ actions, host, loggedIn }) {
@@ -445,15 +445,16 @@ function ActionsTab({ actions, host, loggedIn }) {
   );
 }
 
-function Ring({ value }) {
+function Ring({ value, onGradient }) {
   const r = 54;
   const circ = 2 * Math.PI * r;
   const offset = circ - (value / 100) * circ;
-  const color = scoreLabel(value).color;
+  const color = onGradient ? "#FFFFFF" : scoreLabel(value).color;
+  const track = onGradient ? "rgba(255,255,255,0.25)" : "#E5E7EB";
   return (
     <div className="relative inline-block">
       <svg width="140" height="140" className="-rotate-90">
-        <circle cx="70" cy="70" r={r} fill="none" stroke="#E5E7EB" strokeWidth="12" />
+        <circle cx="70" cy="70" r={r} fill="none" stroke={track} strokeWidth="12" />
         <circle
           cx="70"
           cy="70"
@@ -468,23 +469,31 @@ function Ring({ value }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-extrabold text-genie-ink">{value}</span>
-        <span className="text-xs text-genie-ink/50">/ 100</span>
+        <span className={`text-4xl font-mono font-bold ${onGradient ? "text-white" : "text-ink-900"}`}>{value}</span>
+        <span className={`text-xs ${onGradient ? "text-white/60" : "text-ink-400"}`}>/ 100</span>
       </div>
     </div>
   );
 }
 
-function Bar({ label, value }) {
+const CAT_COLOR = {
+  seo: "#2563EB", speed: "#F59E0B", trust: "#059669",
+  technical: "#7C3AED", social: "#DB2777", content: "#4F46E5",
+};
+
+function Bar({ label, value, cat }) {
   if (value === null || value === undefined) return null;
-  const color = scoreLabel(value).color;
+  const color = cat ? CAT_COLOR[cat] : scoreLabel(value).color;
   return (
-    <div className="bg-white border border-genie-ink/10 rounded-xl px-4 py-3">
-      <div className="flex justify-between text-sm font-medium text-genie-ink">
-        <span>{label}</span>
-        <span>{value}</span>
+    <div className="bg-surface border border-ink-900/[0.06] rounded-xl px-4 py-3 shadow-xs">
+      <div className="flex justify-between items-center text-sm font-medium text-ink-900">
+        <span className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+          {label}
+        </span>
+        <span className="font-mono">{value}</span>
       </div>
-      <div className="mt-2 h-2 rounded-full bg-genie-ink/10 overflow-hidden">
+      <div className="mt-2 h-2 rounded-full bg-ink-900/[0.06] overflow-hidden">
         <div
           className="h-full rounded-full"
           style={{ width: `${value}%`, background: color, transition: "width 1s ease" }}
@@ -496,9 +505,9 @@ function Bar({ label, value }) {
 
 function Metric({ label, value }) {
   return (
-    <div className="bg-white border border-genie-ink/10 rounded-lg px-3 py-2 text-center">
-      <div className="text-xs text-genie-ink/50">{label}</div>
-      <div className="text-sm font-semibold text-genie-ink">{value}</div>
+    <div className="bg-surface border border-ink-900/[0.06] rounded-lg px-3 py-2 text-center shadow-xs">
+      <div className="text-xs text-ink-400">{label}</div>
+      <div className="text-sm font-mono font-semibold text-ink-900">{value}</div>
     </div>
   );
 }
@@ -1005,13 +1014,13 @@ function ContentEngine({ data, scanId }) {
         </div>
       )}
       {state === "done" && content && (
-        <ContentResults content={content} onRegenerate={write} />
+        <ContentResults content={content} onRegenerate={write} data={data} scanId={scanId} />
       )}
     </div>
   );
 }
 
-function ContentResults({ content, onRegenerate }) {
+function ContentResults({ content, onRegenerate, data, scanId }) {
   const a = content.article || {};
   const social = content.social || {};
   const socialBlocks = [
@@ -1021,26 +1030,46 @@ function ContentResults({ content, onRegenerate }) {
     ...(social.facebook || []).map((t) => ({ platform: "Facebook", text: t })),
   ];
 
+  const [dist, setDist] = useState(null);
+  const [distState, setDistState] = useState("idle"); // idle | loading | done | error
+
+  async function distribute() {
+    setDistState("loading");
+    try {
+      const res = await fetch("/api/distribute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ article: a, ai: data?.ai, host: hostOf(data?.finalUrl || ""), scanId: scanId || null }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setDistState("error"); return; }
+      setDist(j.channels);
+      setDistState("done");
+    } catch {
+      setDistState("error");
+    }
+  }
+
   return (
-    <div className="bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
+    <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-genie-ink">✍️ Genie wrote this for you</h2>
-        <button onClick={onRegenerate} className="text-sm text-genie-purple hover:underline">
+        <h2 className="text-xl font-bold text-ink-900">✍️ Genie wrote this for you</h2>
+        <button onClick={onRegenerate} className="text-sm text-brand-violet hover:underline">
           Rewrite
         </button>
       </div>
 
       {/* Article */}
-      <div className="mt-4 border border-genie-ink/10 rounded-xl p-5">
-        <h3 className="text-lg font-bold text-genie-ink">{a.title}</h3>
+      <div className="mt-4 border border-ink-900/[0.06] rounded-xl p-5">
+        <h3 className="text-lg font-bold text-ink-900">{a.title}</h3>
         <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
           {a.targetKeyword && <Chip tone="green">🎯 {a.targetKeyword}</Chip>}
           {a.wordCount && <Chip tone="muted">{a.wordCount} words</Chip>}
         </div>
         {a.metaDescription && (
-          <p className="mt-2 text-sm text-genie-ink/55 italic">{a.metaDescription}</p>
+          <p className="mt-2 text-sm text-ink-400 italic">{a.metaDescription}</p>
         )}
-        <div className="mt-3 max-h-72 overflow-y-auto pr-1 border-t border-genie-ink/5 pt-3">
+        <div className="mt-3 max-h-72 overflow-y-auto thin-scroll pr-1 border-t border-ink-900/5 pt-3">
           <Markdown text={a.body || ""} />
         </div>
         <PublishActions
@@ -1048,6 +1077,29 @@ function ContentResults({ content, onRegenerate }) {
           copyText={`# ${a.title}\n\n${a.body || ""}`}
           copyLabel="article"
         />
+      </div>
+
+      {/* Distribution Intelligence */}
+      <div className="mt-5">
+        {distState !== "done" ? (
+          <div className="border border-brand-violet/20 rounded-xl p-5 text-center">
+            <p className="text-sm font-semibold text-ink-900">🌐 Multiply this article's reach</p>
+            <p className="mt-1 text-xs text-ink-600 max-w-md mx-auto">
+              Genie distributes one article across channels — republished for reach, and drafted
+              (never auto-posted) for communities.
+            </p>
+            <button
+              onClick={distribute}
+              disabled={distState === "loading"}
+              className="mt-3 grad-genie text-white font-semibold px-4 py-2 rounded-xl text-sm disabled:opacity-70"
+            >
+              {distState === "loading" ? "Genie is planning distribution…" : "Distribute this article →"}
+            </button>
+            {distState === "error" && <p className="mt-2 text-xs text-amber-700">Couldn't plan distribution. Try again.</p>}
+          </div>
+        ) : (
+          <DistributionResults channels={dist} />
+        )}
       </div>
 
       {/* Social posts */}
@@ -1078,6 +1130,48 @@ function ContentResults({ content, onRegenerate }) {
 
 // The vision-first action row: Auto-publish is the primary (coming soon);
 // copy is an explicitly TEMPORARY stopgap until write-integrations land.
+function DistributionResults({ channels }) {
+  return (
+    <div className="border border-ink-900/[0.06] rounded-xl p-5">
+      <p className="text-sm font-semibold text-ink-900">🌐 Distribution plan</p>
+      <p className="mt-0.5 text-xs text-ink-400">
+        Saved to your actions. Republish = reach (canonical → your site). Community = drafted for you to post.
+      </p>
+      <div className="mt-3 space-y-2">
+        {channels.map((c, i) => (
+          <div key={i} className="border border-ink-900/[0.06] rounded-xl p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-ink-900">{c.channel}</span>
+              {c.humanPost ? (
+                <Chip tone="amber">✍️ you post</Chip>
+              ) : (
+                <Chip tone="green">↗ reach</Chip>
+              )}
+              {c.suggestedTarget && <Chip tone="muted">{c.suggestedTarget}</Chip>}
+            </div>
+            <p className="mt-1 text-xs text-ink-600">{c.framing}</p>
+            {c.draft && (
+              <div className="mt-2 text-xs text-ink-600 bg-surface2 rounded-lg p-2 max-h-28 overflow-y-auto thin-scroll whitespace-pre-wrap">
+                {Array.isArray(c.draft) ? c.draft.join("\n\n") : c.draft}
+              </div>
+            )}
+            <div className="mt-2">
+              <button
+                disabled
+                title="Auto-publishing arrives with the channel integrations"
+                className="grad-genie text-white text-xs font-semibold px-3 py-1.5 rounded-lg opacity-70 cursor-not-allowed inline-flex items-center gap-1.5"
+              >
+                {c.humanPost ? "Open draft to post" : `Auto-publish to ${c.channel}`}
+                <span className="text-[9px] bg-white/25 rounded-full px-1.5 py-0.5">soon</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PublishActions({ label, copyText, copyLabel, compact }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
