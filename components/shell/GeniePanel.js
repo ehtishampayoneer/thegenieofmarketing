@@ -18,10 +18,33 @@ export default function GeniePanel({
 
   const orbState = busy ? "thinking" : suggestionCount > 0 ? "suggesting" : "idle";
 
+  // Load this business's conversation history when the business changes.
+  useEffect(() => {
+    if (!host) { setMessages([]); return; }
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/messages?host=${encodeURIComponent(host)}`);
+        const j = await res.json();
+        if (active && j.ok) setMessages(j.messages.map((m) => ({ role: m.role, content: m.content })));
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [host]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [messages, busy]);
+
+  function persist(role, content) {
+    if (!host) return;
+    fetch("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ host, role, content }),
+    }).catch(() => {});
+  }
 
   async function send(text) {
     const content = (text ?? input).trim();
@@ -30,6 +53,7 @@ export default function GeniePanel({
     setMessages(next);
     setInput("");
     setBusy(true);
+    persist("user", content);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -37,7 +61,9 @@ export default function GeniePanel({
         body: JSON.stringify({ messages: next, host }),
       });
       const j = await res.json();
-      setMessages((m) => [...m, { role: "assistant", content: j.ok ? j.reply : (j.message || "Try again in a moment.") }]);
+      const reply = j.ok ? j.reply : (j.message || "Try again in a moment.");
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      if (j.ok) persist("assistant", reply);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Connection hiccup — try again." }]);
     }
