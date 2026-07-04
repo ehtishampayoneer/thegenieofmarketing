@@ -497,6 +497,115 @@ function IntegrationsView({ conn, onDisconnect, banner }) {
   );
 }
 
+function SafetyCard() {
+  const [s, setS] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/safety");
+        const j = await res.json();
+        if (active && j.ok) setS(j.settings);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
+
+  async function save(next) {
+    setS(next);
+    setSaving(true);
+    setSavedMsg("");
+    try {
+      const res = await fetch("/api/safety", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      const j = await res.json();
+      if (j.ok) setSavedMsg("Saved");
+    } catch {}
+    setSaving(false);
+    setTimeout(() => setSavedMsg(""), 1500);
+  }
+
+  if (!s) return null;
+
+  const LEVELS = [
+    [1, "Review everything", "Genie proposes; you approve every action. (Default)"],
+    [2, "Auto-approve quick wins", "Low-risk content is approved for you; you still review the rest."],
+    [3, "Auto-execute low-risk", "Low-risk actions run on their own once integrations are live; the rest wait for you."],
+    [4, "Full autopilot", "Genie runs approved playbooks end-to-end. Community & outreach ALWAYS stay human."],
+  ];
+
+  return (
+    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs uppercase tracking-wide text-ink-400">Safety & autonomy</p>
+        <span className="text-xs text-emerald-600">{saving ? "Saving…" : savedMsg}</span>
+      </div>
+
+      {/* Kill switch */}
+      <div className={`mt-3 flex items-center gap-3 rounded-xl border p-3 ${s.kill_switch ? "bg-red-50 border-red-200" : "border-ink-900/[0.06]"}`}>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-ink-900">🛑 Kill switch</p>
+          <p className="text-xs text-ink-400">Instantly pauses all Genie auto-activity. Proposals still generate; nothing executes.</p>
+        </div>
+        <button
+          onClick={() => save({ ...s, kill_switch: !s.kill_switch })}
+          className={`w-12 h-7 rounded-full transition relative ${s.kill_switch ? "bg-red-500" : "bg-ink-900/15"}`}
+          aria-label="Toggle kill switch"
+        >
+          <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${s.kill_switch ? "left-[22px]" : "left-0.5"}`} />
+        </button>
+      </div>
+
+      {/* Permission ladder */}
+      <p className="mt-4 text-sm font-semibold text-ink-900">Permission level</p>
+      <p className="text-xs text-ink-400">How much Genie may do on her own once publishing integrations are live. Approvals queue today either way.</p>
+      <div className="mt-2 space-y-1.5">
+        {LEVELS.map(([lvl, name, desc]) => (
+          <button
+            key={lvl}
+            onClick={() => save({ ...s, permission_level: lvl })}
+            className={`w-full text-left flex items-start gap-3 rounded-xl border p-3 transition ${
+              s.permission_level === lvl ? "border-brand-violet/40 bg-brand-violet/5" : "border-ink-900/[0.06] hover:border-brand-violet/20"
+            }`}
+          >
+            <span className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 ${s.permission_level === lvl ? "border-brand-violet bg-brand-violet" : "border-ink-900/20"}`} />
+            <span>
+              <span className="text-sm font-medium text-ink-900">Level {lvl} — {name}</span>
+              <span className="block text-xs text-ink-400">{desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Spend cap */}
+      <p className="mt-4 text-sm font-semibold text-ink-900">Monthly ad spend hard-cap</p>
+      <p className="text-xs text-ink-400">Genie can never spend past this on ads — $0 means no ad spend allowed. Applies when ads integrations arrive.</p>
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-sm font-mono text-ink-600">$</span>
+        <input
+          type="number"
+          min="0"
+          value={s.monthly_spend_cap}
+          onChange={(e) => setS({ ...s, monthly_spend_cap: e.target.value })}
+          onBlur={() => save({ ...s, monthly_spend_cap: Math.max(0, Number(s.monthly_spend_cap) || 0) })}
+          className="w-32 px-3 py-2 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-sm font-mono"
+        />
+        <span className="text-xs text-ink-400">/ month</span>
+      </div>
+
+      <p className="mt-4 text-[11px] text-ink-400">
+        Hard rule at every level: community posts and outreach emails are always drafted for you to review — no setting unlocks auto-posting those.
+      </p>
+    </div>
+  );
+}
+
 function SettingsView({ email, onSignOut }) {
   return (
     <>
@@ -511,6 +620,7 @@ function SettingsView({ email, onSignOut }) {
           Sign out
         </button>
       </div>
+      <SafetyCard />
       <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm opacity-80">
         <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
         <p className="mt-1 text-sm text-ink-600">Free · plans & billing arrive with launch</p>
