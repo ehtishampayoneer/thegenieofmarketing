@@ -27,6 +27,7 @@ function Dashboard() {
   const [actions, setActions] = useState([]);
   const [cadence, setCadence] = useState(null);
   const [cadenceBusy, setCadenceBusy] = useState(false);
+  const [wp, setWp] = useState(null);
 
   useEffect(() => {
     if (searchParams.get("connected")) setBanner("✓ Google Search Console connected.");
@@ -70,6 +71,11 @@ function Dashboard() {
         const aJson = await aRes.json();
         if (active && aJson.ok) setActions(aJson.actions || []);
       } catch {}
+      try {
+        const wRes = await fetch("/api/connect/wordpress");
+        const wJson = await wRes.json();
+        if (active) setWp(wJson);
+      } catch {}
       if (active) setLoading(false);
     })();
     return () => { active = false; };
@@ -109,6 +115,19 @@ function Dashboard() {
       if (j.ok) setCadence(j.plan);
     } catch {}
     setCadenceBusy(false);
+  }
+
+  async function approveAction(id) {
+    try {
+      await fetch("/api/actions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "approved" }),
+      });
+      setActions((a) => a.filter((x) => x.id !== id));
+      setBanner("✓ Approved — it's in your publish queue.");
+      setTimeout(() => setBanner(""), 2500);
+    } catch {}
   }
 
   async function dismissAction(id) {
@@ -210,7 +229,12 @@ function Dashboard() {
       genie={genieProps}
     >
       {view === "actions" && (
-        <ActionsView actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+        <>
+          <ActionsView actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+          <div className="mt-6">
+            <CadencePlan cadence={cadence} onGenerate={generateCadence} busy={cadenceBusy} hasBusiness={!!host} />
+          </div>
+        </>
       )}
       {view === "content" && (
         <ContentView actions={sortByPrio(bizActions)} host={host} scans={scans} />
@@ -224,139 +248,41 @@ function Dashboard() {
       {view === "settings" && (
         <SettingsView email={email} onSignOut={signOut} />
       )}
+      {view === "business" && (
+        <BusinessView
+          host={host}
+          hostScans={hostScans}
+          scans={scans}
+          deleting={deleting}
+          onDelete={deleteScan}
+        />
+      )}
       {view === "home" && (
         <>
           <h1 className="text-2xl font-extrabold text-ink-900">
-            {host ? `Genie's focus for ${host}` : "Your dashboard"}
+            Good morning{email ? `, ${email.split("@")[0]}` : ""}.
           </h1>
 
           {banner && (
-            <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
+            <div className="mt-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
               {banner}
             </div>
           )}
 
-          <TodaysFocus actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+          <MasterHealth hostScans={hostScans} host={host} wp={wp} actions={bizActions} />
 
-          <CadencePlan cadence={cadence} onGenerate={generateCadence} busy={cadenceBusy} hasBusiness={!!host} />
+          <PlatformGrid host={host} hostScans={hostScans} wp={wp} actions={bizActions} spendCap={0} />
 
-          <ConnectionCard conn={conn} onDisconnect={disconnectGoogle} />
+          <TodaysFocus
+            actions={sortByPrio(bizActions)}
+            host={host}
+            onDismiss={dismissAction}
+            onApprove={approveAction}
+          />
 
-          {unassignedActions.length > 0 && (
-            <PendingActions
-              actions={unassignedActions}
-              onDismiss={dismissAction}
-              host={host}
-              title="Unassigned actions"
-            />
-          )}
-
-          {loading && (
-            <p className="mt-8 text-center text-genie-ink/50">Loading your history…</p>
-          )}
-
-          {!loading && scans.length === 0 && (
-            <div className="mt-8 bg-white border border-genie-ink/10 rounded-2xl p-10 text-center">
-              <div className="w-14 h-14 rounded-2xl genie-gradient mx-auto" aria-hidden />
-              <p className="mt-4 text-lg font-semibold text-genie-ink">
-                Your growth history starts here
-              </p>
-              <p className="mt-1 text-sm text-genie-ink/55 max-w-sm mx-auto">
-                Run a scan and it’ll be saved to your account. Scan the same site
-                again over time and watch your score climb.
-              </p>
-              <a
-                href="/"
-                className="mt-5 inline-block genie-gradient text-white font-semibold px-5 py-3 rounded-xl"
-              >
-                Run your first scan →
-              </a>
-            </div>
-          )}
-
-          {!loading && scans.length > 0 && (
-            <>
-              {hosts.length > 1 && (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {hosts.map((h) => (
-                    <button
-                      key={h}
-                      onClick={() => setHost(h)}
-                      className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                        h === host
-                          ? "genie-gradient text-white border-transparent"
-                          : "bg-white text-genie-ink/70 border-genie-ink/15 hover:bg-genie-mist"
-                      }`}
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-5 bg-white border border-genie-ink/10 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-genie-purple">
-                    Score history · {host}
-                  </p>
-                  {hostScans.length > 0 && (
-                    <span className="text-sm text-genie-ink/50">
-                      {hostScans.length} scan{hostScans.length > 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
-                <TrendChart points={hostScans.map((s) => ({
-                  score: s.overall_score ?? 0,
-                  date: s.created_at,
-                }))} />
-                {hostScans.length === 1 && (
-                  <p className="text-center text-sm text-genie-ink/50 mt-2">
-                    Scan this site again later to see your trend line grow.
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-6 space-y-2">
-                {scans.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-3 bg-white border border-genie-ink/10 rounded-xl pr-2 hover:border-genie-purple/30 hover:shadow-sm transition"
-                  >
-                    <a
-                      href={`/dashboard/scan/${s.id}`}
-                      className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3"
-                    >
-                      <ScoreBadge value={s.overall_score} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-genie-ink text-sm truncate">
-                          {hostOf(s)}
-                        </p>
-                        <p className="text-xs text-genie-ink/50">{fmtDate(s.created_at)}</p>
-                      </div>
-                      {s.scores && (
-                        <div className="hidden sm:flex gap-3 text-xs text-genie-ink/50">
-                          <span>SEO {s.scores.seo ?? "–"}</span>
-                          <span>Trust {s.scores.trust ?? "–"}</span>
-                          <span>Speed {s.scores.speed ?? "–"}</span>
-                        </div>
-                      )}
-                      <span className="text-genie-ink/30 text-sm hidden sm:inline">
-                        View →
-                      </span>
-                    </a>
-                    <button
-                      onClick={() => deleteScan(s.id, hostOf(s))}
-                      disabled={deleting === s.id}
-                      aria-label="Delete scan"
-                      className="p-2 rounded-lg text-genie-ink/30 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          <p className="mt-8 text-center text-sm text-ink-400">
+            That's it for today. Come back tomorrow. ✨
+          </p>
         </>
       )}
     </AppShell>
@@ -769,6 +695,181 @@ function SettingsView({ email, onSignOut }) {
   );
 }
 
+
+// ---------- Piece 4: simplified daily dashboard ----------
+function computeHealth(hostScans, wp, actions) {
+  const latest = hostScans[hostScans.length - 1];
+  const prev = hostScans[hostScans.length - 2];
+  const score = latest?.overall_score ?? null;
+  const delta = score != null && prev?.overall_score != null ? score - prev.overall_score : null;
+  return { score, delta };
+}
+
+function MasterHealth({ hostScans, host, wp, actions }) {
+  const { score, delta } = computeHealth(hostScans, wp, actions);
+  if (score == null) {
+    return (
+      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm text-center">
+        <p className="text-sm font-semibold text-ink-900">Growth Health</p>
+        <p className="mt-1 text-sm text-ink-400">Run your first scan and Genie starts tracking your growth health.</p>
+        <a href="/" className="mt-3 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Run a scan →</a>
+      </div>
+    );
+  }
+  const color = score >= 75 ? "#059669" : score >= 50 ? "#F59E0B" : "#EF4444";
+  const label = score >= 75 ? "Healthy" : score >= 50 ? "Growing — needs attention" : "Critical — act now";
+  const connectedCount = wp?.connected ? 1 : 0;
+  const narrative =
+    (wp?.connected ? "Blog connected & publishing. " : "Blog scanned but not connected for publishing. ") +
+    "X, LinkedIn & Medium aren't connected yet — connecting them unlocks real reach." +
+    (actions.length > 0 ? ` ${actions.length} action${actions.length > 1 ? "s" : ""} waiting below.` : "");
+  return (
+    <div className="mt-5 rounded-2xl p-6 shadow-lg grad-genie text-white">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm font-semibold text-white/80">Growth Health · {host}</p>
+        {delta != null && delta !== 0 && (
+          <span className="text-sm font-mono font-semibold">{delta > 0 ? "▲ +" : "▼ "}{delta} this scan</span>
+        )}
+      </div>
+      <div className="mt-2 flex items-end gap-3">
+        <span className="text-5xl font-mono font-bold leading-none">{score}</span>
+        <span className="text-white/70 text-sm mb-1">/ 100 · {label}</span>
+      </div>
+      <div className="mt-3 h-3 rounded-full bg-white/20 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${score}%`, background: "#fff", transition: "width 1s ease" }} />
+      </div>
+      <p className="mt-3 text-sm text-white/80">{narrative}</p>
+      <p className="mt-1 text-[11px] text-white/50">Based on your latest scan + connections · per-platform health deepens as platforms connect</p>
+    </div>
+  );
+}
+
+const PLATFORMS = [
+  { id: "blog", icon: "🔵", name: "Blog" },
+  { id: "x", icon: "⚫", name: "X / Twitter" },
+  { id: "linkedin", icon: "🔷", name: "LinkedIn" },
+  { id: "reddit", icon: "🟠", name: "Reddit" },
+  { id: "quora", icon: "🟣", name: "Quora" },
+  { id: "medium", icon: "🟢", name: "Medium" },
+  { id: "ads", icon: "🎯", name: "Ads" },
+  { id: "backlinks", icon: "🔗", name: "Backlinks" },
+];
+
+function platformState(id, { score, wp, counts }) {
+  switch (id) {
+    case "blog":
+      if (wp?.connected && score != null) return { bar: score, badge: score >= 75 ? "Healthy ✅" : "Needs attention ⚠️", metric: `score ${score}`, cta: ["Details →", "/dashboard?view=business"] };
+      if (score != null) return { bar: score, badge: "Scanned · publish not connected ⚠️", metric: `score ${score}`, cta: ["Connect →", "/dashboard?view=integrations"] };
+      return { bar: 0, badge: "Not scanned 🔒", metric: "—", cta: ["Scan →", "/"] };
+    case "x":
+    case "linkedin":
+    case "medium":
+      return { bar: 0, badge: "Not connected 🔒", metric: "—", cta: ["Coming soon", null] };
+    case "reddit": {
+      const n = counts.community;
+      return n > 0
+        ? { bar: 25, badge: "Building 🟠", metric: `${n} draft${n > 1 ? "s" : ""} ready`, cta: ["Post drafts →", "/dashboard?view=actions"] }
+        : { bar: 0, badge: "Not started 🔒", metric: "—", cta: ["Find communities →", "/dashboard?view=opportunities"] };
+    }
+    case "quora": {
+      const n = counts.communityQuora;
+      return n > 0
+        ? { bar: 25, badge: "Building 🟠", metric: `${n} draft${n > 1 ? "s" : ""} ready`, cta: ["Post drafts →", "/dashboard?view=actions"] }
+        : { bar: 0, badge: "Not started 🔒", metric: "—", cta: ["Find questions →", "/dashboard?view=opportunities"] };
+    }
+    case "ads":
+      return { bar: 0, badge: "Locked 🔒 · $0 cap", metric: "no spend allowed", cta: ["Set cap →", "/dashboard?view=settings"] };
+    case "backlinks": {
+      const n = counts.outreach;
+      return n > 0
+        ? { bar: 20, badge: "Building 🟠", metric: `${n} outreach draft${n > 1 ? "s" : ""}`, cta: ["Send outreach →", "/dashboard?view=actions"] }
+        : { bar: 0, badge: "Not started 🔒", metric: "—", cta: ["Build plan →", "/dashboard?view=opportunities"] };
+    }
+    default:
+      return { bar: 0, badge: "—", metric: "—", cta: [null, null] };
+  }
+}
+
+function PlatformGrid({ host, hostScans, wp, actions }) {
+  const latest = hostScans[hostScans.length - 1];
+  const score = latest?.overall_score ?? null;
+  const counts = {
+    community: actions.filter((a) => a.type === "community_engagement" && !String(a.title || "").toLowerCase().includes("quora")).length,
+    communityQuora: actions.filter((a) => a.type === "community_engagement" && String(a.title || "").toLowerCase().includes("quora")).length,
+    outreach: actions.filter((a) => a.type === "outreach_email" || a.type === "directory_submission").length,
+  };
+  return (
+    <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {PLATFORMS.map((p) => {
+        const st = platformState(p.id, { score, wp, counts });
+        const barColor = st.bar >= 75 ? "#059669" : st.bar >= 40 ? "#F59E0B" : st.bar > 0 ? "#F97316" : "#D9DBE6";
+        return (
+          <div key={p.id} className="bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-xs flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{p.icon}</span>
+              <span className="text-sm font-semibold text-ink-900">{p.name}</span>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-ink-900/[0.06] overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${st.bar}%`, background: barColor, transition: "width 1s ease" }} />
+            </div>
+            <p className="mt-2 text-[11px] text-ink-600">{st.badge}</p>
+            <p className="text-[11px] text-ink-400 font-mono">{st.metric}</p>
+            <div className="mt-auto pt-2">
+              {st.cta[1] ? (
+                <a href={st.cta[1]} className="text-[11px] font-semibold text-brand-violet hover:underline">{st.cta[0]}</a>
+              ) : (
+                <span className="text-[11px] text-ink-400/60">{st.cta[0]}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BusinessView({ host, hostScans, scans, deleting, onDelete }) {
+  const list = scans.filter((s) => hostOf(s) === host);
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">{host || "Business"}</h1>
+      <p className="mt-1 text-sm text-ink-400">Scan history & score trend.</p>
+      {hostScans.length > 0 && (
+        <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm">
+          <p className="text-sm font-semibold text-ink-900">Score history · {host}</p>
+          <TrendChart points={hostScans.map((s) => ({ score: s.overall_score ?? 0, date: s.created_at }))} />
+          {hostScans.length === 1 && (
+            <p className="mt-2 text-center text-xs text-ink-400">Scan this site again later to see your trend line grow.</p>
+          )}
+        </div>
+      )}
+      <div className="mt-4 space-y-2">
+        {list.map((s) => (
+          <div key={s.id} className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-xl pr-2 hover:border-brand-violet/30 hover:shadow-sm transition">
+            <a href={`/dashboard/scan/${s.id}`} className="flex items-center gap-4 flex-1 min-w-0 px-4 py-3">
+              <ScoreBadge value={s.overall_score} />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-ink-900 text-sm truncate">{hostOf(s)}</p>
+                <p className="text-xs text-ink-400">{fmtDate(s.created_at)}</p>
+              </div>
+              <span className="text-ink-400/50 text-sm hidden sm:inline">View →</span>
+            </a>
+            <button
+              onClick={() => onDelete(s.id, hostOf(s))}
+              disabled={deleting === s.id}
+              aria-label="Delete scan"
+              className="p-2 rounded-lg text-ink-400/50 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        ))}
+      </div>
+      <a href="/" className="mt-5 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Run a new scan →</a>
+    </>
+  );
+}
+
 function TrendChart({ points }) {
   if (!points || points.length === 0) return null;
   const w = 600, h = 170, pad = 26;
@@ -822,7 +923,7 @@ function actionIcon(t) {
     t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : t === "community_engagement" ? "💬" : "⚡";
 }
 
-function TodaysFocus({ actions, host, onDismiss }) {
+function TodaysFocus({ actions, host, onDismiss, onApprove }) {
   const [showAll, setShowAll] = useState(false);
   const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
   if (actions.length === 0) {
@@ -853,7 +954,14 @@ function TodaysFocus({ actions, host, onDismiss }) {
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>
           {m.icon} {m.label}
         </span>
-        <span className="text-xs text-ink-400 hidden sm:inline">→</span>
+        <span
+          role="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(a.id); }}
+          className="text-[11px] font-semibold text-white grad-genie rounded-lg px-2.5 py-1.5 hover:opacity-90"
+          title={a.target?.humanPost ? "Approve — marks it ready for you to post" : "Approve — queues it to publish"}
+        >
+          ✓ Approve
+        </span>
       </a>
     );
   };
