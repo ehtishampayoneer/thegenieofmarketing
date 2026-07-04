@@ -4,33 +4,28 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { computeAccuracy } from "@/lib/accuracy";
+import { hostOf } from "@/lib/business";
 import { Report } from "@/components/report";
+import AppShell from "@/components/shell/AppShell";
 
 export default function ScanDetail({ params }) {
   const router = useRouter();
   const [state, setState] = useState("loading"); // loading | ready | notfound
   const [data, setData] = useState(null);
-  const [when, setWhen] = useState("");
+  const [actionCount, setActionCount] = useState(0);
 
   useEffect(() => {
     let active = true;
     (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+      if (!user) { router.replace("/login"); return; }
       try {
         const res = await fetch(`/api/scans/${params.id}`);
         const j = await res.json();
         if (!active) return;
-        if (!j.ok || !j.scan) {
-          setState("notfound");
-          return;
-        }
+        if (!j.ok || !j.scan) { setState("notfound"); return; }
         const s = j.scan;
-        // Rebuild the exact shape the Report component expects.
         setData({
           scores: s.scores || {},
           checks: s.checks || [],
@@ -41,59 +36,53 @@ export default function ScanDetail({ params }) {
           accuracy: computeAccuracy({ speedAvailable: !!s.speed, gscVerified: !!s.gsc }),
           ai: s.ai || null,
         });
-        try {
-          setWhen(new Date(s.created_at).toLocaleString());
-        } catch {}
         setState("ready");
       } catch {
         if (active) setState("notfound");
       }
+      // pending actions for the status strip / orb
+      try {
+        const aRes = await fetch("/api/actions?status=proposed");
+        const aJson = await aRes.json();
+        if (active && aJson.ok) setActionCount((aJson.actions || []).length);
+      } catch {}
     })();
     return () => { active = false; };
   }, [params.id, router]);
 
+  const host = data ? hostOf(data.finalUrl) : "";
+  const businessName = data?.ai?.businessName || host;
+
+  const status = actionCount > 0
+    ? { state: "pending_approval", message: `${actionCount} item${actionCount > 1 ? "s" : ""} waiting for your approval.`, actionable: false }
+    : { state: "idle", message: `Viewing your ${businessName} command center.`, actionable: false };
+
+  const genie = {
+    host,
+    suggestionCount: actionCount,
+    contextChips: [
+      { label: businessName, active: true },
+      { label: "This scan", active: true },
+    ],
+    quickActions: [
+      { label: "What should I fix first?", prompt: `Looking at ${businessName}, what should I fix first and why?` },
+      { label: "Summarize this scan", prompt: `Summarize this scan of ${businessName} in a few bullets.` },
+      { label: "Why is my score low?", prompt: `Why is ${businessName}'s score what it is, and the fastest way to raise it?` },
+    ],
+  };
+
   return (
-    <main className="min-h-screen flex flex-col">
-      <header className="px-6 py-5 flex items-center gap-2">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg genie-gradient" aria-hidden />
-          <span className="font-bold tracking-tight text-genie-ink">Marketing Genie</span>
-        </a>
-        <a
-          href="/dashboard"
-          className="ml-auto text-sm text-genie-purple font-medium hover:underline"
-        >
-          ← Back to dashboard
-        </a>
-      </header>
-
-      {state === "loading" && (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-genie-ink/50">Loading report…</p>
-        </div>
-      )}
-
+    <AppShell nav="businesses" businesses={host ? [{ host }] : []} activeHost={host} status={status} genie={genie}>
+      {state === "loading" && <p className="text-ink-400">Loading report…</p>}
       {state === "notfound" && (
-        <div className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            <p className="text-genie-ink/70">That report couldn’t be found.</p>
-            <a href="/dashboard" className="mt-3 inline-block text-genie-purple font-medium hover:underline">
-              ← Back to dashboard
-            </a>
-          </div>
+        <div className="text-center py-10">
+          <p className="text-ink-600">That report couldn't be found.</p>
+          <a href="/dashboard" className="mt-3 inline-block text-brand-violet font-medium hover:underline">← Back to dashboard</a>
         </div>
       )}
-
       {state === "ready" && data && (
-        <>
-          {when && (
-            <p className="text-center text-sm text-genie-ink/45 -mt-1 mb-1">
-              Scanned {when}
-            </p>
-          )}
-          <Report data={data} loggedIn={true} saved={false} comparison={null} scanId={params.id} />
-        </>
+        <Report data={data} loggedIn={true} saved={false} comparison={null} scanId={params.id} />
       )}
-    </main>
+    </AppShell>
   );
 }
