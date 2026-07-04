@@ -25,6 +25,8 @@ function Dashboard() {
   const [conn, setConn] = useState(null); // google connection status
   const [banner, setBanner] = useState("");
   const [actions, setActions] = useState([]);
+  const [cadence, setCadence] = useState(null);
+  const [cadenceBusy, setCadenceBusy] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("connected")) setBanner("✓ Google Search Console connected.");
@@ -77,6 +79,36 @@ function Dashboard() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/");
+  }
+
+  // Load the cadence plan for the selected business.
+  useEffect(() => {
+    if (!host) { setCadence(null); return; }
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/cadence?host=${encodeURIComponent(host)}`);
+        const j = await res.json();
+        if (active && j.ok) setCadence(j.plan);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [host]);
+
+  async function generateCadence() {
+    if (!host || cadenceBusy) return;
+    setCadenceBusy(true);
+    const biz = businessesFromScans(scans).find((b) => b.host === host);
+    try {
+      const res = await fetch("/api/cadence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host, ai: biz?.latest?.ai || null }),
+      });
+      const j = await res.json();
+      if (j.ok) setCadence(j.plan);
+    } catch {}
+    setCadenceBusy(false);
   }
 
   async function dismissAction(id) {
@@ -185,7 +217,9 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          <h1 className="text-2xl font-extrabold text-ink-900">Your scans</h1>
+          <h1 className="text-2xl font-extrabold text-ink-900">
+            {host ? `Genie's focus for ${host}` : "Your dashboard"}
+          </h1>
 
           {banner && (
             <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
@@ -193,16 +227,12 @@ function Dashboard() {
             </div>
           )}
 
+          <TodaysFocus actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+
+          <CadencePlan cadence={cadence} onGenerate={generateCadence} busy={cadenceBusy} hasBusiness={!!host} />
+
           <ConnectionCard conn={conn} onDisconnect={disconnectGoogle} />
 
-          {bizActions.length > 0 && (
-            <PendingActions
-              actions={bizActions}
-              onDismiss={dismissAction}
-              host={host}
-              title={`Genie wants to do these for ${host || "this business"}`}
-            />
-          )}
           {unassignedActions.length > 0 && (
             <PendingActions
               actions={unassignedActions}
@@ -361,10 +391,141 @@ function TrendChart({ points }) {
   );
 }
 
+const PRIO_ORDER = { high: 0, quick_win: 1, strategic: 2, medium: 3, low: 4 };
+function sortByPrio(arr) {
+  return [...arr].sort((a, b) => (PRIO_ORDER[a.priority] ?? 3) - (PRIO_ORDER[b.priority] ?? 3));
+}
+const PRIO_META = {
+  high: { icon: "🔥", label: "High-impact", cls: "bg-red-50 text-red-600 border-red-200" },
+  quick_win: { icon: "⚡", label: "Quick win", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  strategic: { icon: "🧠", label: "Strategic", cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  low: { icon: "💤", label: "Low", cls: "bg-ink-900/[0.04] text-ink-400 border-ink-900/[0.08]" },
+  medium: { icon: "", label: "Normal", cls: "bg-ink-900/[0.04] text-ink-600 border-ink-900/[0.08]" },
+};
+function actionIcon(t) {
+  return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : "⚡";
+}
+
+function TodaysFocus({ actions, host, onDismiss }) {
+  const [showAll, setShowAll] = useState(false);
+  const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
+  if (actions.length === 0) {
+    return (
+      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+        <p className="text-sm font-semibold text-ink-900">Genie's Focus for Today</p>
+        <p className="mt-1 text-sm text-ink-400">
+          Nothing queued yet. Scan a site or generate content and Genie's top priorities show up here.
+        </p>
+      </div>
+    );
+  }
+  const top = actions.slice(0, 3);
+  const rest = actions.slice(3);
+  const Row = (a) => {
+    const m = PRIO_META[a.priority] || PRIO_META.medium;
+    return (
+      <a
+        key={a.id}
+        href={`/dashboard/action/${a.id}${bizParam}`}
+        className="flex items-center gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-3 hover:border-brand-violet/30 hover:shadow-sm transition"
+      >
+        <span className="text-lg">{actionIcon(a.type)}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-ink-900 truncate">{a.title || a.type}</p>
+          <p className="text-xs text-ink-400 capitalize">{String(a.type).replace("_", " ")}</p>
+        </div>
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>
+          {m.icon} {m.label}
+        </span>
+        <span className="text-xs text-ink-400 hidden sm:inline">→</span>
+      </a>
+    );
+  };
+  return (
+    <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-ink-900">Genie's Focus for Today</p>
+        <span className="text-xs text-ink-400">{actions.length} queued</span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {top.map(Row)}
+        {showAll && rest.map(Row)}
+      </div>
+      {rest.length > 0 && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="mt-3 text-sm text-brand-violet font-medium hover:underline"
+        >
+          {showAll ? "Show less" : `See all ${actions.length} actions ▾`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CadencePlan({ cadence, onGenerate, busy, hasBusiness }) {
+  if (!hasBusiness) return null;
+  if (!cadence) {
+    return (
+      <div className="mt-5 bg-surface border border-brand-violet/20 rounded-2xl p-6 shadow-sm text-center">
+        <div className="w-12 h-12 rounded-2xl grad-genie mx-auto" aria-hidden />
+        <p className="mt-3 text-lg font-bold text-ink-900">Let Genie propose a weekly rhythm</p>
+        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">
+          Genie proposes a realistic weekly cadence for this business — articles, social, outreach,
+          and more. A proposal you can adjust, not a commitment.
+        </p>
+        <button
+          onClick={onGenerate}
+          disabled={busy}
+          className="mt-4 grad-genie text-white font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
+        >
+          {busy ? "Genie is planning…" : "Propose my weekly rhythm →"}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-semibold text-ink-900">Genie's proposed weekly rhythm</p>
+        <div className="flex items-center gap-2">
+          {cadence.stage && (
+            <span className="text-[11px] bg-brand-violet/10 text-brand-violet rounded-full px-2 py-0.5 capitalize">
+              {cadence.stage} stage
+            </span>
+          )}
+          <button onClick={onGenerate} disabled={busy} className="text-xs text-brand-violet hover:underline disabled:opacity-50">
+            {busy ? "…" : "Re-plan"}
+          </button>
+        </div>
+      </div>
+      {cadence.summary && <p className="mt-1 text-xs text-ink-400">{cadence.summary}</p>}
+      <div className="mt-3 space-y-2">
+        {(cadence.channels || []).map((c, i) => (
+          <div key={i} className="flex items-start gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-2.5">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-ink-900">{c.channel}</p>
+              {c.framing && <p className="text-xs text-ink-400">{c.framing}</p>}
+            </div>
+            <span className="text-sm font-mono text-brand-violet whitespace-nowrap">{c.cadence}</span>
+          </div>
+        ))}
+      </div>
+      {cadence.rationale && (
+        <p className="mt-3 text-xs text-ink-600 bg-surface2 rounded-lg p-3">{cadence.rationale}</p>
+      )}
+      <p className="mt-3 text-[11px] text-ink-400">
+        These are proposals you can adjust. Genie drafts outreach & community posts for you to review — it never auto-posts.
+      </p>
+    </div>
+  );
+}
+
 function PendingActions({ actions, onDismiss, host, title }) {
   const icon = (t) =>
     t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : "⚡";
   const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
   return (
     <div className="mt-5 bg-white border border-genie-purple/20 rounded-2xl p-5 shadow-sm">
