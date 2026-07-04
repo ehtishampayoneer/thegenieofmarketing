@@ -19,6 +19,24 @@ function ActionDetail({ id }) {
   const [state, setState] = useState("loading");
   const [action, setAction] = useState(null);
   const [working, setWorking] = useState(false);
+  const [pubErr, setPubErr] = useState("");
+
+  async function publish() {
+    setWorking(true);
+    setPubErr("");
+    try {
+      const res = await fetch(`/api/actions/${id}/execute`, { method: "POST" });
+      const j = await res.json();
+      if (j.ok) {
+        setAction((a) => ({ ...a, status: "done", result: j.result }));
+      } else {
+        setPubErr(j.error || "Publishing failed.");
+      }
+    } catch {
+      setPubErr("Publishing failed — try again.");
+    }
+    setWorking(false);
+  }
 
   const backHref = business
     ? `/dashboard?business=${encodeURIComponent(business)}`
@@ -109,7 +127,26 @@ function ActionDetail({ id }) {
               </div>
 
               <div className="mt-5 flex items-center gap-3 flex-wrap">
-                {action.status === "approved" ? (
+                {action.status === "done" && action.result?.url ? (
+                  <a
+                    href={action.result.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition"
+                  >
+                    ✓ Published — view live post ↗
+                  </a>
+                ) : action.status === "done" ? (
+                  <span className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">✓ Done</span>
+                ) : action.type === "article" && (action.status === "proposed" || action.status === "approved" || action.status === "failed") ? (
+                  <button
+                    onClick={publish}
+                    disabled={working}
+                    className="grad-genie text-white font-semibold px-5 py-2.5 rounded-xl active:scale-[0.99] disabled:opacity-60 flex items-center gap-2"
+                  >
+                    {working ? "Publishing…" : action.status === "failed" ? "🚀 Retry publish" : "🚀 Publish to WordPress"}
+                  </button>
+                ) : action.status === "approved" ? (
                   <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium px-4 py-2.5 rounded-xl">
                     ✓ Approved — queued to publish
                     <span className="text-[10px] bg-emerald-100 rounded-full px-2 py-0.5">
@@ -134,9 +171,18 @@ function ActionDetail({ id }) {
                     {String(action.status).replace("_", " ")}
                   </span>
                 )}
-                <button onClick={dismiss} disabled={working} className="text-sm text-genie-ink/60 hover:text-red-500 disabled:opacity-50">Dismiss</button>
+                {action.status !== "done" && (
+                  <button onClick={dismiss} disabled={working} className="text-sm text-genie-ink/60 hover:text-red-500 disabled:opacity-50">Dismiss</button>
+                )}
                 <button disabled title="Editing arrives soon" className="text-sm text-genie-ink/35 cursor-not-allowed">Edit · soon</button>
               </div>
+              {pubErr && (
+                <p className="mt-2 text-sm text-amber-700">
+                  {pubErr}{pubErr.includes("Connect your WordPress") && (
+                    <> <a href="/dashboard?view=integrations" className="underline font-medium">Open Integrations →</a></>
+                  )}
+                </p>
+              )}
               {action.status === "proposed" && action.target?.humanPost && (
                 <p className="mt-2 text-xs text-ink-400">
                   ✍️ This one's drafted for you to post from your own account — Genie never auto-posts community or outreach.
