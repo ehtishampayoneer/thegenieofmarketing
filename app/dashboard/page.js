@@ -404,7 +404,7 @@ const PRIO_META = {
 };
 function actionIcon(t) {
   return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : t === "community_engagement" ? "💬" : "⚡";
 }
 
 function TodaysFocus({ actions, host, onDismiss }) {
@@ -525,7 +525,7 @@ function CadencePlan({ cadence, onGenerate, busy, hasBusiness }) {
 function PendingActions({ actions, onDismiss, host, title }) {
   const icon = (t) =>
     t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : t === "community_engagement" ? "💬" : "⚡";
   const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
   return (
     <div className="mt-5 bg-white border border-genie-purple/20 rounded-2xl p-5 shadow-sm">
