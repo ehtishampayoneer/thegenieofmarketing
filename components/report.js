@@ -381,6 +381,93 @@ function OpportunitiesTab({ data, scanId }) {
       {data.gsc?.available && <GscPanel gsc={data.gsc} />}
       <OpportunityEngine data={data} />
       <GrowthEngine data={data} scanId={scanId} />
+      <CommunityEngine data={data} scanId={scanId} />
+    </div>
+  );
+}
+
+function CommunityEngine({ data, scanId }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [plan, setPlan] = useState(null);
+
+  if (!data?.ai) return null;
+
+  async function generate() {
+    setState("loading");
+    try {
+      const res = await fetch("/api/community", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai: data.ai, host: hostOf(data.finalUrl || ""), scanId: scanId || null }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setState("error"); return; }
+      setPlan(j);
+      setState("done");
+    } catch { setState("error"); }
+  }
+
+  if (state !== "done") {
+    return (
+      <div className="mt-6 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
+        <p className="text-lg font-bold text-ink-900">💬 Show up where your customers are</p>
+        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">
+          Genie finds the communities your customers actually use and drafts genuinely helpful
+          contributions — for you to review and post yourself. Never auto-posted.
+        </p>
+        <button
+          onClick={generate}
+          disabled={state === "loading"}
+          className="mt-4 grad-genie text-white font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
+        >
+          {state === "loading" ? "Genie is scouting…" : "Find my communities →"}
+        </button>
+        {state === "error" && <p className="mt-3 text-sm text-amber-700">Couldn't build it. Try again.</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-ink-900">💬 Your community plan</h2>
+      <p className="mt-0.5 text-xs text-ink-400">
+        Saved to your actions. You post from your own account — Genie only drafts. Read each
+        community's rules first; verify suggestions fit.
+      </p>
+
+      {plan.weeklyRhythm && (
+        <div className="mt-3 bg-surface2 border border-ink-900/[0.06] rounded-xl p-3">
+          <p className="text-sm font-medium text-ink-900 font-mono">{plan.weeklyRhythm.cadence}</p>
+          {plan.weeklyRhythm.principle && (
+            <p className="text-xs text-ink-600 mt-0.5">{plan.weeklyRhythm.principle}</p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 space-y-2">
+        {(plan.communities || []).map((c, i) => (
+          <details key={i} className="border border-ink-900/[0.06] rounded-xl p-3">
+            <summary className="cursor-pointer flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-ink-900">{c.name}</span>
+              <Chip tone="muted">{c.platform}</Chip>
+              {c.rhythm && <Chip tone="default">{c.rhythm}</Chip>}
+              <Chip tone="amber">✍️ you post</Chip>
+            </summary>
+            {c.whyHere && <p className="mt-2 text-xs text-ink-600">{c.whyHere}</p>}
+            {c.firstMove && (
+              <p className="mt-1 text-xs text-ink-600">
+                <span className="font-medium text-ink-900">First move:</span> {c.firstMove}
+              </p>
+            )}
+            {c.draft && (
+              <div className="mt-2 text-xs text-ink-600 bg-surface2 rounded-lg p-2 whitespace-pre-wrap max-h-40 overflow-y-auto thin-scroll">
+                {c.draft}
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-ink-400 italic">{c.verifyNote}</p>
+          </details>
+        ))}
+      </div>
     </div>
   );
 }
@@ -512,7 +599,7 @@ function sortByPriority(arr) {
 
 function actionIcon(t) {
   return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : t === "community_engagement" ? "💬" : "⚡";
 }
 
 function ActionsTab({ actions, host, loggedIn }) {
