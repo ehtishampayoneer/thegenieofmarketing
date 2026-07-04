@@ -53,6 +53,20 @@ function ActionDetail({ id }) {
     } catch { setWorking(false); }
   }
 
+  async function approve() {
+    setWorking(true);
+    try {
+      const res = await fetch("/api/actions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "approved" }),
+      });
+      const j = await res.json();
+      if (j.ok) setAction((a) => ({ ...a, status: "approved" }));
+    } catch {}
+    setWorking(false);
+  }
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="px-6 py-5 flex items-center gap-2 border-b border-genie-ink/10">
@@ -95,17 +109,39 @@ function ActionDetail({ id }) {
               </div>
 
               <div className="mt-5 flex items-center gap-3 flex-wrap">
-                <button
-                  disabled
-                  title="Auto-publish arrives with the WordPress / Shopify / social integrations"
-                  className="genie-gradient text-white font-semibold px-5 py-2.5 rounded-xl opacity-70 cursor-not-allowed flex items-center gap-2"
-                >
-                  🚀 Approve & publish
-                  <span className="text-[10px] bg-white/25 rounded-full px-2 py-0.5">coming soon</span>
-                </button>
+                {action.status === "approved" ? (
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium px-4 py-2.5 rounded-xl">
+                    ✓ Approved — queued to publish
+                    <span className="text-[10px] bg-emerald-100 rounded-full px-2 py-0.5">
+                      executes when its integration connects
+                    </span>
+                  </div>
+                ) : action.status === "proposed" ? (
+                  <button
+                    onClick={approve}
+                    disabled={working}
+                    title={
+                      action.target?.humanPost
+                        ? "This is drafted for YOU to post — approving marks it ready in your queue"
+                        : "Approve — it publishes automatically when the integration connects"
+                    }
+                    className="grad-genie text-white font-semibold px-5 py-2.5 rounded-xl active:scale-[0.99] disabled:opacity-60 flex items-center gap-2"
+                  >
+                    🚀 Approve
+                  </button>
+                ) : (
+                  <span className="text-sm text-ink-400 capitalize bg-ink-900/[0.04] rounded-xl px-4 py-2.5">
+                    {String(action.status).replace("_", " ")}
+                  </span>
+                )}
                 <button onClick={dismiss} disabled={working} className="text-sm text-genie-ink/60 hover:text-red-500 disabled:opacity-50">Dismiss</button>
                 <button disabled title="Editing arrives soon" className="text-sm text-genie-ink/35 cursor-not-allowed">Edit · soon</button>
               </div>
+              {action.status === "proposed" && action.target?.humanPost && (
+                <p className="mt-2 text-xs text-ink-400">
+                  ✍️ This one's drafted for you to post from your own account — Genie never auto-posts community or outreach.
+                </p>
+              )}
             </>
           )}
         </div>
