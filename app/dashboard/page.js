@@ -209,13 +209,22 @@ function Dashboard() {
       status={status}
       genie={genieProps}
     >
-      {view !== "home" ? (
-        <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
-          <div className="w-12 h-12 rounded-2xl grad-genie mx-auto" aria-hidden />
-          <p className="mt-4 text-lg font-bold text-ink-900 capitalize">{view}</p>
-          <p className="mt-1 text-sm text-ink-400">This section moves into the new command center next.</p>
-        </div>
-      ) : (
+      {view === "actions" && (
+        <ActionsView actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+      )}
+      {view === "content" && (
+        <ContentView actions={sortByPrio(bizActions)} host={host} scans={scans} />
+      )}
+      {view === "opportunities" && (
+        <OpportunitiesView scans={scans} host={host} />
+      )}
+      {view === "integrations" && (
+        <IntegrationsView conn={conn} onDisconnect={disconnectGoogle} banner={banner} />
+      )}
+      {view === "settings" && (
+        <SettingsView email={email} onSignOut={signOut} />
+      )}
+      {view === "home" && (
         <>
           <h1 className="text-2xl font-extrabold text-ink-900">
             {host ? `Genie's focus for ${host}` : "Your dashboard"}
@@ -351,6 +360,162 @@ function Dashboard() {
         </>
       )}
     </AppShell>
+  );
+}
+
+
+// ---------- Rail views ----------
+function ActionRow({ a, host }) {
+  const m = PRIO_META[a.priority] || PRIO_META.medium;
+  const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
+  return (
+    <a
+      href={`/dashboard/action/${a.id}${bizParam}`}
+      className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-xl px-3 py-3 hover:border-brand-violet/30 hover:shadow-sm transition"
+    >
+      <span className="text-lg">{actionIcon(a.type)}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-ink-900 truncate">{a.title || a.type}</p>
+        <p className="text-xs text-ink-400 capitalize">{String(a.type).replace(/_/g, " ")}</p>
+      </div>
+      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>
+        {m.icon} {m.label}
+      </span>
+    </a>
+  );
+}
+
+function EmptyCard({ title, sub, cta, href }) {
+  return (
+    <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
+      <div className="w-12 h-12 rounded-2xl grad-genie mx-auto" aria-hidden />
+      <p className="mt-4 text-lg font-bold text-ink-900">{title}</p>
+      <p className="mt-1 text-sm text-ink-400 max-w-sm mx-auto">{sub}</p>
+      {cta && (
+        <a href={href} className="mt-4 inline-block grad-genie text-white font-semibold px-5 py-2.5 rounded-xl">
+          {cta}
+        </a>
+      )}
+    </div>
+  );
+}
+
+function ActionsView({ actions, host, onDismiss }) {
+  if (actions.length === 0) {
+    return <EmptyCard title="No pending actions" sub="Generate content, opportunities, or a growth plan from any scan and Genie's proposed actions land here." cta="Run a scan →" href="/" />;
+  }
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">Actions{host ? ` · ${host}` : ""}</h1>
+      <p className="mt-1 text-sm text-ink-400">{actions.length} proposed · sorted by priority · approve & auto-execute arrives with the publishing integrations</p>
+      <div className="mt-5 space-y-2">
+        {actions.map((a) => <ActionRow key={a.id} a={a} host={host} />)}
+      </div>
+    </>
+  );
+}
+
+const CONTENT_TYPES = new Set(["article", "social_post", "distribution"]);
+function ContentView({ actions, host }) {
+  const content = actions.filter((a) => CONTENT_TYPES.has(a.type));
+  if (content.length === 0) {
+    return <EmptyCard title="No content yet" sub="Open any scan's Content tab and Genie writes articles, social posts, and distribution plans — they all show up here." cta="Run a scan →" href="/" />;
+  }
+  const articles = content.filter((a) => a.type === "article");
+  const social = content.filter((a) => a.type === "social_post");
+  const dist = content.filter((a) => a.type === "distribution");
+  const Section = ({ title, items }) => items.length > 0 && (
+    <div className="mt-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">{title} ({items.length})</p>
+      <div className="space-y-2">{items.map((a) => <ActionRow key={a.id} a={a} host={host} />)}</div>
+    </div>
+  );
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">Content{host ? ` · ${host}` : ""}</h1>
+      <p className="mt-1 text-sm text-ink-400">Everything Genie has written, awaiting your approval.</p>
+      <Section title="Articles" items={articles} />
+      <Section title="Social posts" items={social} />
+      <Section title="Distribution" items={dist} />
+    </>
+  );
+}
+
+function OpportunitiesView({ scans, host }) {
+  const latest = scans.find((s) => hostOf(s) === host) || scans[0];
+  if (!latest) {
+    return <EmptyCard title="No opportunities yet" sub="Scan a site first — then Genie maps keyword, competitor, content, and partnership opportunities." cta="Run a scan →" href="/" />;
+  }
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">Opportunities{host ? ` · ${host}` : ""}</h1>
+      <p className="mt-1 text-sm text-ink-400">Opportunities live inside each scan's command center.</p>
+      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+        <p className="text-sm text-ink-600">
+          Open your latest scan of <span className="font-medium text-ink-900">{hostOf(latest)}</span> and
+          head to the <span className="font-medium text-ink-900">Opportunities tab</span> — growth
+          opportunities, backlink outreach, directories & PR, and your community plan all live there.
+        </p>
+        <a
+          href={`/dashboard/scan/${latest.id}`}
+          className="mt-4 inline-block grad-genie text-white font-semibold px-5 py-2.5 rounded-xl"
+        >
+          Open latest scan →
+        </a>
+      </div>
+    </>
+  );
+}
+
+function IntegrationsView({ conn, onDisconnect, banner }) {
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">Integrations</h1>
+      <p className="mt-1 text-sm text-ink-400">Connected accounts raise Genie's accuracy and unlock real data.</p>
+      {banner && (
+        <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">{banner}</div>
+      )}
+      <ConnectionCard conn={conn} onDisconnect={onDisconnect} />
+      <div className="mt-3 space-y-2">
+        {[
+          ["📈 Google Analytics", "Real visitor traffic · +15% accuracy"],
+          ["📝 WordPress", "Auto-publish articles"],
+          ["🛍️ Shopify", "Auto-edit products & sales data"],
+          ["✉️ Email sending", "Auto-send approved outreach"],
+          ["📢 Google & Meta Ads", "Launch & manage campaigns"],
+        ].map(([name, desc]) => (
+          <div key={name} className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm opacity-80">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-ink-900 text-sm">{name}</p>
+              <p className="text-xs text-ink-400">{desc}</p>
+            </div>
+            <span className="text-[11px] bg-ink-900/[0.05] text-ink-400 rounded-full px-2.5 py-1 whitespace-nowrap">Coming soon</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SettingsView({ email, onSignOut }) {
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-ink-900">Settings</h1>
+      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+        <p className="text-xs uppercase tracking-wide text-ink-400">Account</p>
+        <p className="mt-1 text-sm font-medium text-ink-900">{email || "Signed in"}</p>
+        <button
+          onClick={onSignOut}
+          className="mt-4 text-sm font-medium text-red-500 hover:text-red-600 border border-red-200 bg-red-50 rounded-xl px-4 py-2"
+        >
+          Sign out
+        </button>
+      </div>
+      <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm opacity-80">
+        <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
+        <p className="mt-1 text-sm text-ink-600">Free · plans & billing arrive with launch</p>
+      </div>
+    </>
   );
 }
 
