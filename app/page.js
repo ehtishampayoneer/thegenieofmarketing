@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Report } from "@/components/report";
+import { hostOf } from "@/lib/business";
+import AppShell from "@/components/shell/AppShell";
 
 const SCAN_STEPS = [
   "Reading your website…",
@@ -134,6 +136,52 @@ export default function Home() {
     setComparison(null);
   }
 
+  if (phase === "done" && data) {
+    const host = hostOf(data.finalUrl || "");
+    const businessName = data.ai?.businessName || host;
+    const failing = (data.checks || []).filter((c) => c.status !== "pass");
+    const highImpact = failing.filter((c) => c.impact === "high" && c.status === "fail").length;
+    const status = highImpact > 0
+      ? { state: "opportunity", message: `Genie found ${highImpact} high-impact fix${highImpact > 1 ? "es" : ""} worth acting on.`, actionable: false }
+      : { state: "idle", message: `Your ${businessName} command center.`, actionable: false };
+    const genie = {
+      host,
+      suggestionCount: 0,
+      contextChips: [{ label: businessName, active: true }, { label: "This scan", active: true }],
+      quickActions: [
+        { label: "What should I fix first?", prompt: `Looking at ${businessName}, what should I fix first and why?` },
+        { label: "Summarize this scan", prompt: `Summarize this scan of ${businessName} in a few bullets.` },
+      ],
+    };
+
+    if (!user) {
+      return (
+        <div className="min-h-screen bg-canvas">
+          <header className="px-6 py-4 flex items-center gap-2 border-b border-ink-900/[0.06]">
+            <div className="w-8 h-8 rounded-lg grad-genie" aria-hidden />
+            <span className="font-bold tracking-tight text-ink-900">Marketing Genie</span>
+            <div className="ml-auto flex items-center gap-4">
+              <button onClick={reset} className="text-sm text-brand-violet font-medium hover:underline">Scan another</button>
+              <a href="/login" className="text-sm text-brand-violet font-medium hover:underline">Sign in</a>
+            </div>
+          </header>
+          <div className="max-w-3xl mx-auto px-5 sm:px-8 py-8">
+            <Report data={data} loggedIn={false} saved={saved} comparison={comparison} scanId={savedScanId} />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <AppShell nav="home" businesses={[{ host }]} activeHost={host} status={status} genie={genie}>
+        <button onClick={reset} className="text-sm text-brand-violet font-medium hover:underline mb-3">
+          ← Scan another
+        </button>
+        <Report data={data} loggedIn={true} saved={saved} comparison={comparison} scanId={savedScanId} />
+      </AppShell>
+    );
+  }
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="px-6 py-5 flex items-center gap-2">
@@ -142,14 +190,6 @@ export default function Home() {
           Marketing Genie
         </span>
         <div className="ml-auto flex items-center gap-4">
-          {phase === "done" && (
-            <button
-              onClick={reset}
-              className="text-sm text-genie-purple font-medium hover:underline"
-            >
-              Scan another
-            </button>
-          )}
           {user ? (
             <div className="flex items-center gap-3">
               <a
@@ -204,10 +244,6 @@ export default function Home() {
 
       {phase === "scanning" && (
         <Scanning step={SCAN_STEPS[stepIdx]} fact={FACTS[factIdx]} />
-      )}
-
-      {phase === "done" && data && (
-        <Report data={data} loggedIn={!!user} saved={saved} comparison={comparison} scanId={savedScanId} />
       )}
 
       <footer className="px-6 py-6 text-center text-sm text-genie-ink/40">
