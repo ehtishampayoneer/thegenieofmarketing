@@ -85,6 +85,17 @@ export async function PATCH(request) {
     .eq("id", id);
 
   if (error) return json({ ok: false, error: error.message }, 500);
+
+  // G6 signal capture: log the transition as an outcome event (best-effort).
+  try {
+    await supabase.from("action_outcomes").insert({
+      action_id: id,
+      user_id: user.id,
+      event: status, // 'approved' | 'dismissed' | 'executed' | ...
+      meta: body.meta || null,
+    });
+  } catch {}
+
   return json({ ok: true });
 }
 
