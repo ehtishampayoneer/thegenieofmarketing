@@ -606,6 +606,40 @@ function SafetyCard() {
   );
 }
 
+function DailyBriefCard() {
+  const [state, setState] = useState("idle"); // idle | sending | sent | error
+  const [err, setErr] = useState("");
+  async function sendTest() {
+    setState("sending");
+    setErr("");
+    try {
+      const res = await fetch("/api/brief", { method: "POST" });
+      const j = await res.json();
+      if (j.ok) setState("sent");
+      else { setState("error"); setErr(j.error || "Couldn't send."); }
+    } catch { setState("error"); setErr("Couldn't send."); }
+  }
+  return (
+    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-ink-400">Daily brief</p>
+      <p className="mt-1 text-sm text-ink-600">
+        Every morning (8am PKT), Genie emails you her plan for the day — your top actions, ready to approve.
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          onClick={sendTest}
+          disabled={state === "sending"}
+          className="grad-genie text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-60"
+        >
+          {state === "sending" ? "Sending…" : "Send me a test brief"}
+        </button>
+        {state === "sent" && <span className="text-sm text-emerald-600">✓ Sent — check your inbox</span>}
+        {state === "error" && <span className="text-sm text-amber-700">{err}</span>}
+      </div>
+    </div>
+  );
+}
+
 function SettingsView({ email, onSignOut }) {
   return (
     <>
@@ -620,6 +654,7 @@ function SettingsView({ email, onSignOut }) {
           Sign out
         </button>
       </div>
+      <DailyBriefCard />
       <SafetyCard />
       <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm opacity-80">
         <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
