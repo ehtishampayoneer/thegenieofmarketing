@@ -476,10 +476,10 @@ function IntegrationsView({ conn, onDisconnect, banner }) {
         <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">{banner}</div>
       )}
       <ConnectionCard conn={conn} onDisconnect={onDisconnect} />
+      <WordPressCard />
       <div className="mt-3 space-y-2">
         {[
           ["📈 Google Analytics", "Real visitor traffic · +15% accuracy"],
-          ["📝 WordPress", "Auto-publish articles"],
           ["🛍️ Shopify", "Auto-edit products & sales data"],
           ["✉️ Email sending", "Auto-send approved outreach"],
           ["📢 Google & Meta Ads", "Launch & manage campaigns"],
@@ -602,6 +602,111 @@ function SafetyCard() {
       <p className="mt-4 text-[11px] text-ink-400">
         Hard rule at every level: community posts and outreach emails are always drafted for you to review — no setting unlocks auto-posting those.
       </p>
+    </div>
+  );
+}
+
+function WordPressCard() {
+  const [wp, setWp] = useState(null);          // {connected, siteUrl, username}
+  const [form, setForm] = useState({ siteUrl: "", username: "", appPassword: "" });
+  const [state, setState] = useState("idle");  // idle | connecting | error
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/connect/wordpress");
+        const j = await res.json();
+        if (active) setWp(j);
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
+
+  async function connect() {
+    setState("connecting");
+    setErr("");
+    try {
+      const res = await fetch("/api/connect/wordpress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const j = await res.json();
+      if (!j.ok) { setState("error"); setErr(j.error || "Couldn't connect."); return; }
+      setWp({ ok: true, connected: true, siteUrl: j.siteUrl, username: j.username });
+      setState("idle");
+      setOpen(false);
+    } catch { setState("error"); setErr("Couldn't connect."); }
+  }
+
+  async function disconnect() {
+    if (!confirm("Disconnect WordPress? Genie won't be able to publish articles until you reconnect.")) return;
+    try {
+      await fetch("/api/connect/wordpress", { method: "DELETE" });
+      setWp({ ok: true, connected: false });
+    } catch {}
+  }
+
+  const connected = wp?.connected;
+  return (
+    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-surface2 border border-ink-900/[0.06] flex items-center justify-center text-lg">📝</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-ink-900 text-sm">WordPress</p>
+          {connected ? (
+            <p className="text-xs text-emerald-700 truncate">Connected · {wp.siteUrl}</p>
+          ) : (
+            <p className="text-xs text-ink-400">Connect your site and approved articles publish for real.</p>
+          )}
+        </div>
+        {connected ? (
+          <button onClick={disconnect} className="text-sm text-ink-400 hover:text-red-500 transition">Disconnect</button>
+        ) : (
+          <button onClick={() => setOpen((v) => !v)} className="grad-genie text-white text-sm font-semibold px-4 py-2 rounded-xl whitespace-nowrap">
+            {open ? "Close" : "Connect"}
+          </button>
+        )}
+      </div>
+
+      {!connected && open && (
+        <div className="mt-4 border-t border-ink-900/[0.06] pt-4 space-y-2">
+          <input
+            value={form.siteUrl}
+            onChange={(e) => setForm({ ...form, siteUrl: e.target.value })}
+            placeholder="Site URL — e.g. https://myblog.com"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-sm"
+          />
+          <input
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+            placeholder="WordPress username"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-sm"
+          />
+          <input
+            value={form.appPassword}
+            onChange={(e) => setForm({ ...form, appPassword: e.target.value })}
+            placeholder="Application password"
+            type="password"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-sm"
+          />
+          <button
+            onClick={connect}
+            disabled={state === "connecting"}
+            className="grad-genie text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-60"
+          >
+            {state === "connecting" ? "Checking your site…" : "Connect WordPress"}
+          </button>
+          {state === "error" && <p className="text-xs text-amber-700">{err}</p>}
+          <p className="text-[11px] text-ink-400">
+            Needs a self-hosted WordPress (5.6+). Create the application password in
+            wp-admin → Users → Profile → Application Passwords. WordPress.com free plans don't support this.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
