@@ -135,7 +135,7 @@ export function Report({ data, loggedIn, saved, comparison, scanId }) {
           <OverviewTab data={data} actions={actions} failing={failing} highImpactFails={highImpactFails} setTab={setTab} />
         )}
         {tab === "fixes" && <FixesTab ai={ai} checks={checks} />}
-        {tab === "opportunities" && <OpportunitiesTab data={data} />}
+        {tab === "opportunities" && <OpportunitiesTab data={data} scanId={scanId} />}
         {tab === "content" && <ContentEngine data={data} scanId={scanId} />}
         {tab === "actions" && <ActionsTab actions={actions} host={host} loggedIn={loggedIn} />}
       </div>
@@ -375,11 +375,118 @@ function CheckRow({ c }) {
 }
 
 // ----- Opportunities tab -----
-function OpportunitiesTab({ data }) {
+function OpportunitiesTab({ data, scanId }) {
   return (
     <div>
       {data.gsc?.available && <GscPanel gsc={data.gsc} />}
       <OpportunityEngine data={data} />
+      <GrowthEngine data={data} scanId={scanId} />
+    </div>
+  );
+}
+
+function GrowthEngine({ data, scanId }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [growth, setGrowth] = useState(null);
+
+  if (!data?.ai) return null;
+
+  async function generate() {
+    setState("loading");
+    try {
+      const res = await fetch("/api/growth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai: data.ai, host: hostOf(data.finalUrl || ""), scanId: scanId || null }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok) { setState("error"); return; }
+      setGrowth(j);
+      setState("done");
+    } catch { setState("error"); }
+  }
+
+  if (state !== "done") {
+    return (
+      <div className="mt-6 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
+        <p className="text-lg font-bold text-ink-900">🔗 Earn backlinks & get listed</p>
+        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">
+          Genie finds outreach prospects, drafts the emails that earn real backlinks, and
+          discovers directories & PR opportunities — all for you to review and send.
+        </p>
+        <button
+          onClick={generate}
+          disabled={state === "loading"}
+          className="mt-4 grad-genie text-white font-semibold px-5 py-2.5 rounded-xl disabled:opacity-70"
+        >
+          {state === "loading" ? "Genie is researching…" : "Build my growth plan →"}
+        </button>
+        {state === "error" && <p className="mt-3 text-sm text-amber-700">Couldn't build it. Try again.</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-ink-900">🔗 Your growth plan</h2>
+      <p className="mt-0.5 text-xs text-ink-400">
+        Saved to your actions. All AI-suggested — verify targets before sending. Genie drafts; you review and send.
+      </p>
+
+      {growth.linkBuilding?.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">
+            Earn backlinks — outreach Genie drafted
+          </p>
+          <div className="space-y-2">
+            {growth.linkBuilding.map((p, i) => (
+              <details key={i} className="border border-ink-900/[0.06] rounded-xl p-3">
+                <summary className="cursor-pointer flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-ink-900">{p.prospectType}</span>
+                  <Chip tone="muted">{String(p.kind).replace("_", " ")}</Chip>
+                  <Chip tone="amber">✍️ you send</Chip>
+                </summary>
+                {p.angle && <p className="mt-2 text-xs text-ink-600">{p.angle}</p>}
+                {p.exampleTargets?.length > 0 && (
+                  <p className="mt-1 text-xs text-ink-400">
+                    Try: {p.exampleTargets.join(" · ")} <span className="italic">(verify these exist)</span>
+                  </p>
+                )}
+                {p.draft && (
+                  <div className="mt-2 text-xs text-ink-600 bg-surface2 rounded-lg p-2 whitespace-pre-wrap max-h-40 overflow-y-auto thin-scroll">
+                    {p.draft}
+                  </div>
+                )}
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {growth.directoriesPR?.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">
+            Directories, PR & podcasts
+          </p>
+          <div className="space-y-2">
+            {growth.directoriesPR.map((d, i) => (
+              <details key={i} className="border border-ink-900/[0.06] rounded-xl p-3">
+                <summary className="cursor-pointer flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-ink-900">{d.name}</span>
+                  <Chip tone="muted">{d.kind}</Chip>
+                  <Chip tone="amber">✍️ you submit</Chip>
+                </summary>
+                {d.why && <p className="mt-2 text-xs text-ink-600">{d.why}</p>}
+                {d.draft && (
+                  <div className="mt-2 text-xs text-ink-600 bg-surface2 rounded-lg p-2 whitespace-pre-wrap max-h-40 overflow-y-auto thin-scroll">
+                    {d.draft}
+                  </div>
+                )}
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -405,7 +512,7 @@ function sortByPriority(arr) {
 
 function actionIcon(t) {
   return t === "article" ? "📝" : t === "social_post" ? "📣" : t === "seo_fix" ? "🔧" :
-    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : "⚡";
+    t === "outreach_email" ? "✉️" : t === "ad_campaign" ? "📢" : t === "distribution" ? "🌐" : t === "directory_submission" ? "📇" : "⚡";
 }
 
 function ActionsTab({ actions, host, loggedIn }) {
