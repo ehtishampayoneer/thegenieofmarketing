@@ -19,7 +19,7 @@ export default function Rail({ active = "home", businesses = [], activeHost, onS
     <nav className="flex flex-col h-full">
       <div className="px-4 py-5 flex items-center gap-2">
         <div className="w-8 h-8 rounded-xl grad-genie" aria-hidden />
-        <span className="font-bold tracking-tight text-ink-900">Genie</span>
+        <span className="font-bold tracking-tight text-ink-900 hidden xl:inline">Genie</span>
       </div>
 
       <div className="flex-1 px-2 space-y-0.5 overflow-y-auto thin-scroll">
@@ -30,16 +30,17 @@ export default function Rail({ active = "home", businesses = [], activeHost, onS
               <div key={item.id}>
                 <button
                   onClick={() => setOpenBiz((v) => !v)}
+                  title={item.label}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition ${
                     isActive ? "bg-brand-violet/10 text-brand-violet" : "text-ink-600 hover:bg-ink-900/[0.03]"
                   }`}
                 >
                   <span className="text-base">{item.icon}</span>
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <span className="text-ink-400 text-xs">{openBiz ? "▾" : "▸"}</span>
+                  <span className="flex-1 text-left hidden xl:inline">{item.label}</span>
+                  <span className="text-ink-400 text-xs hidden xl:inline">{openBiz ? "▾" : "▸"}</span>
                 </button>
                 {openBiz && (
-                  <div className="ml-4 mt-0.5 space-y-0.5">
+                  <div className="ml-4 mt-0.5 space-y-0.5 hidden xl:block">
                     {businesses.length === 0 && (
                       <p className="px-3 py-1.5 text-xs text-ink-400">No sites yet</p>
                     )}
@@ -64,12 +65,13 @@ export default function Rail({ active = "home", businesses = [], activeHost, onS
             <a
               key={item.id}
               href={item.href}
+              title={item.label}
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition ${
                 isActive ? "bg-brand-violet/10 text-brand-violet" : "text-ink-600 hover:bg-ink-900/[0.03]"
               }`}
             >
               <span className="text-base">{item.icon}</span>
-              {item.label}
+              <span className="hidden xl:inline">{item.label}</span>
             </a>
           );
         })}
@@ -80,13 +82,13 @@ export default function Rail({ active = "home", businesses = [], activeHost, onS
   return (
     <>
       {/* Desktop rail */}
-      <aside className="hidden lg:flex w-[240px] shrink-0 bg-rail border-r border-ink-900/[0.06]">
+      <aside className="hidden md:flex md:w-[64px] xl:w-[240px] shrink-0 bg-rail border-r border-ink-900/[0.06] overflow-hidden">
         {body}
       </aside>
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-40">
+        <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-ink-900/30" onClick={onCloseMobile} />
           <aside className="absolute left-0 top-0 bottom-0 w-[260px] bg-rail shadow-lg">
             {body}
