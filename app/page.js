@@ -182,6 +182,32 @@ export default function Home() {
     );
   }
 
+  // ISSUE 7 fix: for signed-in users, the scan-input & scanning phases render
+  // INSIDE the app shell (rail + Genie panel), so scanning never dumps them out
+  // of the product frame. Logged-out users keep the standalone marketing header.
+  if (user && (phase === "idle" || phase === "error" || phase === "scanning")) {
+    return (
+      <AppShell
+        nav="home"
+        businesses={[]}
+        activeHost={null}
+        status={{ state: phase === "scanning" ? "working" : "idle", message: phase === "scanning" ? "Genie is analyzing your site…" : "Run a scan to give Genie work.", actionable: false }}
+        genie={{ host: null, suggestionCount: 0, contextChips: [{ label: "New scan", active: true }], quickActions: [{ label: "What can you do for my business?", prompt: "What can you do for my business once I scan my site?" }] }}
+      >
+        {(phase === "idle" || phase === "error") && (
+          <div className="py-6">
+            <Hero url={url} setUrl={setUrl} onAnalyze={analyze} error={phase === "error" ? errorMsg : undefined} />
+          </div>
+        )}
+        {phase === "scanning" && (
+          <div className="py-6">
+            <Scanning step={SCAN_STEPS[stepIdx]} fact={FACTS[factIdx]} />
+          </div>
+        )}
+      </AppShell>
+    );
+  }
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="px-6 py-5 flex items-center gap-2">
@@ -190,38 +216,12 @@ export default function Home() {
           Marketing Genie
         </span>
         <div className="ml-auto flex items-center gap-4">
-          {user ? (
-            <div className="flex items-center gap-3">
-              <a
-                href="/chat"
-                className="text-sm text-genie-purple font-medium hover:underline"
-              >
-                Ask Genie
-              </a>
-              <a
-                href="/dashboard"
-                className="text-sm text-genie-purple font-medium hover:underline"
-              >
-                My scans
-              </a>
-              <span className="text-sm text-genie-ink/55 hidden sm:inline">
-                {user.email}
-              </span>
-              <button
-                onClick={signOut}
-                className="text-sm text-genie-ink/55 hover:text-genie-ink"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <a
-              href="/login"
-              className="text-sm text-genie-purple font-medium hover:underline"
-            >
-              Sign in
-            </a>
-          )}
+          <a
+            href="/login"
+            className="text-sm text-genie-purple font-medium hover:underline"
+          >
+            Sign in
+          </a>
         </div>
       </header>
 
