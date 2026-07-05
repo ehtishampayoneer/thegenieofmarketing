@@ -27,7 +27,7 @@ export default function AppShell({
   const st = STATUS_STATES[status?.state] || STATUS_STATES.idle;
 
   return (
-    <div className="min-h-screen flex flex-col bg-canvas">
+    <div className="h-screen flex flex-col bg-canvas overflow-hidden">
       {/* Status strip — full width, above everything */}
       <div className={`border-b px-4 sm:px-6 py-2.5 flex items-center gap-3 ${st.cls}`}>
         <button className="lg:hidden text-lg" onClick={() => setMobileNav(true)} aria-label="Menu">☰</button>
@@ -43,7 +43,7 @@ export default function AppShell({
       </div>
 
       {/* Three zones */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <Rail
           active={nav}
           businesses={businesses}
@@ -54,7 +54,7 @@ export default function AppShell({
         />
 
         <main className="flex-1 min-w-0 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-5 sm:px-8 py-8">{children}</div>
+          <div className="max-w-[1400px] mx-auto px-6 md:px-10 xl:px-12 py-8">{children}</div>
         </main>
 
         <GeniePanel
@@ -77,7 +77,7 @@ function MobileGenieButton({ suggestionCount, host }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed right-4 bottom-5 z-30 flex items-center gap-2 bg-surface border border-ink-900/[0.06] shadow-glow rounded-full pl-2 pr-4 py-2"
+        className="xl:hidden fixed right-4 bottom-5 z-30 flex items-center gap-2 bg-surface border border-ink-900/[0.06] shadow-glow rounded-full pl-2 pr-4 py-2"
       >
         <AwareOrb state={suggestionCount > 0 ? "suggesting" : "idle"} count={suggestionCount} size={26} />
         <span className="text-sm font-medium text-ink-900">
@@ -85,7 +85,7 @@ function MobileGenieButton({ suggestionCount, host }) {
         </span>
       </button>
       {open && (
-        <div className="lg:hidden fixed inset-0 z-40">
+        <div className="xl:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-ink-900/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 top-14 bg-surface rounded-t-3xl overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-ink-900/[0.06] flex items-center gap-2">
