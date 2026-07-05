@@ -75,7 +75,7 @@ export default function GeniePanel({
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="hidden lg:flex fixed right-4 bottom-6 z-30 items-center gap-2 bg-surface border border-ink-900/[0.06] shadow-glow rounded-full pl-2 pr-4 py-2"
+        className="hidden xl:flex fixed right-4 bottom-6 z-30 items-center gap-2 bg-surface border border-ink-900/[0.06] shadow-glow rounded-full pl-2 pr-4 py-2"
       >
         <AwareOrb state={suggestionCount > 0 ? "suggesting" : "idle"} count={suggestionCount} size={26} />
         <span className="text-sm font-medium text-ink-900">
@@ -86,7 +86,7 @@ export default function GeniePanel({
   }
 
   return (
-    <aside className="hidden lg:flex w-[360px] shrink-0 flex-col bg-surface border-l border-ink-900/[0.06]">
+    <aside className="hidden xl:flex w-[360px] shrink-0 flex-col bg-surface border-l border-ink-900/[0.06]">
       {/* Header */}
       <div className="px-4 py-4 border-b border-ink-900/[0.06]">
         <div className="flex items-center gap-2">
