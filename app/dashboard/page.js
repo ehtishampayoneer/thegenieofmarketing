@@ -198,7 +198,7 @@ function Dashboard() {
     .reverse(); // oldest -> newest for the trend line
 
   const view = searchParams.get("view") || "home";
-  const navMap = { home: "home", actions: "actions", content: "content", opportunities: "opportunities", integrations: "integrations", settings: "settings" };
+  const navMap = { home: "home", business: "businesses", actions: "actions", content: "content", opportunities: "opportunities", integrations: "integrations", settings: "settings" };
   const navId = navMap[view] || "home";
 
   const pendingCount = bizActions.length;
@@ -224,13 +224,13 @@ function Dashboard() {
       nav={navId}
       businesses={businesses}
       activeHost={host}
-      onSelectBusiness={setHost}
+      onSelectBusiness={(h) => { setHost(h); router.push(`/dashboard?view=business&business=${encodeURIComponent(h)}`); }}
       status={status}
       genie={genieProps}
     >
       {view === "actions" && (
         <>
-          <ActionsView actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} />
+          <ActionsView actions={sortByPrio(bizActions)} host={host} />
           <div className="mt-6">
             <CadencePlan cadence={cadence} onGenerate={generateCadence} busy={cadenceBusy} hasBusiness={!!host} />
           </div>
@@ -326,17 +326,59 @@ function EmptyCard({ title, sub, cta, href }) {
   );
 }
 
-function ActionsView({ actions, host, onDismiss }) {
+const ACTION_GROUPS = [
+  ["article", "📝 Articles"],
+  ["social_post", "📣 Social posts"],
+  ["distribution", "🌐 Distribution"],
+  ["outreach_email", "✉️ Outreach"],
+  ["directory_submission", "📇 Directories & PR"],
+  ["community_engagement", "💬 Community"],
+  ["seo_fix", "🔧 SEO fixes"],
+  ["ad_campaign", "📢 Ads"],
+];
+const TYPE_GROUPS = [
+  ["article", "📝 Articles"],
+  ["social_post", "📣 Social posts"],
+  ["distribution", "🌐 Distribution"],
+  ["outreach_email", "✉️ Outreach"],
+  ["directory_submission", "📇 Directories & PR"],
+  ["community_engagement", "💬 Community"],
+  ["seo_fix", "🔧 SEO fixes"],
+  ["ad_campaign", "📢 Ads"],
+];
+
+function ActionMiniCard({ a, host }) {
+  const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
+  const m = PRIO_META[a.priority] || PRIO_META.medium;
+  return (
+    <a href={`/dashboard/action/${a.id}${bizParam}`} className="bg-surface border border-ink-900/[0.06] rounded-xl p-3 shadow-xs hover:shadow-md hover:border-brand-violet/30 transition flex flex-col">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">{actionIcon(a.type)}</span>
+        <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${m.cls}`}>{m.icon}</span>
+      </div>
+      <p className="mt-1.5 text-xs font-medium text-ink-900 line-clamp-2 flex-1">{a.title || a.type}</p>
+      <span className="mt-2 text-[11px] text-brand-violet font-medium">Open →</span>
+    </a>
+  );
+}
+
+function ActionsView({ actions, host }) {
   if (actions.length === 0) {
-    return <EmptyCard title="No pending actions" sub="Generate content, opportunities, or a growth plan from any scan and Genie's proposed actions land here." cta="Run a scan →" href="/" />;
+    return <EmptyCard title="No pending actions" sub="Generate content, opportunities, or a growth plan from any scan and Genie's proposed actions land here." cta="Run a scan →" href="/?app=1" />;
   }
+  const groups = TYPE_GROUPS.map(([type, label]) => [label, actions.filter((a) => a.type === type)]).filter(([, list]) => list.length > 0);
   return (
     <>
       <h1 className="text-2xl font-extrabold text-ink-900">Actions{host ? ` · ${host}` : ""}</h1>
-      <p className="mt-1 text-sm text-ink-400">{actions.length} proposed · sorted by priority · approve & auto-execute arrives with the publishing integrations</p>
-      <div className="mt-5 space-y-2">
-        {actions.map((a) => <ActionRow key={a.id} a={a} host={host} />)}
-      </div>
+      <p className="mt-1 text-sm text-ink-400">{actions.length} proposed · grouped by type · approve inside each</p>
+      {groups.map(([label, list]) => (
+        <div key={label} className="mt-6">
+          <p className="text-sm font-semibold text-ink-900 mb-2">{label} <span className="text-ink-400 font-mono">{list.length}</span></p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {list.map((a) => <ActionMiniCard key={a.id} a={a} host={host} />)}
+          </div>
+        </div>
+      ))}
     </>
   );
 }
@@ -345,24 +387,28 @@ const CONTENT_TYPES = new Set(["article", "social_post", "distribution"]);
 function ContentView({ actions, host }) {
   const content = actions.filter((a) => CONTENT_TYPES.has(a.type));
   if (content.length === 0) {
-    return <EmptyCard title="No content yet" sub="Open any scan's Content tab and Genie writes articles, social posts, and distribution plans — they all show up here." cta="Run a scan →" href="/" />;
+    return <EmptyCard title="No content yet" sub="Open any scan's Content tab and Genie writes articles, social posts, and distribution plans — they all show up here." cta="Run a scan →" href="/?app=1" />;
   }
-  const articles = content.filter((a) => a.type === "article");
-  const social = content.filter((a) => a.type === "social_post");
-  const dist = content.filter((a) => a.type === "distribution");
-  const Section = ({ title, items }) => items.length > 0 && (
-    <div className="mt-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">{title} ({items.length})</p>
-      <div className="space-y-2">{items.map((a) => <ActionRow key={a.id} a={a} host={host} />)}</div>
-    </div>
-  );
+  const cols = [
+    ["📝 Articles", content.filter((a) => a.type === "article")],
+    ["📣 Social", content.filter((a) => a.type === "social_post")],
+    ["🌐 Distribution", content.filter((a) => a.type === "distribution")],
+  ];
   return (
     <>
       <h1 className="text-2xl font-extrabold text-ink-900">Content{host ? ` · ${host}` : ""}</h1>
       <p className="mt-1 text-sm text-ink-400">Everything Genie has written, awaiting your approval.</p>
-      <Section title="Articles" items={articles} />
-      <Section title="Social posts" items={social} />
-      <Section title="Distribution" items={dist} />
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {cols.map(([label, list]) => (
+          <div key={label}>
+            <p className="text-sm font-semibold text-ink-900 mb-2">{label} <span className="text-ink-400 font-mono">{list.length}</span></p>
+            <div className="space-y-2">
+              {list.length === 0 && <p className="text-xs text-ink-400 bg-surface border border-ink-900/[0.06] rounded-xl p-3">Nothing here yet.</p>}
+              {list.map((a) => <ActionMiniCard key={a.id} a={a} host={host} />)}
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
@@ -397,138 +443,39 @@ function IntegrationsView({ conn, onDisconnect, banner }) {
   return (
     <>
       <h1 className="text-2xl font-extrabold text-ink-900">Integrations</h1>
-      <p className="mt-1 text-sm text-ink-400">Connected accounts raise Genie's accuracy and unlock real data.</p>
+      <p className="mt-1 text-sm text-ink-400">Connected accounts raise Genie's accuracy and let her publish for real.</p>
       {banner && (
         <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">{banner}</div>
       )}
-      <ConnectionCard conn={conn} onDisconnect={onDisconnect} />
-      <WordPressCard />
-      <div className="mt-3 space-y-2">
+
+      <p className="mt-6 text-sm font-semibold text-emerald-700">● Available now</p>
+      <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <ConnectionCard conn={conn} onDisconnect={onDisconnect} />
+        <WordPressCard />
+      </div>
+
+      <p className="mt-8 text-sm font-semibold text-ink-400">○ Coming soon</p>
+      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
         {[
-          ["📈 Google Analytics", "Real visitor traffic · +15% accuracy"],
-          ["🛍️ Shopify", "Auto-edit products & sales data"],
-          ["✉️ Email sending", "Auto-send approved outreach"],
-          ["📢 Google & Meta Ads", "Launch & manage campaigns"],
-        ].map(([name, desc]) => (
-          <div key={name} className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm opacity-80">
+          ["📈", "Google Analytics", "Real visitor traffic · +15% accuracy"],
+          ["⚫", "X / Twitter", "Auto-post approved threads & posts"],
+          ["🔷", "LinkedIn", "Auto-post articles & updates"],
+          ["🟢", "Medium", "Republish for reach (canonical)"],
+          ["🛍️", "Shopify", "Auto-edit products & sales data"],
+          ["✉️", "Email sending", "Auto-send approved outreach"],
+          ["📢", "Google & Meta Ads", "Launch & manage campaigns"],
+        ].map(([icon, name, desc]) => (
+          <div key={name} className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-xs opacity-75">
+            <span className="text-lg">{icon}</span>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-ink-900 text-sm">{name}</p>
               <p className="text-xs text-ink-400">{desc}</p>
             </div>
-            <span className="text-[11px] bg-ink-900/[0.05] text-ink-400 rounded-full px-2.5 py-1 whitespace-nowrap">Coming soon</span>
+            <span className="text-[11px] bg-ink-900/[0.05] text-ink-400 rounded-full px-2.5 py-1 whitespace-nowrap">Soon</span>
           </div>
         ))}
       </div>
     </>
-  );
-}
-
-function SafetyCard() {
-  const [s, setS] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [savedMsg, setSavedMsg] = useState("");
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/safety");
-        const j = await res.json();
-        if (active && j.ok) setS(j.settings);
-      } catch {}
-    })();
-    return () => { active = false; };
-  }, []);
-
-  async function save(next) {
-    setS(next);
-    setSaving(true);
-    setSavedMsg("");
-    try {
-      const res = await fetch("/api/safety", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
-      const j = await res.json();
-      if (j.ok) setSavedMsg("Saved");
-    } catch {}
-    setSaving(false);
-    setTimeout(() => setSavedMsg(""), 1500);
-  }
-
-  if (!s) return null;
-
-  const LEVELS = [
-    [1, "Review everything", "Genie proposes; you approve every action. (Default)"],
-    [2, "Auto-approve quick wins", "Low-risk content is approved for you; you still review the rest."],
-    [3, "Auto-execute low-risk", "Low-risk actions run on their own once integrations are live; the rest wait for you."],
-    [4, "Full autopilot", "Genie runs approved playbooks end-to-end. Community & outreach ALWAYS stay human."],
-  ];
-
-  return (
-    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-xs uppercase tracking-wide text-ink-400">Safety & autonomy</p>
-        <span className="text-xs text-emerald-600">{saving ? "Saving…" : savedMsg}</span>
-      </div>
-
-      {/* Kill switch */}
-      <div className={`mt-3 flex items-center gap-3 rounded-xl border p-3 ${s.kill_switch ? "bg-red-50 border-red-200" : "border-ink-900/[0.06]"}`}>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-ink-900">🛑 Kill switch</p>
-          <p className="text-xs text-ink-400">Instantly pauses all Genie auto-activity. Proposals still generate; nothing executes.</p>
-        </div>
-        <button
-          onClick={() => save({ ...s, kill_switch: !s.kill_switch })}
-          className={`w-12 h-7 rounded-full transition relative ${s.kill_switch ? "bg-red-500" : "bg-ink-900/15"}`}
-          aria-label="Toggle kill switch"
-        >
-          <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${s.kill_switch ? "left-[22px]" : "left-0.5"}`} />
-        </button>
-      </div>
-
-      {/* Permission ladder */}
-      <p className="mt-4 text-sm font-semibold text-ink-900">Permission level</p>
-      <p className="text-xs text-ink-400">How much Genie may do on her own once publishing integrations are live. Approvals queue today either way.</p>
-      <div className="mt-2 space-y-1.5">
-        {LEVELS.map(([lvl, name, desc]) => (
-          <button
-            key={lvl}
-            onClick={() => save({ ...s, permission_level: lvl })}
-            className={`w-full text-left flex items-start gap-3 rounded-xl border p-3 transition ${
-              s.permission_level === lvl ? "border-brand-violet/40 bg-brand-violet/5" : "border-ink-900/[0.06] hover:border-brand-violet/20"
-            }`}
-          >
-            <span className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 ${s.permission_level === lvl ? "border-brand-violet bg-brand-violet" : "border-ink-900/20"}`} />
-            <span>
-              <span className="text-sm font-medium text-ink-900">Level {lvl} — {name}</span>
-              <span className="block text-xs text-ink-400">{desc}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Spend cap */}
-      <p className="mt-4 text-sm font-semibold text-ink-900">Monthly ad spend hard-cap</p>
-      <p className="text-xs text-ink-400">Genie can never spend past this on ads — $0 means no ad spend allowed. Applies when ads integrations arrive.</p>
-      <div className="mt-2 flex items-center gap-2">
-        <span className="text-sm font-mono text-ink-600">$</span>
-        <input
-          type="number"
-          min="0"
-          value={s.monthly_spend_cap}
-          onChange={(e) => setS({ ...s, monthly_spend_cap: e.target.value })}
-          onBlur={() => save({ ...s, monthly_spend_cap: Math.max(0, Number(s.monthly_spend_cap) || 0) })}
-          className="w-32 px-3 py-2 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-sm font-mono"
-        />
-        <span className="text-xs text-ink-400">/ month</span>
-      </div>
-
-      <p className="mt-4 text-[11px] text-ink-400">
-        Hard rule at every level: community posts and outreach emails are always drafted for you to review — no setting unlocks auto-posting those.
-      </p>
-    </div>
   );
 }
 
@@ -707,39 +654,49 @@ function computeHealth(hostScans, wp, actions) {
 
 function MasterHealth({ hostScans, host, wp, actions }) {
   const { score, delta } = computeHealth(hostScans, wp, actions);
+  const [showInfo, setShowInfo] = useState(false);
   if (score == null) {
     return (
-      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm text-center">
+      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-8 shadow-sm text-center">
         <p className="text-sm font-semibold text-ink-900">Growth Health</p>
         <p className="mt-1 text-sm text-ink-400">Run your first scan and Genie starts tracking your growth health.</p>
-        <a href="/" className="mt-3 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Run a scan →</a>
+        <a href="/?app=1" className="mt-3 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Run a scan &rarr;</a>
       </div>
     );
   }
-  const color = score >= 75 ? "#059669" : score >= 50 ? "#F59E0B" : "#EF4444";
-  const label = score >= 75 ? "Healthy" : score >= 50 ? "Growing — needs attention" : "Critical — act now";
-  const connectedCount = wp?.connected ? 1 : 0;
-  const narrative =
-    (wp?.connected ? "Blog connected & publishing. " : "Blog scanned but not connected for publishing. ") +
-    "X, LinkedIn & Medium aren't connected yet — connecting them unlocks real reach." +
-    (actions.length > 0 ? ` ${actions.length} action${actions.length > 1 ? "s" : ""} waiting below.` : "");
+  const label = score >= 75 ? "Healthy" : score >= 50 ? "Growing" : "Needs urgent work";
+  const oneLiner = wp?.connected
+    ? `Blog publishing live${actions.length ? ` \u00b7 ${actions.length} action${actions.length>1?"s":""} waiting` : ""}. Connect X, LinkedIn & Medium to unlock reach.`
+    : `Blog scanned${actions.length ? ` \u00b7 ${actions.length} action${actions.length>1?"s":""} waiting` : ""}. Connect publishing & platforms to start growing.`;
   return (
-    <div className="mt-5 rounded-2xl p-6 shadow-lg grad-genie text-white">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm font-semibold text-white/80">Growth Health · {host}</p>
-        {delta != null && delta !== 0 && (
-          <span className="text-sm font-mono font-semibold">{delta > 0 ? "▲ +" : "▼ "}{delta} this scan</span>
-        )}
+    <div className="mt-5 rounded-3xl p-8 md:p-10 shadow-lg grad-genie text-white relative overflow-hidden">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-white/60">Growth Health &middot; {host}</p>
+          <div className="mt-2 flex items-end gap-4 flex-wrap">
+            <span className="font-mono font-bold leading-none" style={{ fontSize: "72px" }}>{score}</span>
+            <div className="mb-2">
+              <span className="text-white/70 text-lg">/ 100</span>
+              <p className="text-sm font-semibold text-white/90">{label}</p>
+            </div>
+            {delta != null && delta !== 0 && (
+              <span className={`mb-3 text-sm font-mono font-bold rounded-full px-3 py-1 ${delta > 0 ? "bg-emerald-400/20 text-emerald-50" : "bg-red-400/20 text-red-50"}`}>
+                {delta > 0 ? "\u25b2 +" : "\u25bc "}{delta} this scan
+              </span>
+            )}
+          </div>
+        </div>
+        <button onClick={() => setShowInfo((v) => !v)} className="text-white/50 hover:text-white text-sm border border-white/20 rounded-full w-6 h-6 flex items-center justify-center shrink-0" title="How this is calculated">i</button>
       </div>
-      <div className="mt-2 flex items-end gap-3">
-        <span className="text-5xl font-mono font-bold leading-none">{score}</span>
-        <span className="text-white/70 text-sm mb-1">/ 100 · {label}</span>
+      <div className="mt-5 h-5 rounded-full bg-white/20 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${score}%`, background: "linear-gradient(90deg,#fca5a5,#fcd34d,#6ee7b7)", transition: "width 1.1s cubic-bezier(.2,.8,.2,1)" }} />
       </div>
-      <div className="mt-3 h-3 rounded-full bg-white/20 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${score}%`, background: "#fff", transition: "width 1s ease" }} />
-      </div>
-      <p className="mt-3 text-sm text-white/80">{narrative}</p>
-      <p className="mt-1 text-[11px] text-white/50">Based on your latest scan + connections · per-platform health deepens as platforms connect</p>
+      <p className="mt-4 text-base text-white/85 font-medium">{oneLiner}</p>
+      {showInfo && (
+        <p className="mt-2 text-[11px] text-white/60 max-w-lg">
+          Based on your latest scan score + which platforms are connected. Per-platform health (impressions, karma, views) deepens as each platform connects.
+        </p>
+      )}
     </div>
   );
 }
@@ -799,26 +756,29 @@ function PlatformGrid({ host, hostScans, wp, actions }) {
     outreach: actions.filter((a) => a.type === "outreach_email" || a.type === "directory_submission").length,
   };
   return (
-    <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
       {PLATFORMS.map((p) => {
         const st = platformState(p.id, { score, wp, counts });
-        const barColor = st.bar >= 75 ? "#059669" : st.bar >= 40 ? "#F59E0B" : st.bar > 0 ? "#F97316" : "#D9DBE6";
+        const val = st.bar;
+        const barColor = val >= 70 ? "linear-gradient(90deg,#34d399,#059669)" : val >= 40 ? "linear-gradient(90deg,#fcd34d,#f59e0b)" : val > 0 ? "linear-gradient(90deg,#fb923c,#ef4444)" : "#E5E7EB";
+        const pill = val >= 70 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : val >= 40 ? "bg-amber-50 text-amber-700 border-amber-200" : val > 0 ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-ink-900/[0.04] text-ink-400 border-ink-900/[0.08]";
         return (
-          <div key={p.id} className="bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-xs flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{p.icon}</span>
-              <span className="text-sm font-semibold text-ink-900">{p.name}</span>
+          <div key={p.id} className="bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm flex flex-col hover:scale-[1.02] hover:shadow-md transition-transform">
+            <div className="flex items-center justify-between">
+              <span className="text-xl">{p.icon}</span>
+              <span className="font-mono font-bold text-ink-900" style={{ fontSize: "30px", lineHeight: 1 }}>{val > 0 ? val : "\u2014"}</span>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-ink-900/[0.06] overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${st.bar}%`, background: barColor, transition: "width 1s ease" }} />
+            <p className="mt-1.5 text-sm font-semibold text-ink-900">{p.name}</p>
+            <div className="mt-2 h-3 rounded-full bg-ink-900/[0.06] overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${Math.max(val, 3)}%`, background: barColor, transition: "width 1s ease" }} />
             </div>
-            <p className="mt-2 text-[11px] text-ink-600">{st.badge}</p>
-            <p className="text-[11px] text-ink-400 font-mono">{st.metric}</p>
-            <div className="mt-auto pt-2">
+            <span className={`mt-2.5 inline-block text-[11px] font-medium px-2 py-0.5 rounded-full border ${pill}`}>{st.badge}</span>
+            <p className="mt-1 text-[11px] text-ink-400 font-mono">{st.metric}</p>
+            <div className="mt-auto pt-3">
               {st.cta[1] ? (
-                <a href={st.cta[1]} className="text-[11px] font-semibold text-brand-violet hover:underline">{st.cta[0]}</a>
+                <a href={st.cta[1]} className="text-xs font-semibold text-brand-violet hover:underline">{st.cta[0]}</a>
               ) : (
-                <span className="text-[11px] text-ink-400/60">{st.cta[0]}</span>
+                <span className="text-xs text-ink-400/60">{st.cta[0]}</span>
               )}
             </div>
           </div>
@@ -928,61 +888,68 @@ function TodaysFocus({ actions, host, onDismiss, onApprove }) {
   const bizParam = host ? `?business=${encodeURIComponent(host)}` : "";
   if (actions.length === 0) {
     return (
-      <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <div className="mt-6 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
         <p className="text-sm font-semibold text-ink-900">Genie's Focus for Today</p>
-        <p className="mt-1 text-sm text-ink-400">
-          Nothing queued yet. Scan a site or generate content and Genie's top priorities show up here.
-        </p>
+        <p className="mt-1 text-sm text-ink-400">Nothing queued yet. Scan a site or generate content and Genie's top priorities show up here.</p>
       </div>
     );
   }
-  const top = actions.slice(0, 3);
-  const rest = actions.slice(3);
-  const Row = (a) => {
-    const m = PRIO_META[a.priority] || PRIO_META.medium;
-    return (
-      <a
-        key={a.id}
-        href={`/dashboard/action/${a.id}${bizParam}`}
-        className="flex items-center gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-3 hover:border-brand-violet/30 hover:shadow-sm transition"
-      >
-        <span className="text-lg">{actionIcon(a.type)}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-ink-900 truncate">{a.title || a.type}</p>
-          <p className="text-xs text-ink-400 capitalize">{String(a.type).replace("_", " ")}</p>
-        </div>
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>
-          {m.icon} {m.label}
-        </span>
-        <span
-          role="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(a.id); }}
-          className="text-[11px] font-semibold text-white grad-genie rounded-lg px-2.5 py-1.5 hover:opacity-90"
-          title={a.target?.humanPost ? "Approve — marks it ready for you to post" : "Approve — queues it to publish"}
-        >
-          ✓ Approve
-        </span>
-      </a>
-    );
-  };
+  const shown = showAll ? actions : actions.slice(0, 3);
   return (
-    <div className="mt-5 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+    <div className="mt-6">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-ink-900">Genie's Focus for Today</p>
-        <span className="text-xs text-ink-400">{actions.length} queued</span>
+        <p className="text-base font-bold text-ink-900">Today's Actions</p>
+        <span className="text-xs text-ink-400 font-mono">{actions.length} queued</span>
       </div>
-      <div className="mt-3 space-y-2">
-        {top.map(Row)}
-        {showAll && rest.map(Row)}
+      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {shown.map((a) => {
+          const m = PRIO_META[a.priority] || PRIO_META.medium;
+          return (
+            <div key={a.id} className="bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{actionIcon(a.type)}</span>
+                <span className={`ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>{m.icon} {m.label}</span>
+              </div>
+              <a href={`/dashboard/action/${a.id}${bizParam}`} className="mt-2 block flex-1">
+                <p className="text-sm font-semibold text-ink-900 line-clamp-2">{a.title || a.type}</p>
+                <p className="mt-0.5 text-xs text-ink-400 capitalize">{String(a.type).replace(/_/g, " ")}</p>
+              </a>
+              <div className="mt-3 flex items-center gap-2">
+                <button onClick={() => onApprove?.(a.id)} className="flex-1 text-xs font-semibold text-white grad-genie rounded-lg py-2 hover:opacity-90">✓ Approve</button>
+                <a href={`/dashboard/action/${a.id}${bizParam}`} className="text-xs font-medium text-brand-violet px-3 py-2 hover:underline">Open</a>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {rest.length > 0 && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className="mt-3 text-sm text-brand-violet font-medium hover:underline"
-        >
+      {actions.length > 3 && (
+        <button onClick={() => setShowAll((v) => !v)} className="mt-3 text-sm text-brand-violet font-medium hover:underline">
           {showAll ? "Show less" : `See all ${actions.length} actions ▾`}
         </button>
       )}
+    </div>
+  );
+}
+
+function WeekStrip({ channels }) {
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  // Rough activity heat: more channels with high cadence => busier week. We mark
+  // weekdays busier than weekends as a simple, honest visual proposal.
+  const weekdayLoad = Math.min(channels.length, 5);
+  return (
+    <div className="mt-3 flex gap-1.5">
+      {DAYS.map((d, i) => {
+        const weekend = i >= 5;
+        const active = weekend ? weekdayLoad >= 4 : i < weekdayLoad + 2;
+        return (
+          <div key={d} className="flex-1 text-center">
+            <div className={`h-10 rounded-lg flex items-center justify-center ${active ? "grad-genie" : "bg-ink-900/[0.05]"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-white" : "bg-ink-200"}`} />
+            </div>
+            <span className="mt-1 block text-[10px] text-ink-400">{d}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1024,6 +991,7 @@ function CadencePlan({ cadence, onGenerate, busy, hasBusiness }) {
         </div>
       </div>
       {cadence.summary && <p className="mt-1 text-xs text-ink-400">{cadence.summary}</p>}
+      <WeekStrip channels={cadence.channels || []} />
       <div className="mt-3 space-y-2">
         {(cadence.channels || []).map((c, i) => (
           <div key={i} className="flex items-start gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-2.5">
