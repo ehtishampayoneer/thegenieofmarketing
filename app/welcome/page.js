@@ -92,7 +92,7 @@ function Welcome() {
       {/* Genie — persists across scenes, only changes behavior */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 -mt-6">
         <motion.div layout animate={{ scale: i === last ? 0.8 : 1 }} transition={{ type: "spring", stiffness: 90, damping: 18 }}>
-          <Genie state={scene.genie} size={180} />
+          <Genie state={scene.genie} size={148} />
         </motion.div>
 
         {/* Scene-specific demonstration sits inside the aperture's field */}
@@ -115,10 +115,10 @@ function Welcome() {
             transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
             className="mt-4 flex flex-col items-center text-center"
           >
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.05]">
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.05]" style={{ filter: "drop-shadow(0 2px 20px rgba(124,58,237,0.35))" }}>
               <GradientText>{scene.headline}</GradientText>
             </h1>
-            <p className="mt-4 text-lg sm:text-xl text-moon-300 max-w-md">{scene.line}</p>
+            <p className="mt-4 text-lg sm:text-xl text-moon-100/90 font-medium max-w-md">{scene.line}</p>
 
             {i === last ? (
               <Invitation url={url} setUrl={setUrl} onLaunch={launch} scanning={scanning} err={err} onSkip={skip} />
@@ -138,7 +138,7 @@ function Welcome() {
       </div>
 
       <div className="relative z-10 pb-6 text-center text-[11px] text-moon-500">
-        {i !== last && "Press Enter to continue"}
+        {i !== last && <span className="text-moon-400">Press Enter to continue</span>}
       </div>
     </main>
   );
@@ -162,8 +162,8 @@ function Invitation({ url, setUrl, onLaunch, scanning, err, onSkip }) {
         </motion.button>
       </GlassPanel>
       {err && <p className="mt-2 text-sm text-red-300 text-center">{err}</p>}
-      <p className="mt-4 text-xs text-moon-500 text-center">Private · No credit card · You see everything first</p>
-      <button onClick={onSkip} className="mt-3 w-full text-center text-xs text-moon-500 hover:text-moon-300 underline transition">skip — take me to my dashboard</button>
+      <p className="mt-4 text-xs text-moon-300 text-center">Private · No credit card · You see everything first</p>
+      <button onClick={onSkip} className="mt-3 w-full text-center text-xs text-moon-300 hover:text-white underline transition">skip — take me to my dashboard</button>
     </motion.div>
   );
 }
@@ -183,7 +183,7 @@ function ScanDemo() {
       <div className="space-y-1.5 relative">
         {[80, 55, 92, 48].map((w, k) => (
           <div key={k} className="flex items-center gap-2">
-            <div className="h-1.5 rounded-full bg-white/12 flex-1" style={{ maxWidth: `${w}%` }} />
+            <div className="h-1.5 rounded-full bg-white/20 flex-1" style={{ maxWidth: `${w}%` }} />
             <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6 + k * 0.3 }} className="text-emerald-400">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
             </motion.span>
@@ -203,7 +203,7 @@ function PlanDemo() {
     <div className="flex gap-2">
       {items.map((G, k) => (
         <motion.div key={k} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 * k, type: "spring", stiffness: 140 }}>
-          <GlassPanel className="w-11 h-11 flex items-center justify-center text-moon-200"><G size={20} /></GlassPanel>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white bg-white/10 border border-white/20 shadow-glow-soft"><G size={22} /></div>
         </motion.div>
       ))}
     </div>
@@ -217,7 +217,7 @@ function ExecutionDemo() {
       {items.map((G, k) => (
         <div key={k} className="relative">
           <motion.div initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.12 * k }}>
-            <GlassPanel className="w-12 h-12 flex items-center justify-center text-moon-200"><G size={20} /></GlassPanel>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white bg-white/10 border border-white/20 shadow-glow-soft"><G size={22} /></div>
           </motion.div>
           <motion.div className="absolute left-1/2 -top-5 w-0.5 -translate-x-1/2"
             style={{ background: "linear-gradient(180deg, transparent, #A78BFA)" }}
