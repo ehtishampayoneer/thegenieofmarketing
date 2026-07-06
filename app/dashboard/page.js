@@ -255,7 +255,10 @@ function Dashboard() {
       {view === "settings" && (
         <SettingsView email={email} onSignOut={signOut} />
       )}
-      {view === "home" && (
+      {view === "home" && scans.length === 0 && !loading && (
+        <WelcomeEmptyState name={email ? email.split("@")[0] : ""} />
+      )}
+      {view === "home" && (scans.length > 0 || loading) && (
         <>
           <h1 className="text-2xl font-extrabold text-ink-900">
             Good morning{email ? `, ${email.split("@")[0]}` : ""}.
@@ -632,6 +635,12 @@ function SettingsView({ email, onSignOut }) {
       </div>
       <DailyBriefCard />
       <SafetyCard />
+      <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+        <p className="text-xs uppercase tracking-wide text-ink-400">Onboarding</p>
+        <a href="/welcome?replay=1" className="mt-1 inline-block text-sm font-medium text-brand-violet hover:underline">
+          ✨ Watch Genie's intro again
+        </a>
+      </div>
       <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm opacity-80">
         <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
         <p className="mt-1 text-sm text-ink-600">Free · plans & billing arrive with launch</p>
@@ -925,6 +934,40 @@ function TodaysFocus({ actions, host, onDismiss, onApprove }) {
           {showAll ? "Show less" : `See all ${actions.length} actions ▾`}
         </button>
       )}
+    </div>
+  );
+}
+
+function WelcomeEmptyState({ name }) {
+  const [url, setUrl] = useState("");
+  function go() {
+    const clean = url.trim();
+    if (!clean) return;
+    const withProto = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`;
+    window.location.href = `/?scan=${encodeURIComponent(withProto)}`;
+  }
+  return (
+    <div className="mt-6 text-center max-w-lg mx-auto">
+      <div className="w-16 h-16 rounded-3xl grad-genie mx-auto shadow-lg" style={{ boxShadow: "0 0 40px rgba(124,58,237,0.35)" }} aria-hidden />
+      <h1 className="mt-5 text-2xl font-extrabold text-ink-900">
+        Good morning{name ? `, ${name}` : ""} 👋
+      </h1>
+      <p className="mt-2 text-ink-600">
+        Let's get started. Give me your website and I'll show you exactly how to grow it — in about 30 seconds.
+      </p>
+      <div className="mt-5 flex flex-col sm:flex-row gap-2">
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && go()}
+          placeholder="yourwebsite.com"
+          className="flex-1 px-5 py-3.5 rounded-xl border border-ink-900/[0.1] bg-surface outline-none focus:ring-2 focus:ring-brand-violet/30 text-center sm:text-left"
+        />
+        <button onClick={go} className="grad-genie text-white font-bold px-7 py-3.5 rounded-xl active:scale-95 transition whitespace-nowrap">
+          Scan my site →
+        </button>
+      </div>
+      <p className="mt-4 text-xs text-ink-400">🔒 Private · No credit card · You'll see everything before Genie does anything</p>
     </div>
   );
 }
