@@ -44,6 +44,21 @@ export default function Home() {
     return () => sub?.subscription?.unsubscribe();
   }, []);
 
+  // Arriving from onboarding (or the empty-state) with ?scan=<url> → run it.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("scan");
+    if (target) {
+      autoRan.current = true;
+      setUrl(target);
+      analyze(target);
+      // clean the URL so a refresh doesn't rescan
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -61,8 +76,8 @@ export default function Home() {
     return () => timers.current.forEach(clearInterval);
   }, [phase]);
 
-  async function analyze() {
-    const clean = url.trim();
+  async function analyze(override) {
+    const clean = (typeof override === "string" ? override : url).trim();
     if (!clean) {
       setPhase("error");
       setErrorMsg("Enter your website address to begin.");
