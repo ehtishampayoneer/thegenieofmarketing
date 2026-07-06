@@ -198,13 +198,18 @@ function Dashboard() {
     .reverse(); // oldest -> newest for the trend line
 
   const view = searchParams.get("view") || "home";
-  const navMap = { home: "home", business: "businesses", actions: "actions", content: "content", opportunities: "opportunities", integrations: "integrations", settings: "settings" };
+  // Operator-model rail: 6 items. Old views redirect to their new homes.
+  const REDIRECTS = { actions: "/tasks", content: "/tasks", business: "/business", opportunities: "/dashboard?view=growth" };
+  useEffect(() => {
+    if (REDIRECTS[view]) router.replace(REDIRECTS[view]);
+  }, [view, router]);
+  const navMap = { home: "home", growth: "growth", history: "history", integrations: "connect", settings: "settings" };
   const navId = navMap[view] || "home";
 
   const pendingCount = bizActions.length;
   const status = pendingCount > 0
-    ? { state: "pending_approval", message: `${pendingCount} item${pendingCount > 1 ? "s" : ""} waiting for your approval.`, actionable: false }
-    : { state: "idle", message: "Genie is idle — run a new scan to give her work.", actionable: false };
+    ? { state: "pending_approval", message: `${pendingCount} thing${pendingCount > 1 ? "s" : ""} ready for your approval.`, actionable: false }
+    : { state: "idle", message: "All caught up. Run a scan to give Genie more to do.", actionable: false };
 
   const genieProps = {
     host,
@@ -222,33 +227,20 @@ function Dashboard() {
   return (
     <AppShell
       nav={navId}
-      businesses={businesses}
-      activeHost={host}
-      onSelectBusiness={(h) => { setHost(h); router.push(`/dashboard?view=business&business=${encodeURIComponent(h)}`); }}
+      taskCount={pendingCount}
+      businessName={host}
       status={status}
       genie={genieProps}
     >
-      {view === "actions" && (
+      {view === "growth" && (
         <>
-          <ActionsView actions={sortByPrio(bizActions)} host={host} />
+          <OpportunitiesView scans={scans} host={host} />
           <div className="mt-6">
             <CadencePlan cadence={cadence} onGenerate={generateCadence} busy={cadenceBusy} hasBusiness={!!host} />
           </div>
         </>
       )}
-      {view === "content" && (
-        <ContentView actions={sortByPrio(bizActions)} host={host} scans={scans} />
-      )}
-      {view === "opportunities" && (
-        <OpportunitiesView scans={scans} host={host} />
-      )}
-      {view === "integrations" && (
-        <IntegrationsView conn={conn} onDisconnect={disconnectGoogle} banner={banner} />
-      )}
-      {view === "settings" && (
-        <SettingsView email={email} onSignOut={signOut} />
-      )}
-      {view === "business" && (
+      {view === "history" && (
         <BusinessView
           host={host}
           hostScans={hostScans}
@@ -256,6 +248,12 @@ function Dashboard() {
           deleting={deleting}
           onDelete={deleteScan}
         />
+      )}
+      {view === "integrations" && (
+        <IntegrationsView conn={conn} onDisconnect={disconnectGoogle} banner={banner} />
+      )}
+      {view === "settings" && (
+        <SettingsView email={email} onSignOut={signOut} />
       )}
       {view === "home" && (
         <>
