@@ -16,9 +16,8 @@ const STATUS_STATES = {
 
 export default function AppShell({
   nav = "home",
-  businesses = [],
-  activeHost,
-  onSelectBusiness,
+  taskCount = 0,
+  businessName,
   status, // { state, message, actionable, onAct }
   genie = {}, // { host, contextChips, quickActions, suggestionCount }
   children,
@@ -30,7 +29,7 @@ export default function AppShell({
     <div className="h-screen flex flex-col bg-canvas overflow-hidden">
       {/* Status strip — full width, above everything */}
       <div className={`border-b px-4 sm:px-6 py-2.5 flex items-center gap-3 ${st.cls}`}>
-        <button className="lg:hidden text-lg" onClick={() => setMobileNav(true)} aria-label="Menu">☰</button>
+        <button className="md:hidden text-lg" onClick={() => setMobileNav(true)} aria-label="Menu">☰</button>
         <span className="text-base leading-none">{st.icon}</span>
         <span className="text-sm font-medium flex-1 truncate">
           {status?.message || "Genie is ready."}
@@ -46,9 +45,8 @@ export default function AppShell({
       <div className="flex-1 flex min-h-0 overflow-hidden">
         <Rail
           active={nav}
-          businesses={businesses}
-          activeHost={activeHost}
-          onSelectBusiness={onSelectBusiness}
+          taskCount={taskCount}
+          businessName={businessName}
           mobileOpen={mobileNav}
           onCloseMobile={() => setMobileNav(false)}
         />
@@ -58,7 +56,7 @@ export default function AppShell({
         </main>
 
         <GeniePanel
-          host={genie.host || activeHost}
+          host={genie.host || businessName}
           contextChips={genie.contextChips || []}
           quickActions={genie.quickActions || []}
           suggestionCount={genie.suggestionCount || 0}
@@ -66,7 +64,7 @@ export default function AppShell({
       </div>
 
       {/* Mobile Genie floating button */}
-      <MobileGenieButton suggestionCount={genie.suggestionCount || 0} host={genie.host || activeHost} />
+      <MobileGenieButton suggestionCount={genie.suggestionCount || 0} host={genie.host || businessName} />
     </div>
   );
 }
