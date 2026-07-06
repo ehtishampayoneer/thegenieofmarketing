@@ -1,121 +1,125 @@
 "use client";
 
-// ── GENIE — THE APERTURE ──
-// Not a ball, not a mascot, not a face. Genie is a focusing aperture of light:
-// a ring/iris that orients, focuses, breathes, and blooms. Personality is
-// expressed through BEHAVIOR — how it focuses and where its attention goes —
-// never through cartoon expressions.
-//
-// The same visual DNA (a lit ring + focal bloom + warm dawn light) is the logo,
-// the loading state, the scan sweep, and the ambient presence. One system.
-//
-// States (behaviors, not decorations):
-//   idle        — slow breath, gentle orient drift (present, at rest)
-//   listening   — iris widens, steady (attending to you)
-//   thinking    — iris tightens, ring rotates (processing)
-//   scanning    — focal sweep, ring rotates faster (examining)
-//   discovering — bloom flash, iris pulses open (found something)
-//   working     — steady rotation + inner light flow (executing)
-//   celebrating — full bloom, rings ripple outward (success)
+// ── GENIE — THE APERTURE (v2, legible) ──
+// A camera-iris of light: SEGMENTED blades with visible gaps so it reads as a
+// focusing aperture, NOT a plain circle. Sharp contrast, a real lens iris, a
+// bright focal center. Personality through behavior (focus, sweep, bloom),
+// never a face. Same DNA = logo, loading, scan.
 
 import { motion } from "framer-motion";
 
 const B = {
-  idle:        { irisScale: [1, 0.94, 1], ringRot: 8,  glow: [0.45, 0.62, 0.45], ringOpacity: 0.9,  spin: 60,  bloom: 0 },
-  listening:   { irisScale: [1.08, 1.12, 1.08], ringRot: 4, glow: [0.55, 0.7, 0.55], ringOpacity: 1, spin: 40, bloom: 0.15 },
-  thinking:    { irisScale: [0.7, 0.6, 0.7], ringRot: 20, glow: [0.4, 0.55, 0.4], ringOpacity: 0.85, spin: 14, bloom: 0 },
-  scanning:    { irisScale: [0.85, 0.7, 0.85], ringRot: 30, glow: [0.6, 0.85, 0.6], ringOpacity: 1, spin: 8, bloom: 0.2 },
-  discovering: { irisScale: [1, 1.25, 1], ringRot: 6, glow: [0.7, 1, 0.7], ringOpacity: 1, spin: 30, bloom: 0.7 },
-  working:     { irisScale: [0.95, 1.02, 0.95], ringRot: 12, glow: [0.55, 0.78, 0.55], ringOpacity: 1, spin: 18, bloom: 0.25 },
-  celebrating: { irisScale: [1.1, 1.3, 1.1], ringRot: 4, glow: [0.75, 1, 0.75], ringOpacity: 1, spin: 24, bloom: 1 },
+  idle:        { iris: [1, 0.92, 1],    spin: 48, glow: [0.5, 0.7, 0.5],  bloom: 0 },
+  listening:   { iris: [1.06, 1.12, 1.06], spin: 40, glow: [0.6, 0.8, 0.6], bloom: 0 },
+  thinking:    { iris: [0.62, 0.5, 0.62], spin: 12, glow: [0.45, 0.6, 0.45], bloom: 0 },
+  scanning:    { iris: [0.8, 0.62, 0.8], spin: 7,  glow: [0.65, 0.95, 0.65], bloom: 0 },
+  discovering: { iris: [1, 1.22, 1],    spin: 26, glow: [0.8, 1, 0.8],    bloom: 1 },
+  working:     { iris: [0.94, 1.02, 0.94], spin: 16, glow: [0.6, 0.85, 0.6], bloom: 0 },
+  celebrating: { iris: [1.08, 1.28, 1.08], spin: 22, glow: [0.85, 1, 0.85], bloom: 1 },
 };
 
-export default function Genie({ state = "idle", size = 140, className = "", float = true }) {
+const BLADES = 6;
+const R_OUT = 78;
+const R_IN = 52;
+
+export default function Genie({ state = "idle", size = 150, className = "", float = true }) {
   const b = B[state] || B.idle;
 
   return (
     <motion.div
       className={`relative ${className}`}
       style={{ width: size, height: size }}
-      animate={{ y: float ? [0, -7, 0] : 0 }}
+      animate={{ y: float ? [0, -6, 0] : 0 }}
       transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
     >
-      {/* Warm outer glow — the dawn atmosphere the aperture casts */}
+      {/* Warm glow behind the aperture (readable halo, not a wash) */}
       <motion.div
         className="absolute inset-0 rounded-full"
-        animate={{ opacity: b.glow, scale: [1, 1.12, 1] }}
-        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ opacity: b.glow, scale: [1, 1.1, 1] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         style={{
-          background: "radial-gradient(circle, rgba(167,139,250,0.55) 0%, rgba(124,58,237,0.32) 38%, rgba(251,146,120,0.10) 62%, transparent 74%)",
-          filter: "blur(6px)",
+          background: "radial-gradient(circle, rgba(167,139,250,0.6) 0%, rgba(124,58,237,0.3) 42%, transparent 68%)",
+          filter: "blur(4px)",
         }}
       />
 
-      {/* Discovery / celebration bloom — a ripple ring that expands outward */}
+      {/* Discovery / celebrate ripple */}
       {(state === "discovering" || state === "celebrating") && (
         <motion.div
-          className="absolute inset-0 rounded-full border"
-          style={{ borderColor: "rgba(221,214,254,0.6)" }}
-          initial={{ scale: 0.6, opacity: 0.8 }}
-          animate={{ scale: 1.8, opacity: 0 }}
+          className="absolute inset-0 rounded-full border-2"
+          style={{ borderColor: "rgba(221,214,254,0.7)" }}
+          initial={{ scale: 0.55, opacity: 0.9 }}
+          animate={{ scale: 1.7, opacity: 0 }}
           transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
         />
       )}
 
       <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full" style={{ overflow: "visible" }}>
         <defs>
-          <radialGradient id="ap-core" cx="50%" cy="45%" r="55%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
-            <stop offset="30%" stopColor="#DDD6FE" stopOpacity="0.85" />
-            <stop offset="70%" stopColor="#7C3AED" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#4F46E5" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="ap-ring" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#DDD6FE" />
-            <stop offset="45%" stopColor="#A78BFA" />
-            <stop offset="80%" stopColor="#7C3AED" />
+          <linearGradient id="ap-blade" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#F5F3FF" />
+            <stop offset="45%" stopColor="#C4B5FD" />
+            <stop offset="80%" stopColor="#8B5CF6" />
             <stop offset="100%" stopColor="#FBA678" />
           </linearGradient>
-          <filter id="ap-glow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="3" result="b" />
+          <radialGradient id="ap-iris" cx="50%" cy="46%" r="55%">
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="26%" stopColor="#E9D5FF" />
+            <stop offset="60%" stopColor="#8B5CF6" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#4F46E5" stopOpacity="0" />
+          </radialGradient>
+          <filter id="ap-soft" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="1.4" result="b" />
             <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
 
-        {/* The rotating aperture ring — the signature silhouette (also the logo) */}
+        {/* Segmented aperture blades — WITH GAPS (reads as an iris, not a ring) */}
         <motion.g
           animate={{ rotate: 360 }}
           transition={{ duration: b.spin, repeat: Infinity, ease: "linear" }}
           style={{ transformOrigin: "100px 100px" }}
+          filter="url(#ap-soft)"
         >
-          <ApertureBlades opacity={b.ringOpacity} />
+          {Array.from({ length: BLADES }).map((_, i) => {
+            const gap = 14; // degrees of gap between blades
+            const seg = 360 / BLADES;
+            const a0 = i * seg + gap / 2;
+            const a1 = (i + 1) * seg - gap / 2;
+            return <IrisBlade key={i} a0={a0} a1={a1} />;
+          })}
         </motion.g>
 
-        {/* Focal iris — dilates/contracts by behavior (the "attention") */}
+        {/* Focal iris core — dilates by behavior */}
         <motion.circle
           cx="100" cy="100"
-          animate={{ r: b.irisScale.map((s) => 34 * s) }}
+          animate={{ r: b.iris.map((s) => 30 * s) }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          fill="url(#ap-core)"
-          filter="url(#ap-glow)"
+          fill="url(#ap-iris)"
         />
-
-        {/* Bright focal point at center — the locus of attention */}
+        {/* Inner lens ring for depth */}
         <motion.circle
-          cx="100" cy="100" r="5"
-          animate={{ opacity: [0.7, 1, 0.7], r: [4, 6, 4] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          cx="100" cy="100"
+          animate={{ r: b.iris.map((s) => 30 * s) }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          fill="none" stroke="rgba(221,214,254,0.5)" strokeWidth="1"
+        />
+        {/* Bright focal point */}
+        <motion.circle
+          cx="100" cy="100"
+          animate={{ opacity: [0.85, 1, 0.85], r: [3.5, 5.5, 3.5] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           fill="#FFFFFF"
-          style={{ filter: "drop-shadow(0 0 6px rgba(255,255,255,0.9))" }}
+          style={{ filter: "drop-shadow(0 0 8px rgba(255,255,255,1))" }}
         />
 
-        {/* Scan sweep — a focal line that passes through when examining */}
+        {/* Scan sweep line */}
         {state === "scanning" && (
           <motion.line
-            x1="40" y1="100" x2="160" y2="100"
-            stroke="rgba(221,214,254,0.8)" strokeWidth="1.5"
-            animate={{ y1: [60, 140, 60], y2: [60, 140, 60], opacity: [0, 1, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            x1="46" x2="154"
+            stroke="rgba(233,213,255,0.9)" strokeWidth="2"
+            animate={{ y1: [58, 142, 58], y2: [58, 142, 58], opacity: [0, 1, 0] }}
+            transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut" }}
           />
         )}
       </svg>
@@ -123,50 +127,44 @@ export default function Genie({ state = "idle", size = 140, className = "", floa
   );
 }
 
-// The aperture blades — 6 arcs forming a camera-iris ring.
-function ApertureBlades({ opacity = 1 }) {
-  const blades = [];
-  const count = 6;
-  for (let i = 0; i < count; i++) {
-    const a = (360 / count) * i;
-    blades.push(
-      <g key={i} transform={`rotate(${a} 100 100)`}>
-        <path
-          d="M100 32 A 68 68 0 0 1 159 66"
-          fill="none"
-          stroke="url(#ap-ring)"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          opacity={opacity}
-        />
-      </g>
-    );
-  }
-  return <g filter="url(#ap-glow)">{blades}</g>;
+// One aperture blade: a thick arc segment between two angles, capped.
+function IrisBlade({ a0, a1 }) {
+  const p = (r, a) => {
+    const rad = (a - 90) * Math.PI / 180;
+    return [100 + r * Math.cos(rad), 100 + r * Math.sin(rad)];
+  };
+  const [x0o, y0o] = p(R_OUT, a0);
+  const [x1o, y1o] = p(R_OUT, a1);
+  const [x1i, y1i] = p(R_IN, a1);
+  const [x0i, y0i] = p(R_IN, a0);
+  const large = 0;
+  const d = `M ${x0o} ${y0o} A ${R_OUT} ${R_OUT} 0 ${large} 1 ${x1o} ${y1o} L ${x1i} ${y1i} A ${R_IN} ${R_IN} 0 ${large} 0 ${x0i} ${y0i} Z`;
+  return <path d={d} fill="url(#ap-blade)" />;
 }
 
-// ── The mark, extracted: a tiny static Aperture for logos / favicons / nav ──
+// ── Static mark for logo / favicon / nav ──
 export function GenieMark({ size = 28, className = "" }) {
+  const p = (r, a) => {
+    const rad = (a - 90) * Math.PI / 180;
+    return [100 + r * Math.cos(rad), 100 + r * Math.sin(rad)];
+  };
+  const blade = (i) => {
+    const gap = 16, seg = 60, a0 = i * seg + gap / 2, a1 = (i + 1) * seg - gap / 2;
+    const [x0o, y0o] = p(74, a0), [x1o, y1o] = p(74, a1), [x1i, y1i] = p(50, a1), [x0i, y0i] = p(50, a0);
+    return `M ${x0o} ${y0o} A 74 74 0 0 1 ${x1o} ${y1o} L ${x1i} ${y1i} A 50 50 0 0 0 ${x0i} ${y0i} Z`;
+  };
   return (
     <svg viewBox="0 0 200 200" width={size} height={size} className={className}>
       <defs>
-        <linearGradient id="mk-ring" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#DDD6FE" />
-          <stop offset="55%" stopColor="#7C3AED" />
-          <stop offset="100%" stopColor="#FBA678" />
+        <linearGradient id="mk-b" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#DDD6FE" /><stop offset="60%" stopColor="#8B5CF6" /><stop offset="100%" stopColor="#FBA678" />
         </linearGradient>
-        <radialGradient id="mk-core" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="60%" stopColor="#A78BFA" />
-          <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
+        <radialGradient id="mk-c" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fff" /><stop offset="70%" stopColor="#A78BFA" /><stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
         </radialGradient>
       </defs>
-      {[0, 60, 120, 180, 240, 300].map((a) => (
-        <g key={a} transform={`rotate(${a} 100 100)`}>
-          <path d="M100 32 A 68 68 0 0 1 159 66" fill="none" stroke="url(#mk-ring)" strokeWidth="9" strokeLinecap="round" />
-        </g>
-      ))}
-      <circle cx="100" cy="100" r="30" fill="url(#mk-core)" />
+      {[0, 1, 2, 3, 4, 5].map((i) => <path key={i} d={blade(i)} fill="url(#mk-b)" />)}
+      <circle cx="100" cy="100" r="26" fill="url(#mk-c)" />
       <circle cx="100" cy="100" r="6" fill="#fff" />
     </svg>
   );
