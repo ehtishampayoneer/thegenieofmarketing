@@ -13,6 +13,25 @@ export async function GET(request) {
     const supabase = createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // First-time users go through onboarding; returning users skip it.
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("onboarding_completed")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (!profile) {
+            // Create the profile row and send them to the intro.
+            await supabase.from("profiles").upsert({ id: user.id, onboarding_completed: false });
+            return NextResponse.redirect(`${origin}/welcome`);
+          }
+          if (!profile.onboarding_completed) {
+            return NextResponse.redirect(`${origin}/welcome`);
+          }
+        }
+      } catch {}
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
