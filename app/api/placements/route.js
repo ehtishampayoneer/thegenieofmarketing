@@ -21,7 +21,21 @@ export async function GET(request) {
   const { data } = await q;
 
   const plan = buildTapPlan(data || []);
-  return json({ ok: true, ...plan });
+  // Results summary: what Genie already posted and how it's performing.
+  const postedList = (data || []).filter((p) => p.status === "posted");
+  const results = {
+    total: postedList.length,
+    winning: postedList.filter((p) => p.performance === "winning").length,
+    flat: postedList.filter((p) => p.performance === "flat").length,
+    dud: postedList.filter((p) => p.performance === "dud").length,
+    pending: postedList.filter((p) => !p.performance || p.performance === "pending").length,
+    top: postedList
+      .filter((p) => p.performance === "winning")
+      .sort((a, b) => (b.engagement?.score || 0) - (a.engagement?.score || 0))
+      .slice(0, 5)
+      .map((p) => ({ title: p.target_title, url: p.target_url, keyword: p.keyword, engagement: p.engagement || null })),
+  };
+  return json({ ok: true, ...plan, results });
 }
 
 // PATCH { id, action } → action: 'posted' | 'skipped' | 'snoozed'
