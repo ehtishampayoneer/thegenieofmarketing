@@ -47,6 +47,7 @@ function Growth() {
   const [ai, setAi] = useState(null);
   const [plan, setPlan] = useState({ blocks: [], totalTaps: 0, totalAuto: 0 });
   const [portfolio, setPortfolio] = useState(null);
+  const [results, setResults] = useState(null);
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async (h) => {
@@ -57,7 +58,7 @@ function Growth() {
       ]);
       const pJson = await pRes.json();
       const kJson = await kRes.json();
-      if (pJson.ok) setPlan({ blocks: pJson.blocks || [], totalTaps: pJson.totalTaps || 0, totalAuto: pJson.totalAuto || 0 });
+      if (pJson.ok) { setPlan({ blocks: pJson.blocks || [], totalTaps: pJson.totalTaps || 0, totalAuto: pJson.totalAuto || 0 }); setResults(pJson.results || null); }
       if (kJson.ok) setPortfolio(kJson);
     } catch {}
   }, []);
@@ -113,6 +114,15 @@ function Growth() {
         fetch("/api/radar/quora", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
         fetch("/api/radar/web", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
       ]);
+      await load(host);
+    } catch {}
+    setBusy("");
+  }
+
+  async function checkResults() {
+    setBusy("results");
+    try {
+      await fetch("/api/engagement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) });
       await load(host);
     } catch {}
     setBusy("");
@@ -194,6 +204,9 @@ function Growth() {
             </div>
           )}
 
+          {/* What Genie already posted — and what he learned */}
+          <ResultsSection results={results} onCheck={checkResults} busy={busy === "results"} />
+
           {/* Keyword portfolio */}
           <KeywordPortfolio portfolio={portfolio} onDerive={deriveKeywords} busy={busy === "keywords"} />
         </>
@@ -262,6 +275,66 @@ function PlacementCard({ item, owned, onAct }) {
         <button onClick={() => onAct(item, "snoozed")} className="text-xs text-ink-400 hover:text-ink-600 px-2">Later</button>
         <button onClick={() => onAct(item, "skipped")} className="text-xs text-ink-400 hover:text-red-500 px-2">Skip</button>
       </div>
+    </div>
+  );
+}
+
+function ResultsSection({ results, onCheck, busy }) {
+  if (!results || results.total === 0) return null;
+  const { total, winning, flat, dud, pending, top } = results;
+  return (
+    <div className="mt-8 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-xl font-extrabold text-ink-900">What Genie posted · results</h2>
+          <p className="text-sm text-ink-400">Genie tracks back every post, doubles down on winners, and bins the duds.</p>
+        </div>
+        <button onClick={onCheck} disabled={busy} className="text-xs bg-surface border border-ink-900/[0.1] text-ink-900 font-semibold px-3 py-2 rounded-xl disabled:opacity-50">
+          {busy ? "Checking…" : "↻ Check my results now"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Stat label="Posted" value={total} tint="text-ink-900" />
+        <Stat label="Winning" value={winning} tint="text-emerald-600" />
+        <Stat label="Flat" value={flat} tint="text-ink-600" />
+        <Stat label="Duds (binned)" value={dud} tint="text-amber-600" />
+        <Stat label="Still fresh" value={pending} tint="text-brand-violet" />
+      </div>
+
+      {top?.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">🔥 Top performers</p>
+          <div className="space-y-2">
+            {top.map((t, i) => (
+              <a key={i} href={t.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-2.5 hover:border-brand-violet/30 transition">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink-900 truncate">{t.title}</p>
+                  {t.keyword && <p className="text-[11px] text-brand-violet">🎯 {t.keyword}</p>}
+                </div>
+                {t.engagement && (
+                  <div className="text-right text-[11px] text-ink-400 font-mono shrink-0">
+                    {t.engagement.upvotes != null && <span className="text-emerald-600">▲ {t.engagement.upvotes}</span>}
+                    {t.engagement.comments != null && <span className="ml-2">💬 {t.engagement.comments}</span>}
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      {winning > 0 && (
+        <p className="mt-3 text-[11px] text-ink-400">Genie drafts follow-up taps for winning threads automatically — look for “Follow-up” cards above.</p>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, tint }) {
+  return (
+    <div className="bg-surface2 border border-ink-900/[0.06] rounded-xl p-3 text-center">
+      <p className={`text-2xl font-mono font-bold leading-none ${tint}`}>{value}</p>
+      <p className="mt-1 text-[11px] text-ink-400">{label}</p>
     </div>
   );
 }
