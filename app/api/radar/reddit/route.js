@@ -10,7 +10,7 @@
 //     genuinely fits — this is what avoids bans and actually ranks.
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
-import { createClient } from "@/lib/supabase/server";
+import { resolveRadarUser } from "@/lib/radar-auth";
 import { redditSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor, nextEligible } from "@/lib/cadence";
@@ -20,17 +20,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST(request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
-
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
+  const { supabase, userId } = await resolveRadarUser(request, body);
+  if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
   const { host, ai } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
   // 1) Pull Genie's keyword portfolio; attack STRONG + GROWING first.
-  const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
+  const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", userId).eq("host", host);
   if (!kwRows || kwRows.length === 0) {
     return json({ ok: false, needsKeywords: true, error: "Genie needs to derive keywords first." }, 400);
   }
@@ -41,7 +39,7 @@ export async function POST(request) {
   // 2) Don't re-stage subreddits still in cooldown or already staged/ready.
   const { data: existing } = await supabase
     .from("placements").select("target_url, meta, status, next_eligible_at")
-    .eq("user_id", user.id).eq("host", host).eq("platform", "reddit");
+    .eq("user_id", userId).eq("host", host).eq("platform", "reddit");
   const now = new Date();
   const blockedSubs = new Set();
   const seenUrls = new Set();
@@ -93,7 +91,7 @@ export async function POST(request) {
     const c = candidates[it.index] || candidates[idx];
     if (!c || it.fit === false || !it.draft) return;
     rows.push({
-      user_id: user.id,
+      user_id: userId,
       host,
       platform: "reddit",
       owned: false,               // Reddit is not ours → human taps
