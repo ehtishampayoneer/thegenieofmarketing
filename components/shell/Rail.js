@@ -6,7 +6,7 @@ import { useState } from "react";
 const NAV = [
   { id: "home", label: "Dashboard", icon: "🏠", href: "/dashboard" },
   { id: "tasks", label: "Tasks", icon: "✅", href: "/tasks", badge: true },
-  { id: "growth", label: "Growth", icon: "📈", href: "/dashboard?view=growth" },
+  { id: "growth", label: "Growth", icon: "📈", href: "/growth" },
   { id: "history", label: "History", icon: "🕐", href: "/dashboard?view=history" },
   { id: "connect", label: "Connect", icon: "🔌", href: "/dashboard?view=integrations" },
   { id: "settings", label: "Settings", icon: "⚙️", href: "/dashboard?view=settings" },
