@@ -64,6 +64,8 @@ export async function GET(request) {
       await runRadar(appUrl, "reddit", { host, ai, _uid: userId });
       await runRadar(appUrl, "quora", { host, ai, _uid: userId });
       await runRadar(appUrl, "web", { host, ai, _uid: userId });
+      // 4) Track back what already posted — learn, double down, bin duds.
+      await runEngagement(appUrl, { host, ai, _uid: userId });
       const after = await countReady(admin, userId, host);
       staged += Math.max(0, after - before);
 
@@ -93,6 +95,17 @@ async function runRadar(appUrl, name, body) {
         "Content-Type": "application/json",
         "x-genie-cron": process.env.CRON_SECRET || "",
       },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90000),
+    });
+  } catch {}
+}
+
+async function runEngagement(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/engagement`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(90000),
     });
