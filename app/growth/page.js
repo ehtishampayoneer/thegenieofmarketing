@@ -104,6 +104,20 @@ function Growth() {
     setBusy("");
   }
 
+  async function runAllRadars() {
+    setBusy("all");
+    // Run the three radars; refresh once at the end so all openings appear together.
+    try {
+      await Promise.allSettled([
+        fetch("/api/radar/reddit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
+        fetch("/api/radar/quora", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
+        fetch("/api/radar/web", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
+      ]);
+      await load(host);
+    } catch {}
+    setBusy("");
+  }
+
   async function act(item, action) {
     // Optimistic: remove from the block.
     setPlan((prev) => ({
@@ -150,8 +164,11 @@ function Growth() {
 
           {/* Scan controls */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={runReddit} disabled={busy === "reddit" || !portfolio?.graded?.length} className="grad-genie text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-              {busy === "reddit" ? "Scanning Reddit…" : "🔍 Find Reddit openings"}
+            <button onClick={runAllRadars} disabled={busy === "all" || !portfolio?.graded?.length} className="grad-genie text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
+              {busy === "all" ? "Scanning everywhere…" : "🔍 Find openings everywhere"}
+            </button>
+            <button onClick={runReddit} disabled={busy || !portfolio?.graded?.length} className="bg-surface border border-ink-900/[0.1] text-ink-900 text-sm font-medium px-3 py-2.5 rounded-xl disabled:opacity-50">
+              {busy === "reddit" ? "Reddit…" : "Reddit only"}
             </button>
             {!portfolio?.graded?.length && (
               <button onClick={deriveKeywords} disabled={busy === "keywords"} className="bg-surface border border-ink-900/[0.1] text-ink-900 text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
@@ -159,12 +176,15 @@ function Growth() {
               </button>
             )}
           </div>
+          {busy === "all" && (
+            <p className="mt-2 text-xs text-ink-400">Genie is searching Reddit, Quora, forums, listicles & guest-post openings for your strong keywords… this takes a moment.</p>
+          )}
 
           {/* Tap blocks */}
           {plan.blocks.length === 0 ? (
             <div className="mt-6 bg-surface border border-ink-900/[0.06] rounded-2xl p-8 text-center shadow-sm">
               <p className="text-sm font-semibold text-ink-900">No openings staged yet</p>
-              <p className="mt-1 text-sm text-ink-400">Hit “Find Reddit openings” and Genie will surface live threads where your product genuinely fits.</p>
+              <p className="mt-1 text-sm text-ink-400">Hit “Find openings everywhere” and Genie will surface live threads, questions, forums, listicles & guest-post spots where your product genuinely fits.</p>
             </div>
           ) : (
             <div className="mt-6 space-y-5">
