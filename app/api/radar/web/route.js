@@ -7,7 +7,7 @@
 // All are non-owned → human taps. Each is triaged by Genie into the right kind.
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
-import { createClient } from "@/lib/supabase/server";
+import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor } from "@/lib/cadence";
@@ -17,22 +17,20 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST(request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
-
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
+  const { supabase, userId } = await resolveRadarUser(request, body);
+  if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
   const { host, ai } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
-  const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
+  const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", userId).eq("host", host);
   if (!kwRows?.length) return json({ ok: false, needsKeywords: true, error: "Genie needs keywords first." }, 400);
   const { graded } = gradePortfolio(kwRows);
   const pool = (graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 5)) || graded.slice(0, 5);
 
   const { data: existing } = await supabase.from("placements").select("target_url, status, next_eligible_at")
-    .eq("user_id", user.id).eq("host", host).in("platform", ["forum", "guest"]);
+    .eq("user_id", userId).eq("host", host).in("platform", ["forum", "guest"]);
   const now = new Date();
   const seen = new Set((existing || []).filter((p) => p.status === "ready" || (p.next_eligible_at && new Date(p.next_eligible_at) > now)).map((p) => p.target_url));
 
@@ -78,7 +76,7 @@ export async function POST(request) {
     if (!c || it.fit === false || !it.draft) return;
     const kind = it.kind || c.hint;
     rows.push({
-      user_id: user.id, host, platform: KIND_TO_PLATFORM[kind] || "forum", owned: false, keyword: c.keyword,
+      user_id: userId, host, platform: KIND_TO_PLATFORM[kind] || "forum", owned: false, keyword: c.keyword,
       target_url: c.url, target_title: c.title.slice(0, 200),
       kind: kind === "listicle" ? "pitch" : kind === "guest" ? "pitch" : "reply",
       draft: it.draft, status: "ready", cooldown_days: cooldownFor(KIND_TO_PLATFORM[kind] || "forum"),
