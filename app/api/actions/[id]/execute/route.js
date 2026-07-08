@@ -41,14 +41,42 @@ export async function POST(_request, { params }) {
   }
 
   // GATE 2 — executable type & state.
-  if (action.type !== "article") {
-    return json({ ok: false, error: "Only articles publish to WordPress right now. More channels are coming." }, 400);
+  const p = action.payload || {};
+  const platform = String(p.platform || action.target?.channel || "").toLowerCase();
+  const isX = action.type === "social_post" && (platform.includes("twitter") || platform.includes("x"))
+    || (action.type === "distribution" && String(p.channel || "").toLowerCase().includes("twitter"));
+  const isArticle = action.type === "article";
+
+  if (!isArticle && !isX) {
+    return json({ ok: false, error: "That action type can't auto-publish yet. More channels are coming." }, 400);
   }
   if (action.status === "done") {
     return json({ ok: true, alreadyDone: true, result: action.result });
   }
   if (action.status === "dismissed" || action.status === "rolled_back") {
     return json({ ok: false, error: `This action was ${action.status.replace("_", " ")} — reopen it before publishing.` }, 400);
+  }
+
+  // ── X / Twitter branch: real auto-post to the user's own account ──
+  if (isX) {
+    const { postToX } = await import("@/lib/x");
+    // A tweet, or a thread (distribution draft may be an array).
+    const content = Array.isArray(p.draft) ? p.draft : (p.text || p.draft || p.body || "");
+    if (!content || (Array.isArray(content) && content.length === 0)) {
+      return json({ ok: false, error: "Nothing to post." }, 400);
+    }
+    await supabase.from("actions").update({ status: "executing", updated_at: new Date().toISOString() }).eq("id", action.id);
+    const r = await postToX(supabase, user.id, content);
+    if (!r.ok) {
+      await supabase.from("actions").update({ status: "failed", result: { error: r.error }, updated_at: new Date().toISOString() }).eq("id", action.id);
+      try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "failed", meta: { error: r.error } }); } catch {}
+      const needsConn = /not connected/i.test(r.error || "");
+      return json({ ok: false, needsConnection: needsConn, error: r.error }, needsConn ? 400 : 502);
+    }
+    const result = { url: r.url, tweetId: r.id, publishedAt: new Date().toISOString(), channel: "x" };
+    await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+    try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
+    return json({ ok: true, result });
   }
 
   // GATE 3 — WordPress connected.
@@ -66,7 +94,6 @@ export async function POST(_request, { params }) {
   await supabase.from("actions").update({ status: "executing", updated_at: new Date().toISOString() }).eq("id", action.id);
 
   // Build the post.
-  const p = action.payload || {};
   const html = markdownToHtml(p.body || "");
   const auth = "Basic " + Buffer.from(`${wp.meta.username}:${wp.access_token}`).toString("base64");
 
