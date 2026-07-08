@@ -149,6 +149,11 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
   const done = action.status === "done";
   const skippable = !done && action.status !== "dismissed";
 
+  // X / Twitter posts (and Twitter-thread distribution) auto-publish for real.
+  const platform = String(p.platform || action.target?.channel || p.channel || "").toLowerCase();
+  const isX = (action.type === "social_post" && (platform.includes("twitter") || platform.includes("x")))
+    || (action.type === "distribution" && platform.includes("twitter"));
+
   let primary = null;
   if (done && action.result?.url) {
     primary = (
@@ -159,11 +164,11 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
     );
   } else if (done) {
     primary = <span className="flex-1 text-center text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3">✓ Done</span>;
-  } else if (action.type === "article") {
+  } else if (action.type === "article" || isX) {
     primary = (
       <button onClick={onPublish} disabled={working}
         className="flex-1 grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99] disabled:opacity-60">
-        {working ? "Publishing…" : action.status === "failed" ? "🚀 Retry publish" : "🚀 Publish now"}
+        {working ? "Publishing…" : action.status === "failed" ? "🚀 Retry publish" : isX ? "🚀 Post to X" : "🚀 Publish now"}
       </button>
     );
   } else if (action.type === "outreach_email") {
