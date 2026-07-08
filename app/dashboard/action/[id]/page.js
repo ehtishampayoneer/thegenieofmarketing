@@ -164,11 +164,16 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
     );
   } else if (done) {
     primary = <span className="flex-1 text-center text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3">✓ Done</span>;
-  } else if (action.type === "article" || isX) {
+  } else if (isX) {
+    // Free tap-to-post: open X's composer pre-filled; user taps Post.
+    // (No X API credits needed. Paid auto-post path remains in the execute
+    //  route if ever enabled, but tap-to-post is the default.)
+    primary = <PostToX payload={p} />;
+  } else if (action.type === "article") {
     primary = (
       <button onClick={onPublish} disabled={working}
         className="flex-1 grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99] disabled:opacity-60">
-        {working ? "Publishing…" : action.status === "failed" ? "🚀 Retry publish" : isX ? "🚀 Post to X" : "🚀 Publish now"}
+        {working ? "Publishing…" : action.status === "failed" ? "🚀 Retry publish" : "🚀 Publish now"}
       </button>
     );
   } else if (action.type === "outreach_email") {
@@ -210,6 +215,37 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
           ✍️ Drafted for you to post from your own account — Genie never auto-posts community or outreach.
         </p>
       )}
+    </div>
+  );
+}
+
+function PostToX({ payload }) {
+  const [copied, setCopied] = useState(false);
+  // Single tweet, or the first part of a thread (X intent pre-fills one tweet).
+  const parts = Array.isArray(payload.draft)
+    ? payload.draft
+    : String(payload.text || payload.draft || "").split(/\n\n+/).filter(Boolean);
+  const first = parts[0] || String(payload.text || payload.draft || "");
+  const isThread = parts.length > 1;
+  const full = parts.join("\n\n");
+
+  function go() {
+    // Copy the FULL content (so threads are available to paste), open X pre-filled with the first tweet.
+    try { navigator.clipboard.writeText(full); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
+    const intent = `https://x.com/intent/tweet?text=${encodeURIComponent(first.slice(0, 280))}`;
+    window.open(intent, "_blank");
+  }
+  return (
+    <div className="flex-1">
+      <button onClick={go}
+        className="w-full grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99]">
+        {copied ? "✓ Opened X — just tap Post" : "𝕏 Post to X — one tap"}
+      </button>
+      <p className="mt-2 text-center text-[11px] text-ink-400">
+        {isThread
+          ? "Opens X with the first tweet filled in. Your full thread is copied — paste each part as replies."
+          : "Opens X with your tweet filled in. Just tap Post — no API fees."}
+      </p>
     </div>
   );
 }
