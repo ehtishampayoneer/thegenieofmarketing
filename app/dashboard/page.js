@@ -453,13 +453,13 @@ function IntegrationsView({ conn, onDisconnect, banner }) {
       <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-3">
         <ConnectionCard conn={conn} onDisconnect={onDisconnect} />
         <WordPressCard />
+        <XCard />
       </div>
 
       <p className="mt-8 text-sm font-semibold text-ink-400">○ Coming soon</p>
       <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
         {[
           ["📈", "Google Analytics", "Real visitor traffic · +15% accuracy"],
-          ["⚫", "X / Twitter", "Auto-post approved threads & posts"],
           ["🔷", "LinkedIn", "Auto-post articles & updates"],
           ["🟢", "Medium", "Republish for reach (canonical)"],
           ["🛍️", "Shopify", "Auto-edit products & sales data"],
@@ -581,6 +581,36 @@ function WordPressCard() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function XCard() {
+  const [x, setX] = useState(null);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try { const r = await fetch("/api/connect/x"); const j = await r.json(); if (active) setX(j); } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
+  async function disconnect() {
+    if (!confirm("Disconnect X? Genie won't be able to auto-post to your account.")) return;
+    try { await fetch("/api/connect/x", { method: "DELETE" }); setX({ ok: true, connected: false }); } catch {}
+  }
+  const connected = x?.connected;
+  return (
+    <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm flex items-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-ink-900 text-white flex items-center justify-center font-bold">𝕏</div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-ink-900 text-sm">X / Twitter</p>
+        {connected
+          ? <p className="text-xs text-emerald-700 truncate">Connected · @{x.handle || "account"} · Genie auto-posts</p>
+          : <p className="text-xs text-ink-400">Connect so Genie posts tweets & threads for real.</p>}
+      </div>
+      {connected
+        ? <button onClick={disconnect} className="text-sm text-ink-400 hover:text-red-500 transition">Disconnect</button>
+        : <a href="/api/connect/x/start" className="grad-genie text-white text-sm font-semibold px-4 py-2 rounded-xl whitespace-nowrap">Connect</a>}
     </div>
   );
 }
