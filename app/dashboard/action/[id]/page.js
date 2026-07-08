@@ -153,6 +153,8 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
   const platform = String(p.platform || action.target?.channel || p.channel || "").toLowerCase();
   const isX = (action.type === "social_post" && (platform.includes("twitter") || platform.includes("x")))
     || (action.type === "distribution" && platform.includes("twitter"));
+  const isLinkedIn = platform.includes("linkedin");
+  const isMedium = platform.includes("medium");
 
   let primary = null;
   if (done && action.result?.url) {
@@ -166,9 +168,15 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
     primary = <span className="flex-1 text-center text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3">✓ Done</span>;
   } else if (isX) {
     // Free tap-to-post: open X's composer pre-filled; user taps Post.
-    // (No X API credits needed. Paid auto-post path remains in the execute
-    //  route if ever enabled, but tap-to-post is the default.)
     primary = <PostToX payload={p} />;
+  } else if (isLinkedIn) {
+    primary = <TapPost payload={p} label="in Post to LinkedIn — one tap"
+      urlFor={(text) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text.slice(0, 2900))}`}
+      hint="Opens LinkedIn's composer with your post copied. Paste & share — no API fees." />;
+  } else if (isMedium) {
+    primary = <TapPost payload={p} label="M Post to Medium — one tap"
+      urlFor={() => "https://medium.com/new-story"}
+      hint="Opens Medium's editor. Your story is copied — paste & publish." />;
   } else if (action.type === "article") {
     primary = (
       <button onClick={onPublish} disabled={working}
@@ -177,13 +185,7 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
       </button>
     );
   } else if (action.type === "outreach_email") {
-    const { subject, body } = splitEmail(p.draft || "");
-    primary = (
-      <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-        className="flex-1 text-center grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99]">
-        ✉️ Send from your email
-      </a>
-    );
+    primary = <SendOutreach action={action} />;
   } else if (action.target?.humanPost || action.type === "community_engagement") {
     primary = <CopyAndGo payload={p} />;
   } else if (action.status === "proposed") {
@@ -216,6 +218,67 @@ function PrimaryCTA({ action, working, onPublish, onApprove, onSkip }) {
         </p>
       )}
     </div>
+  );
+}
+
+// Generic tap-to-post: copy the content, open the platform composer/editor.
+function TapPost({ payload, label, urlFor, hint }) {
+  const [copied, setCopied] = useState(false);
+  const content = Array.isArray(payload.draft) ? payload.draft.join("\n\n") : String(payload.body || payload.text || payload.draft || "");
+  function go() {
+    try { navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
+    window.open(urlFor(content), "_blank");
+  }
+  return (
+    <div className="flex-1">
+      <button onClick={go} className="w-full grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99]">
+        {copied ? "✓ Opened — paste & publish" : label}
+      </button>
+      <p className="mt-2 text-center text-[11px] text-ink-400">{hint}</p>
+    </div>
+  );
+}
+
+// Real email outreach send via Genie (Resend). Falls back to mailto if no
+// recipient or email isn't configured.
+function SendOutreach({ action }) {
+  const p = action.payload || {};
+  const to = p.to || p.recipient || action.target?.email || "";
+  const [state, setState] = useState("idle"); // idle | sending | sent | error
+  const [msg, setMsg] = useState("");
+  const { subject, body } = splitEmail(p.draft || p.body || "");
+
+  async function send() {
+    setState("sending"); setMsg("");
+    try {
+      const res = await fetch("/api/outreach/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actionId: action.id }) });
+      const j = await res.json();
+      if (j.ok) { setState("sent"); }
+      else { setState("error"); setMsg(j.error || "Couldn't send."); }
+    } catch { setState("error"); setMsg("Couldn't send."); }
+  }
+
+  if (state === "sent" || action.status === "done") {
+    return <span className="flex-1 text-center text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3">✓ Sent{to ? ` to ${to}` : ""}</span>;
+  }
+
+  // If we have a recipient → real auto-send. Otherwise fall back to opening the user's mail app.
+  if (to) {
+    return (
+      <div className="flex-1">
+        <button onClick={send} disabled={state === "sending"} className="w-full grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99] disabled:opacity-60">
+          {state === "sending" ? "Sending…" : `✉️ Send to ${to} — Genie sends it`}
+        </button>
+        {state === "error" && <p className="mt-2 text-center text-[11px] text-red-500">{msg}</p>}
+        {state !== "error" && <p className="mt-2 text-center text-[11px] text-ink-400">Genie sends this for real via email — no tab-switching.</p>}
+      </div>
+    );
+  }
+  return (
+    <a href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+      className="flex-1 text-center grad-genie text-white font-semibold px-5 py-3 rounded-xl active:scale-[0.99]">
+      ✉️ Open in your email
+    </a>
   );
 }
 
