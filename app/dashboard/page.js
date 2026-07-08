@@ -28,6 +28,7 @@ function Dashboard() {
   const [cadence, setCadence] = useState(null);
   const [cadenceBusy, setCadenceBusy] = useState(false);
   const [wp, setWp] = useState(null);
+  const [xConn, setXConn] = useState(null);
 
   useEffect(() => {
     if (searchParams.get("connected")) setBanner("✓ Google Search Console connected.");
@@ -75,6 +76,9 @@ function Dashboard() {
         const wRes = await fetch("/api/connect/wordpress");
         const wJson = await wRes.json();
         if (active) setWp(wJson);
+        const xRes = await fetch("/api/connect/x");
+        const xJson = await xRes.json();
+        if (active) setXConn(xJson);
       } catch {}
       if (active) setLoading(false);
     })();
@@ -272,7 +276,7 @@ function Dashboard() {
 
           <MasterHealth hostScans={hostScans} host={host} wp={wp} actions={bizActions} />
 
-          <PlatformGrid host={host} hostScans={hostScans} wp={wp} actions={bizActions} spendCap={0} />
+          <PlatformGrid host={host} hostScans={hostScans} wp={wp} actions={bizActions} xConn={xConn} spendCap={0} />
 
           <TodaysFocus
             actions={sortByPrio(bizActions)}
@@ -749,13 +753,15 @@ const PLATFORMS = [
   { id: "backlinks", icon: "🔗", name: "Backlinks" },
 ];
 
-function platformState(id, { score, wp, counts }) {
+function platformState(id, { score, wp, counts, xConn }) {
   switch (id) {
     case "blog":
       if (wp?.connected && score != null) return { bar: score, badge: score >= 75 ? "Healthy ✅" : "Needs attention ⚠️", metric: `score ${score}`, cta: ["Details →", "/dashboard?view=business"] };
       if (score != null) return { bar: score, badge: "Scanned · publish not connected ⚠️", metric: `score ${score}`, cta: ["Connect →", "/dashboard?view=integrations"] };
       return { bar: 0, badge: "Not scanned 🔒", metric: "—", cta: ["Scan →", "/"] };
     case "x":
+      if (xConn?.connected) return { bar: 40, badge: `Connected · @${xConn.handle || "you"} ✅`, metric: "auto-posts", cta: ["Manage →", "/dashboard?view=integrations"] };
+      return { bar: 0, badge: "Not connected 🔒", metric: "—", cta: ["Connect →", "/dashboard?view=integrations"] };
     case "linkedin":
     case "medium":
       return { bar: 0, badge: "Not connected 🔒", metric: "—", cta: ["Coming soon", null] };
@@ -784,7 +790,7 @@ function platformState(id, { score, wp, counts }) {
   }
 }
 
-function PlatformGrid({ host, hostScans, wp, actions }) {
+function PlatformGrid({ host, hostScans, wp, actions, xConn }) {
   const latest = hostScans[hostScans.length - 1];
   const score = latest?.overall_score ?? null;
   const counts = {
@@ -795,7 +801,7 @@ function PlatformGrid({ host, hostScans, wp, actions }) {
   return (
     <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
       {PLATFORMS.map((p) => {
-        const st = platformState(p.id, { score, wp, counts });
+        const st = platformState(p.id, { score, wp, counts, xConn });
         const val = st.bar;
         const barColor = val >= 70 ? "linear-gradient(90deg,#34d399,#059669)" : val >= 40 ? "linear-gradient(90deg,#fcd34d,#f59e0b)" : val > 0 ? "linear-gradient(90deg,#fb923c,#ef4444)" : "#E5E7EB";
         const pill = val >= 70 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : val >= 40 ? "bg-amber-50 text-amber-700 border-amber-200" : val > 0 ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-ink-900/[0.04] text-ink-400 border-ink-900/[0.08]";
