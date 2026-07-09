@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf, businessesFromScans } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
+import ActivityFeed from "@/components/ActivityFeed";
 
 const PLATFORM_META = {
   reddit: { label: "Reddit", icon: "R", tint: "text-orange-600 bg-orange-50 border-orange-200" },
@@ -189,6 +190,11 @@ function Growth() {
           {busy === "all" && (
             <p className="mt-2 text-xs text-ink-400">Genie is searching Reddit, Quora, forums, listicles & guest-post openings for your strong keywords… this takes a moment.</p>
           )}
+
+          {/* Live "Genie is working" feed — the wow */}
+          <div className="mt-5">
+            <ActivityFeed host={host} live={!!busy} />
+          </div>
 
           {/* Tap blocks */}
           {plan.blocks.length === 0 ? (
