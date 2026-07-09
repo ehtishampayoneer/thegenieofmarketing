@@ -87,10 +87,10 @@ function Growth() {
     return () => { active = false; };
   }, [router, searchParams, load]);
 
-  async function deriveKeywords() {
+  async function deriveKeywords(productOverride) {
     setBusy("keywords");
     try {
-      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) });
+      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai, productOverride: productOverride || undefined }) });
       const j = await res.json();
       if (j.ok) setPortfolio(j);
     } catch {}
@@ -345,6 +345,42 @@ function Stat({ label, value, tint }) {
   );
 }
 
+function ProductCorrection({ onDerive, busy }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      {!open ? (
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Do these keywords match your product?</span> If Genie misread what you do, correct him in one line.
+          </p>
+          <button onClick={() => setOpen(true)} className="text-sm font-semibold text-amber-800 underline">Fix my keywords →</button>
+        </div>
+      ) : (
+        <div>
+          <p className="text-sm font-semibold text-amber-900">Tell Genie exactly what your product is</p>
+          <p className="text-xs text-amber-700 mt-0.5">One clear sentence — the benefit customers get, not the tech. Genie will rebuild the whole strategy.</p>
+          <textarea
+            value={text} onChange={(e) => setText(e.target.value)}
+            placeholder="e.g. An online store where customers view products in AR inside their room before buying — like Amazon but you try items in your space first."
+            className="mt-2 w-full rounded-xl border border-amber-300 bg-white p-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-amber-300 min-h-[70px]"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              onClick={() => { if (text.trim()) onDerive(text.trim()); setOpen(false); }}
+              disabled={busy || !text.trim()}
+              className="grad-genie text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-50">
+              {busy ? "Rebuilding…" : "Rebuild my keywords →"}
+            </button>
+            <button onClick={() => setOpen(false)} className="text-sm text-amber-700">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KeywordPortfolio({ portfolio, onDerive, busy }) {
   if (!portfolio || !portfolio.graded?.length) {
     return (
@@ -364,6 +400,7 @@ function KeywordPortfolio({ portfolio, onDerive, busy }) {
 
   return (
     <div className="mt-8">
+      <ProductCorrection onDerive={onDerive} busy={busy} />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-extrabold text-ink-900">Keyword portfolio</h2>
