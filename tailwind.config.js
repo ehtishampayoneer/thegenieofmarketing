@@ -39,12 +39,6 @@ module.exports = {
         surface2: "#FAFBFB",
         rail: "#FFFFFF",
         hairline: "#E9ECEE",
-        ink: {
-          900: "#0F1222",
-          600: "#4A4E63",
-          400: "#6B7280",
-          200: "#D9DBE6",
-        },
         brand: {
           purple: "#6B21A8",
           violet: "#7C3AED",
