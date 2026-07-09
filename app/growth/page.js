@@ -88,9 +88,10 @@ function Growth() {
   }, [router, searchParams, load]);
 
   async function deriveKeywords(productOverride) {
+    const override = typeof productOverride === "string" ? productOverride : undefined;
     setBusy("keywords");
     try {
-      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai, productOverride: productOverride || undefined }) });
+      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai, productOverride: override }) });
       const j = await res.json();
       if (j.ok) setPortfolio(j);
     } catch {}
