@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { businessesFromScans, businessName, hostOf as bHostOf } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
+import { BrandIcon } from "@/components/ui/BrandIcon";
 
 function greeting() {
   const h = new Date().getHours();
@@ -890,7 +891,7 @@ function PlatformGrid({ host, hostScans, wp, actions, xConn }) {
         return (
           <div key={p.id} className="bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm flex flex-col hover:scale-[1.02] hover:shadow-md transition-transform">
             <div className="flex items-center justify-between">
-              <span className="text-xl">{p.icon}</span>
+              <BrandIcon brand={p.id === "blog" ? "blog" : p.id === "x" ? "x" : p.id} size={18} />
               <span className="font-mono font-bold text-ink-900" style={{ fontSize: "30px", lineHeight: 1 }}>{val > 0 ? val : "\u2014"}</span>
             </div>
             <p className="mt-1.5 text-sm font-semibold text-ink-900">{p.name}</p>
