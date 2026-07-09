@@ -26,19 +26,12 @@ export default function AppShell({
   const st = STATUS_STATES[status?.state] || STATUS_STATES.idle;
 
   return (
-    <div className="h-screen flex flex-col bg-canvas overflow-hidden">
-      {/* Status strip — full width, above everything */}
-      <div className={`border-b px-4 sm:px-6 py-2.5 flex items-center gap-3 ${st.cls}`}>
-        <button className="md:hidden text-lg" onClick={() => setMobileNav(true)} aria-label="Menu">☰</button>
-        <span className="text-base leading-none">{st.icon}</span>
-        <span className="text-sm font-medium flex-1 truncate">
-          {status?.message || "Genie is ready."}
-        </span>
-        {status?.actionable && (
-          <button onClick={status.onAct} className="text-sm font-semibold underline whitespace-nowrap">
-            View
-          </button>
-        )}
+    <div className="h-screen flex flex-col bg-paper overflow-hidden">
+      {/* Minimal top bar — just mobile menu; content breathes */}
+      <div className="md:hidden border-b border-hairline px-4 py-3 flex items-center gap-3 bg-panel">
+        <button className="text-xl text-ink" onClick={() => setMobileNav(true)} aria-label="Menu">☰</button>
+        <img src="/logo.png" alt="Marketing Genie" width={26} height={26} style={{ objectFit: "contain" }} />
+        <span className="font-bold text-ink text-sm">Marketing Genie</span>
       </div>
 
       {/* Three zones */}
