@@ -73,3 +73,29 @@ html, body {
 /* thin scrollbars for panels */
 .thin-scroll::-webkit-scrollbar { width: 6px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: rgba(16,18,34,0.12); border-radius: 999px; }
+
+/* ── LIGHT-PREMIUM DESIGN SYSTEM (Linear/Stripe tier) ── */
+:root {
+  --shadow-card: 0 1px 2px rgba(16,18,34,0.04), 0 1px 3px rgba(16,18,34,0.02);
+  --shadow-lift: 0 4px 16px rgba(16,18,34,0.06), 0 1px 3px rgba(16,18,34,0.03);
+  --shadow-pop: 0 12px 32px rgba(79,70,229,0.10), 0 4px 12px rgba(16,18,34,0.05);
+  --aperture: linear-gradient(135deg, #A78BFA 0%, #7C3AED 45%, #FB923C 100%);
+}
+.card-premium { background:#fff; border:1px solid #EDEEF3; border-radius:20px; box-shadow:var(--shadow-card); transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease; }
+.card-premium:hover { box-shadow:var(--shadow-lift); border-color:#E3E4EC; }
+.card-interactive:hover { transform: translateY(-2px); box-shadow:var(--shadow-pop); border-color:rgba(124,58,237,0.2); }
+.aperture-grad { background-image: var(--aperture); }
+.aperture-text { background-image: var(--aperture); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.btn-primary { background-image: linear-gradient(135deg,#7C3AED,#4F46E5); color:#fff; border-radius:12px; font-weight:600; box-shadow:0 1px 2px rgba(124,58,237,0.3); transition:transform .15s ease, box-shadow .2s ease; }
+.btn-primary:hover { box-shadow:0 6px 18px rgba(124,58,237,0.32); }
+.btn-primary:active { transform:scale(0.98); }
+.hairline { border-color:#EDEEF3; }
+
+/* Living-motion utilities */
+@keyframes rise-fade { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:translateY(0);} }
+.animate-rise { animation: rise-fade .5s cubic-bezier(0.2,0.8,0.2,1) both; }
+@keyframes shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+.shimmer { background:linear-gradient(90deg,#F0F1F5 25%,#F7F8FB 50%,#F0F1F5 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
+@keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+.animate-soft-pulse { animation: soft-pulse 2s ease-in-out infinite; }
+.timeline-line { background: linear-gradient(180deg, #EDEEF3 0%, #EDEEF3 100%); }
