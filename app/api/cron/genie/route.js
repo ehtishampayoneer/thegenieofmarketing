@@ -66,6 +66,8 @@ export async function GET(request) {
       await runRadar(appUrl, "web", { host, ai, _uid: userId });
       // 4) Track back what already posted — learn, double down, bin duds.
       await runEngagement(appUrl, { host, ai, _uid: userId });
+      // 5) Scan for new replies → draft answers → notify (never go silent).
+      await runNotifications(appUrl, { host, ai, _uid: userId });
       const after = await countReady(admin, userId, host);
       staged += Math.max(0, after - before);
 
@@ -104,6 +106,17 @@ async function runRadar(appUrl, name, body) {
 async function runEngagement(appUrl, body) {
   try {
     await fetch(`${appUrl}/api/engagement`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90000),
+    });
+  } catch {}
+}
+
+async function runNotifications(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/notifications`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
