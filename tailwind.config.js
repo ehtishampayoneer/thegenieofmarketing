@@ -12,12 +12,33 @@ module.exports = {
           ink: "#111827",
           mist: "#FAFAFA",
         },
-        // New system — layered surfaces (Linear/Stripe light-premium)
-        canvas: "#F7F8FB",
+        // ── NEW SYSTEM: ink + paper + one whisper of accent ──
+        paper: "#F8F8F6",       // off-white canvas
+        panel: "#FFFFFF",        // cards
+        ink: {
+          DEFAULT: "#11202E",   // near-black — primary
+          900: "#11202E",
+          800: "#1B2A38",
+          700: "#2C3A47",
+          600: "#4A5561",
+          500: "#697682",
+          400: "#8A949E",
+          300: "#B4BCC3",
+          200: "#D6DBDF",
+          100: "#E9ECEE",
+          50: "#F2F4F4",
+        },
+        accent: {
+          DEFAULT: "#1E9E6A",   // muted emerald — ONLY for live/winning/done
+          soft: "#E6F4EE",
+          ink: "#127350",
+        },
+        // legacy surfaces kept as aliases so old screens don't break mid-migration
+        canvas: "#F8F8F6",
         surface: "#FFFFFF",
-        surface2: "#FAFBFD",
-        rail: "#FCFCFE",
-        hairline: "#EDEEF3",
+        surface2: "#FAFBFB",
+        rail: "#FFFFFF",
+        hairline: "#E9ECEE",
         ink: {
           900: "#0F1222",
           600: "#4A4E63",
