@@ -11,6 +11,7 @@ import { callAI } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { readEngagement, classifyPerformance } from "@/lib/engagement";
 import { cooldownFor } from "@/lib/cadence";
+import { logActivity, logActivityBatch } from "@/lib/activity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +86,12 @@ export async function POST(request) {
     } catch {}
   }
 
+  const acts = [];
+  if (checked) acts.push({ host, verb: "learning", message: `Checked results on ${checked} post${checked>1?"s":""}`, meta: { checked } });
+  if (winners) acts.push({ host, verb: "traction", message: `${winners} post${winners>1?"s":""} winning — doubling down`, meta: { winners } });
+  if (duds) acts.push({ host, verb: "retired", message: `Binned ${duds} underperformer${duds>1?"s":""}`, meta: { duds } });
+  if (followupsDrafted) acts.push({ host, verb: "writing", message: `Drafted ${followupsDrafted} follow-up${followupsDrafted>1?"s":""}`, meta: { followupsDrafted } });
+  await logActivityBatch(supabase, userId, acts);
   return json({ ok: true, checked, winners, duds, followupsDrafted });
 }
 
