@@ -14,6 +14,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { redditSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor, nextEligible } from "@/lib/cadence";
+import { logActivity, logActivityBatch } from "@/lib/activity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function POST(request) {
   const { graded } = gradePortfolio(kwRows);
   const targets = graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 6);
   const pool = targets.length ? targets : graded.slice(0, 6);
+  await logActivity(supabase, userId, { host, verb: "scanning", message: `Scanning Reddit for ${pool.length} keyword${pool.length > 1 ? "s" : ""}`, detail: pool.slice(0, 3).map((k) => k.keyword).join(", "), meta: { platform: "reddit" } });
 
   // 2) Don't re-stage subreddits still in cooldown or already staged/ready.
   const { data: existing } = await supabase
@@ -112,6 +114,13 @@ export async function POST(request) {
 
   const { data: inserted, error } = await supabase.from("placements").insert(rows).select("id");
   if (error) return json({ ok: false, error: error.message }, 500);
+
+  // Narrate the work: what Genie discovered + staged.
+  await logActivityBatch(supabase, userId, [
+    { host, verb: "discovered", message: `Found ${rows.length} Reddit opening${rows.length > 1 ? "s" : ""}`, detail: rows.slice(0, 3).map((r) => r.target_title).join(" · "), meta: { platform: "reddit", count: rows.length } },
+    { host, verb: "writing", message: `Wrote ${rows.length} value-first repl${rows.length > 1 ? "ies" : "y"}`, meta: { platform: "reddit" } },
+    { host, verb: "staged", message: `Staged ${rows.length} Reddit tap${rows.length > 1 ? "s" : ""} for you`, meta: { platform: "reddit", count: rows.length } },
+  ]);
 
   return json({ ok: true, staged: (inserted || []).length, keywordsAttacked: pool.map((k) => k.keyword) });
 }
