@@ -7,6 +7,7 @@ const NAV = [
   { id: "home", label: "Dashboard", icon: "🏠", href: "/dashboard" },
   { id: "tasks", label: "Tasks", icon: "✅", href: "/tasks", badge: true },
   { id: "growth", label: "Growth", icon: "📈", href: "/growth" },
+  { id: "notifications", label: "Inbox", icon: "📬", href: "/notifications" },
   { id: "history", label: "History", icon: "🕐", href: "/dashboard?view=history" },
   { id: "connect", label: "Connect", icon: "🔌", href: "/dashboard?view=integrations" },
   { id: "settings", label: "Settings", icon: "⚙️", href: "/dashboard?view=settings" },
