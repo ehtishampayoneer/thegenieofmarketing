@@ -18,8 +18,8 @@ const NAV = [
 export default function Rail({ active = "home", taskCount = 0, businessName, mobileOpen, onCloseMobile }) {
   const body = (
     <nav className="flex flex-col h-full bg-panel">
-      <div className="px-5 py-5 flex items-center gap-2.5 border-b border-hairline">
-        <LogoMark size={30} />
+      <div className="px-4 py-4 flex items-center gap-2.5 border-b border-hairline">
+        <LogoMark size={40} />
         <span className="font-bold tracking-tight text-ink hidden xl:inline text-[15px]">Marketing Genie</span>
       </div>
 
