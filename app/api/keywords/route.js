@@ -42,7 +42,7 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
-  const { host, ai } = body || {};
+  const { host, ai, productOverride } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
   let derived = null;
@@ -53,7 +53,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 1800,
       temperature: 0.5,
-      prompt: buildPrompt(host, ai),
+      prompt: buildPrompt(host, ai, productOverride),
     });
     derived = result.json;
   } catch (e) {
@@ -82,6 +82,11 @@ export async function POST(request) {
   }).filter((r) => r.keyword);
 
   // Upsert (Genie can re-derive; keep coverage + real GSC data on existing rows).
+  // If the owner corrected the product, wipe the wrong keywords first so the
+  // fresh, correct set fully replaces them (not merged).
+  if (productOverride) {
+    await supabase.from("keywords").delete().eq("user_id", user.id).eq("host", host);
+  }
   await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
 
   const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
@@ -96,12 +101,17 @@ function clampInt(n, dflt) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function buildPrompt(host, ai) {
+function buildPrompt(host, ai, productOverride) {
+  const correction = productOverride
+    ? `\n\nIMPORTANT — the owner has clarified what this product actually is. This description OVERRIDES anything inferred from the page. Build the keyword strategy for THIS:\n"${productOverride}"\n`
+    : "";
   return `Product/business: ${ai?.businessName || host}
 Website: ${host}
 Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory : ""}
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
-Target customer: ${ai?.targetCustomer || "(infer)"}
+Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
+
+CRITICAL: Derive keywords for what the CUSTOMER wants and searches for — the benefit and the product category — NOT the underlying technology used to build it. Example: for an online store that shows products in AR before buying, target shopper terms like "see furniture in my room before buying", "AR shopping app", "try before you buy furniture", NOT developer terms like "webgl", "3d website builder", or "how to build". Think like the buyer, not the engineer.
 
 Derive the SEO keyword strategy yourself. Return ONLY this JSON:
 {
