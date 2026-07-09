@@ -460,14 +460,28 @@ function IntegrationsView({ conn, onDisconnect, banner }) {
         <XCard />
       </div>
 
+      <p className="mt-6 text-sm font-semibold text-emerald-600">✓ Ready as tap-to-post</p>
+      <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {[
+          ["🔷", "LinkedIn", "Genie writes it, opens LinkedIn — you tap post"],
+          ["🟢", "Medium", "Genie writes it, opens Medium editor — you tap publish"],
+        ].map(([icon, name, desc]) => (
+          <div key={name} className="flex items-center gap-3 bg-surface border border-emerald-200 rounded-2xl p-4 shadow-xs">
+            <span className="text-lg">{icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-ink-900 text-sm">{name}</p>
+              <p className="text-xs text-ink-400">{desc}</p>
+            </div>
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Ready</span>
+          </div>
+        ))}
+      </div>
+
       <p className="mt-8 text-sm font-semibold text-ink-400">○ Coming soon</p>
       <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
         {[
           ["📈", "Google Analytics", "Real visitor traffic · +15% accuracy"],
-          ["🔷", "LinkedIn", "Auto-post articles & updates"],
-          ["🟢", "Medium", "Republish for reach (canonical)"],
           ["🛍️", "Shopify", "Auto-edit products & sales data"],
-          ["✉️", "Email sending", "Auto-send approved outreach"],
           ["📢", "Google & Meta Ads", "Launch & manage campaigns"],
         ].map(([icon, name, desc]) => (
           <div key={name} className="flex items-center gap-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-xs opacity-75">
@@ -716,7 +730,30 @@ function SettingsView({ email, onSignOut }) {
         <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
         <p className="mt-1 text-sm text-ink-600">Free · plans & billing arrive with launch</p>
       </div>
+      <ResetCard />
     </>
+  );
+}
+
+function ResetCard() {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function reset() {
+    if (!confirm("This permanently deletes ALL your businesses, scans, tasks, keywords, placements and history. This cannot be undone. Continue?")) return;
+    setBusy(true);
+    try { await fetch("/api/business/delete", { method: "DELETE" }); setDone(true); setTimeout(() => window.location.href = "/", 1200); } catch {}
+    setBusy(false);
+  }
+  return (
+    <div className="mt-3 bg-red-50 border border-red-200 rounded-2xl p-6 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-red-400">Danger zone</p>
+      <p className="mt-1 text-sm font-medium text-ink-900">Reset everything</p>
+      <p className="text-xs text-ink-500">Clears all businesses, tasks, keywords and history — use this if you deleted scans and see leftover tasks.</p>
+      <button onClick={reset} disabled={busy || done}
+        className="mt-3 text-sm font-medium text-red-600 border border-red-300 bg-white rounded-xl px-4 py-2 hover:bg-red-100 disabled:opacity-50">
+        {done ? "✓ Cleared — reloading…" : busy ? "Clearing…" : "Reset all my data"}
+      </button>
+    </div>
   );
 }
 
