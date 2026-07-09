@@ -6,6 +6,13 @@ import { createClient } from "@/lib/supabase/client";
 import { businessesFromScans, businessName, hostOf as bHostOf } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function DashboardPage() {
   return (
     <Suspense fallback={null}>
@@ -264,8 +271,9 @@ function Dashboard() {
       )}
       {view === "home" && (scans.length > 0 || loading) && (
         <>
-          <h1 className="text-2xl font-extrabold text-ink-900">
-            Good morning{email ? `, ${email.split("@")[0]}` : ""}.
+          <p className="text-sm text-ink-400">{greeting()}{email ? `, ${email.split("@")[0]}` : ""}</p>
+          <h1 className="text-3xl font-extrabold text-ink tracking-tight mt-0.5">
+            Welcome to <span className="accent-text">Marketing Genie</span>
           </h1>
 
           {banner && (
