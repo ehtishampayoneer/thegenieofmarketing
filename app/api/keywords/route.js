@@ -8,6 +8,7 @@
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { gradePortfolio } from "@/lib/keyword-health";
+import { logActivity } from "@/lib/activity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +86,7 @@ export async function POST(request) {
 
   const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
   const portfolio = gradePortfolio(saved || []);
+  await logActivity(supabase, user.id, { host, verb: "keywords", message: `Built your keyword strategy — ${(saved || []).length} targets`, detail: (portfolio.graded || []).slice(0,3).map((k)=>k.keyword).join(", "), meta: { count: (saved||[]).length } });
   return json({ ok: true, ...portfolio, strategy: derived.strategy || null });
 }
 
