@@ -619,6 +619,43 @@ function XCard() {
   );
 }
 
+function SafetyCard() {
+  const [s, setS] = useState(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try { const r = await fetch("/api/safety"); const j = await r.json(); if (active && j.ok) setS(j.settings); } catch {}
+    })();
+    return () => { active = false; };
+  }, []);
+  async function update(patch) {
+    const next = { ...(s || { permission_level: 1, kill_switch: false, monthly_spend_cap: 0 }), ...patch };
+    setS(next); setSaving(true);
+    try { await fetch("/api/safety", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); } catch {}
+    setSaving(false);
+  }
+  if (!s) return <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm animate-pulse h-24" />;
+  return (
+    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-ink-400">Safety</p>
+      <div className="mt-3 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-ink-900">Kill switch</p>
+          <p className="text-xs text-ink-400">Instantly pause all of Genie's publishing.</p>
+        </div>
+        <button
+          onClick={() => update({ kill_switch: !s.kill_switch })}
+          className={`relative w-12 h-6 rounded-full transition ${s.kill_switch ? "bg-red-500" : "bg-ink-900/[0.15]"}`}>
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition ${s.kill_switch ? "left-6" : "left-0.5"}`} />
+        </button>
+      </div>
+      {s.kill_switch && <p className="mt-2 text-xs text-red-500 font-medium">⚠ Kill switch is ON — Genie won't publish anything until you turn it off.</p>}
+      {saving && <p className="mt-2 text-[11px] text-ink-400">Saving…</p>}
+    </div>
+  );
+}
+
 function DailyBriefCard() {
   const [state, setState] = useState("idle"); // idle | sending | sent | error
   const [err, setErr] = useState("");
