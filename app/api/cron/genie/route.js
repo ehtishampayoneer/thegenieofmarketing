@@ -43,7 +43,10 @@ export async function GET(request) {
   for (const [key, rows] of businesses) {
     const [userId, host] = key.split("::");
     try {
-      // 1) Re-grade + persist health tiers (retire proven losers).
+      // 1) Pull REAL Google data (if connected) → updates health, dead/new, daily snapshot.
+      await runKeywordSync(appUrl, { host, _uid: userId });
+
+      // 2) Re-grade + persist health tiers (retire proven losers).
       const { graded } = gradePortfolio(rows);
       for (const g of graded) {
         await admin.from("keywords").update({ health: g.health, last_scored_at: new Date().toISOString() })
@@ -121,6 +124,17 @@ async function runNotifications(appUrl, body) {
       headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(90000),
+    });
+  } catch {}
+}
+
+async function runKeywordSync(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/keywords/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
     });
   } catch {}
 }
