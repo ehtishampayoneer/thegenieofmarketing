@@ -105,10 +105,17 @@ export default function Home() {
         return;
       }
       // brief beat so the scan animation doesn't feel skipped
-      setTimeout(() => {
+      setTimeout(async () => {
         setData(json);
         setPhase("done");
         saveScan(json);
+        // First-time users → guided setup (connect accounts, profile).
+        try {
+          const p = await fetch("/api/profile").then((r) => r.json());
+          if (p.ok && !p.profile?.setup_completed) {
+            setTimeout(() => { window.location.href = "/setup"; }, 1400);
+          }
+        } catch {}
       }, 600);
     } catch {
       setPhase("error");
