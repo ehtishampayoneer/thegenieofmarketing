@@ -16,7 +16,8 @@ export async function GET(request) {
   const cookieState = request.cookies.get("x_oauth_state")?.value;
   const verifier = request.cookies.get("x_pkce_verifier")?.value;
 
-  const back = (q) => NextResponse.redirect(absolute(`/dashboard?view=integrations${q}`));
+  const fromSetup = request.cookies.get("genie_return")?.value === "setup";
+  const back = (q) => NextResponse.redirect(absolute(fromSetup ? `/setup?connected=x` : `/dashboard?view=integrations${q}`));
 
   if (!code || !state || !verifier || state !== cookieState) {
     return back("&x_error=state_mismatch");
@@ -75,6 +76,7 @@ export async function GET(request) {
   );
 
   const res = back(handle ? `&x_connected=${encodeURIComponent(handle)}` : "&x_connected=1");
+  res.cookies.delete("genie_return");
   res.cookies.delete("x_pkce_verifier");
   res.cookies.delete("x_oauth_state");
   return res;
