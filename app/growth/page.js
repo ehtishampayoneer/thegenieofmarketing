@@ -13,6 +13,7 @@ import { hostOf, businessesFromScans } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
 import { GenieSays } from "@/components/ui/GenieVoice";
+import Icon from "@/components/ui/Icon";
 
 const PLATFORM_META = {
   reddit: { label: "Reddit", icon: "R", tint: "text-orange-600 bg-orange-50 border-orange-200" },
@@ -409,6 +410,35 @@ function ProductCorrection({ onDerive, busy }) {
   );
 }
 
+function AddKeyword({ host, onAdded }) {
+  const [val, setVal] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function add() {
+    if (!val.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/keywords", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keyword: val.trim() }) });
+      const j = await res.json();
+      if (j.ok) { setVal(""); onAdded?.(j); }
+    } catch {}
+    setBusy(false);
+  }
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <input
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && add()}
+        placeholder="Add your own keyword — Genie will work it into the rotation…"
+        className="flex-1 px-3 py-2 rounded-xl border border-hairline bg-panel text-ink text-sm outline-none focus:border-ink-300 transition"
+      />
+      <button onClick={add} disabled={busy || !val.trim()} className="btn-ink px-4 py-2 text-sm disabled:opacity-50 flex items-center gap-1">
+        <Icon.plus size={16} /> Add
+      </button>
+    </div>
+  );
+}
+
 function SyncButton({ host }) {
   const [state, setState] = useState("idle"); // idle | syncing | done | nogoogle
   const [msg, setMsg] = useState("");
@@ -442,6 +472,13 @@ function SyncButton({ host }) {
 }
 
 function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
+  const [history, setHistory] = useState({});
+  useEffect(() => {
+    if (!host) return;
+    (async () => {
+      try { const r = await fetch(`/api/keywords/sync?host=${encodeURIComponent(host)}`); const j = await r.json(); if (j.ok) setHistory(j.series || {}); } catch {}
+    })();
+  }, [host]);
   if (!portfolio || !portfolio.graded?.length) {
     return (
       <div className="mt-8 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
@@ -476,6 +513,9 @@ function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
         </div>
       </div>
 
+      {/* Add your own keyword */}
+      <AddKeyword host={host} onAdded={(p) => window.location.reload()} />
+
       {/* Tier summary */}
       <div className="mt-3 flex flex-wrap gap-2">
         {["strong", "growing", "new", "weak", "retired"].map((t) => (
@@ -489,7 +529,7 @@ function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
 
       {/* Active keywords */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-        {active.map((k) => <KeywordRow key={k.id} k={k} />)}
+        {active.map((k) => <KeywordRow key={k.id} k={k} history={history[k.keyword]} />)}
       </div>
 
       {/* Retired (pruned) */}
@@ -505,7 +545,22 @@ function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
   );
 }
 
-function KeywordRow({ k }) {
+function Sparkline({ points }) {
+  if (!points || points.length < 2) return null;
+  const w = 60, h = 18;
+  const vals = points.map((p) => p.clicks);
+  const max = Math.max(...vals, 1);
+  const step = w / (points.length - 1);
+  const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${(h - (p.clicks / max) * h).toFixed(1)}`).join(" ");
+  const rising = vals[vals.length - 1] >= vals[0];
+  return (
+    <svg width={w} height={h} className="shrink-0">
+      <path d={d} fill="none" stroke={rising ? "#1E9E6A" : "#E5484D"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function KeywordRow({ k, history }) {
   const m = HEALTH_META[k.health] || HEALTH_META.new;
   // Difficulty from competition: low comp = easy to rank.
   const comp = k.competition ?? 50;
@@ -519,6 +574,7 @@ function KeywordRow({ k }) {
     <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-xs card-hover">
       <div className="flex items-center gap-2">
         <p className="text-sm font-semibold text-ink flex-1 truncate">{k.keyword}</p>
+        {history && history.length >= 2 && <Sparkline points={history} />}
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${diff.cls}`}>{diff.label}</span>
         <span className="text-sm font-mono font-bold text-ink">{k.score}</span>
       </div>
