@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { hostOf, businessesFromScans } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
 import ActivityFeed from "@/components/ActivityFeed";
+import { GenieSays } from "@/components/ui/GenieVoice";
 
 const PLATFORM_META = {
   reddit: { label: "Reddit", icon: "R", tint: "text-orange-600 bg-orange-50 border-orange-200" },
@@ -45,6 +46,7 @@ function Growth() {
   const searchParams = useSearchParams();
   const [state, setState] = useState("loading");
   const [host, setHost] = useState("");
+  const [showKeywordIntro, setShowKeywordIntro] = useState(false);
   const [ai, setAi] = useState(null);
   const [plan, setPlan] = useState({ blocks: [], totalTaps: 0, totalAuto: 0 });
   const [portfolio, setPortfolio] = useState(null);
@@ -82,10 +84,28 @@ function Growth() {
         setAi(biz.find((b) => b.host === pick)?.latest?.ai || null);
         if (pick) await load(pick);
         setState("ready");
+        // Arriving fresh from setup → auto-build keywords with a narration.
+        if (searchParams.get("fromsetup") && active) {
+          const kr = await fetch(`/api/keywords?host=${encodeURIComponent(pick)}`).then((r) => r.json()).catch(() => ({}));
+          if (!kr?.graded?.length) {
+            setShowKeywordIntro(true);
+            deriveKeywordsFor(pick, biz.find((b) => b.host === pick)?.latest?.ai || null);
+          }
+        }
       } catch { if (active) setState("ready"); }
     })();
     return () => { active = false; };
   }, [router, searchParams, load]);
+
+  async function deriveKeywordsFor(h, aiCtx) {
+    setBusy("keywords");
+    try {
+      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, ai: aiCtx }) });
+      const j = await res.json();
+      if (j.ok) setPortfolio(j);
+    } catch {}
+    setBusy("");
+  }
 
   async function deriveKeywords(productOverride) {
     const override = typeof productOverride === "string" ? productOverride : undefined;
@@ -215,6 +235,13 @@ function Growth() {
           <ResultsSection results={results} onCheck={checkResults} busy={busy === "results"} />
 
           {/* Keyword portfolio */}
+          {showKeywordIntro && portfolio?.graded?.length > 0 && (
+            <div className="mt-8 card p-5 bg-accent-soft border-0 animate-rise">
+              <p className="text-base font-semibold text-ink">
+                <GenieSays text={`Boom — I found ${portfolio.graded.length} keywords for you! The strong ones up top can pull in real leads; the medium and small ones we'll build over time. I'll sprinkle these across your posts, blogs and emails to climb Google. You can always see them here. ✨`} />
+              </p>
+            </div>
+          )}
           <KeywordPortfolio portfolio={portfolio} onDerive={deriveKeywords} busy={busy === "keywords"} />
         </>
       )}
@@ -447,21 +474,29 @@ function KeywordPortfolio({ portfolio, onDerive, busy }) {
 
 function KeywordRow({ k }) {
   const m = HEALTH_META[k.health] || HEALTH_META.new;
+  // Difficulty from competition: low comp = easy to rank.
+  const comp = k.competition ?? 50;
+  const diff = comp < 40 ? { label: "Easy", cls: "text-emerald-700 bg-emerald-50 border-emerald-200" }
+    : comp < 65 ? { label: "Medium", cls: "text-amber-700 bg-amber-50 border-amber-200" }
+    : { label: "Hard", cls: "text-red-600 bg-red-50 border-red-200" };
+  // Expected traffic label from potential.
+  const pot = k.traffic_potential ?? 0;
+  const traffic = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
   return (
-    <div className="bg-surface border border-ink-900/[0.06] rounded-xl p-3 shadow-xs">
+    <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-xs card-hover">
       <div className="flex items-center gap-2">
-        <p className="text-sm font-medium text-ink-900 flex-1 truncate">{k.keyword}</p>
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${m.cls}`}>{m.label}</span>
-        <span className="text-sm font-mono font-bold text-ink-900">{k.score}</span>
+        <p className="text-sm font-semibold text-ink flex-1 truncate">{k.keyword}</p>
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${diff.cls}`}>{diff.label}</span>
+        <span className="text-sm font-mono font-bold text-ink">{k.score}</span>
       </div>
-      <div className="mt-2 h-1.5 rounded-full bg-ink-900/[0.06] overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${k.score}%`, background: m.bar, transition: "width .6s ease" }} />
+      <div className="mt-2 h-1.5 rounded-full bg-ink-100 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${k.score}%`, background: m.bar, transition: "width .8s cubic-bezier(0.2,0.8,0.2,1)" }} />
       </div>
       <div className="mt-1.5 flex items-center gap-3 text-[11px] text-ink-400">
-        <span>Potential {k.traffic_potential ?? "—"}</span>
-        <span>Competition {k.competition ?? "—"}</span>
+        <span className="font-medium text-ink-500">{traffic}</span>
+        <span>·</span>
         <span>Coverage {k.coverage || 0}×</span>
-        {(k.gsc_impressions || 0) > 0 && <span className="text-emerald-600">{k.gsc_clicks || 0} clicks (real)</span>}
+        {(k.gsc_impressions || 0) > 0 && <span className="accent-text font-medium">{k.gsc_clicks || 0} real clicks</span>}
       </div>
     </div>
   );
