@@ -23,31 +23,31 @@ const STEPS = [
     does: "See your real keyword rankings, spot which keywords bring visitors, and know exactly what's working",
   },
   {
-    id: "x", brand: "x", power: 15, kind: "oauth", connectHref: "/api/connect/x/start",
+    id: "x", brand: "x", power: 12, kind: "oauth", connectHref: "/api/connect/x/start",
     title: "Connect X (Twitter)",
     why: "X is where conversations move fast. I'll post to your account daily to build your audience, and I'll also hunt down posts related to what you do so you can jump in and get noticed. Fresh discoveries every single day.",
     does: "Post daily to build your following, find related conversations to join, and grow your reach",
   },
   {
-    id: "wordpress", brand: "wordpress", power: 15, kind: "inapp", connectView: "integrations",
+    id: "wordpress", brand: "wordpress", power: 12, kind: "inapp", connectView: "integrations",
     title: "Connect your blog",
     why: "Blogs are your long game. I'll publish fresh articles regularly, woven with your keywords so every post links back to your strengths and climbs Google over time. Real content that keeps working for you.",
     does: "Publish keyword-rich articles, build lasting Google rankings, and grow content that compounds",
   },
   {
-    id: "reddit", brand: "reddit", power: 12, kind: "signin", signinUrl: "https://www.reddit.com/login",
+    id: "reddit", brand: "reddit", power: 10, kind: "signin", signinUrl: "https://www.reddit.com/login",
     title: "Sign in to Reddit",
     why: "Reddit is pure gold. Real people are already talking about exactly what you offer. I'll post from your account and find the best conversations to join, so you show up where it counts. You just tap to publish.",
     does: "Join the hottest threads, post value that builds trust, and get discovered by real buyers",
   },
   {
-    id: "quora", brand: "quora", power: 11, kind: "signin", signinUrl: "https://www.quora.com/",
+    id: "quora", brand: "quora", power: 8, kind: "signin", signinUrl: "https://www.quora.com/",
     title: "Sign in to Quora",
     why: "On Quora, people literally ask the questions your product answers. I'll write sharp answers that help them and rank on Google too. Two wins from one tap.",
     does: "Answer high-intent questions, rank on Google, and win trust from ready-to-buy people",
   },
   {
-    id: "linkedin", brand: "linkedin", power: 11, kind: "signin", signinUrl: "https://www.linkedin.com/login",
+    id: "linkedin", brand: "linkedin", power: 8, kind: "signin", signinUrl: "https://www.linkedin.com/login",
     title: "Sign in to LinkedIn",
     why: "LinkedIn is where the money scrolls. Investors, founders, decision-makers. I'll craft posts that make you look sharp and put you in front of the people who can actually move the needle for you.",
     does: "Post polished updates, reach decision-makers and investors, and grow your professional pull",
@@ -103,7 +103,7 @@ function Setup() {
 
   const isDone = (s) => (s.kind === "signin" ? !!signedIn[s.id] : !!conns[s.id]);
   const connectedPower = STEPS.reduce((sum, s) => sum + (isDone(s) ? s.power : 0), 0);
-  const profilePower = profile.sender_email && profile.company_name ? 20 : profile.sender_email ? 10 : 0;
+  const profilePower = profile.sender_email && profile.company_name ? 15 : profile.sender_email ? 8 : 0;
   const strength = Math.min(100, connectedPower + profilePower);
 
   const step = STEPS[i];
