@@ -210,7 +210,10 @@ function Growth() {
               </button>
             </div>
           ) : (
-            <KeywordPortfolio portfolio={portfolio} host={host} ai={ai} onDerive={deriveKeywords} busy={busy === "keywords"} />
+            <>
+              <KeywordResearch host={host} ai={ai} />
+              <KeywordPortfolio portfolio={portfolio} host={host} ai={ai} onDerive={deriveKeywords} busy={busy === "keywords"} />
+            </>
           )}
         </>
       )}
@@ -435,6 +438,114 @@ function SyncButton({ host }) {
         {state === "syncing" ? "Syncing…" : "↻ Sync real Google data"}
       </button>
       {msg && <p className={`text-[10px] mt-0.5 ${state === "done" ? "accent-text" : "text-ink-400"}`}>{msg}</p>}
+    </div>
+  );
+}
+
+function KeywordResearch({ host, ai }) {
+  const [seed, setSeed] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState(null);
+  const [note, setNote] = useState("");
+  const [selected, setSelected] = useState({});
+  const [added, setAdded] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function research() {
+    if (!seed.trim()) return;
+    setBusy(true); setResults(null); setAdded(false); setSelected({});
+    try {
+      const r = await fetch("/api/keywords/research", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seed, productContext: ai?.whatTheySell || ai?.businessName }) });
+      const j = await r.json();
+      if (j.ok) { setResults(j.keywords || []); setNote(j.note || ""); }
+    } catch {}
+    setBusy(false);
+  }
+
+  async function addSelected() {
+    const picks = (results || []).filter((k) => selected[k.keyword]);
+    if (!picks.length) return;
+    try {
+      await fetch("/api/keywords/research", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keywords: picks }) });
+      setAdded(true);
+      setTimeout(() => window.location.reload(), 900);
+    } catch {}
+  }
+
+  const selCount = Object.values(selected).filter(Boolean).length;
+
+  return (
+    <div className="mb-8">
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="w-full card card-hover p-5 flex items-center gap-3 text-left">
+          <span className="w-11 h-11 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.search size={22} /></span>
+          <div className="flex-1">
+            <p className="font-bold text-ink">Research new keywords</p>
+            <p className="text-sm text-ink-400">Discover hundreds of real keywords to feed your marketing engine.</p>
+          </div>
+          <Icon.chevronRight size={20} />
+        </button>
+      ) : (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="font-bold text-ink text-lg">Keyword research</p>
+              <p className="text-sm text-ink-400">Type a topic. Genie finds real keywords people search, then you add the good ones to grow.</p>
+            </div>
+            <button onClick={() => setOpen(false)} className="text-ink-400 hover:text-ink"><Icon.x size={20} /></button>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              value={seed} onChange={(e) => setSeed(e.target.value)} onKeyDown={(e) => e.key === "Enter" && research()}
+              placeholder="e.g. hiking shoes, ar shopping, project management"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-hairline bg-paper text-ink outline-none focus:border-ink-300"
+            />
+            <button onClick={research} disabled={busy || !seed.trim()} className="btn-ink px-5 py-2.5 disabled:opacity-50">
+              {busy ? "Researching…" : "Research"}
+            </button>
+          </div>
+
+          {busy && <p className="mt-3 text-sm text-ink-400 animate-soft-pulse">Discovering real keywords from Google and estimating demand…</p>}
+
+          {results && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-ink-500">{results.length} keywords found</p>
+                {selCount > 0 && (
+                  <button onClick={addSelected} className="btn-accent px-4 py-2 text-sm">
+                    {added ? "Added!" : `Add ${selCount} to my keywords`}
+                  </button>
+                )}
+              </div>
+              {note && <p className="text-[11px] text-ink-400 mb-2">{note}</p>}
+
+              <div className="border border-hairline rounded-xl overflow-hidden">
+                <div className="grid grid-cols-[24px_1fr_80px_70px_80px] gap-2 px-3 py-2 bg-paper text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
+                  <span></span><span>Keyword</span><span className="text-right">Volume</span><span className="text-center">Trend</span><span className="text-right">Difficulty</span>
+                </div>
+                <div className="max-h-96 overflow-y-auto thin-scroll divide-y divide-hairline">
+                  {results.map((k) => {
+                    const diff = k.difficulty === "easy" ? "text-emerald-700" : k.difficulty === "hard" ? "text-red-600" : "text-amber-600";
+                    const trend = k.trend === "up" ? "↑" : k.trend === "down" ? "↓" : "→";
+                    const trendC = k.trend === "up" ? "text-emerald-600" : k.trend === "down" ? "text-red-500" : "text-ink-300";
+                    return (
+                      <label key={k.keyword} className="grid grid-cols-[24px_1fr_80px_70px_80px] gap-2 px-3 py-2 items-center hover:bg-paper cursor-pointer text-sm">
+                        <input type="checkbox" checked={!!selected[k.keyword]} onChange={(e) => setSelected((s) => ({ ...s, [k.keyword]: e.target.checked }))} />
+                        <span className="text-ink truncate">{k.keyword}</span>
+                        <span className="text-right font-mono text-ink-600">{k.volume ? k.volume.toLocaleString() : "~"}</span>
+                        <span className={`text-center ${trendC}`}>{trend}</span>
+                        <span className={`text-right font-medium ${diff} capitalize`}>{k.difficulty}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-ink-400">Volumes are estimates. Connect Google Search Console for your real numbers.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
