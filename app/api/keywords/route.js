@@ -95,6 +95,42 @@ export async function POST(request) {
   return json({ ok: true, ...portfolio, strategy: derived.strategy || null });
 }
 
+// Add the user's OWN keyword.
+export async function PATCH(request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
+  let body;
+  try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
+  const { host, keyword } = body || {};
+  if (!host || !keyword?.trim()) return json({ ok: false, error: "Missing host or keyword." }, 400);
+
+  const { error } = await supabase.from("keywords").upsert({
+    user_id: user.id, host, keyword: keyword.trim().toLowerCase(),
+    intent: "informational", priority: 2, source: "user",
+    traffic_potential: 50, competition: 50, coverage: 0, health: "new",
+    rationale: "You added this keyword.",
+  }, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
+  if (error) return json({ ok: false, error: error.message }, 500);
+
+  const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
+  return json({ ok: true, ...gradePortfolio(saved || []) });
+}
+
+// Remove a keyword.
+export async function DELETE(request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
+  const url = new URL(request.url);
+  const host = url.searchParams.get("host");
+  const keyword = url.searchParams.get("keyword");
+  if (!host || !keyword) return json({ ok: false, error: "Missing host or keyword." }, 400);
+  await supabase.from("keywords").delete().eq("user_id", user.id).eq("host", host).eq("keyword", keyword);
+  const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
+  return json({ ok: true, ...gradePortfolio(saved || []) });
+}
+
 function clampInt(n, dflt) {
   const v = Number(n);
   if (!Number.isFinite(v)) return dflt;
