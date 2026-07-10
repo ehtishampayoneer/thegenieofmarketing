@@ -17,26 +17,43 @@ import Icon from "@/components/ui/Icon";
 // Each step's power weight + Genie's pitch.
 const STEPS = [
   {
-    id: "google", brand: "google", power: 30, connectHref: "/api/connect/google/start",
+    id: "google", brand: "google", power: 25, kind: "oauth", connectHref: "/api/connect/google/start",
     title: "Connect Google Search Console",
     why: "This is my superpower. With Google connected, I see exactly which keywords bring you real visitors — so I chase what actually works and drop what doesn't. Real data beats guessing every time.",
     does: "Track real keyword rankings daily · swap dead keywords for fresh ones · measure real traffic",
   },
   {
-    id: "x", brand: "x", power: 20, connectHref: "/api/connect/x/start",
+    id: "x", brand: "x", power: 15, kind: "oauth", connectHref: "/api/connect/x/start",
     title: "Connect X (Twitter)",
-    why: "Hook up X and I can watch your posts perform and keep your presence alive. Your own audience is where momentum starts.",
-    does: "Watch your post engagement · learn what your audience loves · build your presence",
+    why: "Hook up X and I'll post to your account and watch it perform. Your own audience is where all the momentum starts — let's light it up.",
+    does: "Post to your X · watch engagement · learn what your audience loves",
   },
   {
-    id: "wordpress", brand: "wordpress", power: 20, connectHref: null, connectView: "integrations",
+    id: "wordpress", brand: "wordpress", power: 15, kind: "inapp", connectView: "integrations",
     title: "Connect your blog (WordPress)",
     why: "Connect your blog and I'll publish SEO articles straight to it — for real, no copy-paste. Blog articles are your long-game ranking machine.",
     does: "Auto-publish SEO articles · build lasting Google rankings · own your content",
   },
+  {
+    id: "reddit", brand: "reddit", power: 12, kind: "signin", signinUrl: "https://www.reddit.com/login",
+    title: "Sign in to Reddit",
+    why: "Reddit is gold for finding people already talking about what you do. Sign in and I'll drop you right into the best conversations — you just tap to post.",
+    does: "Join the hottest threads · post value-first replies · build real karma",
+  },
+  {
+    id: "quora", brand: "quora", power: 11, kind: "signin", signinUrl: "https://www.quora.com/",
+    title: "Sign in to Quora",
+    why: "People ask questions on Quora that your product literally answers. Sign in and I'll write ranking answers you just tap to publish.",
+    does: "Answer high-intent questions · rank on Google too · win trust",
+  },
+  {
+    id: "linkedin", brand: "linkedin", power: 11, kind: "signin", signinUrl: "https://www.linkedin.com/login",
+    title: "Sign in to LinkedIn",
+    why: "LinkedIn is where the pros hang out. Sign in and I'll craft posts that make you look sharp — you tap, it's live.",
+    does: "Post professional updates · reach decision-makers · grow your network",
+  },
 ];
 
-// Tap-to-post platforms — no connection needed, just good to know.
 const TAP_PLATFORMS = ["reddit", "quora", "linkedin", "medium"];
 
 export default function SetupPage() {
@@ -48,11 +65,11 @@ function Setup() {
   const params = useSearchParams();
   const [i, setI] = useState(0);
   const [conns, setConns] = useState({}); // id -> connected?
-  const [phase, setPhase] = useState("connect"); // connect | profile | done
+  const [signedIn, setSignedIn] = useState({}); // signin steps the user confirmed
+  const [phase, setPhase] = useState("connect");
   const [profile, setProfile] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Load connection states so returning users see what's done.
   const loadConns = useCallback(async () => {
     try {
       const [g, x] = await Promise.all([
@@ -61,11 +78,7 @@ function Setup() {
       ]);
       let wp = {};
       try { wp = await fetch("/api/connect/wordpress").then((r) => r.json()); } catch {}
-      setConns({
-        google: !!(g.connected || g.ok && g.email),
-        x: !!x.connected,
-        wordpress: !!wp.connected,
-      });
+      setConns({ google: !!g.connected, x: !!x.connected, wordpress: !!wp.connected });
     } catch {}
   }, []);
 
@@ -76,21 +89,40 @@ function Setup() {
       if (!user) { router.replace("/login"); return; }
       await loadConns();
       try { const p = await fetch("/api/profile").then((r) => r.json()); if (p.ok) setProfile(p.profile || {}); } catch {}
+      // restore signed-in marks
+      try { const s = JSON.parse(localStorage.getItem("genie_signedin") || "{}"); setSignedIn(s); } catch {}
+      // resume after an OAuth return
+      const connected = params.get("connected");
+      if (connected) {
+        const idx = STEPS.findIndex((s) => s.id === connected);
+        if (idx >= 0) setI(Math.min(idx + 1, STEPS.length - 1));
+      }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, loadConns]);
 
-  // Strength = connected step weights + profile bonus.
-  const connectedPower = STEPS.reduce((sum, s) => sum + (conns[s.id] ? s.power : 0), 0);
-  const profilePower = profile.sender_email && profile.company_name ? 30 : profile.sender_email ? 15 : 0;
+  const isDone = (s) => (s.kind === "signin" ? !!signedIn[s.id] : !!conns[s.id]);
+  const connectedPower = STEPS.reduce((sum, s) => sum + (isDone(s) ? s.power : 0), 0);
+  const profilePower = profile.sender_email && profile.company_name ? 20 : profile.sender_email ? 10 : 0;
   const strength = Math.min(100, connectedPower + profilePower);
 
   const step = STEPS[i];
   const isLast = i === STEPS.length - 1;
 
-  function next() {
-    if (!isLast) setI(i + 1);
-    else setPhase("profile");
+  function beginConnect(s) {
+    // Remember to return to setup after OAuth.
+    document.cookie = "genie_return=setup; path=/; max-age=600; samesite=lax";
+    if (s.kind === "oauth") { window.location.href = s.connectHref; }
+    else if (s.kind === "inapp") { document.cookie = "genie_return=setup; path=/; max-age=600"; router.push(`/dashboard?view=${s.connectView}`); }
+    else if (s.kind === "signin") {
+      window.open(s.signinUrl, "_blank");
+      const ns = { ...signedIn, [s.id]: true };
+      setSignedIn(ns);
+      try { localStorage.setItem("genie_signedin", JSON.stringify(ns)); } catch {}
+    }
   }
+
+  function next() { if (!isLast) setI(i + 1); else setPhase("profile"); }
   function skipAll() { setPhase("profile"); }
 
   async function saveProfile(markDone = true) {
@@ -99,41 +131,26 @@ function Setup() {
       await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...profile, setup_completed: markDone }) });
     } catch {}
     setSaving(false);
-    if (markDone) { setPhase("done"); }
+    if (markDone) setPhase("done");
   }
 
   return (
     <main className="min-h-screen bg-paper flex flex-col">
-      {/* Top: logo + strength */}
       <div className="px-5 sm:px-8 py-5 border-b border-hairline bg-panel">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <LogoMark size={34} />
           <span className="font-bold text-ink">Marketing Genie</span>
           <button onClick={() => router.push("/dashboard")} className="ml-auto text-sm text-ink-400 hover:text-ink">Skip setup →</button>
         </div>
-        <div className="max-w-2xl mx-auto mt-4">
-          <StrengthBar value={strength} />
-        </div>
+        <div className="max-w-2xl mx-auto mt-4"><StrengthBar value={strength} /></div>
       </div>
 
       <div className="flex-1 flex items-start justify-center px-5 py-8 sm:py-12">
         <div className="w-full max-w-2xl">
           {phase === "connect" && (
-            <ConnectStep
-              key={step.id}
-              step={step}
-              connected={conns[step.id]}
-              index={i}
-              total={STEPS.length}
-              onNext={next}
-              onSkipAll={skipAll}
-            />
+            <ConnectStep key={step.id} step={step} done={isDone(step)} index={i} total={STEPS.length} onConnect={() => beginConnect(step)} onNext={next} onSkipAll={skipAll} />
           )}
-
-          {phase === "profile" && (
-            <ProfileStep profile={profile} setProfile={setProfile} onSave={saveProfile} saving={saving} />
-          )}
-
+          {phase === "profile" && <ProfileStep profile={profile} setProfile={setProfile} onSave={saveProfile} saving={saving} />}
           {phase === "done" && <DoneStep onGo={() => router.push("/growth?fromsetup=1")} strength={strength} />}
         </div>
       </div>
@@ -141,11 +158,12 @@ function Setup() {
   );
 }
 
-function ConnectStep({ step, connected, index, total, onNext, onSkipAll }) {
+function ConnectStep({ step, done, index, total, onConnect, onNext, onSkipAll }) {
   const [showBody, setShowBody] = useState(false);
+  const verb = step.kind === "signin" ? "Sign in" : "Connect now";
   return (
     <div className="animate-fade">
-      <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide mb-4">Step {index + 1} of {total} · Connect</p>
+      <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide mb-4">Step {index + 1} of {total}</p>
 
       <GenieLine text={step.why} onDone={() => setShowBody(true)} />
 
@@ -155,7 +173,7 @@ function ConnectStep({ step, connected, index, total, onNext, onSkipAll }) {
             <BrandIcon brand={step.brand} size={24} />
             <div className="flex-1">
               <p className="font-bold text-ink">{step.title}</p>
-              {connected && <p className="text-xs accent-text font-semibold">✓ Connected</p>}
+              {done && <p className="text-xs accent-text font-semibold">✓ Added to your system</p>}
             </div>
           </div>
           <div className="mt-4 space-y-2">
@@ -167,36 +185,20 @@ function ConnectStep({ step, connected, index, total, onNext, onSkipAll }) {
           </div>
 
           <div className="mt-5 flex items-center gap-3">
-            {connected ? (
+            {done ? (
               <button onClick={onNext} className="btn-accent px-6 py-3 flex items-center gap-2">
-                Nice! Next <Icon.arrowRight size={18} />
+                {index === total - 1 ? "Finish" : "Nice! Next"} <Icon.arrowRight size={18} />
               </button>
             ) : (
               <>
-                {step.connectHref ? (
-                  <a href={step.connectHref} className="btn-ink px-6 py-3 flex items-center gap-2">
-                    <Icon.connect size={18} /> Connect now
-                  </a>
-                ) : (
-                  <a href={`/dashboard?view=${step.connectView}`} className="btn-ink px-6 py-3 flex items-center gap-2">
-                    <Icon.connect size={18} /> Connect now
-                  </a>
-                )}
+                <button onClick={onConnect} className="btn-ink px-6 py-3 flex items-center gap-2">
+                  <Icon.connect size={18} /> {verb}
+                </button>
                 <button onClick={onNext} className="text-sm text-ink-500 hover:text-ink font-medium">I'll do this later →</button>
               </>
             )}
           </div>
         </div>
-
-        {index === total - 1 && (
-          <div className="mt-5 card p-5 bg-accent-soft border-0">
-            <p className="text-sm font-semibold text-ink">By the way — Reddit, Quora, LinkedIn & Medium need no connection at all.</p>
-            <p className="text-sm text-ink-600 mt-1">I write the posts, open the page for you, and you just tap to publish. Easy. Here's what we'll work with:</p>
-            <div className="flex gap-2 mt-3">
-              {TAP_PLATFORMS.map((b) => <BrandIcon key={b} brand={b} size={18} />)}
-            </div>
-          </div>
-        )}
 
         <div className="mt-6 text-center">
           <button onClick={onSkipAll} className="text-sm text-ink-400 hover:text-ink underline">Skip the rest — take me to my profile</button>
