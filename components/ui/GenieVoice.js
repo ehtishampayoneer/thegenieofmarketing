@@ -34,11 +34,11 @@ export function GenieSays({ text, speed = 22, className = "", onDone, showCursor
 }
 
 // Genie avatar + a speech line, for wizard headers.
-export function GenieLine({ text, size = 44, className = "", onDone }) {
+export function GenieLine({ text, size = 40, className = "", onDone }) {
   return (
-    <div className={`flex items-start gap-3 ${className}`}>
+    <div className={`flex items-start gap-3.5 ${className}`}>
       <div className="shrink-0 animate-scale-in"><LogoMark size={size} /></div>
-      <p className="text-xl sm:text-2xl font-bold text-ink leading-snug pt-1">
+      <p className="text-lg sm:text-xl font-medium text-ink leading-relaxed pt-1.5 tracking-tight">
         <GenieSays text={text} onDone={onDone} />
       </p>
     </div>
@@ -60,7 +60,10 @@ export function StrengthBar({ value = 0, className = "" }) {
     <div className={className}>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-semibold text-ink-500 uppercase tracking-wide">Genie's power</span>
-        <span className="text-xs font-bold" style={{ color: labelColor }}>{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold font-mono" style={{ color: labelColor }}>{Math.round(value)}%</span>
+          <span className="text-xs font-bold" style={{ color: labelColor }}>{label}</span>
+        </div>
       </div>
       <div className="h-2.5 rounded-full bg-ink-100 overflow-hidden">
         <div
