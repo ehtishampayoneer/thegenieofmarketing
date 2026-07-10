@@ -53,22 +53,25 @@ export function StrengthBar({ value = 0, className = "" }) {
     return () => clearTimeout(t);
   }, [value]);
   const label = value < 25 ? "Just getting started" : value < 55 ? "Warming up" : value < 80 ? "Getting powerful" : value < 100 ? "Nearly unstoppable" : "Full power ⚡";
+  // Red → amber → green by progress.
+  const color = value < 34 ? "#E5484D" : value < 67 ? "#F5A623" : "#1E9E6A";
+  const labelColor = value < 34 ? "#E5484D" : value < 67 ? "#C77700" : "#127350";
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-semibold text-ink-500 uppercase tracking-wide">Genie's power</span>
-        <span className="text-xs font-bold accent-text">{label}</span>
+        <span className="text-xs font-bold" style={{ color: labelColor }}>{label}</span>
       </div>
       <div className="h-2.5 rounded-full bg-ink-100 overflow-hidden">
         <div
           className="h-full rounded-full relative"
           style={{
             width: `${Math.min(100, display)}%`,
-            background: "linear-gradient(90deg, #1E9E6A, #11202E)",
-            transition: "width 1s cubic-bezier(0.2,0.8,0.2,1)",
+            background: color,
+            transition: "width 1s cubic-bezier(0.2,0.8,0.2,1), background 0.6s ease",
           }}
         >
-          <span className="absolute inset-0 animate-soft-pulse" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }} />
+          <span className="absolute inset-0 animate-soft-pulse" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)" }} />
         </div>
       </div>
     </div>
