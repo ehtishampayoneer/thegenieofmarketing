@@ -242,7 +242,7 @@ function Growth() {
               </p>
             </div>
           )}
-          <KeywordPortfolio portfolio={portfolio} onDerive={deriveKeywords} busy={busy === "keywords"} />
+          <KeywordPortfolio portfolio={portfolio} host={host} onDerive={deriveKeywords} busy={busy === "keywords"} />
         </>
       )}
     </AppShell>
@@ -409,7 +409,39 @@ function ProductCorrection({ onDerive, busy }) {
   );
 }
 
-function KeywordPortfolio({ portfolio, onDerive, busy }) {
+function SyncButton({ host }) {
+  const [state, setState] = useState("idle"); // idle | syncing | done | nogoogle
+  const [msg, setMsg] = useState("");
+  async function sync() {
+    setState("syncing"); setMsg("");
+    try {
+      const res = await fetch("/api/keywords/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) });
+      const j = await res.json();
+      if (j.available) {
+        setState("done");
+        const bits = [];
+        if (j.updated) bits.push(`${j.updated} updated`);
+        if (j.added) bits.push(`${j.added} new`);
+        if (j.killed) bits.push(`${j.killed} retired`);
+        setMsg(bits.length ? bits.join(" · ") : "All current");
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        setState("nogoogle");
+        setMsg(j.reason === "not_connected" ? "Connect Google first" : "No Google data yet");
+      }
+    } catch { setState("idle"); }
+  }
+  return (
+    <div className="text-right">
+      <button onClick={sync} disabled={state === "syncing"} className="btn-ghost text-xs px-3 py-2 flex items-center gap-1.5 disabled:opacity-50">
+        {state === "syncing" ? "Syncing…" : "↻ Sync real Google data"}
+      </button>
+      {msg && <p className={`text-[10px] mt-0.5 ${state === "done" ? "accent-text" : "text-ink-400"}`}>{msg}</p>}
+    </div>
+  );
+}
+
+function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
   if (!portfolio || !portfolio.graded?.length) {
     return (
       <div className="mt-8 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
@@ -435,6 +467,7 @@ function KeywordPortfolio({ portfolio, onDerive, busy }) {
           <p className="text-sm text-ink-400">Genie selected these and manages their health — winners stay, losers get retired.</p>
         </div>
         <div className="flex items-center gap-3">
+          <SyncButton host={host} />
           <div className="text-right">
             <p className="text-2xl font-mono font-bold text-brand-violet leading-none">{portfolioScore}</p>
             <p className="text-[11px] text-ink-400">portfolio health</p>
@@ -496,7 +529,12 @@ function KeywordRow({ k }) {
         <span className="font-medium text-ink-500">{traffic}</span>
         <span>·</span>
         <span>Coverage {k.coverage || 0}×</span>
-        {(k.gsc_impressions || 0) > 0 && <span className="accent-text font-medium">{k.gsc_clicks || 0} real clicks</span>}
+        {(k.gsc_impressions || 0) > 0 ? (
+          <span className="accent-text font-medium">↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>
+        ) : k.source === "gsc" ? (
+          <span className="accent-text font-medium">real Google keyword</span>
+        ) : null}
+        {k.dead && <span className="text-red-500 font-medium">dead — retired</span>}
       </div>
     </div>
   );
