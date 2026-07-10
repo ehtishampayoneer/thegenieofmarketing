@@ -68,7 +68,7 @@ function Today() {
   const channels = [
     ...ownBlocks.map((b) => ({ kind: "own", block: b })),
     ...communityBlocks.map((b) => ({ kind: "community", block: b })),
-    ...(emails.length ? [{ kind: "email", emails }] : []),
+    { kind: "email", emails },
   ];
   const totalTaps = blocks.reduce((n, b) => n + b.count, 0) + emails.length;
   const current = channels[stage];
@@ -206,8 +206,29 @@ function PlacementTap({ placement, done, onDone, host }) {
 
 function EmailStep({ emails, doneMap, onDone, onComplete }) {
   const [showItems, setShowItems] = useState(false);
-  const remaining = emails.filter((e) => !doneMap[e.id]).length;
-  const allDone = remaining === 0;
+  const [status, setStatus] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [report, setReport] = useState(null);
+
+  useEffect(() => {
+    (async () => { try { const r = await fetch("/api/outreach/campaign"); const j = await r.json(); if (j.ok) setStatus(j); } catch {} })();
+  }, []);
+
+  async function sendBatch() {
+    setSending(true);
+    try {
+      const r = await fetch("/api/outreach/campaign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const j = await r.json();
+      setReport(j);
+      const s = await fetch("/api/outreach/campaign").then((x) => x.json());
+      if (s.ok) setStatus(s);
+    } catch {}
+    setSending(false);
+  }
+
+  const cap = status?.cap || 15;
+  const remaining = status?.today?.remaining ?? cap;
+
   return (
     <div className="animate-fade">
       <div className="flex items-center gap-3 mb-4">
@@ -216,23 +237,37 @@ function EmailStep({ emails, doneMap, onDone, onComplete }) {
           <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide">Outreach</p>
           <p className="font-bold text-ink text-lg">Email potential clients</p>
         </div>
-        {allDone && <span className="ml-auto accent-soft text-xs font-semibold px-3 py-1 rounded-full">Done</span>}
+        {status?.allTime?.sent > 0 && <span className="ml-auto text-xs text-ink-400">{status.allTime.sent} sent all-time · {status.allTime.replied} replied</span>}
       </div>
 
       <div className="card p-5 mb-4 bg-accent-soft border-0">
-        <p className="text-base font-semibold text-ink">
-          <GenieSays text={`Last thing - I found ${emails.length} potential client${emails.length > 1 ? "s" : ""} who'd be perfect for your business. I drafted each email with your details already in it. Time to charm some future clients!`} onDone={() => setShowItems(true)} />
+        <p className="text-base font-medium text-ink">
+          <GenieSays text={`I know exactly who needs what you offer. I'll email ${remaining} fresh potential client${remaining !== 1 ? "s" : ""} today, each one personalized with your details, and follow up with anyone who doesn't reply. One tap and I'll handle the whole batch in the background.`} onDone={() => setShowItems(true)} />
         </p>
       </div>
 
-      <div className={`space-y-3 transition-opacity duration-500 ${showItems ? "opacity-100" : "opacity-40"}`}>
-        {emails.map((e) => <EmailTap key={e.id} action={e} done={doneMap[e.id]} onDone={() => onDone(e.id)} />)}
+      {report && (
+        <div className="card p-4 mb-4">
+          <p className="font-bold text-ink">{report.sent > 0 ? `${report.sent} emails sent` : "Batch complete"}</p>
+          <p className="text-sm text-ink-500 mt-0.5">{report.message}</p>
+        </div>
+      )}
+
+      <div className={`transition-opacity duration-500 ${showItems ? "opacity-100" : "opacity-40"}`}>
+        <div className="card p-6 text-center">
+          <p className="text-3xl font-mono font-bold text-ink">{remaining}</p>
+          <p className="text-sm text-ink-400 mt-0.5">potential clients ready to reach today</p>
+          <button onClick={sendBatch} disabled={sending || remaining === 0} className="btn-ink px-6 py-3 mt-4 disabled:opacity-50 inline-flex items-center gap-2">
+            <Icon.mail size={18} /> {sending ? "Sending in background…" : remaining === 0 ? "Today's batch done" : `Send today's ${remaining} emails`}
+          </button>
+          <p className="text-[11px] text-ink-400 mt-2">Genie drips these out slowly so they land in inboxes, not spam.</p>
+        </div>
       </div>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-ink-400">{remaining > 0 ? `${remaining} email${remaining > 1 ? "s" : ""} left` : "All sent!"}</p>
-        <button onClick={onComplete} className={`px-6 py-3 flex items-center gap-2 rounded-xl ${allDone ? "btn-accent" : "btn-ghost"}`}>
-          {allDone ? <>Perfect - finish up <Icon.arrowRight size={18} /></> : <>Skip emails for now</>}
+        <p className="text-sm text-ink-400">{status?.plan === "pro" ? "Pro" : "Free"} plan · up to {cap}/day</p>
+        <button onClick={onComplete} className="btn-accent px-6 py-3 flex items-center gap-2 rounded-xl">
+          Finish up <Icon.arrowRight size={18} />
         </button>
       </div>
     </div>
