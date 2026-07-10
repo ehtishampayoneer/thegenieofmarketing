@@ -6,12 +6,122 @@ import { createClient } from "@/lib/supabase/client";
 import { businessesFromScans, businessName, hostOf as bHostOf } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
 import { BrandIcon } from "@/components/ui/BrandIcon";
+import { StrengthBar } from "@/components/ui/GenieVoice";
+import Icon from "@/components/ui/Icon";
 
 function greeting() {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function HomeView({ host }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    if (!host) return;
+    (async () => {
+      try { const r = await fetch(`/api/home?host=${encodeURIComponent(host)}`); const j = await r.json(); if (j.ok) setData(j); } catch {}
+    })();
+  }, [host]);
+
+  if (!data) return <div className="mt-6 shimmer rounded-2xl h-64" />;
+
+  const { strength, today, traffic, hasTraffic } = data;
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Strength */}
+      <div className="card p-5">
+        <StrengthBar value={strength} />
+        <p className="mt-3 text-xs text-ink-400">Connect more accounts to make Genie stronger. <a href="/dashboard?view=integrations" className="accent-text font-medium">Manage connections →</a></p>
+      </div>
+
+      {/* Today's buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <a href="/tasks" className="card card-hover p-5 flex items-center gap-4 group">
+          <span className="w-12 h-12 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.tasks size={24} /></span>
+          <div className="flex-1">
+            <p className="font-bold text-ink">Today's taps</p>
+            <p className="text-sm text-ink-400">{today.readyTaps > 0 ? `${today.readyTaps} ready to post` : "All caught up — find more on Growth"}</p>
+          </div>
+          {today.readyTaps > 0 && <span className="text-xs font-bold bg-accent text-white rounded-full px-2 py-0.5">{today.readyTaps}</span>}
+        </a>
+
+        <a href="/notifications" className="card card-hover p-5 flex items-center gap-4 group">
+          <span className="w-12 h-12 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.reply size={24} /></span>
+          <div className="flex-1">
+            <p className="font-bold text-ink">Replies to answer</p>
+            <p className="text-sm text-ink-400">{today.repliesWaiting > 0 ? `${today.repliesWaiting} waiting — Genie drafted answers` : "No new replies right now"}</p>
+          </div>
+          {today.repliesWaiting > 0 && <span className="text-xs font-bold bg-accent text-white rounded-full px-2 py-0.5">{today.repliesWaiting}</span>}
+        </a>
+
+        <a href="/growth" className="card card-hover p-5 flex items-center gap-4">
+          <span className="w-12 h-12 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.growth size={24} /></span>
+          <div className="flex-1">
+            <p className="font-bold text-ink">Find openings</p>
+            <p className="text-sm text-ink-400">Let Genie scan for fresh conversations</p>
+          </div>
+        </a>
+
+        <a href="/stories" className="card card-hover p-5 flex items-center gap-4">
+          <span className="w-12 h-12 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.conversations size={24} /></span>
+          <div className="flex-1">
+            <p className="font-bold text-ink">Your conversations</p>
+            <p className="text-sm text-ink-400">See every placement Genie is running</p>
+          </div>
+        </a>
+      </div>
+
+      {/* Honest traffic graph */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="font-bold text-ink">Your traffic</p>
+            <p className="text-xs text-ink-400">Real visitors from Google, day by day</p>
+          </div>
+          {hasTraffic && <span className="accent-soft text-xs font-semibold px-2.5 py-1 rounded-full">Live from Google</span>}
+        </div>
+        {hasTraffic ? (
+          <TrafficChart traffic={traffic} />
+        ) : (
+          <div className="py-10 text-center">
+            <div className="inline-flex text-ink-300 mb-2"><Icon.growth size={32} /></div>
+            <p className="text-sm font-medium text-ink-600">Your traffic graph will grow here</p>
+            <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto">Connect Google Search Console and keep posting — as real visitors arrive, you'll watch this climb. Early days are quiet; that's normal for a new site.</p>
+          </div>
+        )}
+      </div>
+
+      <p className="text-center text-sm text-ink-400">That's your day. Genie handles the rest overnight. ✨</p>
+    </div>
+  );
+}
+
+function TrafficChart({ traffic }) {
+  const w = 600, h = 120, pad = 8;
+  const clicks = traffic.map((t) => t.clicks);
+  const max = Math.max(...clicks, 1);
+  const step = (w - pad * 2) / Math.max(1, traffic.length - 1);
+  const pts = traffic.map((t, i) => [pad + i * step, h - pad - (t.clicks / max) * (h - pad * 2)]);
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${h - pad} L${pts[0][0].toFixed(1)},${h - pad} Z`;
+  const total = clicks.reduce((a, b) => a + b, 0);
+  return (
+    <div>
+      <p className="text-2xl font-bold font-mono text-ink">{total.toLocaleString()} <span className="text-sm font-normal text-ink-400">clicks total</span></p>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full mt-2" preserveAspectRatio="none" style={{ height: 120 }}>
+        <defs>
+          <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1E9E6A" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#1E9E6A" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#tg)" />
+        <path d={line} fill="none" stroke="#1E9E6A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -278,25 +388,21 @@ function Dashboard() {
           </h1>
 
           {banner && (
-            <div className="mt-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl p-3">
+            <div className="mt-3 accent-soft text-sm rounded-xl p-3">
               {banner}
             </div>
           )}
 
+          <HomeView host={host} />
+        </>
+      )}
+
+      {view === "home_OLD_HIDDEN" && (scans.length > 0 || loading) && (
+        <>
           <MasterHealth hostScans={hostScans} host={host} wp={wp} actions={bizActions} />
-
           <PlatformGrid host={host} hostScans={hostScans} wp={wp} actions={bizActions} xConn={xConn} spendCap={0} />
-
-          <TodaysFocus
-            actions={sortByPrio(bizActions)}
-            host={host}
-            onDismiss={dismissAction}
-            onApprove={approveAction}
-          />
-
-          <p className="mt-8 text-center text-sm text-ink-400">
-            That's it for today. Come back tomorrow. ✨
-          </p>
+          <TodaysFocus actions={sortByPrio(bizActions)} host={host} onDismiss={dismissAction} onApprove={approveAction} />
+          <p className="mt-8 text-center text-sm text-ink-400">That's it for today. Come back tomorrow. ✨</p>
         </>
       )}
     </AppShell>
