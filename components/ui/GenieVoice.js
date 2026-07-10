@@ -52,10 +52,10 @@ export function StrengthBar({ value = 0, className = "" }) {
     const t = setTimeout(() => setDisplay(value), 100);
     return () => clearTimeout(t);
   }, [value]);
-  const label = value < 25 ? "Just getting started" : value < 55 ? "Warming up" : value < 80 ? "Getting powerful" : value < 100 ? "Nearly unstoppable" : "Full power ⚡";
-  // Red → amber → green by progress.
-  const color = value < 34 ? "#E5484D" : value < 67 ? "#F5A623" : "#1E9E6A";
-  const labelColor = value < 34 ? "#E5484D" : value < 67 ? "#C77700" : "#127350";
+  const label = value < 25 ? "Just getting started" : value < 50 ? "Warming up" : value < 75 ? "Getting powerful" : value < 90 ? "Nearly unstoppable" : "Full power";
+  // Red -> amber -> green. Green only when genuinely powerful (85+).
+  const color = value < 35 ? "#E5484D" : value < 85 ? "#F5A623" : "#1E9E6A";
+  const labelColor = value < 35 ? "#C0393D" : value < 85 ? "#C77700" : "#127350";
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-1.5">
