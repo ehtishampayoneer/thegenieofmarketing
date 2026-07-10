@@ -71,6 +71,8 @@ export async function GET(request) {
       await runEngagement(appUrl, { host, ai, _uid: userId });
       // 5) Scan for new replies → draft answers → notify (never go silent).
       await runNotifications(appUrl, { host, ai, _uid: userId });
+      // 6) Send today's outreach batch (drip, respects daily cap).
+      await runOutreach(appUrl, { host, _uid: userId });
       const after = await countReady(admin, userId, host);
       staged += Math.max(0, after - before);
 
@@ -135,6 +137,17 @@ async function runKeywordSync(appUrl, body) {
       headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(60000),
+    });
+  } catch {}
+}
+
+async function runOutreach(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/outreach/campaign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(110000),
     });
   } catch {}
 }
