@@ -211,7 +211,14 @@ function Growth() {
             </div>
           ) : (
             <>
-              <KeywordResearch host={host} ai={ai} />
+              <a href="/research" className="mb-6 card card-hover p-5 flex items-center gap-3">
+                <span className="w-11 h-11 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.search size={22} /></span>
+                <div className="flex-1">
+                  <p className="font-bold text-ink">Research new keywords</p>
+                  <p className="text-sm text-ink-400">Open the keyword research tool to discover and add high-value keywords.</p>
+                </div>
+                <Icon.chevronRight size={20} />
+              </a>
               <KeywordPortfolio portfolio={portfolio} host={host} ai={ai} onDerive={deriveKeywords} busy={busy === "keywords"} />
             </>
           )}
