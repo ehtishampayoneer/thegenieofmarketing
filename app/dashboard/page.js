@@ -739,8 +739,42 @@ function SettingsView({ email, onSignOut }) {
         <p className="text-xs uppercase tracking-wide text-ink-400">Plan</p>
         <p className="mt-1 text-sm text-ink-600">Free · plans & billing arrive with launch</p>
       </div>
+      <ProfileCard />
       <ResetCard />
     </>
+  );
+}
+
+function ProfileCard() {
+  const [p, setP] = useState(null);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    (async () => { try { const r = await fetch("/api/profile"); const j = await r.json(); if (j.ok) setP(j.profile || {}); } catch {} })();
+  }, []);
+  function upd(k, v) { setP((x) => ({ ...x, [k]: v })); setSaved(false); }
+  async function save() {
+    try { await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) }); setSaved(true); } catch {}
+  }
+  if (!p) return <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm animate-pulse h-24" />;
+  const fields = [
+    ["sender_name", "Your name"], ["sender_email", "Sending email"], ["company_name", "Company"],
+    ["company_website", "Website"], ["company_phone", "Phone"], ["company_address", "Address"], ["company_pitch", "One-line pitch"],
+  ];
+  return (
+    <div className="mt-3 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-ink-400">Your profile</p>
+      <p className="text-sm text-ink-600 mb-3">Genie signs your outreach emails with this.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {fields.map(([k, label]) => (
+          <div key={k}>
+            <label className="text-[11px] font-semibold text-ink-500">{label}</label>
+            <input value={p[k] || ""} onChange={(e) => upd(k, e.target.value)}
+              className="mt-1 w-full px-3 py-2 rounded-lg border border-hairline bg-paper text-ink text-sm outline-none focus:border-ink-300" />
+          </div>
+        ))}
+      </div>
+      <button onClick={save} className="btn-ink px-4 py-2 mt-4 text-sm">{saved ? "✓ Saved" : "Save profile"}</button>
+    </div>
   );
 }
 
