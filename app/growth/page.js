@@ -165,7 +165,7 @@ function Growth() {
 
   const taskCount = plan.totalTaps;
   const status = taskCount > 0
-    ? { state: "pending_approval", message: `${taskCount} tap${taskCount > 1 ? "s" : ""} ready — Genie found the conversations.`, actionable: false }
+    ? { state: "pending_approval", message: `${taskCount} tap${taskCount > 1 ? "s" : ""} ready. Genie found the conversations.`, actionable: false }
     : { state: "idle", message: "No taps queued. Let Genie scan for openings.", actionable: false };
   const genie = { host, suggestionCount: taskCount, contextChips: [{ label: host || "business", active: true }], quickActions: [{ label: "What's my best keyword?", prompt: `What's my strongest keyword for ${host} and why?` }] };
 
@@ -183,67 +183,35 @@ function Growth() {
 
       {state === "ready" && host && (
         <>
-          {/* Header — the daily ritual */}
-          <div className="rounded-3xl p-7 grad-genie text-white shadow-lg">
-            <p className="text-xs uppercase tracking-widest text-white/60">Growth engine · {host}</p>
-            <h1 className="mt-1 text-3xl font-extrabold">
-              {taskCount > 0 ? <>You have <span className="font-mono">{taskCount}</span> tap{taskCount > 1 ? "s" : ""} today.</> : "You're all caught up."}
-            </h1>
-            <p className="mt-1 text-sm text-white/75">
-              {plan.totalAuto > 0 && `${plan.totalAuto} publishing automatically · `}
-              Genie finds the conversations, writes your reply, and stages it. You tap — it posts from your account.
-            </p>
-          </div>
-
-          {/* Scan controls */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={runAllRadars} disabled={busy === "all" || !portfolio?.graded?.length} className="grad-genie text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-              {busy === "all" ? "Scanning everywhere…" : "🔍 Find openings everywhere"}
-            </button>
-            <button onClick={runReddit} disabled={busy || !portfolio?.graded?.length} className="bg-surface border border-ink-900/[0.1] text-ink-900 text-sm font-medium px-3 py-2.5 rounded-xl disabled:opacity-50">
-              {busy === "reddit" ? "Reddit…" : "Reddit only"}
-            </button>
-            {!portfolio?.graded?.length && (
-              <button onClick={deriveKeywords} disabled={busy === "keywords"} className="bg-surface border border-ink-900/[0.1] text-ink-900 text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50">
-                {busy === "keywords" ? "Thinking…" : "Derive my keywords first"}
-              </button>
-            )}
-          </div>
-          {busy === "all" && (
-            <p className="mt-2 text-xs text-ink-400">Genie is searching Reddit, Quora, forums, listicles & guest-post openings for your strong keywords… this takes a moment.</p>
-          )}
-
-          {/* Live "Genie is working" feed — the wow */}
-          <div className="mt-5">
-            <ActivityFeed host={host} live={!!busy} />
-          </div>
-
-          {/* Tap blocks */}
-          {plan.blocks.length === 0 ? (
-            <div className="mt-6 bg-surface border border-ink-900/[0.06] rounded-2xl p-8 text-center shadow-sm">
-              <p className="text-sm font-semibold text-ink-900">No openings staged yet</p>
-              <p className="mt-1 text-sm text-ink-400">Hit “Find openings everywhere” and Genie will surface live threads, questions, forums, listicles & guest-post spots where your product genuinely fits.</p>
+          {/* Header — the keyword command center */}
+          <div className="flex items-end justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-3xl font-extrabold text-ink tracking-tight">Your keyword world</h1>
+              <p className="text-sm text-ink-400 mt-1">These are the searches I'm ranking you for. Winners rise, dead ones get retired, fresh ones come in. This is your SEO engine.</p>
             </div>
-          ) : (
-            <div className="mt-6 space-y-5">
-              {plan.blocks.map((block) => (
-                <PlatformBlock key={block.platform} block={block} onAct={act} />
-              ))}
-            </div>
-          )}
+          </div>
 
-          {/* What Genie already posted — and what he learned */}
-          <ResultsSection results={results} onCheck={checkResults} busy={busy === "results"} />
-
-          {/* Keyword portfolio */}
+          {/* Keyword intro narration (from setup) */}
           {showKeywordIntro && portfolio?.graded?.length > 0 && (
-            <div className="mt-8 card p-5 bg-accent-soft border-0 animate-rise">
-              <p className="text-base font-semibold text-ink">
-                <GenieSays text={`Boom — I found ${portfolio.graded.length} keywords for you! The strong ones up top can pull in real leads; the medium and small ones we'll build over time. I'll sprinkle these across your posts, blogs and emails to climb Google. You can always see them here. ✨`} />
+            <div className="mt-5 card p-5 bg-accent-soft border-0 animate-rise">
+              <p className="text-base font-medium text-ink">
+                <GenieSays text={`Done. I found ${portfolio.graded.length} keywords for you. The strong ones up top can pull in real leads, and the medium and small ones we'll build over time. I weave these into your posts, blogs and emails so you climb Google. You can always manage them right here.`} />
               </p>
             </div>
           )}
-          <KeywordPortfolio portfolio={portfolio} host={host} onDerive={deriveKeywords} busy={busy === "keywords"} />
+
+          {!portfolio?.graded?.length ? (
+            <div className="mt-8 card p-10 text-center">
+              <div className="inline-flex text-ink mb-3"><Icon.target size={40} /></div>
+              <p className="text-lg font-bold text-ink">Let's build your keyword strategy</p>
+              <p className="mt-1 text-sm text-ink-400 max-w-md mx-auto">I'll read your product and find the exact searches to rank you for. No input needed from you.</p>
+              <button onClick={deriveKeywords} disabled={busy === "keywords"} className="btn-ink px-6 py-3 mt-5 disabled:opacity-50">
+                {busy === "keywords" ? "Thinking…" : "Build my keyword strategy"}
+              </button>
+            </div>
+          ) : (
+            <KeywordPortfolio portfolio={portfolio} host={host} ai={ai} onDerive={deriveKeywords} busy={busy === "keywords"} />
+          )}
         </>
       )}
     </AppShell>
@@ -258,7 +226,7 @@ function PlatformBlock({ block, onAct }) {
         <span className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm ${m.tint}`}>{m.icon}</span>
         <div className="flex-1">
           <p className="text-sm font-bold text-ink-900">{m.label}</p>
-          <p className="text-xs text-ink-400">{block.owned ? "Publishes automatically" : `${block.count} tap${block.count > 1 ? "s" : ""} — you post from your account`}</p>
+          <p className="text-xs text-ink-400">{block.owned ? "Publishes automatically" : `${block.count} tap${block.count > 1 ? "s" : ""}, you post from your account`}</p>
         </div>
         <span className="text-lg font-mono font-bold text-brand-violet">{block.count}</span>
       </div>
@@ -304,7 +272,7 @@ function PlacementCard({ item, owned, onAct }) {
           <button onClick={() => onAct(item, "posted")} className="grad-genie text-white text-xs font-semibold px-3 py-2 rounded-lg">✓ Approve & publish</button>
         ) : (
           <button onClick={tapPost} className="grad-genie text-white text-xs font-semibold px-3 py-2 rounded-lg">
-            {copied ? "✓ Copied — paste & post" : "📋 Copy & open thread"}
+            {copied ? "Copied. Paste & post" : "Copy & open thread"}
           </button>
         )}
         <button onClick={() => onAct(item, "snoozed")} className="text-xs text-ink-400 hover:text-ink-600 px-2">Later</button>
@@ -359,7 +327,7 @@ function ResultsSection({ results, onCheck, busy }) {
         </div>
       )}
       {winning > 0 && (
-        <p className="mt-3 text-[11px] text-ink-400">Genie drafts follow-up taps for winning threads automatically — look for “Follow-up” cards above.</p>
+        <p className="mt-3 text-[11px] text-ink-400">Genie drafts follow-up taps for winning threads automatically. Look for the Follow-up cards above.</p>
       )}
     </div>
   );
@@ -389,10 +357,10 @@ function ProductCorrection({ onDerive, busy }) {
       ) : (
         <div>
           <p className="text-sm font-semibold text-amber-900">Tell Genie exactly what your product is</p>
-          <p className="text-xs text-amber-700 mt-0.5">One clear sentence — the benefit customers get, not the tech. Genie will rebuild the whole strategy.</p>
+          <p className="text-xs text-amber-700 mt-0.5">One clear sentence about the benefit customers get, not the tech. Genie will rebuild the whole strategy.</p>
           <textarea
             value={text} onChange={(e) => setText(e.target.value)}
-            placeholder="e.g. An online store where customers view products in AR inside their room before buying — like Amazon but you try items in your space first."
+            placeholder="e.g. An online store where customers view products in AR inside their room before buying, like Amazon but you try items in your space first."
             className="mt-2 w-full rounded-xl border border-amber-300 bg-white p-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-amber-300 min-h-[70px]"
           />
           <div className="mt-2 flex items-center gap-2">
@@ -429,7 +397,7 @@ function AddKeyword({ host, onAdded }) {
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && add()}
-        placeholder="Add your own keyword — Genie will work it into the rotation…"
+        placeholder="Add your own keyword and Genie will work it into the rotation"
         className="flex-1 px-3 py-2 rounded-xl border border-hairline bg-panel text-ink text-sm outline-none focus:border-ink-300 transition"
       />
       <button onClick={add} disabled={busy || !val.trim()} className="btn-ink px-4 py-2 text-sm disabled:opacity-50 flex items-center gap-1">
@@ -471,7 +439,7 @@ function SyncButton({ host }) {
   );
 }
 
-function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
+function KeywordPortfolio({ portfolio, host, ai, onDerive, busy }) {
   const [history, setHistory] = useState({});
   useEffect(() => {
     if (!host) return;
@@ -483,7 +451,7 @@ function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
     return (
       <div className="mt-8 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
         <p className="text-lg font-bold text-ink-900">🎯 Genie builds your keyword strategy</p>
-        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">He reads your product and derives the keywords to rank for — no input from you. Then he manages them: keeping winners, pruning losers.</p>
+        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">He reads your product and derives the keywords to rank for, no input from you. Then he manages them, keeping winners and pruning losers.</p>
         <button onClick={onDerive} disabled={busy} className="mt-4 grad-genie text-white font-semibold px-5 py-2.5 rounded-xl disabled:opacity-60">
           {busy ? "Genie is analyzing…" : "Build my keyword strategy →"}
         </button>
@@ -494,50 +462,53 @@ function KeywordPortfolio({ portfolio, host, onDerive, busy }) {
   const { graded, counts = {}, portfolioScore } = portfolio;
   const active = graded.filter((k) => k.health !== "retired");
   const retired = graded.filter((k) => k.health === "retired");
+  const strongCount = (counts.strong || 0) + (counts.growing || 0);
+  const easyCount = active.filter((k) => (k.competition ?? 50) < 40).length;
+  const realCount = active.filter((k) => (k.gsc_impressions || 0) > 0).length;
 
   return (
-    <div className="mt-8">
+    <div className="mt-6">
       <ProductCorrection onDerive={onDerive} busy={busy} />
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h2 className="text-xl font-extrabold text-ink-900">Keyword portfolio</h2>
-          <p className="text-sm text-ink-400">Genie selected these and manages their health — winners stay, losers get retired.</p>
+
+      {/* Command-center stat tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="card p-4">
+          <p className="text-2xl font-mono font-bold text-ink">{active.length}</p>
+          <p className="text-xs text-ink-400 mt-0.5">keywords tracked</p>
         </div>
-        <div className="flex items-center gap-3">
-          <SyncButton host={host} />
-          <div className="text-right">
-            <p className="text-2xl font-mono font-bold text-brand-violet leading-none">{portfolioScore}</p>
-            <p className="text-[11px] text-ink-400">portfolio health</p>
-          </div>
-          <button onClick={onDerive} disabled={busy} className="text-xs text-brand-violet hover:underline disabled:opacity-50">{busy ? "…" : "+ Add fresh"}</button>
+        <div className="card p-4">
+          <p className="text-2xl font-mono font-bold text-ink">{portfolioScore}</p>
+          <p className="text-xs text-ink-400 mt-0.5">portfolio health</p>
         </div>
+        <div className="card p-4">
+          <p className="text-2xl font-mono font-bold accent-text">{easyCount}</p>
+          <p className="text-xs text-ink-400 mt-0.5">easy wins</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-2xl font-mono font-bold accent-text">{realCount}</p>
+          <p className="text-xs text-ink-400 mt-0.5">bringing real traffic</p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-lg font-bold text-ink">Top keywords</h2>
+        <SyncButton host={host} />
       </div>
 
       {/* Add your own keyword */}
       <AddKeyword host={host} onAdded={(p) => window.location.reload()} />
 
-      {/* Tier summary */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {["strong", "growing", "new", "weak", "retired"].map((t) => (
-          counts[t] ? (
-            <span key={t} className={`text-xs font-medium px-2.5 py-1 rounded-full border ${HEALTH_META[t].cls}`}>
-              {HEALTH_META[t].label} <span className="font-mono">{counts[t]}</span>
-            </span>
-          ) : null
-        ))}
-      </div>
-
-      {/* Active keywords */}
+      {/* Active keywords — high to low */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
         {active.map((k) => <KeywordRow key={k.id} k={k} history={history[k.keyword]} />)}
       </div>
 
       {/* Retired (pruned) */}
       {retired.length > 0 && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-sm text-ink-400 hover:text-ink-600">Retired keywords ({retired.length}) — Genie stopped using these</summary>
+        <details className="mt-5">
+          <summary className="cursor-pointer text-sm text-ink-400 hover:text-ink-600">Retired keywords ({retired.length}). Genie stopped using these.</summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {retired.map((k) => <span key={k.id} className="text-xs text-ink-400 line-through bg-ink-900/[0.03] rounded-full px-2 py-0.5">{k.keyword}</span>)}
+            {retired.map((k) => <span key={k.id} className="text-xs text-ink-400 line-through bg-ink-50 rounded-full px-2 py-0.5">{k.keyword}</span>)}
           </div>
         </details>
       )}
@@ -590,7 +561,7 @@ function KeywordRow({ k, history }) {
         ) : k.source === "gsc" ? (
           <span className="accent-text font-medium">real Google keyword</span>
         ) : null}
-        {k.dead && <span className="text-red-500 font-medium">dead — retired</span>}
+        {k.dead && <span className="text-red-500 font-medium">retired</span>}
       </div>
     </div>
   );
