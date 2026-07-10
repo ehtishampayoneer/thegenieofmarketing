@@ -1,44 +1,50 @@
 "use client";
 
-// ── GENIE CONSTITUTION (see lib/outcomes.js). This is the killer screen:
-// one recommendation at a time (Focus Mode), outcome titles, one primary CTA.
-// Stage A ships both modes functional; Stage C adds slide animation, keyboard
-// shortcuts, and the celebration screen.
+// ── WAVE 2D: THE DAILY RITUAL ──
+// Genie walks the user through today's work ONE CHANNEL AT A TIME, in order:
+//   1. Publish to YOUR OWN accounts first (X -> LinkedIn -> Reddit -> blog)
+//   2. Join community conversations (Reddit/Quora/forums) one channel at a time
+//   3. Send outreach emails (profile baked in)
+// Each channel: "Found N on X - let's post them" -> tap each -> "Perfect, X done!"
 
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { hostOf } from "@/lib/business";
-import { toOutcome, IMPACT_STYLES, sortByPriority } from "@/lib/outcomes";
+import { businessesFromScans } from "@/lib/business";
 import AppShell from "@/components/shell/AppShell";
+import { BrandIcon } from "@/components/ui/BrandIcon";
+import { GenieSays } from "@/components/ui/GenieVoice";
+import Icon from "@/components/ui/Icon";
 
-const FILTERS = [
-  ["all", "All"],
-  ["article", "Articles"],
-  ["social_post", "Social"],
-  ["distribution", "Distribution"],
-  ["outreach_email", "Outreach"],
-  ["community_engagement", "Community"],
-  ["directory_submission", "Directories"],
-];
+const PLATFORM_LABEL = { x: "X", twitter: "X", linkedin: "LinkedIn", medium: "Medium", wordpress: "your blog", blog: "your blog", reddit: "Reddit", quora: "Quora", forum: "forums", guest: "guest sites" };
+const DONE_LINES = ["Boom - {p} is done!", "Nailed it - {p} complete!", "{p} handled. You're on fire!"];
 
-export default function TasksPage() {
-  return (
-    <Suspense fallback={null}>
-      <Tasks />
-    </Suspense>
-  );
+export default function TodayPage() {
+  return <Suspense fallback={null}><Today /></Suspense>;
 }
 
-function Tasks() {
+function Today() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const business = searchParams.get("business") || "";
   const [state, setState] = useState("loading");
-  const [actions, setActions] = useState([]);
-  const [mode, setMode] = useState("focus"); // focus | list
-  const [filter, setFilter] = useState("all");
-  const [approvedToday, setApprovedToday] = useState(0);
+  const [host, setHost] = useState("");
+  const [blocks, setBlocks] = useState([]);
+  const [emails, setEmails] = useState([]);
+  const [stage, setStage] = useState(0);
+  const [doneMap, setDoneMap] = useState({});
+
+  const load = useCallback(async (h) => {
+    try {
+      const res = await fetch(`/api/placements${h ? `?host=${encodeURIComponent(h)}` : ""}`);
+      const j = await res.json();
+      if (j.ok) setBlocks(j.blocks || []);
+    } catch {}
+    try {
+      const r = await fetch("/api/actions?status=proposed");
+      const j = await r.json();
+      const em = (j.actions || j.items || []).filter((a) => a.type === "outreach_email");
+      setEmails(em);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -47,200 +53,222 @@ function Tasks() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
       try {
-        const res = await fetch("/api/actions?status=proposed");
+        const res = await fetch("/api/scans");
         const j = await res.json();
-        if (!active) return;
-        let list = j.ok ? (j.actions || []) : [];
-        if (business) list = list.filter((a) => hostOf(a.target?.host || "") === business || (a.target?.host || "") === business);
-        setActions(sortByPriority(list));
-        setState("ready");
-      } catch { if (active) setState("ready"); }
+        const biz = businessesFromScans(j.ok ? j.scans || [] : []);
+        if (active && biz[0]) { setHost(biz[0].host); await load(biz[0].host); }
+      } catch {}
+      if (active) setState("ready");
     })();
     return () => { active = false; };
-  }, [router, business]);
+  }, [router, load]);
 
-  async function decide(id, decision) {
-    // optimistic remove
-    setActions((prev) => prev.filter((a) => a.id !== id));
-    if (decision === "approved") setApprovedToday((n) => n + 1);
-    try {
-      await fetch("/api/actions", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: decision }),
-      });
-    } catch {}
-  }
+  const ownBlocks = blocks.filter((b) => b.owned);
+  const communityBlocks = blocks.filter((b) => !b.owned);
+  const channels = [
+    ...ownBlocks.map((b) => ({ kind: "own", block: b })),
+    ...communityBlocks.map((b) => ({ kind: "community", block: b })),
+    ...(emails.length ? [{ kind: "email", emails }] : []),
+  ];
+  const totalTaps = blocks.reduce((n, b) => n + b.count, 0) + emails.length;
+  const current = channels[stage];
 
-  const filtered = filter === "all" ? actions : actions.filter((a) => a.type === filter);
-  const taskCount = actions.length;
+  function markDone(id) { setDoneMap((m) => ({ ...m, [id]: true })); }
+  function nextChannel() { setStage((s) => Math.min(s + 1, channels.length)); }
 
-  const status = taskCount > 0
-    ? { state: "pending_approval", message: `${taskCount} thing${taskCount > 1 ? "s" : ""} ready for your approval.`, actionable: false }
-    : { state: "idle", message: "Inbox zero — Genie has nothing waiting.", actionable: false };
-
-  const genie = {
-    host: business,
-    suggestionCount: taskCount,
-    contextChips: [{ label: business || "All tasks", active: true }],
-    quickActions: [{ label: "What should I approve first?", prompt: "Which of my pending tasks should I approve first and why?" }],
-  };
+  const status = totalTaps > 0
+    ? { state: "pending_approval", message: `${totalTaps} things to do today.`, actionable: false }
+    : { state: "idle", message: "All done for today.", actionable: false };
 
   return (
-    <AppShell nav="tasks" taskCount={taskCount} businessName={business} status={status} genie={genie}>
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-extrabold text-ink-900">Tasks</h1>
-          <p className="mt-0.5 text-sm text-ink-400">Approve one at a time. Genie handles the doing.</p>
-        </div>
-        <div className="flex items-center gap-1 bg-surface2 border border-ink-900/[0.06] rounded-xl p-1">
-          <button onClick={() => setMode("focus")} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${mode === "focus" ? "bg-surface shadow-sm text-ink-900" : "text-ink-400"}`}>Focus</button>
-          <button onClick={() => setMode("list")} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition ${mode === "list" ? "bg-surface shadow-sm text-ink-900" : "text-ink-400"}`}>List</button>
-        </div>
-      </div>
+    <AppShell nav="tasks" taskCount={totalTaps} businessName={host} status={status}>
+      {state === "loading" && <p className="mt-10 text-center text-ink-400">Loading today's plan...</p>}
 
-      {state === "loading" && <p className="mt-10 text-center text-ink-400">Loading your tasks…</p>}
-
-      {state === "ready" && taskCount === 0 && (
-        <div className="mt-8 bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
-          <div className="text-4xl">🎉</div>
-          <p className="mt-3 text-lg font-bold text-ink-900">You're all caught up!</p>
-          <p className="mt-1 text-sm text-ink-400">Genie will surface new tasks as you scan sites and generate content.</p>
-          <a href="/dashboard" className="mt-4 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Back to Dashboard</a>
-        </div>
-      )}
-
-      {state === "ready" && taskCount > 0 && mode === "focus" && (
-        <FocusMode actions={filtered.length ? filtered : actions} total={taskCount} approvedToday={approvedToday} onDecide={decide} business={business} />
-      )}
-
-      {state === "ready" && taskCount > 0 && mode === "list" && (
+      {state === "ready" && (
         <>
-          <div className="mt-4 flex gap-2 flex-wrap">
-            {FILTERS.map(([id, label]) => {
-              const n = id === "all" ? actions.length : actions.filter((a) => a.type === id).length;
-              if (id !== "all" && n === 0) return null;
-              return (
-                <button key={id} onClick={() => setFilter(id)} className={`text-xs font-medium px-3 py-1.5 rounded-full border transition ${filter === id ? "bg-brand-violet text-white border-brand-violet" : "bg-surface text-ink-600 border-ink-900/[0.08] hover:border-brand-violet/30"}`}>
-                  {label} {n > 0 && <span className="font-mono">{n}</span>}
-                </button>
-              );
-            })}
+          <div className="mb-6">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">Today's plan</h1>
+            <p className="text-sm text-ink-400 mt-1">One channel at a time. I've done the finding and the writing - you just tap. Let's go.</p>
           </div>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filtered.map((a) => <ListCard key={a.id} action={a} business={business} onApprove={() => decide(a.id, "approved")} onSkip={() => decide(a.id, "dismissed")} />)}
-          </div>
+
+          {channels.length > 0 && stage < channels.length && (
+            <div className="flex items-center gap-1.5 mb-6">
+              {channels.map((c, i) => (
+                <div key={i} className="flex-1 h-1.5 rounded-full overflow-hidden bg-ink-100">
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: i < stage ? "100%" : i === stage ? "40%" : "0%", background: i < stage ? "#1E9E6A" : "#11202E" }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {channels.length === 0 && (
+            <div className="card p-10 text-center">
+              <div className="inline-flex mb-3 text-ink"><Icon.check size={40} /></div>
+              <p className="text-lg font-bold text-ink">You're all caught up!</p>
+              <p className="mt-1 text-sm text-ink-400 max-w-md mx-auto">Nothing to post right now. Genie works overnight to find fresh conversations - come back tomorrow, or run a scan on Growth to find openings now.</p>
+              <a href="/growth" className="btn-ink inline-block mt-4 px-5 py-2.5">Find openings now</a>
+            </div>
+          )}
+
+          {stage >= channels.length && channels.length > 0 && (
+            <div className="card p-10 text-center animate-scale-in">
+              <p className="text-2xl font-extrabold text-ink"><GenieSays text="That's a wrap - today's tasks are done!" /></p>
+              <p className="mt-2 text-sm text-ink-500 max-w-md mx-auto">Beautiful work. I'll keep watching overnight and line up fresh conversations and leads for tomorrow. Go enjoy your day.</p>
+              <a href="/dashboard" className="btn-ink inline-block mt-5 px-6 py-3">Back to home</a>
+            </div>
+          )}
+
+          {current && current.kind !== "email" && (
+            <ChannelStep key={stage} channel={current} doneMap={doneMap} onDone={markDone} onComplete={nextChannel} host={host} />
+          )}
+          {current && current.kind === "email" && (
+            <EmailStep emails={current.emails} doneMap={doneMap} onDone={markDone} onComplete={nextChannel} />
+          )}
         </>
       )}
     </AppShell>
   );
 }
 
-function ImpactBadge({ impact }) {
-  return <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${IMPACT_STYLES[impact.tone]}`}>{impact.label}</span>;
-}
-
-function FocusMode({ actions, total, approvedToday, onDecide, business }) {
-  const a = actions[0];
-  if (!a) {
-    return (
-      <div className="mt-8 bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
-        <div className="text-4xl">🎉</div>
-        <p className="mt-3 text-lg font-bold text-ink-900">You approved {approvedToday} task{approvedToday !== 1 ? "s" : ""} today!</p>
-        <p className="mt-1 text-sm text-ink-400">Genie will handle publishing when integrations connect.</p>
-        <a href="/dashboard" className="mt-4 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Back to Dashboard</a>
-      </div>
-    );
-  }
-  const o = toOutcome(a);
-  const done = total - actions.length + 1;
-  const pct = Math.round((done / total) * 100);
+function ChannelStep({ channel, doneMap, onDone, onComplete, host }) {
+  const b = channel.block;
+  const label = PLATFORM_LABEL[b.platform] || b.platform;
+  const isOwn = channel.kind === "own";
+  const remaining = b.items.filter((it) => !doneMap[it.id]).length;
+  const allDone = remaining === 0;
+  const intro = isOwn
+    ? `First, let's post to ${label} - your own account. Getting active here builds your credibility so your community posts land better. I wrote ${b.count} for you.`
+    : `Now let's join the conversation on ${label}. I found ${b.count} great spot${b.count > 1 ? "s" : ""} where your product genuinely fits - tap each to post your reply.`;
+  const [showItems, setShowItems] = useState(false);
 
   return (
-    <div className="mt-5">
-      <div className="max-w-md mx-auto">
-        <p className="text-center text-xs text-ink-400 font-mono">Task {done} of {total}</p>
-        <div className="mt-1.5 h-1.5 rounded-full bg-ink-900/[0.06] overflow-hidden">
-          <div className="h-full grad-genie rounded-full" style={{ width: `${pct}%`, transition: "width .4s ease" }} />
+    <div className="animate-fade">
+      <div className="flex items-center gap-3 mb-4">
+        <BrandIcon brand={b.platform === "blog" ? "blog" : b.platform} size={22} />
+        <div>
+          <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide">{isOwn ? "Your account" : "Community"}</p>
+          <p className="font-bold text-ink text-lg">{label}</p>
         </div>
+        {allDone && <span className="ml-auto accent-soft text-xs font-semibold px-3 py-1 rounded-full">Done</span>}
       </div>
 
-      <div className="mt-4 max-w-md mx-auto bg-surface border border-ink-900/[0.06] rounded-3xl p-7 shadow-lg">
-        <div className="flex items-center justify-between">
-          <ImpactBadge impact={o.impact} />
-          <span className="text-xs text-ink-400">⏱ {o.secs} sec to approve</span>
-        </div>
-        <div className="mt-5 text-center">
-          <div className="text-4xl">{o.icon}</div>
-          <h2 className="mt-3 text-xl font-extrabold text-ink-900">{o.title}</h2>
-          <p className="mt-1.5 text-sm text-ink-600">{o.value}</p>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
-          {o.categories.map((c) => <span key={c} className="text-[11px] bg-surface2 border border-ink-900/[0.06] text-ink-600 rounded-full px-2 py-0.5">{c}</span>)}
-        </div>
-
-        <FocusPreview action={a} />
-
-        <div className="mt-6 space-y-2">
-          <button onClick={() => onDecide(a.id, "approved")} className="w-full grad-genie text-white font-bold py-3.5 rounded-2xl active:scale-[0.99] transition">
-            ✓ Approve &amp; Continue
-          </button>
-          <a href={`/dashboard/action/${a.id}${business ? `?business=${encodeURIComponent(business)}` : ""}`} className="block text-center text-sm text-brand-violet font-medium hover:underline">
-            See full detail →
-          </a>
-          <button onClick={() => onDecide(a.id, "dismissed")} className="w-full text-ink-400 text-sm py-1.5 hover:text-ink-600">
-            → Skip for now
-          </button>
-        </div>
+      <div className="card p-5 mb-4 bg-accent-soft border-0">
+        <p className="text-base font-semibold text-ink">
+          <GenieSays text={intro} onDone={() => setShowItems(true)} />
+        </p>
       </div>
-      <p className="mt-3 text-center text-[11px] text-ink-400">Approving queues it — Genie publishes when the integration connects. Community &amp; outreach you post yourself.</p>
+
+      <div className={`space-y-3 transition-opacity duration-500 ${showItems ? "opacity-100" : "opacity-40"}`}>
+        {b.items.map((it) => (
+          <PlacementTap key={it.id} placement={it} done={doneMap[it.id]} onDone={() => onDone(it.id)} host={host} />
+        ))}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-sm text-ink-400">{remaining > 0 ? `${remaining} left on ${label}` : `${label} complete!`}</p>
+        <button onClick={onComplete} className={`px-6 py-3 flex items-center gap-2 rounded-xl ${allDone ? "btn-accent" : "btn-ghost"}`}>
+          {allDone ? <>{DONE_LINES[0].replace("{p}", label)} Next <Icon.arrowRight size={18} /></> : <>Skip {label} for now</>}
+        </button>
+      </div>
     </div>
   );
 }
 
-function FocusPreview({ action }) {
+function PlacementTap({ placement, done, onDone, host }) {
+  const [copied, setCopied] = useState(false);
+  async function post() {
+    if (placement.draft) { try { await navigator.clipboard.writeText(placement.draft); setCopied(true); } catch {} }
+    if (placement.target_url) window.open(placement.target_url, "_blank");
+    try {
+      await fetch("/api/placements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: placement.id, status: "posted", host }) });
+    } catch {}
+    onDone();
+  }
+  return (
+    <div className={`card p-4 ${done ? "opacity-60" : "card-hover"}`}>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-ink text-sm truncate">{placement.target_title || placement.target_url}</p>
+        {placement.keyword && <p className="text-[11px] accent-text">{placement.keyword}</p>}
+        {placement.draft && <p className="mt-1.5 text-sm text-ink-600 line-clamp-2 bg-paper rounded-lg p-2 border border-hairline">{placement.draft}</p>}
+      </div>
+      <div className="mt-3">
+        {done ? (
+          <span className="text-sm accent-text font-semibold flex items-center gap-1"><Icon.check size={16} /> Posted{copied ? " . copied" : ""}</span>
+        ) : (
+          <button onClick={post} className="btn-ink px-4 py-2 text-sm flex items-center gap-1.5">
+            <Icon.post size={16} /> Copy & open to post
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmailStep({ emails, doneMap, onDone, onComplete }) {
+  const [showItems, setShowItems] = useState(false);
+  const remaining = emails.filter((e) => !doneMap[e.id]).length;
+  const allDone = remaining === 0;
+  return (
+    <div className="animate-fade">
+      <div className="flex items-center gap-3 mb-4">
+        <BrandIcon brand="mail" size={22} />
+        <div>
+          <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide">Outreach</p>
+          <p className="font-bold text-ink text-lg">Email potential clients</p>
+        </div>
+        {allDone && <span className="ml-auto accent-soft text-xs font-semibold px-3 py-1 rounded-full">Done</span>}
+      </div>
+
+      <div className="card p-5 mb-4 bg-accent-soft border-0">
+        <p className="text-base font-semibold text-ink">
+          <GenieSays text={`Last thing - I found ${emails.length} potential client${emails.length > 1 ? "s" : ""} who'd be perfect for your business. I drafted each email with your details already in it. Time to charm some future clients!`} onDone={() => setShowItems(true)} />
+        </p>
+      </div>
+
+      <div className={`space-y-3 transition-opacity duration-500 ${showItems ? "opacity-100" : "opacity-40"}`}>
+        {emails.map((e) => <EmailTap key={e.id} action={e} done={doneMap[e.id]} onDone={() => onDone(e.id)} />)}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-sm text-ink-400">{remaining > 0 ? `${remaining} email${remaining > 1 ? "s" : ""} left` : "All sent!"}</p>
+        <button onClick={onComplete} className={`px-6 py-3 flex items-center gap-2 rounded-xl ${allDone ? "btn-accent" : "btn-ghost"}`}>
+          {allDone ? <>Perfect - finish up <Icon.arrowRight size={18} /></> : <>Skip emails for now</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmailTap({ action, done, onDone }) {
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState("");
   const p = action.payload || {};
-  if (action.type === "article") {
-    return (
-      <div className="mt-4 bg-surface2 border border-ink-900/[0.06] rounded-2xl p-4">
-        <p className="text-sm font-bold text-ink-900">{p.title}</p>
-        <p className="mt-1 text-xs text-ink-600 line-clamp-3">{firstPara(p.body)}</p>
-        {p.wordCount && <p className="mt-2 text-[11px] text-ink-400 font-mono">{p.wordCount} words</p>}
-      </div>
-    );
+  const to = p.to || p.recipient || action.target?.email || "";
+  async function send() {
+    setSending(true); setErr("");
+    try {
+      const res = await fetch("/api/outreach/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actionId: action.id }) });
+      const j = await res.json();
+      if (j.ok) onDone();
+      else setErr(j.error || "Couldn't send");
+    } catch { setErr("Couldn't send"); }
+    setSending(false);
   }
-  const draft = Array.isArray(p.draft) ? p.draft.join("\n\n") : (p.draft || p.text || "");
-  if (draft) {
-    return (
-      <div className="mt-4 bg-surface2 border border-ink-900/[0.06] rounded-2xl p-4 max-h-40 overflow-y-auto thin-scroll">
-        <p className="text-sm text-ink-900 whitespace-pre-wrap">{draft}</p>
-      </div>
-    );
-  }
-  return null;
-}
-
-function ListCard({ action, business, onApprove, onSkip }) {
-  const o = toOutcome(action);
   return (
-    <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col">
-      <div className="flex items-center justify-between">
-        <span className="text-xl">{o.icon}</span>
-        <ImpactBadge impact={o.impact} />
-      </div>
-      <a href={`/dashboard/action/${action.id}${business ? `?business=${encodeURIComponent(business)}` : ""}`} className="mt-2 block flex-1">
-        <p className="text-sm font-bold text-ink-900 line-clamp-2">{o.title}</p>
-        <p className="mt-0.5 text-xs text-ink-600 line-clamp-2">{o.value}</p>
-      </a>
-      <div className="mt-3 flex items-center gap-2">
-        <button onClick={onApprove} className="flex-1 grad-genie text-white text-xs font-semibold py-2 rounded-lg hover:opacity-90">✓ Approve</button>
-        <button onClick={onSkip} className="text-xs text-ink-400 px-2 hover:text-ink-600">Skip</button>
+    <div className={`card p-4 ${done ? "opacity-60" : "card-hover"}`}>
+      <p className="font-semibold text-ink text-sm">{action.title || "Outreach email"}</p>
+      {to && <p className="text-[11px] text-ink-400">to {to}</p>}
+      {p.draft && <p className="mt-1.5 text-sm text-ink-600 line-clamp-3 bg-paper rounded-lg p-2 border border-hairline">{Array.isArray(p.draft) ? p.draft.join("\n") : p.draft}</p>}
+      <div className="mt-3">
+        {done ? (
+          <span className="text-sm accent-text font-semibold flex items-center gap-1"><Icon.check size={16} /> Sent</span>
+        ) : (
+          <button onClick={send} disabled={sending} className="btn-ink px-4 py-2 text-sm flex items-center gap-1.5 disabled:opacity-50">
+            <Icon.mail size={16} /> {sending ? "Sending..." : to ? "Send it" : "Open in email"}
+          </button>
+        )}
+        {err && <p className="text-[11px] text-red-500 mt-1">{err}</p>}
       </div>
     </div>
   );
-}
-
-function firstPara(body) {
-  const t = String(body || "").split("\n").find((l) => l.trim() && !l.trim().startsWith("#"));
-  return t || "";
 }
