@@ -1,70 +1,88 @@
-// app/api/connect/google/callback/route.js
-// Google sends the user back here. Verify state, swap the code for tokens,
-// figure out which Google account it is, and save the connection.
+// app/api/connect/x/callback/route.js
+// X sends the user back here with a code. We verify state, exchange the code
+// (with the PKCE verifier) for access + refresh tokens, fetch the handle, and
+// store the connection. Refresh token + expiry live in the meta jsonb.
+
 import { NextResponse } from "next/server";
-import { exchangeCode, getGoogleEmail } from "@/lib/google";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const cookieState = request.cookies.get("g_oauth_state")?.value;
-  const err = searchParams.get("error");
+  const cookieState = request.cookies.get("x_oauth_state")?.value;
+  const verifier = request.cookies.get("x_pkce_verifier")?.value;
 
-  const back = (q) => NextResponse.redirect(`${origin}/dashboard${q}`);
+  const fromSetup = request.cookies.get("genie_return")?.value === "setup";
+  const back = (q) => NextResponse.redirect(absolute(fromSetup ? `/setup?connected=x` : `/dashboard?view=integrations${q}`));
 
-  if (err) return back(`?connect_error=${encodeURIComponent(err)}`);
-  if (!code || !state || state !== cookieState) {
-    return back("?connect_error=state");
+  if (!code || !state || !verifier || state !== cookieState) {
+    return back("&x_error=state_mismatch");
   }
+
+  const clientId = process.env.X_CLIENT_ID;
+  const clientSecret = process.env.X_CLIENT_SECRET;
+  const redirectUri = process.env.X_REDIRECT_URI;
+
+  // Exchange the code for tokens.
+  let tokens;
+  try {
+    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basic}` },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+        client_id: clientId,
+      }),
+    });
+    tokens = await res.json();
+    if (!res.ok || !tokens.access_token) return back("&x_error=token_exchange");
+  } catch {
+    return back("&x_error=token_exchange");
+  }
+
+  // Fetch the handle so we can show "Connected as @handle".
+  let handle = null, xUserId = null;
+  try {
+    const me = await fetch("https://api.twitter.com/2/users/me", {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const j = await me.json();
+    handle = j?.data?.username || null;
+    xUserId = j?.data?.id || null;
+  } catch {}
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(`${origin}/login`);
+  if (!user) return NextResponse.redirect(absolute("/login"));
 
-  let tokens;
-  try {
-    tokens = await exchangeCode(code);
-  } catch {
-    return back("?connect_error=exchange");
-  }
-
-  const email = await getGoogleEmail(tokens.access_token);
-  const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
-
-  // Google only returns refresh_token on first consent — keep the old one if absent.
-  let refresh = tokens.refresh_token || null;
-  if (!refresh) {
-    const { data: existing } = await supabase
-      .from("connections")
-      .select("refresh_token")
-      .eq("user_id", user.id)
-      .eq("provider", "google")
-      .maybeSingle();
-    refresh = existing?.refresh_token || null;
-  }
-
-  const { error } = await supabase.from("connections").upsert(
+  const expiresAt = new Date(Date.now() + (tokens.expires_in || 7200) * 1000).toISOString();
+  await supabase.from("connections").upsert(
     {
       user_id: user.id,
-      provider: "google",
+      provider: "x",
       access_token: tokens.access_token,
-      refresh_token: refresh,
-      token_expires_at: expiresAt,
-      scopes: tokens.scope || null,
-      google_email: email,
+      meta: { refresh_token: tokens.refresh_token || null, expires_at: expiresAt, handle, x_user_id: xUserId },
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,provider" }
   );
 
-  if (error) return back("?connect_error=save");
-
-  const res = back("?connected=1");
-  res.cookies.set("g_oauth_state", "", { maxAge: 0, path: "/" }); // clear state
+  const res = back(handle ? `&x_connected=${encodeURIComponent(handle)}` : "&x_connected=1");
+  res.cookies.delete("genie_return");
+  res.cookies.delete("x_pkce_verifier");
+  res.cookies.delete("x_oauth_state");
   return res;
+}
+
+function absolute(path) {
+  const base = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  return base + path;
 }
