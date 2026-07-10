@@ -20,13 +20,12 @@ export async function GET(request) {
   const providers = new Set((conns || []).map((c) => c.provider));
   const { data: prof } = await supabase.from("profiles").select("sender_email, company_name").eq("id", user.id).maybeSingle();
   let strength = 0;
-  if (providers.has("google")) strength += 30;
+  if (providers.has("google")) strength += 35;
   if (providers.has("x")) strength += 15;
   if (providers.has("wordpress")) strength += 15;
   if (prof?.sender_email) strength += 10;
   if (prof?.company_name) strength += 10;
-  // Signed-in tap platforms are tracked client-side; give a base for having a business.
-  strength = Math.min(100, strength + 20);
+  strength = Math.min(100, strength);
 
   // Today's counts.
   let placementsQ = supabase.from("placements").select("id, status, platform").eq("user_id", user.id);
