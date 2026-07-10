@@ -17,40 +17,40 @@ import Icon from "@/components/ui/Icon";
 // Each step's power weight + Genie's pitch.
 const STEPS = [
   {
-    id: "google", brand: "google", power: 25, kind: "oauth", connectHref: "/api/connect/google/start",
+    id: "google", brand: "google", power: 35, kind: "oauth", connectHref: "/api/connect/google/start",
     title: "Connect Google Search Console",
-    why: "This is my superpower. With Google connected, I see exactly which keywords bring you real visitors — so I chase what actually works and drop what doesn't. Real data beats guessing every time.",
-    does: "Track real keyword rankings daily · swap dead keywords for fresh ones · measure real traffic",
+    why: "SEO is old, but it's still gold. Knowing your keywords is what makes you show up when people search on Google. Connect Google and I'll find which keyword could become your superpower, then track it climbing every day.",
+    does: "See your real keyword rankings, spot which keywords bring visitors, and know exactly what's working",
   },
   {
     id: "x", brand: "x", power: 15, kind: "oauth", connectHref: "/api/connect/x/start",
     title: "Connect X (Twitter)",
-    why: "Hook up X and I'll post to your account and watch it perform. Your own audience is where all the momentum starts — let's light it up.",
-    does: "Post to your X · watch engagement · learn what your audience loves",
+    why: "X is where conversations move fast. I'll post to your account daily to build your audience, and I'll also hunt down posts related to what you do so you can jump in and get noticed. Fresh discoveries every single day.",
+    does: "Post daily to build your following, find related conversations to join, and grow your reach",
   },
   {
     id: "wordpress", brand: "wordpress", power: 15, kind: "inapp", connectView: "integrations",
-    title: "Connect your blog (WordPress)",
-    why: "Connect your blog and I'll publish SEO articles straight to it — for real, no copy-paste. Blog articles are your long-game ranking machine.",
-    does: "Auto-publish SEO articles · build lasting Google rankings · own your content",
+    title: "Connect your blog",
+    why: "Blogs are your long game. I'll publish fresh articles regularly, woven with your keywords so every post links back to your strengths and climbs Google over time. Real content that keeps working for you.",
+    does: "Publish keyword-rich articles, build lasting Google rankings, and grow content that compounds",
   },
   {
     id: "reddit", brand: "reddit", power: 12, kind: "signin", signinUrl: "https://www.reddit.com/login",
     title: "Sign in to Reddit",
-    why: "Reddit is gold for finding people already talking about what you do. Sign in and I'll drop you right into the best conversations — you just tap to post.",
-    does: "Join the hottest threads · post value-first replies · build real karma",
+    why: "Reddit is pure gold. Real people are already talking about exactly what you offer. I'll post from your account and find the best conversations to join, so you show up where it counts. You just tap to publish.",
+    does: "Join the hottest threads, post value that builds trust, and get discovered by real buyers",
   },
   {
     id: "quora", brand: "quora", power: 11, kind: "signin", signinUrl: "https://www.quora.com/",
     title: "Sign in to Quora",
-    why: "People ask questions on Quora that your product literally answers. Sign in and I'll write ranking answers you just tap to publish.",
-    does: "Answer high-intent questions · rank on Google too · win trust",
+    why: "On Quora, people literally ask the questions your product answers. I'll write sharp answers that help them and rank on Google too. Two wins from one tap.",
+    does: "Answer high-intent questions, rank on Google, and win trust from ready-to-buy people",
   },
   {
     id: "linkedin", brand: "linkedin", power: 11, kind: "signin", signinUrl: "https://www.linkedin.com/login",
     title: "Sign in to LinkedIn",
-    why: "LinkedIn is where the pros hang out. Sign in and I'll craft posts that make you look sharp — you tap, it's live.",
-    does: "Post professional updates · reach decision-makers · grow your network",
+    why: "LinkedIn is where the money scrolls. Investors, founders, decision-makers. I'll craft posts that make you look sharp and put you in front of the people who can actually move the needle for you.",
+    does: "Post polished updates, reach decision-makers and investors, and grow your professional pull",
   },
 ];
 
@@ -177,7 +177,7 @@ function ConnectStep({ step, done, index, total, onConnect, onNext, onSkipAll })
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {step.does.split(" · ").map((d, k) => (
+            {step.does.split(", ").map((d, k) => (
               <div key={k} className="flex items-center gap-2 text-sm text-ink-600">
                 <span className="accent-text"><Icon.check size={16} /></span> {d}
               </div>
@@ -201,7 +201,7 @@ function ConnectStep({ step, done, index, total, onConnect, onNext, onSkipAll })
         </div>
 
         <div className="mt-6 text-center">
-          <button onClick={onSkipAll} className="text-sm text-ink-400 hover:text-ink underline">Skip the rest — take me to my profile</button>
+          <button onClick={onSkipAll} className="text-sm text-ink-400 hover:text-ink underline">Skip the rest, take me to my profile</button>
         </div>
       </div>
     </div>
@@ -223,7 +223,7 @@ function ProfileStep({ profile, setProfile, onSave, saving }) {
   return (
     <div className="animate-fade">
       <p className="text-xs font-semibold text-ink-400 uppercase tracking-wide mb-4">Almost there · Your profile</p>
-      <GenieLine text="Last thing — tell me about you and your company. I'll sign every outreach email with this, so your messages always look sharp and professional. ✍️" onDone={() => setShowForm(true)} />
+      <GenieLine text="Last thing. Tell me about you and your company, and I'll sign every outreach email with these details so your messages always look sharp and professional." onDone={() => setShowForm(true)} />
 
       <div className={`mt-7 transition-opacity duration-500 ${showForm ? "opacity-100" : "opacity-0"}`}>
         <div className="card p-6 space-y-4">
@@ -255,9 +255,9 @@ function DoneStep({ onGo, strength }) {
     <div className="text-center animate-scale-in py-8">
       <div className="inline-block mb-4"><LogoMark size={64} /></div>
       <h1 className="text-3xl font-extrabold text-ink">
-        <GenieSays text="Perfect — I'm all set up. Let's make some noise! 🎉" />
+        <GenieSays text="Perfect. I'm all set up. Let's make some noise!" />
       </h1>
-      <p className="mt-3 text-ink-600 max-w-md mx-auto">Next, I'll find the exact keywords to rank you on Google — then we start posting. Ready?</p>
+      <p className="mt-3 text-ink-600 max-w-md mx-auto">Next, I'll find the exact keywords to rank you on Google, then we start posting. Ready?</p>
       <div className="max-w-xs mx-auto mt-6"><StrengthBar value={strength} /></div>
       <button onClick={onGo} className="btn-ink px-8 py-3.5 mt-8 inline-flex items-center gap-2 text-base">
         Find my keywords <Icon.arrowRight size={20} />
