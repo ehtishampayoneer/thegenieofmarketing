@@ -218,7 +218,7 @@ function Radar() {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/tasks", conversations: "/stories",
+    today: "/today", approvals: "/approvals", conversations: "/stories",
     keywords: "/growth", campaigns: "/growth", content: "/tasks",
     outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth",
   };

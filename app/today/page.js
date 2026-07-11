@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
-import { Card, Button, Pill } from "@/components/ui/v2/primitives";
+import { Card, Pill } from "@/components/ui/v2/primitives";
 import { EntityConfirm } from "@/components/ui/v2/EntityConfirm";
 import { fetchLive, mergeLive } from "@/lib/live";
 
@@ -120,7 +120,7 @@ function TopApprovals({ approvals, count }) {
           </div>
           <p className="mt-0.5 text-[12.5px] mg-muted">These need your review.</p>
         </div>
-        <Button variant="dawn" className="ml-auto" style={{ fontSize: 12.5, padding: ".5rem .85rem" }}>Approve all <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></Button>
+        <a href="/approvals" className="mg-btn mg-btn--dawn ml-auto" style={{ fontSize: 12.5, padding: ".5rem .85rem" }}>Review all</a>
       </div>
       <div className="px-3">
         {approvals.map((a, i) => (
@@ -135,12 +135,12 @@ function TopApprovals({ approvals, count }) {
               <div className="text-[17px] font-bold leading-none mg-num" style={{ color: a.impact >= 85 ? "var(--accent-ink)" : "var(--fg)" }}>{a.impact}</div>
               <div className="text-[10px] mg-subtle">Impact</div>
             </div>
-            <Button variant="ghost" style={{ fontSize: 12.5, padding: ".45rem .9rem" }}>Review</Button>
+            <a href="/approvals" className="mg-btn mg-btn--ghost" style={{ fontSize: 12.5, padding: ".45rem .9rem" }}>Review</a>
           </div>
         ))}
       </div>
       {count > approvals.length && (
-        <a href="/tasks" className="mt-auto flex items-center justify-center gap-1.5 py-3 text-[12.5px] font-medium mg-muted mg-focus" style={{ borderTop: "1px solid var(--hair)" }}>
+        <a href="/approvals" className="mt-auto flex items-center justify-center gap-1.5 py-3 text-[12.5px] font-medium mg-muted mg-focus" style={{ borderTop: "1px solid var(--hair)" }}>
           {count - approvals.length} more items <Icon.chevronRight size={14} className="rotate-90" />
         </a>
       )}

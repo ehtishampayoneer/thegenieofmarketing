@@ -1,0 +1,211 @@
+"use client";
+
+// ── APPROVALS — the one interaction that matters ──
+// Everything Genie drafted, in a single keyboard-driven queue: owned accounts
+// first (auto-publish), then community taps. A = approve, E = edit, S = skip,
+// ← → move. Reads /api/approvals; writes via /api/approvals/act (and the gated
+// execute route for real WordPress/X publishing). Falls back to a demo queue on
+// the public preview so it's always drivable.
+
+import { useState, useEffect, useCallback } from "react";
+import OperatorShell from "@/components/shell/v2/OperatorShell";
+import Icon from "@/components/ui/Icon";
+import { BrandIcon } from "@/components/ui/BrandIcon";
+import { Button, Pill, Kbd } from "@/components/ui/v2/primitives";
+import { fetchLive } from "@/lib/live";
+
+const DEMO = [
+  { id: "d1", source: "placement", kind: "reply", platform: "reddit", owned: false, brand: "reddit", title: "r/Entrepreneur · “best AR app for conversions?”", outcome: "Reach a comparing buyer who’s deciding right now", draft: "Honestly it depends on the questions you’re trying to answer, not the tool. If you just need to see whether AR lifts conversions, start with the free tier of one and only upgrade when a real decision is blocked. We’ve been using it for the try-before-you-buy side and it’s been enough without the enterprise bill…", why: "Comparison query, competitor mentioned, intent 92.", target_url: "#", impact: 92, tags: [{ label: "Buyer intent", tone: "dawn" }, { label: "comparing", tone: "neutral" }] },
+  { id: "d2", source: "action", kind: "article", platform: "", owned: true, executable: true, brand: "blog", title: "Publish: “10 AR trends changing eCommerce (2026)”", outcome: "Win the AI-search citation + compound organic traffic", draft: "# 10 AR Trends Changing eCommerce in 2026\n\nAugmented reality has quietly become the highest-intent shopping surface…", why: "Closes the “best AR apps” AI-search gap where you’re not cited.", impact: 88, tags: [{ label: "High impact", tone: "dawn" }] },
+  { id: "d3", source: "placement", kind: "answer", platform: "quora", owned: false, brand: "quora", title: "Quora · “alternatives to ARShop”", outcome: "Reach a ready-to-buy buyer at the moment of choice", draft: "If you’re weighing ARShop alternatives, the main thing to check is whether you actually need the enterprise tier — most teams don’t. A few options handle try-on well without it…", why: "Competitor-alternative seekers convert highest.", target_url: "#", impact: 81, tags: [{ label: "Buyer intent", tone: "dawn" }, { label: "ready to buy", tone: "neutral" }] },
+  { id: "d4", source: "action", kind: "social_post", platform: "x", owned: true, executable: true, brand: "x", title: "Post to X", outcome: "Reach your audience where they already scroll", draft: "AR try-before-you-buy is quietly becoming the default for online furniture and fashion. The stores adding it are seeing fewer returns and higher AOV. Here’s what’s working →", why: "Rides a trending conversation in your niche.", impact: 74, tags: [{ label: "Engagement", tone: "info" }] },
+];
+
+export default function ApprovalsPage() {
+  const [items, setItems] = useState(DEMO);
+  const [live, setLive] = useState(false);
+  const [idx, setIdx] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState("");
+  const [done, setDone] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const { data, live } = await fetchLive("/api/approvals");
+      if (live && data && Array.isArray(data.items)) { setItems(data.items); setLive(true); setIdx(0); }
+    })();
+  }, []);
+
+  const current = items[idx] || null;
+  const ownedCount = items.filter((i) => i.owned).length;
+
+  const removeAt = useCallback((i) => {
+    setItems((prev) => prev.filter((_, k) => k !== i));
+    setIdx((k) => Math.max(0, Math.min(k, items.length - 2)));
+    setEditing(false);
+  }, [items.length]);
+
+  async function fireApprove(item, draft) {
+    try {
+      if (item.source === "action" && item.executable) {
+        await fetch(`/api/actions/${item.id}/execute`, { method: "POST" });
+      } else {
+        await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, source: item.source, act: "approve", draft }) });
+      }
+    } catch {}
+  }
+
+  async function approveCurrent() {
+    if (!current) return;
+    const draft = editing ? editDraft : current.draft;
+    // Community placements: copy the draft + open the exact thread to post.
+    if (!current.owned && current.source === "placement") {
+      try { await navigator.clipboard.writeText(draft || ""); } catch {}
+      if (current.target_url && current.target_url !== "#") window.open(current.target_url, "_blank");
+    }
+    fireApprove(current, draft);
+    setDone((d) => d + 1);
+    removeAt(idx);
+  }
+  function skipCurrent() {
+    if (!current) return;
+    try { fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: current.id, source: current.source, act: "skip" }) }); } catch {}
+    removeAt(idx);
+  }
+  function approveAllOwned() {
+    const owned = items.filter((i) => i.owned);
+    owned.forEach((it) => fireApprove(it, it.draft));
+    setDone((d) => d + owned.length);
+    setItems((prev) => prev.filter((i) => !i.owned));
+    setIdx(0);
+  }
+
+  // Keyboard: the operator's hands never leave the keys.
+  useEffect(() => {
+    function onKey(e) {
+      if (editing) { if (e.key === "Escape") setEditing(false); return; }
+      if (!current) return;
+      const k = e.key.toLowerCase();
+      if (k === "a") { e.preventDefault(); approveCurrent(); }
+      else if (k === "e") { e.preventDefault(); setEditDraft(current.draft); setEditing(true); }
+      else if (k === "s") { e.preventDefault(); skipCurrent(); }
+      else if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, items.length - 1));
+      else if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [current, editing, editDraft, items.length, idx]);
+
+  return (
+    <OperatorShell active="approvals">
+      <div className="mg-rise flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
+            <Icon.tasks size={15} /> Approvals {!live && <span className="mg-pill" style={{ marginLeft: 6 }}>Sample</span>}
+          </p>
+          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+            {items.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
+          </h1>
+          <p className="mt-2.5 text-[15px] mg-muted">
+            {items.length > 0 ? "Owned accounts publish automatically. Community posts copy + open the exact thread. One key each." : "Nothing waiting — Genie is hunting more while you’re away."}
+          </p>
+        </div>
+        {ownedCount > 0 && <Button variant="ghost" onClick={approveAllOwned}>Approve all {ownedCount} owned</Button>}
+      </div>
+
+      {items.length > 0 && current ? (
+        <>
+          {/* progress */}
+          <div className="mt-5 flex items-center gap-3">
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
+              <div className="h-full rounded-full dawn-fill" style={{ width: `${(done / (done + items.length)) * 100}%`, transition: "width .4s var(--ease-out)" }} />
+            </div>
+            <span className="text-[12px] mg-subtle mg-num">{idx + 1} of {items.length}</span>
+          </div>
+
+          {/* the card */}
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
+            <div className="mg-surface p-6">
+              <div className="flex items-center gap-3">
+                <BrandIcon brand={current.brand} size={20} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(current.tags || []).map((t, i) => <Pill key={i} tone={t.tone}>{t.label}</Pill>)}
+                    {current.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[17px] font-bold leading-none mg-num" style={{ color: current.impact >= 85 ? "var(--accent-ink)" : "var(--fg)" }}>{current.impact}</div>
+                  <div className="text-[10px] mg-subtle">Impact</div>
+                </div>
+              </div>
+
+              <h2 className="mt-3 text-[18px] font-bold tracking-tight" style={{ color: "var(--fg)" }}>{current.title}</h2>
+              {current.outcome && <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>{current.outcome}</p>}
+
+              {editing ? (
+                <textarea
+                  value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus
+                  className="mt-3 w-full rounded-xl p-3.5 text-[13.5px] leading-relaxed mg-focus"
+                  style={{ minHeight: 200, background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)", fontFamily: "var(--font-ui)" }}
+                />
+              ) : (
+                current.draft && (
+                  <div className="mt-3 rounded-xl p-4 text-[13.5px] leading-relaxed whitespace-pre-wrap" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", color: "var(--fg-muted)", maxHeight: 260, overflowY: "auto" }}>
+                    {current.draft}
+                  </div>
+                )
+              )}
+
+              {current.why && <p className="mt-2.5 text-[12px] mg-subtle"><span className="font-semibold" style={{ color: "var(--fg-muted)" }}>Why this:</span> {current.why}</p>}
+
+              <div className="mt-5 flex items-center gap-2.5 flex-wrap">
+                {editing ? (
+                  <>
+                    <Button variant="dawn" onClick={approveCurrent}>Save &amp; approve</Button>
+                    <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="dawn" onClick={approveCurrent}>
+                      {current.owned ? "Approve & publish" : "Copy & open thread"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span>
+                    </Button>
+                    <Button variant="ghost" onClick={() => { setEditDraft(current.draft); setEditing(true); }}>Edit <span className="mg-kbd" style={{ marginLeft: 4 }}>E</span></Button>
+                    <Button variant="quiet" onClick={skipCurrent}>Skip <span className="mg-kbd" style={{ marginLeft: 4 }}>S</span></Button>
+                    <span className="ml-auto text-[11px] mg-subtle hidden sm:flex items-center gap-1"><Kbd>←</Kbd> <Kbd>→</Kbd> move</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* up next */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle mb-2">Up next</p>
+              <div className="space-y-1.5">
+                {items.map((it, i) => (
+                  <button key={it.id} onClick={() => { setIdx(i); setEditing(false); }}
+                    className="w-full text-left flex items-center gap-2.5 p-2.5 rounded-xl transition mg-focus"
+                    style={{ background: i === idx ? "var(--accent-quiet)" : "var(--surface)", border: `1px solid ${i === idx ? "var(--accent)" : "var(--hair)"}` }}>
+                    <BrandIcon brand={it.brand} size={15} />
+                    <span className="flex-1 min-w-0 text-[12px] font-medium truncate" style={{ color: "var(--fg)" }}>{it.title}</span>
+                    {it.owned && <span className="mg-live-dot" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="mt-8 mg-surface p-12 text-center">
+          <div className="inline-flex mb-3" style={{ color: "var(--signal-live-ink)" }}><Icon.check size={40} /></div>
+          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>{done > 0 ? "That’s a wrap — beautiful work." : "Nothing to approve right now."}</p>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? "Genie is already lining up tomorrow’s work. Go enjoy your day." : "Genie works overnight to find buyers and draft your moves. Run a scan or find openings to get started."}</p>
+          <div className="mt-5 flex items-center justify-center gap-2.5">
+            <a href="/today" className="mg-btn mg-btn--dawn">Back to Today</a>
+            <a href="/growth" className="mg-btn mg-btn--ghost">Find openings</a>
+          </div>
+        </div>
+      )}
+    </OperatorShell>
+  );
+}
