@@ -10,6 +10,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch, redditSearch } from "@/lib/search";
 import { getBrief, recordDecision } from "@/lib/growth-memory";
 import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities } from "@/lib/intent";
+import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
 
@@ -38,7 +39,9 @@ export async function POST(request) {
   const queries = buildIntentQueries(entity, ai, keywords);
   if (queries.length === 0) return json({ ok: false, needsContext: true, message: "Genie needs a scan or a keyword to hunt buyers." }, 400);
 
-  const sources = selectSources(entity);
+  let sources = selectSources(entity);
+  // The Learning Loop closes here: re-rank surfaces by what actually wins for you.
+  try { sources = applyChannelWeights(sources, await getChannelWeights(supabase, userId, host)); } catch {}
   await logActivity(supabase, userId, {
     host, verb: "scanning", icon: "🎯",
     message: `Hunting buyer intent across ${sources.length} surfaces`,

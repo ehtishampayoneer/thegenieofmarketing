@@ -25,7 +25,7 @@ const NAV = [
   { id: "content", label: "Content", icon: Icon.write, count: 12 },
   { id: "outreach", label: "Outreach", icon: Icon.mail, count: 25 },
   { id: "aisearch", label: "AI Search", icon: Icon.spark, count: 3 },
-  { id: "analytics", label: "Analytics", icon: Icon.growth },
+  { id: "analytics", label: "Intelligence", icon: Icon.brain },
   { id: "growth", label: "Growth Map", icon: Icon.globe },
 ];
 
@@ -204,7 +204,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/tasks", conversations: "/stories",
     keywords: "/growth", campaigns: "/growth", content: "/tasks",
-    outreach: "/tasks", aisearch: "/ai-search", analytics: "/dashboard?view=history", growth: "/growth",
+    outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth",
   };
   return map[id] || "/today";
 }

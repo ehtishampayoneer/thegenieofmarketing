@@ -77,6 +77,8 @@ export async function GET(request) {
       await runNotifications(appUrl, { host, ai, _uid: userId });
       // 6) Send today's outreach batch (drip, respects daily cap).
       await runOutreach(appUrl, { host, _uid: userId });
+      // 7) Learning Loop: distill what worked into Growth Memory → smarter tomorrow.
+      await runLearn(appUrl, { host, ai, _uid: userId });
       const after = await countReady(admin, userId, host);
       staged += Math.max(0, after - before);
 
@@ -130,6 +132,17 @@ async function runAiSearch(appUrl, body) {
       headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(110000),
+    });
+  } catch {}
+}
+
+async function runLearn(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/learn`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
     });
   } catch {}
 }
