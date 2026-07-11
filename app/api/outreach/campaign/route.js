@@ -7,6 +7,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { DAILY_CAP, sentToday, sourceContacts, draftEmail, sendOne } from "@/lib/email-engine";
+import { createTrackedLink } from "@/lib/links";
 import { logActivity } from "@/lib/activity";
 
 export const runtime = "nodejs";
@@ -65,10 +66,17 @@ export async function POST(request) {
     return json({ ok: true, sent: 0, message: "No fresh contacts to reach today. Genie's directory grows daily, check back tomorrow." });
   }
 
+  // One tracked link for the signature site → every outreach click is attributable
+  // (impression → click → conversion), gracefully falling back to a UTM link.
+  const trackedSite = prof.company_website
+    ? await createTrackedLink(supabase, { userId, host, url: prof.company_website, channel: "email" })
+    : null;
+  const draftProf = trackedSite ? { ...prof, company_website: trackedSite } : prof;
+
   // Draft + send as a drip. (Serverless: send this batch now; cron handles scale.)
   let sent = 0, failed = 0;
   for (const c of contacts) {
-    const { subject, body: emailBody } = await draftEmail(prof, c, { name: prof.company_name });
+    const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name });
     const res = await sendOne(prof, c.email, subject, emailBody);
     await supabase.from("outreach_log").insert({
       user_id: userId, host, contact_email: c.email, contact_name: c.name,
