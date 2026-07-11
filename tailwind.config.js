@@ -33,6 +33,17 @@ module.exports = {
           soft: "#E6F4EE",
           ink: "#127350",
         },
+        // ── V2 "APERTURE / DAWN" — the light Genie casts / the morning reveal.
+        // Marketing Genie's signature. Used for the Aperture + key highlights,
+        // never as page-wide chrome. NOT an "AI purple" gradient.
+        dawn: {
+          100: "#FFF1DD",
+          300: "#FFD79E",
+          500: "#FBB360",
+          600: "#F59E3D",
+          700: "#D97F1E",
+          glow: "#FFC876",
+        },
         // legacy surfaces kept as aliases so old screens don't break mid-migration
         canvas: "#F8F8F6",
         surface: "#FFFFFF",
@@ -97,6 +108,10 @@ module.exports = {
         "glow-violet": "0 0 40px rgba(124,58,237,0.45)",
         "glow-soft": "0 0 60px rgba(124,58,237,0.25)",
         "card-dark": "0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05)",
+        // V2 depth scale
+        "lift": "0 2px 8px rgba(13,26,36,0.06), 0 1px 2px rgba(13,26,36,0.04)",
+        "lift-lg": "0 12px 32px rgba(13,26,36,0.10), 0 3px 8px rgba(13,26,36,0.05)",
+        "dawn": "0 8px 40px rgba(245,158,61,0.18)",
       },
       backdropBlur: {
         xs: "2px",
