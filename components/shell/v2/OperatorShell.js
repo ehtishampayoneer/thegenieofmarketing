@@ -30,6 +30,7 @@ const NAV = [
   { id: "analytics", label: "Intelligence", icon: Icon.brain },
   { id: "growth", label: "Growth Map", icon: Icon.globe },
   { id: "trust", label: "Trust Center", icon: Icon.check },
+  { id: "connections", label: "Connections", icon: Icon.connect },
 ];
 
 const VERB = {
@@ -222,7 +223,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", conversations: "/stories", impact: "/impact",
     keywords: "/growth", campaigns: "/growth", content: "/tasks",
-    outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth", trust: "/trust",
+    outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth", trust: "/trust", connections: "/connections",
   };
   return map[id] || "/today";
 }
