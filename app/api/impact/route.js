@@ -19,6 +19,13 @@ export async function GET(request) {
   const host = new URL(request.url).searchParams.get("host");
   const events = await getEvents(supabase, { userId: user.id, host, types: ["conversion.recorded"], limit: 500 });
 
+  // Genie-attributed traffic from GA4 (latest 30-day snapshot).
+  let traffic = null;
+  try {
+    const t = await getEvents(supabase, { userId: user.id, host, types: ["traffic.recorded"], limit: 5 });
+    if (t.length) { const d = t[0].data || {}; traffic = { genieSessions: d.genieSessions || 0, totalSessions: d.totalSessions || 0, share: d.share || 0 }; }
+  } catch {}
+
   let value = 0;
   let currency = "USD";
   const bySource = {};
@@ -38,6 +45,7 @@ export async function GET(request) {
     value: Math.round(value * 100) / 100,
     currency,
     attributed, // conversions Genie can trace to a specific action
+    traffic,    // Genie-attributed sessions from GA4 (real)
     bySource: Object.entries(bySource).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count })),
     recent: events.slice(0, 10).map((e) => ({ at: e.created_at, value: e.data?.value ?? 0, source: e.data?.medium || e.data?.source || "direct", campaign: e.data?.campaign || null })),
     // Provider-agnostic setup: the user points any commerce provider's webhook here.
