@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
-import { Card } from "@/components/ui/v2/primitives";
+import { Card, Provenance } from "@/components/ui/v2/primitives";
 import { OpportunityCard } from "@/components/ui/v2/OpportunityCard";
 import { fetchLive } from "@/lib/live";
 
@@ -58,19 +58,20 @@ export default function AiSearchPage() {
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/ai-search");
-      if (live && data && Array.isArray(data.opportunities) && data.opportunities.length) {
-        setD({ score: data.score ?? FALLBACK.score, competitors: data.competitors?.length ? data.competitors : FALLBACK.competitors, opportunities: data.opportunities });
+      if (live && data) {
+        setD({ score: data.score ?? 0, competitors: data.competitors || [], opportunities: data.opportunities || [] });
         setLive(true);
       }
     })();
   }, []);
 
   const pct = d.score ?? 0;
+  const empty = live && d.opportunities.length === 0;
   return (
     <OperatorShell active="aisearch">
       <div className="mg-rise">
         <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-          <Icon.spark size={15} /> AI Search Visibility {!live && <span className="mg-pill" style={{ marginLeft: 6 }}>Sample</span>}
+          <Icon.spark size={15} /> AI Search Visibility {!live && <Provenance kind="sample" />}
         </p>
         <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
           Buyers are asking AI about you.<br />
@@ -79,6 +80,14 @@ export default function AiSearchPage() {
         <p className="mt-2.5 text-[15px] mg-muted">When someone asks ChatGPT, Perplexity, or Google’s AI a buying question in your space, Genie checks whether you’re the answer — and wins the ones you’re missing.</p>
       </div>
 
+      {empty ? (
+        <Card className="mt-6 p-12 text-center">
+          <div className="inline-flex mb-3" style={{ color: "var(--accent-ink)" }}><Icon.spark size={38} /></div>
+          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>Genie is still checking AI search</p>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">Your first AI-search visibility report lands after tonight’s run — Genie models what ChatGPT, Perplexity, and Google’s AI recommend for your buyers, then finds the gaps.</p>
+          <a href="/growth" className="mg-btn mg-btn--ghost inline-flex mt-5">Add keywords to speed it up</a>
+        </Card>
+      ) : (
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
         <Card className="p-5 self-start">
           <div className="flex items-baseline gap-2">
@@ -105,6 +114,7 @@ export default function AiSearchPage() {
           {d.opportunities.map((o, i) => <OpportunityCard key={i} {...o} primaryLabel="Approve & write it" onApprove={() => {}} />)}
         </div>
       </div>
+      )}
 
       <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie re-checks AI search as your content publishes — and learns which plays win citations for you.</p>
     </OperatorShell>

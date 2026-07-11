@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
-import { Card, Verified, Estimated } from "@/components/ui/v2/primitives";
+import { Card, Verified, Estimated, Provenance } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
 
 const FALLBACK = {
@@ -39,23 +39,31 @@ export default function LearningPage() {
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/learn");
-      if (live && data && (data.learnings?.length || data.ledger?.length)) {
-        setD({ learnings: data.learnings?.length ? data.learnings : FALLBACK.learnings, ledger: data.ledger?.length ? data.ledger : FALLBACK.ledger });
-        setLive(true);
-      }
+      if (live && data) { setD({ learnings: data.learnings || [], ledger: data.ledger || [] }); setLive(true); }
     })();
   }, []);
+
+  const empty = live && !d.learnings.length && !d.ledger.length;
 
   return (
     <OperatorShell active="analytics">
       <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted"><Icon.brain size={15} /> Intelligence {!live && <span className="mg-pill" style={{ marginLeft: 6 }}>Sample</span>}</p>
+        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted"><Icon.brain size={15} /> Intelligence {!live && <Provenance kind="sample" />}</p>
         <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
           Genie is getting <span className="dawn-text">smarter about you</span> every day.
         </h1>
         <p className="mt-2.5 text-[15px] mg-muted">Every result teaches Genie what works for your entity — and it’s already changing what it does next. Unlike a tool, it remembers.</p>
       </div>
 
+      {empty ? (
+        <Card className="mt-6 p-12 text-center">
+          <div className="inline-flex mb-3" style={{ color: "var(--accent-ink)" }}><Icon.brain size={38} /></div>
+          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>Genie is still learning about you</p>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">As your first posts and content land, Genie distills what works into learnings you’ll see here — and starts changing what it does next. Nothing is a black box.</p>
+          <a href="/approvals" className="mg-btn mg-btn--ghost inline-flex mt-5">Approve Genie’s first work</a>
+        </Card>
+      ) : (
+      <>
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -121,6 +129,8 @@ export default function LearningPage() {
         </Card>
         <p className="mt-3 text-center text-[13px] mg-subtle">Nothing Genie does is a black box. Ask “why?” anywhere — the answer is always here.</p>
       </div>
+      </>
+      )}
     </OperatorShell>
   );
 }

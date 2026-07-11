@@ -79,6 +79,23 @@ export function Estimated({ children = "Estimated" }) {
   return <span className="mg-estimated">≈ {children}</span>;
 }
 
+// Unified data-provenance marker. Trust is the brand, so every number can say
+// whether it's measured (verified), AI-inferred (modelled), estimated, streaming
+// (live), or not gathered yet (early/sample). One system, used everywhere.
+function CheckGlyph() {
+  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>;
+}
+export function Provenance({ kind = "verified", children }) {
+  switch (kind) {
+    case "verified": return <span className="mg-verified"><CheckGlyph /> {children || "Verified"}</span>;
+    case "live": return <span className="mg-verified"><span className="mg-live-dot" /> {children || "Live"}</span>;
+    case "modelled": return <span className="mg-estimated">◇ {children || "AI-modelled"}</span>;
+    case "estimated": return <span className="mg-estimated">≈ {children || "Estimated"}</span>;
+    case "early": return <span className="mg-estimated">◔ {children || "Early — building"}</span>;
+    default: return <span className="mg-pill">{children || "Sample preview"}</span>; // sample/preview
+  }
+}
+
 export function Divider({ className = "" }) {
   return <div className={`mg-hairline ${className}`} />;
 }

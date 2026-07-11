@@ -13,6 +13,8 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradePortfolio } from "@/lib/keyword-health";
+import { recordEvent } from "@/lib/events";
+import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export async function GET(request) {
   }
   const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
   const admin = createAdminClient();
+  logger.info("cron.start");
 
   // Every distinct (user, host) that has keywords is an active business.
   const { data: kwAll } = await admin
@@ -83,11 +86,14 @@ export async function GET(request) {
       staged += Math.max(0, after - before);
 
       processed++;
-    } catch {
+    } catch (e) {
       errors++;
+      recordEvent(admin, { userId, host, type: "system.error", actor: "system", subject: "cron.business", data: { message: String(e?.message || e).slice(0, 200) } }).catch(() => {});
     }
   }
 
+  await recordEvent(admin, { type: "system.cron.run", actor: "system", data: { businesses: businesses.size, processed, staged, retired, errors } });
+  logger.info("cron.done", { businesses: businesses.size, processed, staged, retired, errors });
   return json({ ok: true, businesses: businesses.size, processed, staged, retired, errors });
 }
 
