@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getEvents } from "@/lib/events";
+import { makeIngestToken, PROVIDERS } from "@/lib/commerce";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,6 +40,12 @@ export async function GET(request) {
     attributed, // conversions Genie can trace to a specific action
     bySource: Object.entries(bySource).sort((a, b) => b[1] - a[1]).map(([source, count]) => ({ source, count })),
     recent: events.slice(0, 10).map((e) => ({ at: e.created_at, value: e.data?.value ?? 0, source: e.data?.medium || e.data?.source || "direct", campaign: e.data?.campaign || null })),
+    // Provider-agnostic setup: the user points any commerce provider's webhook here.
+    ingest: {
+      token: makeIngestToken(user.id),
+      base: (process.env.APP_URL || "").replace(/\/$/, ""),
+      providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, label: p.label })),
+    },
   });
 }
 
