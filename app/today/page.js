@@ -222,7 +222,7 @@ function GrowthIntel({ growth, drivers, learned }) {
             </div>
           )}
           <p className="mt-1 text-[12.5px] mg-muted leading-snug" style={{ maxWidth: 180 }}>You’re growing faster than <span className="font-semibold" style={{ color: "var(--fg)" }}>76%</span> of similar businesses.</p>
-          <a href="/learning" className="mt-2 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See full analysis</a>
+          <a href="/impact" className="mt-2 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See what Genie earned you →</a>
         </div>
       </div>
       <div className="lg:border-l lg:pl-6" style={{ borderColor: "var(--hair)" }}>

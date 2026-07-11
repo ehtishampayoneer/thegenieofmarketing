@@ -20,6 +20,7 @@ const NAV = [
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
   { id: "conversations", label: "Conversations", icon: Icon.conversations, count: 23 },
+  { id: "impact", label: "Impact", icon: Icon.bolt },
   { section: "The department" },
   { id: "keywords", label: "Keywords", icon: Icon.target, count: 18 },
   { id: "campaigns", label: "Campaigns", icon: Icon.megaphone, count: 4 },
@@ -218,7 +219,7 @@ function Radar() {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/approvals", conversations: "/stories",
+    today: "/today", approvals: "/approvals", conversations: "/stories", impact: "/impact",
     keywords: "/growth", campaigns: "/growth", content: "/tasks",
     outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth",
   };
