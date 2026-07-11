@@ -36,6 +36,8 @@ export async function GET() {
         score: latest.overall_score ?? null,
         delta: sameHost[1]?.overall_score != null && latest.overall_score != null ? latest.overall_score - sameHost[1].overall_score : null,
       };
+    } else {
+      out.needsOnboarding = true; // authenticated but no scan yet → first run
     }
   } catch {}
 

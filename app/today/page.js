@@ -60,6 +60,7 @@ export default function TodayPage() {
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/today");
+      if (live && data?.needsOnboarding) { window.location.href = "/welcome"; return; }
       if (live && data) { setD(mergeLive(FALLBACK, data)); setLive(true); if (data.entity) setEntity(data.entity); }
     })();
   }, []);
