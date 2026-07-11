@@ -1,24 +1,23 @@
 // app/api/cron/genie/route.js
-// STAGE 6 — THE ALWAYS-ON LOOP.
-// Runs nightly (Vercel cron). For every business with keywords, Genie:
-//   1. Re-grades the keyword portfolio (promote winners, retire losers).
-//   2. Tops up fresh keywords if the strong bench is thin.
-//   3. Re-runs the radars (Reddit / Quora / Web) to stage new openings —
-//      respecting all cooldowns and daily caps already in the memory.
-// Result: the user wakes to "N taps today" without pressing anything.
+// STAGE 6 (Phase 3) — THE DISPATCHER.
+// Runs nightly (Vercel cron). Was a monolith that processed every business inline
+// in one 300s invocation — which silently died past a handful of entities. Now it
+// is a thin, fast fan-out: it lists active entities and enqueues ONE isolated job
+// per entity (see lib/queue → /api/jobs/entity), each with its own time budget,
+// retries, idempotency, and observability. One slow/failing entity can no longer
+// sink the run.
 //
-// Guarded by CRON_SECRET. Best-effort per business; one failure never blocks
-// the rest. Honest: this widens/refreshes the SAME staged-and-tap model — it
-// never auto-posts to non-owned platforms.
+// Guarded by CRON_SECRET. Provider-agnostic queue: dependency-free fan-out today,
+// QStash by setting QSTASH_TOKEN (zero code change).
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { gradePortfolio } from "@/lib/keyword-health";
+import { enqueue } from "@/lib/queue";
 import { recordEvent } from "@/lib/events";
 import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 export async function GET(request) {
   const auth = request.headers.get("authorization");
@@ -27,176 +26,26 @@ export async function GET(request) {
   }
   const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
   const admin = createAdminClient();
-  logger.info("cron.start");
+  logger.info("cron.dispatch.start");
 
-  // Every distinct (user, host) that has keywords is an active business.
-  const { data: kwAll } = await admin
-    .from("keywords")
-    .select("user_id, host, keyword, health, coverage, traffic_potential, competition, gsc_clicks, gsc_impressions")
-    .limit(5000);
-
-  const businesses = new Map(); // key: user_id::host
-  for (const k of kwAll || []) {
+  // Every distinct (user, host) that has keywords is an active entity.
+  const { data: kw } = await admin.from("keywords").select("user_id, host").limit(20000);
+  const seen = new Set();
+  const entities = [];
+  for (const k of kw || []) {
+    if (!k.user_id || !k.host) continue;
     const key = `${k.user_id}::${k.host}`;
-    (businesses.get(key) || businesses.set(key, []).get(key)).push(k);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    entities.push({ userId: k.user_id, host: k.host });
   }
 
-  let processed = 0, staged = 0, retired = 0, errors = 0;
+  // Fan out — one isolated, idempotent job per entity.
+  await Promise.allSettled(entities.map((e) => enqueue(appUrl, "/api/jobs/entity", { userId: e.userId, host: e.host })));
 
-  for (const [key, rows] of businesses) {
-    const [userId, host] = key.split("::");
-    try {
-      // 1) Pull REAL Google data (if connected) → updates health, dead/new, daily snapshot.
-      await runKeywordSync(appUrl, { host, _uid: userId });
-
-      // 2) Re-grade + persist health tiers (retire proven losers).
-      const { graded } = gradePortfolio(rows);
-      for (const g of graded) {
-        await admin.from("keywords").update({ health: g.health, last_scored_at: new Date().toISOString() })
-          .eq("user_id", userId).eq("host", host).eq("keyword", g.keyword);
-        if (g.health === "retired") retired++;
-      }
-
-      // 2) Pull the business's AI profile from its latest scan (radars need it).
-      const { data: scan } = await admin.from("scans")
-        .select("ai, final_url, url").eq("user_id", userId)
-        .ilike("final_url", `%${host}%`).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      const ai = scan?.ai || null;
-
-      // 3) Re-run the radars via internal calls (they enforce cooldowns/caps).
-      //    We call our own endpoints with a service token header so they run
-      //    for THIS user. Each radar is best-effort.
-      const before = await countReady(admin, userId, host);
-      await runRadar(appUrl, "reddit", { host, ai, _uid: userId });
-      await runRadar(appUrl, "quora", { host, ai, _uid: userId });
-      await runRadar(appUrl, "web", { host, ai, _uid: userId });
-      // Buyer-Intent Radar: hunt people most likely to buy across many surfaces.
-      await runIntentRadar(appUrl, { host, ai, _uid: userId });
-      // AI-Search Visibility: are we the answer AI gives buyers? Find + close gaps.
-      await runAiSearch(appUrl, { host, ai, _uid: userId });
-      // 4) Track back what already posted — learn, double down, bin duds.
-      await runEngagement(appUrl, { host, ai, _uid: userId });
-      // 5) Scan for new replies → draft answers → notify (never go silent).
-      await runNotifications(appUrl, { host, ai, _uid: userId });
-      // 6) Send today's outreach batch (drip, respects daily cap).
-      await runOutreach(appUrl, { host, _uid: userId });
-      // 7) Learning Loop: distill what worked into Growth Memory → smarter tomorrow.
-      await runLearn(appUrl, { host, ai, _uid: userId });
-      const after = await countReady(admin, userId, host);
-      staged += Math.max(0, after - before);
-
-      processed++;
-    } catch (e) {
-      errors++;
-      recordEvent(admin, { userId, host, type: "system.error", actor: "system", subject: "cron.business", data: { message: String(e?.message || e).slice(0, 200) } }).catch(() => {});
-    }
-  }
-
-  await recordEvent(admin, { type: "system.cron.run", actor: "system", data: { businesses: businesses.size, processed, staged, retired, errors } });
-  logger.info("cron.done", { businesses: businesses.size, processed, staged, retired, errors });
-  return json({ ok: true, businesses: businesses.size, processed, staged, retired, errors });
+  await recordEvent(admin, { type: "system.cron.dispatch", actor: "system", data: { entities: entities.length } });
+  logger.info("cron.dispatch.done", { entities: entities.length });
+  return json({ ok: true, dispatched: entities.length });
 }
 
-async function countReady(admin, userId, host) {
-  const { count } = await admin.from("placements")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId).eq("host", host).eq("status", "ready");
-  return count || 0;
-}
-
-// Radars authenticate by user session normally; for cron we pass a signed
-// service header the radar routes accept (CRON_SECRET + explicit user id).
-async function runRadar(appUrl, name, body) {
-  try {
-    await fetch(`${appUrl}/api/radar/${name}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-genie-cron": process.env.CRON_SECRET || "",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90000),
-    });
-  } catch {}
-}
-
-async function runIntentRadar(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/radar/intent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(110000),
-    });
-  } catch {}
-}
-
-async function runAiSearch(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/ai-search`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(110000),
-    });
-  } catch {}
-}
-
-async function runLearn(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/learn`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
-    });
-  } catch {}
-}
-
-async function runEngagement(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/engagement`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90000),
-    });
-  } catch {}
-}
-
-async function runNotifications(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/notifications`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90000),
-    });
-  } catch {}
-}
-
-async function runKeywordSync(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/keywords/sync`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
-    });
-  } catch {}
-}
-
-async function runOutreach(appUrl, body) {
-  try {
-    await fetch(`${appUrl}/api/outreach/campaign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(110000),
-    });
-  } catch {}
-}
-
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
-}
+function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
