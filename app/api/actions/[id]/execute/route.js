@@ -57,6 +57,20 @@ export async function POST(_request, { params }) {
     return json({ ok: false, error: `This action was ${action.status.replace("_", " ")} — reopen it before publishing.` }, 400);
   }
 
+  // GATE 2.5 — brand safety + fact-check. Never publish toxic content or high-risk
+  // claims under the user's name, even when they approved it.
+  const guardChannel = isX ? "x" : "blog";
+  const guardText = isX
+    ? (Array.isArray(p.draft) ? p.draft.join("\n\n") : (p.text || p.draft || p.body || ""))
+    : (p.body || "");
+  const { guardContent } = await import("@/lib/publish-guard");
+  const guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, deep: true });
+  if (guard.decision === "block") {
+    await supabase.from("actions").update({ status: "needs_review", result: { blocked: true, reasons: guard.reasons, flags: guard.flags }, updated_at: new Date().toISOString() }).eq("id", action.id);
+    try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "blocked", meta: { reasons: guard.reasons, flags: guard.flags, confidence: guard.confidence } }); } catch {}
+    return json({ ok: false, blocked: true, error: "Genie held this back to protect your brand: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
+  }
+
   // ── X / Twitter branch: real auto-post to the user's own account ──
   if (isX) {
     const { postToX } = await import("@/lib/x");

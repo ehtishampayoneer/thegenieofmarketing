@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { DAILY_CAP, sentToday, sourceContacts, draftEmail, sendOne } from "@/lib/email-engine";
 import { createTrackedLink } from "@/lib/links";
+import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { logActivity } from "@/lib/activity";
 
 export const runtime = "nodejs";
@@ -74,10 +75,13 @@ export async function POST(request) {
   const draftProf = trackedSite ? { ...prof, company_website: trackedSite } : prof;
 
   // Draft + send as a drip. (Serverless: send this batch now; cron handles scale.)
-  let sent = 0, failed = 0;
+  const base = process.env.APP_URL || "";
+  let sent = 0, failed = 0, skipped = 0;
   for (const c of contacts) {
+    // Compliance: never email someone who opted out.
+    if (await isSuppressed(supabase, userId, c.email)) { skipped++; continue; }
     const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name });
-    const res = await sendOne(prof, c.email, subject, emailBody);
+    const res = await sendOne(prof, c.email, subject, emailBody, { unsubscribeUrl: unsubUrl(base, userId, c.email) });
     await supabase.from("outreach_log").insert({
       user_id: userId, host, contact_email: c.email, contact_name: c.name,
       subject, body: emailBody, status: res.ok ? "sent" : "failed",
