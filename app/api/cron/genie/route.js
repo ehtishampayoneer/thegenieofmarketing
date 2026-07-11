@@ -69,6 +69,8 @@ export async function GET(request) {
       await runRadar(appUrl, "web", { host, ai, _uid: userId });
       // Buyer-Intent Radar: hunt people most likely to buy across many surfaces.
       await runIntentRadar(appUrl, { host, ai, _uid: userId });
+      // AI-Search Visibility: are we the answer AI gives buyers? Find + close gaps.
+      await runAiSearch(appUrl, { host, ai, _uid: userId });
       // 4) Track back what already posted — learn, double down, bin duds.
       await runEngagement(appUrl, { host, ai, _uid: userId });
       // 5) Scan for new replies → draft answers → notify (never go silent).
@@ -113,6 +115,17 @@ async function runRadar(appUrl, name, body) {
 async function runIntentRadar(appUrl, body) {
   try {
     await fetch(`${appUrl}/api/radar/intent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(110000),
+    });
+  } catch {}
+}
+
+async function runAiSearch(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/ai-search`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
       body: JSON.stringify(body),
