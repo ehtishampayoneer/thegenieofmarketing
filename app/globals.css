@@ -71,3 +71,169 @@ html, body {
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 
 .font-mono { font-variant-numeric: tabular-nums; }
+
+/* ============================================================================
+   MARKETING GENIE V2 — "APERTURE / DAWN" DESIGN LANGUAGE
+   ----------------------------------------------------------------------------
+   The soul: an intelligent presence that works in the dark while you're away,
+   and reveals finished work in the warm light of morning. Ink & Paper are the
+   canvas; DAWN (warm amber-gold) is the light the Aperture casts; EMERALD is
+   reserved strictly for live / winning / done / verified.
+   Three token layers (primitive -> semantic -> component). DAY is the default
+   theme; NIGHT is the world Genie works in. Additive: every V1 rule above is
+   untouched so no existing surface breaks during migration.
+   ============================================================================ */
+
+:root {
+  /* ---- Layer 1: PRIMITIVES (raw values, no meaning) ---- */
+  --mg-ink-900:#0B141C; --mg-ink-800:#11202E; --mg-ink-700:#1C2E3D;
+  --mg-ink-600:#33475A; --mg-ink-500:#5A6B7B; --mg-ink-400:#8A98A5;
+  --mg-ink-300:#B7C1C9; --mg-ink-200:#D8DEE3; --mg-ink-100:#E9EDF0; --mg-ink-50:#F2F4F5;
+  --mg-paper:#F6F5F1; --mg-paper-raised:#FBFAF7; --mg-white:#FFFFFF;
+  --mg-night-950:#070C11; --mg-night-900:#0B141C; --mg-night-850:#0F1B25;
+  --mg-night-800:#13212C; --mg-night-700:#1B2C39;
+  --mg-dawn-100:#FFF1DD; --mg-dawn-300:#FFD79E; --mg-dawn-500:#FBB360;
+  --mg-dawn-600:#F59E3D; --mg-dawn-700:#D97F1E; --mg-dawn-glow:#FFC876;
+  --mg-emerald:#1E9E6A; --mg-emerald-soft:#E4F3EC; --mg-emerald-ink:#0F6B45;
+  --mg-red:#D6483B; --mg-red-soft:#FBEAE8;
+  --mg-blue:#3E7CC2; --mg-blue-soft:#E9F0F8;
+  --mg-amber:#C98A16; --mg-amber-soft:#FAF0DA;
+
+  /* ---- Layer 2: SEMANTIC (DAY theme — default) ---- */
+  --bg:var(--mg-paper); --surface:var(--mg-white); --surface-2:var(--mg-paper-raised); --surface-sunken:var(--mg-ink-50);
+  --fg:var(--mg-ink-900); --fg-muted:#455360; --fg-subtle:#5C6A77; --fg-on-dark:#EAF0F4;
+  --border:#E5E7E0; --border-strong:#D2D6CF; --hair:#ECEEE9;
+  --primary:var(--mg-ink-800); --on-primary:var(--mg-paper);
+  --accent:var(--mg-dawn-600); --accent-quiet:var(--mg-dawn-100); --accent-ink:#B5701A;
+  --signal-live:var(--mg-emerald); --signal-live-soft:var(--mg-emerald-soft); --signal-live-ink:var(--mg-emerald-ink);
+  --signal-danger:var(--mg-red); --signal-danger-soft:var(--mg-red-soft);
+  --signal-info:var(--mg-blue); --signal-info-soft:var(--mg-blue-soft);
+  --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
+  --ring:var(--mg-dawn-600);
+  --shadow-1:0 1px 2px rgba(13,26,36,.05);
+  --shadow-2:0 2px 8px rgba(13,26,36,.06),0 1px 2px rgba(13,26,36,.04);
+  --shadow-3:0 12px 32px rgba(13,26,36,.10),0 3px 8px rgba(13,26,36,.05);
+  --shadow-dawn:0 8px 40px rgba(245,158,61,.20);
+
+  /* ---- Layer 3: COMPONENT ---- */
+  --card-bg:var(--surface); --card-border:var(--border); --card-radius:18px; --card-shadow:var(--shadow-2);
+  --btn-radius:12px;
+
+  /* ---- Motion + type ---- */
+  --ease-out:cubic-bezier(.2,.8,.2,1); --ease-in:cubic-bezier(.4,0,1,1); --ease-spring:cubic-bezier(.34,1.4,.64,1);
+  --dur-1:120ms; --dur-2:200ms; --dur-3:320ms;
+  --font-ui:"Geist","Inter",system-ui,sans-serif;
+  --font-mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
+}
+
+/* ---- NIGHT theme: what Genie sees while you're away ---- */
+[data-theme="night"] {
+  --bg:var(--mg-night-900); --surface:var(--mg-night-850); --surface-2:var(--mg-night-800); --surface-sunken:var(--mg-night-950);
+  --fg:#EAF0F4; --fg-muted:#9FB0BC; --fg-subtle:#6B7E8B; --fg-on-dark:#EAF0F4;
+  --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.16); --hair:rgba(255,255,255,.06);
+  --primary:var(--mg-dawn-glow); --on-primary:var(--mg-night-950);
+  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.12); --accent-ink:var(--mg-dawn-300);
+  --signal-live-soft:rgba(30,158,106,.16); --signal-live-ink:#5FD3A0;
+  --ring:var(--mg-dawn-glow);
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 2px 10px rgba(0,0,0,.45);
+  --shadow-3:0 16px 44px rgba(0,0,0,.55);
+  --shadow-dawn:0 0 48px rgba(255,200,118,.22);
+}
+
+/* ---- Surfaces & helpers ---- */
+.mg { background:var(--bg); color:var(--fg); }
+.mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow); }
+.mg-surface-quiet { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; }
+.mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }
+.mg-num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
+.mg-hairline { height:1px; width:100%; background:var(--hair); }
+.dawn-text { background:linear-gradient(100deg,var(--mg-dawn-700),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+[data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-dawn-glow),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dawn-fill { background:linear-gradient(135deg,var(--mg-dawn-glow),var(--mg-dawn-600)); }
+
+/* ---- Buttons ---- */
+.mg-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:var(--btn-radius);
+  font-family:var(--font-ui); font-weight:600; font-size:.875rem; line-height:1; padding:.7rem 1.1rem; cursor:pointer;
+  border:1px solid transparent; transition:transform var(--dur-1) var(--ease-out), background var(--dur-2), box-shadow var(--dur-2), border-color var(--dur-2), opacity var(--dur-2); }
+.mg-btn:active { transform:translateY(1px) scale(.99); }
+.mg-btn:disabled { opacity:.45; cursor:not-allowed; }
+.mg-btn--primary { background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-1); }
+.mg-btn--primary:hover { box-shadow:var(--shadow-2); }
+.mg-btn--dawn { background:linear-gradient(135deg,var(--mg-dawn-500),var(--mg-dawn-600)); color:#2C1B05; box-shadow:var(--shadow-dawn); }
+.mg-btn--dawn:hover { filter:brightness(1.04); }
+.mg-btn--ghost { background:transparent; border-color:var(--border); color:var(--fg); }
+.mg-btn--ghost:hover { border-color:var(--border-strong); background:var(--surface-2); }
+.mg-btn--quiet { background:var(--surface-2); color:var(--fg-muted); }
+.mg-btn--quiet:hover { color:var(--fg); }
+
+/* ---- Focus (accessibility, both themes) ---- */
+.mg-btn:focus-visible, .mg-focus:focus-visible, a.mg-link:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+
+/* ---- Pills / signal chips ---- */
+.mg-pill { display:inline-flex; align-items:center; gap:.3rem; font-size:11px; font-weight:600; line-height:1;
+  padding:.28rem .55rem; border-radius:999px; border:1px solid var(--border); color:var(--fg-muted); background:var(--surface-2); }
+.mg-pill--live { color:var(--signal-live-ink); background:var(--signal-live-soft); border-color:transparent; }
+.mg-pill--dawn { color:var(--accent-ink); background:var(--accent-quiet); border-color:transparent; }
+.mg-pill--danger { color:var(--signal-danger); background:var(--signal-danger-soft); border-color:transparent; }
+.mg-pill--info { color:var(--signal-info); background:var(--signal-info-soft); border-color:transparent; }
+
+/* ---- Honesty system: verified vs estimated as a visual language ---- */
+.mg-verified { display:inline-flex; align-items:center; gap:.28rem; font-size:11px; font-weight:600; color:var(--signal-live-ink); }
+.mg-estimated { display:inline-flex; align-items:center; gap:.28rem; font-size:11px; font-weight:600; color:var(--fg-subtle); }
+
+/* ---- Keycap ---- */
+.mg-kbd { font-family:var(--font-mono); font-size:11px; font-weight:600; min-width:18px; text-align:center;
+  padding:.12rem .38rem; border-radius:6px; border:1px solid var(--border-strong); background:var(--surface-2);
+  color:var(--fg-muted); box-shadow:0 1px 0 var(--border-strong); }
+
+/* ---- The Aperture (Genie's living presence) ---- */
+.aperture { display:inline-block; position:relative; line-height:0; }
+.aperture svg { overflow:visible; display:block; }
+.aperture .ap-blades { transform-origin:100px 100px; animation:ap-spin 46s linear infinite; }
+.aperture .ap-core { transform-origin:100px 100px; animation:ap-breathe 4s var(--ease-out) infinite; }
+.aperture .ap-focal { transform-origin:100px 100px; animation:ap-pulse 2.4s var(--ease-out) infinite; }
+.aperture .ap-halo { transform-origin:100px 100px; animation:ap-breathe 3.6s var(--ease-out) infinite; }
+.aperture[data-state="idle"] .ap-blades { animation-duration:60s; }
+.aperture[data-state="working"] .ap-blades { animation-duration:16s; }
+.aperture[data-state="thinking"] .ap-blades { animation-duration:9s; }
+.aperture[data-state="discovering"] .ap-blades { animation-duration:24s; }
+.aperture[data-static] .ap-blades,
+.aperture[data-static] .ap-core,
+.aperture[data-static] .ap-focal,
+.aperture[data-static] .ap-halo { animation:none; }
+@keyframes ap-spin { to { transform:rotate(360deg); } }
+@keyframes ap-breathe { 0%,100% { transform:scale(1); opacity:.92; } 50% { transform:scale(1.05); opacity:1; } }
+@keyframes ap-pulse { 0%,100% { opacity:.78; } 50% { opacity:1; } }
+
+/* ---- V2 motion utilities ---- */
+@keyframes mg-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.mg-rise { animation:mg-rise .5s var(--ease-out) both; }
+.mg-stagger > * { opacity:0; animation:mg-rise .5s var(--ease-out) forwards; }
+.mg-stagger > *:nth-child(1){animation-delay:.04s} .mg-stagger > *:nth-child(2){animation-delay:.10s}
+.mg-stagger > *:nth-child(3){animation-delay:.16s} .mg-stagger > *:nth-child(4){animation-delay:.22s}
+.mg-stagger > *:nth-child(5){animation-delay:.28s} .mg-stagger > *:nth-child(6){animation-delay:.34s}
+
+/* ---- Respect reduced motion (skill: reduced-motion, CRITICAL) ---- */
+@media (prefers-reduced-motion: reduce) {
+  .aperture .ap-blades, .aperture .ap-core, .aperture .ap-focal, .aperture .ap-halo,
+  .mg-rise, .mg-stagger > * { animation:none !important; }
+  .mg-stagger > * { opacity:1 !important; }
+}
+
+/* ---- V2 OPERATOR SHELL utilities ---- */
+.mg-chrome { background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--hair); }
+.mg-rail-item { display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:11px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
+.mg-rail-item:hover { background:var(--surface-2); color:var(--fg); }
+.mg-rail-item[data-active="true"] { background:var(--accent-quiet); color:var(--accent-ink); font-weight:600; }
+[data-theme="night"] .mg-rail-item[data-active="true"] { background:rgba(255,200,118,.13); color:var(--mg-dawn-glow); }
+.mg-rail-count { margin-left:auto; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
+.mg-rail-item[data-active="true"] .mg-rail-count { color:inherit; }
+.mg-activity-row { display:flex; gap:.65rem; padding:.55rem .5rem; border-radius:10px; transition:background var(--dur-2); }
+.mg-activity-row:hover { background:var(--surface-2); }
+.mg-tile { border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.mg-searchbar { display:flex; align-items:center; gap:.55rem; height:38px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:13.5px; transition:border-color var(--dur-2); cursor:text; }
+.mg-searchbar:hover { border-color:var(--border-strong); }
+.mg-live-dot { width:7px; height:7px; border-radius:999px; background:var(--signal-live); box-shadow:0 0 0 0 rgba(30,158,106,.5); animation:mg-livepulse 2s var(--ease-out) infinite; }
+@keyframes mg-livepulse { 0%{box-shadow:0 0 0 0 rgba(30,158,106,.45)} 70%{box-shadow:0 0 0 6px rgba(30,158,106,0)} 100%{box-shadow:0 0 0 0 rgba(30,158,106,0)} }
+@media (prefers-reduced-motion: reduce){ .mg-live-dot{ animation:none !important; } }

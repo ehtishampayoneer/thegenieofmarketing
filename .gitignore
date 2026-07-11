@@ -20,3 +20,6 @@ npm-debug.log*
 
 # vercel
 .vercel
+
+# local design QA skill (project-local tool, not shipped)
+/.claude/skills/

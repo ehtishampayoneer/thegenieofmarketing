@@ -13,6 +13,8 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { gradePortfolio } from "@/lib/keyword-health";
+import { recordEvent } from "@/lib/events";
+import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export async function GET(request) {
   }
   const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
   const admin = createAdminClient();
+  logger.info("cron.start");
 
   // Every distinct (user, host) that has keywords is an active business.
   const { data: kwAll } = await admin
@@ -67,21 +70,30 @@ export async function GET(request) {
       await runRadar(appUrl, "reddit", { host, ai, _uid: userId });
       await runRadar(appUrl, "quora", { host, ai, _uid: userId });
       await runRadar(appUrl, "web", { host, ai, _uid: userId });
+      // Buyer-Intent Radar: hunt people most likely to buy across many surfaces.
+      await runIntentRadar(appUrl, { host, ai, _uid: userId });
+      // AI-Search Visibility: are we the answer AI gives buyers? Find + close gaps.
+      await runAiSearch(appUrl, { host, ai, _uid: userId });
       // 4) Track back what already posted — learn, double down, bin duds.
       await runEngagement(appUrl, { host, ai, _uid: userId });
       // 5) Scan for new replies → draft answers → notify (never go silent).
       await runNotifications(appUrl, { host, ai, _uid: userId });
       // 6) Send today's outreach batch (drip, respects daily cap).
       await runOutreach(appUrl, { host, _uid: userId });
+      // 7) Learning Loop: distill what worked into Growth Memory → smarter tomorrow.
+      await runLearn(appUrl, { host, ai, _uid: userId });
       const after = await countReady(admin, userId, host);
       staged += Math.max(0, after - before);
 
       processed++;
-    } catch {
+    } catch (e) {
       errors++;
+      recordEvent(admin, { userId, host, type: "system.error", actor: "system", subject: "cron.business", data: { message: String(e?.message || e).slice(0, 200) } }).catch(() => {});
     }
   }
 
+  await recordEvent(admin, { type: "system.cron.run", actor: "system", data: { businesses: businesses.size, processed, staged, retired, errors } });
+  logger.info("cron.done", { businesses: businesses.size, processed, staged, retired, errors });
   return json({ ok: true, businesses: businesses.size, processed, staged, retired, errors });
 }
 
@@ -104,6 +116,39 @@ async function runRadar(appUrl, name, body) {
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(90000),
+    });
+  } catch {}
+}
+
+async function runIntentRadar(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/radar/intent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(110000),
+    });
+  } catch {}
+}
+
+async function runAiSearch(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/ai-search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(110000),
+    });
+  } catch {}
+}
+
+async function runLearn(appUrl, body) {
+  try {
+    await fetch(`${appUrl}/api/learn`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-genie-cron": process.env.CRON_SECRET || "" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
     });
   } catch {}
 }
