@@ -18,12 +18,17 @@ export async function GET(request) {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
-  const [cronRuns, recent, errors, usage] = await Promise.all([
+  const [cronRuns, recent, errors, usage, providerEvents] = await Promise.all([
     getEvents(admin, { types: ["system.cron.dispatch"], limit: 1 }),
     getEvents(admin, { since, limit: 500 }),
     getEvents(admin, { types: ["system.error"], since, limit: 50 }),
     getEvents(admin, { types: ["usage.llm", "usage.data"], since, limit: 3000 }),
+    getEvents(admin, { types: ["system.provider"], since, limit: 100 }),
   ]);
+
+  // Latest known status per external provider (events are newest-first).
+  const providers = {};
+  for (const e of providerEvents) if (e.subject && !providers[e.subject]) providers[e.subject] = { status: e.data?.status || "unknown", at: e.created_at };
 
   const byType = {};
   for (const e of recent) byType[e.type] = (byType[e.type] || 0) + 1;
@@ -51,6 +56,7 @@ export async function GET(request) {
     lastCronRun: lastCron ? { at: lastCron.created_at, agoHours: lastCronAgeH, ...(lastCron.data || {}) } : null,
     last24h: { totalEvents: recent.length, byType },
     usage24h: u,
+    providers: providers,
     errors24h: { count: errors.length, recent: errors.slice(0, 10).map((e) => ({ at: e.created_at, host: e.host, subject: e.subject, data: e.data })) },
   });
 }
