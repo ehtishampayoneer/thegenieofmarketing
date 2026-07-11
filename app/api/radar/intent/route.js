@@ -29,6 +29,7 @@ export async function POST(request) {
 
   // 1) Who are we growing? Pull entity + everything Genie has learned about it.
   const { entity, brief } = await getBrief(supabase, userId, host, ai);
+  const ctx = { supabase, userId, host, tag: "buyer-intent" };
 
   // 2) Seed the buyer-question universe (keywords sharpen it; entity alone works).
   let keywords = [];
@@ -52,7 +53,7 @@ export async function POST(request) {
   const competitors = (ai.competitors || []).map((c) => c?.name).filter(Boolean);
   const pairs = [];
   for (const s of sources) for (const q of queries.slice(0, s.key === "reddit" ? 4 : 3)) pairs.push({ s, q });
-  const settled = await Promise.allSettled(pairs.slice(0, 14).map(({ s, q }) => runOne(s, q)));
+  const settled = await Promise.allSettled(pairs.slice(0, 14).map(({ s, q }) => runOne(s, q, ctx)));
   let candidates = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 
   // 4) Score every candidate for buyer intent, competitor-aware; keep the best.
@@ -82,6 +83,7 @@ export async function POST(request) {
         "Rate intent 0-100 and name the journey stage. Write the RIGHT move for the platform, in the entity's voice — value-first, genuinely helpful, product mentioned only where it truly helps. Never spammy. Return ONLY JSON.",
       json: true, maxTokens: 3200, temperature: 0.6,
       prompt: buildPrompt(top, entity),
+      ctx,
     });
     refined = result.json;
   } catch (e) {
@@ -142,11 +144,11 @@ export async function POST(request) {
   });
 }
 
-async function runOne(source, q) {
+async function runOne(source, q, ctx) {
   try {
     const results = source.key === "reddit"
-      ? await redditSearch(q.query, { limit: 4 })
-      : await webSearch(q.query, { site: source.site || "", limit: 4 });
+      ? await redditSearch(q.query, { limit: 4, ctx })
+      : await webSearch(q.query, { site: source.site || "", limit: 4, ctx });
     return (results || []).map((r) => ({ ...r, platform: source.platform, source: source.key, query: q.query, stageHint: q.stage }));
   } catch { return []; }
 }

@@ -28,6 +28,7 @@ export async function POST(request) {
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
   const { entity } = await getBrief(supabase, userId, host, ai);
+  const ctx = { supabase, userId, host, tag: "ai-search" };
 
   let keywords = [];
   try {
@@ -45,7 +46,7 @@ export async function POST(request) {
   });
 
   // 1) Retrieve the sources an AI engine would draw from (parallel, bounded).
-  const retrieved = await Promise.allSettled(questions.map((q) => webSearch(q.query, { limit: 4 })));
+  const retrieved = await Promise.allSettled(questions.map((q) => webSearch(q.query, { limit: 4, ctx })));
   const items = questions.map((q, i) => ({ ...q, sources: retrieved[i].status === "fulfilled" ? retrieved[i].value : [] }));
 
   // 2) Model the AI answers + citations in one structured call.
@@ -55,6 +56,7 @@ export async function POST(request) {
       system: "You are a precise AEO/GEO analyst. Be honest — most smaller brands are NOT cited yet. Return ONLY valid JSON.",
       json: true, maxTokens: 3200, temperature: 0.4,
       prompt: buildVisibilityPrompt(items, entity, ai),
+      ctx,
     });
     modelled = result.json;
   } catch (e) {
