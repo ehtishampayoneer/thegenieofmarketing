@@ -7,6 +7,8 @@
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
+import { createClient } from "@/lib/supabase/server";
+import { hostOf } from "@/lib/business";
 import { webSearch } from "@/lib/search";
 import { getBrief, recordDecision, recordLearning } from "@/lib/growth-memory";
 import { aiSearchQuestions, buildVisibilityPrompt, summarizeVisibility } from "@/lib/ai-search";
@@ -110,6 +112,52 @@ export async function POST(request) {
     byStage: summary.byStage,
     opportunities: results.sort((a, b) => Number(a.aiCitesYou) - Number(b.aiCitesYou) || b.intent - a.intent),
   });
+}
+
+// Read stored AI-search results (from the Decision Ledger) for the surface.
+export async function GET(request) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
+
+  let host = new URL(request.url).searchParams.get("host");
+  try {
+    if (!host) {
+      const { data } = await supabase.from("scans").select("final_url, url").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      host = data ? hostOf(data) : null;
+    }
+  } catch {}
+
+  let decisions = [], score = null, competitors = [];
+  try {
+    let q = supabase.from("decisions").select("choice, rationale, confidence, meta, created_at").eq("user_id", user.id).eq("kind", "aeo_gap").order("created_at", { ascending: false }).limit(12);
+    if (host) q = q.eq("host", host);
+    const { data } = await q; decisions = data || [];
+  } catch {}
+  try {
+    let q = supabase.from("growth_memory").select("meta").eq("user_id", user.id).eq("mkey", "ai_search_visibility").limit(1);
+    if (host) q = q.eq("host", host);
+    const { data } = await q;
+    const m = data?.[0]?.meta;
+    if (m) { score = m.score ?? null; competitors = (m.topCompetitors || []).map((c) => c.name); }
+  } catch {}
+
+  const opportunities = decisions.map((d) => {
+    const rec = d.meta?.recommendation || {};
+    return {
+      discovered: `When buyers ask AI “${d.choice}”, you’re not cited`,
+      badges: [{ label: String(d.meta?.stage || "comparing").replace(/_/g, " "), tone: "dawn" }, { label: "Not cited", tone: "danger" }],
+      why: d.rationale || "AI recommends competitors instead at the moment of decision.",
+      recommendation: rec.title || "Publish an AI-citable answer page.",
+      ifApproved: "Genie writes it AEO-structured (direct answer, comparison table, FAQ schema) and publishes.",
+      outcome: d.meta?.expectedOutcome || "Become citable for a high-intent AI answer.",
+      rationale: d.rationale || null,
+      confidence: Math.round((d.confidence ?? 0.7) * 100) || 70,
+      tint: "dawn",
+    };
+  });
+
+  return json({ ok: true, live: true, score, competitors, opportunities });
 }
 
 function clampNum(n, dflt) { const v = Number(n); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : dflt; }
