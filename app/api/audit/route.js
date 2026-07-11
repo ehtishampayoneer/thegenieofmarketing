@@ -32,6 +32,7 @@ export async function POST(request) {
       bad_url: "That doesn't look like a valid web address. Try again, like nike.com.",
       timeout: "That site took too long to respond. It might be slow or blocking bots — try another.",
       fetch_failed: "Couldn't reach that site. Double-check the address and try again.",
+      blocked_url: "That address can't be scanned — it points to a private or restricted network.",
       bad_status: `The site responded with an error (status ${audit.status || "?"}). Try another page.`,
     };
     return json(
