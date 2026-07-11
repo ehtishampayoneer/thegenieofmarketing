@@ -20,6 +20,7 @@ const FALLBACK = {
     { at: null, value: 89, source: "email", campaign: "outreach" },
     { at: null, value: 349, source: "blog", campaign: "ar-trends-2026" },
   ],
+  traffic: { genieSessions: 1240, share: 22, totalSessions: 5600 },
   ingest: { token: "demo-token", base: "", providers: [{ id: "stripe", label: "Stripe" }, { id: "shopify", label: "Shopify" }, { id: "paddle", label: "Paddle" }, { id: "lemonsqueezy", label: "Lemon Squeezy" }] },
 };
 
@@ -55,21 +56,26 @@ export default function ImpactPage() {
       ) : (
         <>
           {/* headline numbers */}
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="p-5">
               <p className="text-[12px] mg-muted">Revenue Genie influenced</p>
-              <p className="mt-1.5 text-[36px] font-bold leading-none mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
+              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
               <p className="mt-2 text-[12px] mg-subtle">{live ? "from connected revenue" : "sample"}</p>
             </Card>
             <Card className="p-5">
               <p className="text-[12px] mg-muted">Customers / conversions</p>
-              <p className="mt-1.5 text-[36px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.conversions}</p>
+              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.conversions}</p>
               <p className="mt-2 text-[12px] mg-subtle">last 500 events</p>
             </Card>
             <Card className="p-5">
               <p className="text-[12px] mg-muted">Traced to a Genie action</p>
-              <p className="mt-1.5 text-[36px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.attributed}<span className="text-[18px] mg-subtle"> / {d.conversions}</span></p>
+              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.attributed}<span className="text-[16px] mg-subtle"> / {d.conversions}</span></p>
               <p className="mt-2 text-[12px] mg-subtle">the rest is context</p>
+            </Card>
+            <Card className="p-5">
+              <p className="text-[12px] mg-muted">Sessions Genie drove</p>
+              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{(d.traffic?.genieSessions || 0).toLocaleString()}</p>
+              <p className="mt-2 text-[12px] mg-subtle">{d.traffic?.share ? `${d.traffic.share}% of traffic · GA4` : "connect GA4 for traffic"}</p>
             </Card>
           </div>
 
