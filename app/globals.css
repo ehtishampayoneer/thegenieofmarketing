@@ -279,10 +279,13 @@ html, body {
 
 /* ---- V2 OPERATOR SHELL utilities ---- */
 .mg-chrome { background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--hair); }
-.mg-rail-item { display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:11px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
-.mg-rail-item:hover { background:var(--surface-2); color:var(--fg); }
+.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:11px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2), transform var(--dur-1) var(--ease-out); cursor:pointer; user-select:none; }
+.mg-rail-item:hover { background:var(--surface-2); color:var(--fg); transform:translateX(1px); }
 .mg-rail-item[data-active="true"] { background:var(--accent-quiet); color:var(--accent-ink); font-weight:600; }
+/* Active indicator — a lit dawn bar at the rail edge (Linear/Vercel cue). */
+.mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-2.5px; top:50%; transform:translateY(-50%); width:3px; height:17px; border-radius:0 3px 3px 0; background:var(--accent); }
 [data-theme="night"] .mg-rail-item[data-active="true"] { background:rgba(255,200,118,.13); color:var(--mg-dawn-glow); }
+[data-theme="night"] .mg-rail-item[data-active="true"]::before { background:var(--mg-dawn-glow); box-shadow:0 0 10px rgba(255,200,118,.6); }
 .mg-rail-count { margin-left:auto; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
 .mg-rail-item[data-active="true"] .mg-rail-count { color:inherit; }
 .mg-activity-row { display:flex; gap:.65rem; padding:.55rem .5rem; border-radius:10px; transition:background var(--dur-2); }

@@ -168,7 +168,6 @@ export default function OperatorShell({ active = "today", children }) {
             <div className="flex items-center gap-2">
               <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Live Activity</h2>
               <span className="mg-live-dot" />
-              <a href="#" className="ml-auto text-[12px] font-semibold" style={{ color: "var(--accent-ink)" }}>View all</a>
             </div>
             <p className="mt-0.5 text-[12px] mg-muted">Everything Genie is doing, right now.</p>
           </div>

@@ -186,7 +186,6 @@ function TodaysPlan() {
           <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Today’s Plan</h2>
           <p className="mt-0.5 text-[12.5px] mg-muted">What I’ll focus on after your approvals.</p>
         </div>
-        <a href="#" className="ml-auto text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>View full plan</a>
       </div>
       <div className="mt-5 flex items-start">
         {PLAN.map((p, i) => {
