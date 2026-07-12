@@ -110,10 +110,10 @@ html, body {
   --signal-info:var(--mg-blue); --signal-info-soft:var(--mg-blue-soft);
   --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
   --ring:var(--mg-dawn-600);
-  --shadow-1:0 1px 2px rgba(13,26,36,.05);
-  --shadow-2:0 2px 8px rgba(13,26,36,.06),0 1px 2px rgba(13,26,36,.04);
-  --shadow-3:0 12px 32px rgba(13,26,36,.10),0 3px 8px rgba(13,26,36,.05);
-  --shadow-dawn:0 8px 40px rgba(245,158,61,.20);
+  --shadow-1:0 1px 2px rgba(17,32,46,.04);
+  --shadow-2:0 3px 12px rgba(17,32,46,.05), 0 1px 3px rgba(17,32,46,.035);
+  --shadow-3:0 16px 40px rgba(17,32,46,.08), 0 4px 12px rgba(17,32,46,.045);
+  --shadow-dawn:0 8px 40px rgba(245,158,61,.18);
 
   /* ---- Layer 3: COMPONENT ---- */
   --card-bg:var(--surface); --card-border:var(--border); --card-radius:18px; --card-shadow:var(--shadow-2);
@@ -126,20 +126,30 @@ html, body {
   --font-mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
 }
 
-/* ---- NIGHT theme: what Genie sees while you're away ---- */
+/* ---- NIGHT theme: Mission Control — deep, layered, premium ---- */
 [data-theme="night"] {
-  --bg:var(--mg-night-900); --surface:var(--mg-night-850); --surface-2:var(--mg-night-800); --surface-sunken:var(--mg-night-950);
-  --fg:#EAF0F4; --fg-muted:#9FB0BC; --fg-subtle:#6B7E8B; --fg-on-dark:#EAF0F4;
-  --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.16); --hair:rgba(255,255,255,.06);
-  --primary:var(--mg-dawn-glow); --on-primary:var(--mg-night-950);
-  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.12); --accent-ink:var(--mg-dawn-300);
-  --signal-live-soft:rgba(30,158,106,.16); --signal-live-ink:#5FD3A0;
+  --bg:#0A0F18;
+  --surface:#0E1623;
+  --surface-2:#151F2E;
+  --surface-sunken:#070B12;
+  --fg:#F3F7FB; --fg-muted:#A8B7C3; --fg-subtle:#758794; --fg-on-dark:#F3F7FB;
+  --border:rgba(255,255,255,.075); --border-strong:rgba(255,255,255,.15); --hair:rgba(255,255,255,.05);
+  --primary:var(--mg-dawn-glow); --on-primary:#1A1206;
+  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.11); --accent-ink:var(--mg-dawn-300);
+  --signal-live-soft:rgba(30,158,106,.15); --signal-live-ink:#68D9A6;
+  --signal-danger-soft:rgba(214,72,59,.16); --signal-info-soft:rgba(62,124,194,.16); --signal-warn-soft:rgba(201,138,22,.16);
   --ring:var(--mg-dawn-glow);
-  --shadow-1:0 1px 2px rgba(0,0,0,.4);
-  --shadow-2:0 2px 10px rgba(0,0,0,.45);
-  --shadow-3:0 16px 44px rgba(0,0,0,.55);
-  --shadow-dawn:0 0 48px rgba(255,200,118,.22);
+  --shadow-1:0 1px 2px rgba(0,0,0,.5);
+  --shadow-2:0 4px 18px rgba(0,0,0,.5);
+  --shadow-3:0 24px 64px rgba(0,0,0,.62);
+  --shadow-dawn:0 0 54px rgba(255,200,118,.20);
 }
+/* Premium depth — a subtle top-lit field + surface luminance so Night reads
+   layered and rich, never flat. A whisper of dawn on the horizon. */
+[data-theme="night"] .mg { background:radial-gradient(150% 100% at 50% -25%, #111C2C 0%, var(--bg) 52%); }
+[data-theme="night"] .mg-surface { background-image:linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 40%); }
+[data-theme="night"] .mg-surface-quiet { background-image:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0) 50%); }
+[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 76%, transparent); }
 
 /* ---- Surfaces & helpers ---- */
 .mg { background:var(--bg); color:var(--fg); }

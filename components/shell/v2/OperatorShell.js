@@ -15,20 +15,19 @@ import { GenieMark, GenieLockup } from "@/components/brand/GenieMark";
 import { Kbd } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
 
+// Employee-centric, not a feature list. What Genie is doing for you (the loop),
+// where it's growing you (Growth), and how you stay in control (Control).
 const NAV = [
-  { section: "The daily loop" },
+  { section: "Your employee" },
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
-  { id: "conversations", label: "Conversations", icon: Icon.conversations, count: 23 },
+  { id: "conversations", label: "Conversations", icon: Icon.conversations },
+  { section: "Growth" },
+  { id: "growth", label: "Growth", icon: Icon.growth },
+  { id: "aisearch", label: "AI Search", icon: Icon.spark },
   { id: "impact", label: "Impact", icon: Icon.bolt },
-  { section: "The department" },
-  { id: "keywords", label: "Keywords", icon: Icon.target, count: 18 },
-  { id: "campaigns", label: "Campaigns", icon: Icon.megaphone, count: 4 },
-  { id: "content", label: "Content", icon: Icon.write, count: 12 },
-  { id: "outreach", label: "Outreach", icon: Icon.mail, count: 25 },
-  { id: "aisearch", label: "AI Search", icon: Icon.spark, count: 3 },
   { id: "analytics", label: "Intelligence", icon: Icon.brain },
-  { id: "growth", label: "Growth Map", icon: Icon.globe },
+  { section: "Control" },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "connections", label: "Connections", icon: Icon.connect },
 ];
@@ -221,9 +220,9 @@ function Radar() {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/approvals", conversations: "/stories", impact: "/impact",
-    keywords: "/growth", campaigns: "/growth", content: "/tasks",
-    outreach: "/tasks", aisearch: "/ai-search", analytics: "/learning", growth: "/growth", trust: "/trust", connections: "/connections",
+    today: "/today", approvals: "/approvals", conversations: "/conversations", impact: "/impact",
+    growth: "/growth", aisearch: "/ai-search", analytics: "/learning",
+    trust: "/trust", connections: "/connections",
   };
   return map[id] || "/today";
 }

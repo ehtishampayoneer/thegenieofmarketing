@@ -1,334 +1,291 @@
 "use client";
 
-// ── STAGE 3 — THE GROWTH COMMAND CENTER ──
-// The daily ritual: "you have N taps today." Platform blocks show what Genie
-// found and staged; one tap copies the draft + opens the exact thread; the
-// keyword portfolio shows what Genie selected, each keyword's health, and which
-// are winning vs. being pruned. This is where the real Genie becomes visible.
+// ── GROWTH — where Genie is growing you ──
+// One surface for the whole growth engine: the OPPORTUNITIES Genie found and
+// staged (one tap posts them), and the KEYWORD STRATEGY it derived and manages
+// (winners rise, dead ones retire). Replaces the V1 /growth command center and
+// absorbs Keywords + Campaigns + Growth Map into a single Operator surface.
+// Reads /api/today (for the host), then /api/placements + /api/keywords.
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { hostOf, businessesFromScans } from "@/lib/business";
-import AppShell from "@/components/shell/AppShell";
-import ActivityFeed from "@/components/ActivityFeed";
-import { GenieSays } from "@/components/ui/GenieVoice";
+import { useState, useEffect, Suspense } from "react";
+import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
+import { BrandIcon } from "@/components/ui/BrandIcon";
+import { Card, Pill, Provenance, SectionLabel } from "@/components/ui/v2/primitives";
+import { fetchLive } from "@/lib/live";
 
-const PLATFORM_META = {
-  reddit: { label: "Reddit", icon: "R", tint: "text-orange-600 bg-orange-50 border-orange-200" },
-  quora: { label: "Quora", icon: "Q", tint: "text-red-600 bg-red-50 border-red-200" },
-  forum: { label: "Forums", icon: "F", tint: "text-indigo-600 bg-indigo-50 border-indigo-200" },
-  guest: { label: "Guest posts", icon: "G", tint: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-  x: { label: "X", icon: "X", tint: "text-ink-900 bg-ink-900/[0.04] border-ink-900/[0.1]" },
-  linkedin: { label: "LinkedIn", icon: "in", tint: "text-blue-600 bg-blue-50 border-blue-200" },
-  medium: { label: "Medium", icon: "M", tint: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-  wordpress: { label: "WordPress", icon: "W", tint: "text-blue-700 bg-blue-50 border-blue-200" },
+const HEALTH = {
+  strong:  { label: "Strong",  bar: "var(--signal-live)" },
+  growing: { label: "Growing", bar: "var(--signal-info)" },
+  new:     { label: "New",     bar: "var(--fg-subtle)"   },
+  weak:    { label: "Weak",    bar: "var(--signal-warn)"  },
+  retired: { label: "Retired", bar: "var(--border-strong)" },
 };
 
-const HEALTH_META = {
-  strong: { label: "Strong", cls: "text-emerald-700 bg-emerald-50 border-emerald-200", bar: "#059669" },
-  growing: { label: "Growing", cls: "text-blue-700 bg-blue-50 border-blue-200", bar: "#2563EB" },
-  new: { label: "New", cls: "text-ink-600 bg-ink-900/[0.04] border-ink-900/[0.1]", bar: "#8B8FA3" },
-  weak: { label: "Weak", cls: "text-amber-700 bg-amber-50 border-amber-200", bar: "#F59E0B" },
-  retired: { label: "Retired", cls: "text-ink-400 bg-ink-900/[0.03] border-ink-900/[0.08]", bar: "#C9CBD6" },
+const FALLBACK = {
+  blocks: [
+    { platform: "reddit", owned: false, count: 3, items: [
+      { id: "d1", target_title: "What AR tools actually reduce returns for apparel?", keyword: "ar try before you buy", kind: "reply", meta: { reason: "High buyer intent — they're comparing tools right now." }, draft: "Returns on apparel are mostly a fit problem, so the tools that move the needle are the ones that nail sizing…" },
+      { id: "d2", target_title: "Small Shopify stores — is AR worth it yet?", keyword: "ar shopping tools", kind: "reply", meta: { reason: "Budget-conscious buyer, good fit for your entry tier." }, draft: "For a small store the ROI question is really about return rate…" },
+      { id: "d3", target_title: "Best way to show 3D products on a product page?", keyword: "3d product viewer", kind: "reply", meta: { reason: "Technical question you can answer credibly." }, draft: "A few options depending on your stack…" },
+    ] },
+    { platform: "quora", owned: false, count: 2, items: [
+      { id: "d4", target_title: "How does augmented reality shopping work?", keyword: "augmented reality shopping", kind: "answer", meta: { reason: "2.1k views, evergreen — long-tail traffic." }, draft: "AR shopping lets a customer place a product in their real space before buying…" },
+      { id: "d5", target_title: "Is AR the future of eCommerce?", keyword: "ar ecommerce trends", kind: "answer", meta: { reason: "Trend question — positions you as the expert." }, draft: "The short answer is yes, and the data is getting hard to ignore…" },
+    ] },
+    { platform: "wordpress", owned: true, count: 1, items: [
+      { id: "d6", target_title: "10 AR trends reshaping eCommerce in 2026", keyword: "ar ecommerce trends", kind: "article", meta: { reason: "Ranks for a rising keyword, links to your trends page." }, draft: "Augmented reality has quietly crossed from novelty to expectation…" },
+    ] },
+  ],
+  totalTaps: 5, totalAuto: 1,
+  results: { total: 24, winning: 6, flat: 11, dud: 5, pending: 2, top: [
+    { title: "How we cut AR returns by 34%", keyword: "ar try before you buy", url: "#", engagement: { upvotes: 128, comments: 22 } },
+    { title: "AR sizing for apparel — a practical guide", keyword: "ar sizing", url: "#", engagement: { upvotes: 74, comments: 9 } },
+  ] },
+  keywords: {
+    portfolioScore: 72,
+    graded: [
+      { id: "k1", keyword: "ar try before you buy", health: "strong", score: 88, competition: 34, traffic_potential: 72, coverage: 6, gsc_impressions: 1200, gsc_clicks: 84, gsc_position: 11, source: "gsc" },
+      { id: "k2", keyword: "augmented reality shopping", health: "growing", score: 74, competition: 52, traffic_potential: 66, coverage: 4, gsc_impressions: 640, gsc_clicks: 31, gsc_position: 18 },
+      { id: "k3", keyword: "ar shopping tools", health: "growing", score: 69, competition: 44, traffic_potential: 58, coverage: 3 },
+      { id: "k4", keyword: "3d product viewer", health: "new", score: 51, competition: 38, traffic_potential: 47, coverage: 1 },
+      { id: "k5", keyword: "virtual try on", health: "strong", score: 82, competition: 61, traffic_potential: 70, coverage: 5, gsc_impressions: 980, gsc_clicks: 47, gsc_position: 14 },
+      { id: "k6", keyword: "ar ecommerce trends", health: "growing", score: 64, competition: 41, traffic_potential: 55, coverage: 2 },
+      { id: "k7", keyword: "shopify ar app", health: "weak", score: 38, competition: 72, traffic_potential: 40, coverage: 1 },
+      { id: "k8", keyword: "product visualization software", health: "retired", score: 12, competition: 80, traffic_potential: 20, coverage: 0 },
+    ],
+  },
 };
 
 export default function GrowthPage() {
-  return (
-    <Suspense fallback={null}>
-      <Growth />
-    </Suspense>
-  );
+  return <Suspense fallback={null}><Growth /></Suspense>;
 }
 
 function Growth() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [state, setState] = useState("loading");
+  const [d, setD] = useState(FALLBACK);
+  const [live, setLive] = useState(false);
   const [host, setHost] = useState("");
-  const [showKeywordIntro, setShowKeywordIntro] = useState(false);
-  const [ai, setAi] = useState(null);
-  const [plan, setPlan] = useState({ blocks: [], totalTaps: 0, totalAuto: 0 });
-  const [portfolio, setPortfolio] = useState(null);
-  const [results, setResults] = useState(null);
   const [busy, setBusy] = useState("");
 
-  const load = useCallback(async (h) => {
-    try {
-      const [pRes, kRes] = await Promise.all([
-        fetch(`/api/placements?host=${encodeURIComponent(h)}`),
-        fetch(`/api/keywords?host=${encodeURIComponent(h)}`),
-      ]);
-      const pJson = await pRes.json();
-      const kJson = await kRes.json();
-      if (pJson.ok) { setPlan({ blocks: pJson.blocks || [], totalTaps: pJson.totalTaps || 0, totalAuto: pJson.totalAuto || 0 }); setResults(pJson.results || null); }
-      if (kJson.ok) setPortfolio(kJson);
-    } catch {}
-  }, []);
+  async function loadFor(h) {
+    const [p, k] = await Promise.all([
+      fetch(`/api/placements?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetch(`/api/keywords?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+    ]);
+    setD({
+      blocks: p?.ok ? (p.blocks || []) : [],
+      totalTaps: p?.ok ? (p.totalTaps || 0) : 0,
+      totalAuto: p?.ok ? (p.totalAuto || 0) : 0,
+      results: p?.ok ? (p.results || null) : null,
+      keywords: k?.ok ? { portfolioScore: k.portfolioScore, graded: k.graded || [], counts: k.counts } : { graded: [] },
+    });
+    setLive(true);
+  }
 
   useEffect(() => {
-    let active = true;
     (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
-      try {
-        const res = await fetch("/api/scans");
-        const j = await res.json();
-        const scans = j.ok ? (j.scans || []) : [];
-        const biz = businessesFromScans(scans);
-        const wanted = searchParams.get("business");
-        const pick = wanted && biz.find((b) => b.host === wanted) ? wanted : (biz[0]?.host || "");
-        if (!active) return;
-        setHost(pick);
-        setAi(biz.find((b) => b.host === pick)?.latest?.ai || null);
-        if (pick) await load(pick);
-        setState("ready");
-        // Arriving fresh from setup → auto-build keywords with a narration.
-        if (searchParams.get("fromsetup") && active) {
-          const kr = await fetch(`/api/keywords?host=${encodeURIComponent(pick)}`).then((r) => r.json()).catch(() => ({}));
-          if (!kr?.graded?.length) {
-            setShowKeywordIntro(true);
-            deriveKeywordsFor(pick, biz.find((b) => b.host === pick)?.latest?.ai || null);
-          }
-        }
-      } catch { if (active) setState("ready"); }
+      const { data, live } = await fetchLive("/api/today");
+      const h = live && data?.entity?.host;
+      if (!h) return; // public preview → keep the representative sample
+      setHost(h);
+      await loadFor(h);
     })();
-    return () => { active = false; };
-  }, [router, searchParams, load]);
-
-  async function deriveKeywordsFor(h, aiCtx) {
-    setBusy("keywords");
-    try {
-      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, ai: aiCtx }) });
-      const j = await res.json();
-      if (j.ok) setPortfolio(j);
-    } catch {}
-    setBusy("");
-  }
-
-  async function deriveKeywords(productOverride) {
-    const override = typeof productOverride === "string" ? productOverride : undefined;
-    setBusy("keywords");
-    try {
-      const res = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai, productOverride: override }) });
-      const j = await res.json();
-      if (j.ok) setPortfolio(j);
-    } catch {}
-    setBusy("");
-  }
-
-  async function runReddit() {
-    setBusy("reddit");
-    try {
-      await fetch("/api/radar/reddit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) });
-      await load(host);
-    } catch {}
-    setBusy("");
-  }
-
-  async function runAllRadars() {
-    setBusy("all");
-    // Run the three radars; refresh once at the end so all openings appear together.
-    try {
-      await Promise.allSettled([
-        fetch("/api/radar/reddit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
-        fetch("/api/radar/quora", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
-        fetch("/api/radar/web", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) }),
-      ]);
-      await load(host);
-    } catch {}
-    setBusy("");
-  }
-
-  async function checkResults() {
-    setBusy("results");
-    try {
-      await fetch("/api/engagement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, ai }) });
-      await load(host);
-    } catch {}
-    setBusy("");
-  }
+  }, []);
 
   async function act(item, action) {
-    // Optimistic: remove from the block.
-    setPlan((prev) => ({
+    setD((prev) => ({
       ...prev,
       blocks: prev.blocks.map((b) => ({ ...b, items: b.items.filter((x) => x.id !== item.id) })).filter((b) => b.items.length),
-      totalTaps: action === "posted" || action === "skipped" ? Math.max(0, prev.totalTaps - (item.owned ? 0 : 1)) : prev.totalTaps,
+      totalTaps: (action === "posted" || action === "skipped") ? Math.max(0, prev.totalTaps - (item.owned ? 0 : 1)) : prev.totalTaps,
     }));
-    try {
-      await fetch("/api/placements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, action }) });
-    } catch {}
+    try { await fetch("/api/placements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, action }) }); } catch {}
   }
 
-  const taskCount = plan.totalTaps;
-  const status = taskCount > 0
-    ? { state: "pending_approval", message: `${taskCount} tap${taskCount > 1 ? "s" : ""} ready. Genie found the conversations.`, actionable: false }
-    : { state: "idle", message: "No taps queued. Let Genie scan for openings.", actionable: false };
-  const genie = { host, suggestionCount: taskCount, contextChips: [{ label: host || "business", active: true }], quickActions: [{ label: "What's my best keyword?", prompt: `What's my strongest keyword for ${host} and why?` }] };
+  async function derive() {
+    if (!host) return;
+    setBusy("derive");
+    try {
+      const r = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) }).then((x) => x.json());
+      if (r.ok) setD((prev) => ({ ...prev, keywords: { portfolioScore: r.portfolioScore, graded: r.graded || [], counts: r.counts } }));
+    } catch {}
+    setBusy("");
+  }
+
+  const kw = d.keywords || { graded: [] };
+  const graded = kw.graded || [];
+  const active = graded.filter((k) => k.health !== "retired");
+  const retired = graded.filter((k) => k.health === "retired");
+  const taps = d.totalTaps || 0;
 
   return (
-    <AppShell nav="growth" taskCount={taskCount} businessName={host} status={status} genie={genie}>
-      {state === "loading" && <p className="mt-10 text-center text-ink-400">Loading your growth engine…</p>}
-
-      {state === "ready" && !host && (
-        <div className="mt-8 bg-surface border border-ink-900/[0.06] rounded-2xl p-10 text-center shadow-sm">
-          <p className="text-lg font-bold text-ink-900">Run a scan first</p>
-          <p className="mt-1 text-sm text-ink-400">Genie needs to see your product before he can find where to grow it.</p>
-          <a href="/" className="mt-4 inline-block grad-genie text-white text-sm font-semibold px-5 py-2.5 rounded-xl">Scan my site →</a>
+    <OperatorShell active="growth">
+      <div className="mg-rise flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
+            <Icon.growth size={15} /> Growth {live ? <Provenance kind="verified">Your engine</Provenance> : <Provenance kind="sample" />}
+          </p>
+          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+            Where Genie is <span className="dawn-text">growing you.</span>
+          </h1>
+          <p className="mt-2.5 text-[15px] mg-muted max-w-xl">The openings it found and staged for you, and the keyword strategy it derived and manages on its own. This is the engine — you just steer.</p>
         </div>
+      </div>
+
+      {/* ── OPPORTUNITIES ── */}
+      <div className="mt-6 flex items-center gap-2">
+        <SectionLabel>Opportunities</SectionLabel>
+        {taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}
+      </div>
+
+      {d.blocks && d.blocks.length > 0 ? (
+        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {d.blocks.map((b) => <OpportunityBlock key={b.platform} block={b} onAct={act} />)}
+        </div>
+      ) : (
+        <Card className="mt-3 p-8 text-center">
+          <span className="mg-tile mx-auto" style={{ width: 42, height: 42, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={19} /></span>
+          <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No openings staged right now</p>
+          <p className="mt-1 text-[13px] mg-muted max-w-md mx-auto">Genie scans continuously and stages new conversations overnight. Check back tomorrow morning, or see what's already running.</p>
+          <a href="/conversations" className="mg-btn mg-btn--quiet mt-4 inline-flex" style={{ fontSize: 12.5 }}>See running conversations →</a>
+        </Card>
       )}
 
-      {state === "ready" && host && (
+      {d.results && d.results.total > 0 && <ResultsStrip results={d.results} />}
+
+      {/* ── KEYWORD STRATEGY ── */}
+      <div className="mt-8 flex items-center justify-between flex-wrap gap-2">
+        <SectionLabel>Keyword strategy</SectionLabel>
+        {graded.length > 0 && <span className="text-[12px] mg-subtle">Genie derived and manages these — winners rise, dead ones retire.</span>}
+      </div>
+
+      {graded.length === 0 ? (
+        <Card className="mt-3 p-9 text-center" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
+          <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
+          <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
+          <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
+          <button onClick={derive} disabled={!live || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
+            {busy === "derive" ? "Genie is analyzing…" : live ? "Build my keyword strategy →" : "Sign in to build strategy"}
+          </button>
+        </Card>
+      ) : (
         <>
-          {/* Header — the keyword command center */}
-          <div className="flex items-end justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-3xl font-extrabold text-ink tracking-tight">Your keyword world</h1>
-              <p className="text-sm text-ink-400 mt-1">These are the searches I'm ranking you for. Winners rise, dead ones get retired, fresh ones come in. This is your SEO engine.</p>
-            </div>
+          <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <KeywordStat value={active.length} label="Keywords tracked" />
+            <KeywordStat value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
+            <KeywordStat value={active.filter((k) => (k.competition ?? 50) < 40).length} label="Easy wins" accent />
+            <KeywordStat value={active.filter((k) => (k.gsc_impressions || 0) > 0).length} label="Bringing real traffic" accent />
           </div>
 
-          {/* Keyword intro narration (from setup) */}
-          {showKeywordIntro && portfolio?.graded?.length > 0 && (
-            <div className="mt-5 card p-5 bg-accent-soft border-0 animate-rise">
-              <p className="text-base font-medium text-ink">
-                <GenieSays text={`Done. I found ${portfolio.graded.length} keywords for you. The strong ones up top can pull in real leads, and the medium and small ones we'll build over time. I weave these into your posts, blogs and emails so you climb Google. You can always manage them right here.`} />
-              </p>
-            </div>
-          )}
+          {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
 
-          {!portfolio?.graded?.length ? (
-            <div className="mt-8 card p-10 text-center">
-              <div className="inline-flex text-ink mb-3"><Icon.target size={40} /></div>
-              <p className="text-lg font-bold text-ink">Let's build your keyword strategy</p>
-              <p className="mt-1 text-sm text-ink-400 max-w-md mx-auto">I'll read your product and find the exact searches to rank you for. No input needed from you.</p>
-              <button onClick={deriveKeywords} disabled={busy === "keywords"} className="btn-ink px-6 py-3 mt-5 disabled:opacity-50">
-                {busy === "keywords" ? "Thinking…" : "Build my keyword strategy"}
-              </button>
-            </div>
-          ) : (
-            <>
-              <a href="/research" className="mb-6 card card-hover p-5 flex items-center gap-3">
-                <span className="w-11 h-11 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.search size={22} /></span>
-                <div className="flex-1">
-                  <p className="font-bold text-ink">Research new keywords</p>
-                  <p className="text-sm text-ink-400">Open the keyword research tool to discover and add high-value keywords.</p>
-                </div>
-                <Icon.chevronRight size={20} />
-              </a>
-              <KeywordPortfolio portfolio={portfolio} host={host} ai={ai} onDerive={deriveKeywords} busy={busy === "keywords"} />
-            </>
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {active.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+          </div>
+
+          {retired.length > 0 && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-[12.5px] mg-subtle mg-focus">Retired keywords ({retired.length}) — Genie stopped using these</summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {retired.map((k) => <span key={k.id || k.keyword} className="text-[11.5px] mg-subtle line-through mg-surface-quiet px-2 py-0.5 rounded-full">{k.keyword}</span>)}
+              </div>
+            </details>
           )}
         </>
       )}
-    </AppShell>
+    </OperatorShell>
   );
 }
 
-function PlatformBlock({ block, onAct }) {
-  const m = PLATFORM_META[block.platform] || { label: block.platform, icon: "•", tint: "text-ink-600 bg-ink-900/[0.04] border-ink-900/[0.1]" };
+function OpportunityBlock({ block, onAct }) {
   return (
-    <div className="bg-surface border border-ink-900/[0.06] rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <span className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm ${m.tint}`}>{m.icon}</span>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-ink-900">{m.label}</p>
-          <p className="text-xs text-ink-400">{block.owned ? "Publishes automatically" : `${block.count} tap${block.count > 1 ? "s" : ""}, you post from your account`}</p>
+    <Card className="overflow-hidden">
+      <div className="px-5 pt-4 pb-3 flex items-center gap-3">
+        <BrandIcon brand={block.platform === "guest" ? "wordpress" : block.platform} size={18} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-bold capitalize" style={{ color: "var(--fg)" }}>{block.platform}</p>
+          <p className="text-[11.5px] mg-muted">{block.owned ? "Genie publishes automatically" : `${block.count} tap${block.count > 1 ? "s" : ""} — you post from your account`}</p>
         </div>
-        <span className="text-lg font-mono font-bold text-brand-violet">{block.count}</span>
+        <span className="text-[17px] font-bold mg-num" style={{ color: "var(--accent-ink)" }}>{block.count}</span>
       </div>
-      <div className="mt-3 space-y-2">
-        {block.items.map((item) => <PlacementCard key={item.id} item={item} owned={block.owned} onAct={onAct} />)}
+      <div className="px-3 pb-3">
+        {block.items.map((item) => <PlacementItem key={item.id} item={item} owned={block.owned} onAct={onAct} />)}
       </div>
-    </div>
+    </Card>
   );
 }
 
-function PlacementCard({ item, owned, onAct }) {
+function PlacementItem({ item, owned, onAct }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   async function tapPost() {
     try { await navigator.clipboard.writeText(item.draft || ""); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
     if (item.target_url) window.open(item.target_url, "_blank");
-    onAct(item, "posted"); // logs to memory + sets cooldown
+    onAct(item, "posted");
   }
 
   return (
-    <div className="border border-ink-900/[0.06] rounded-xl p-3 bg-surface2">
+    <div className="mg-surface-quiet p-3 mt-2 first:mt-0">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-ink-900 truncate">{item.target_title || item.target_url}</p>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {item.keyword && <span className="text-[11px] bg-brand-violet/10 text-brand-violet rounded-full px-2 py-0.5">🎯 {item.keyword}</span>}
-            <span className="text-[11px] bg-ink-900/[0.04] text-ink-600 rounded-full px-2 py-0.5 capitalize">{String(item.kind || "reply").replace("_", " ")}</span>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</p>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {item.keyword && <Pill tone="dawn">{item.keyword}</Pill>}
+            <span className="text-[10.5px] mg-subtle capitalize">{String(item.kind || "reply").replace("_", " ")}</span>
           </div>
         </div>
-        <button onClick={() => setOpen((v) => !v)} className="text-xs text-brand-violet font-medium shrink-0">{open ? "Hide" : "Preview"}</button>
+        {item.draft && <button onClick={() => setOpen((v) => !v)} className="text-[11.5px] font-medium shrink-0 mg-focus" style={{ color: "var(--accent-ink)" }}>{open ? "Hide" : "Preview"}</button>}
       </div>
 
       {open && item.draft && (
-        <div className="mt-2 text-xs text-ink-900 bg-surface rounded-lg p-3 whitespace-pre-wrap max-h-52 overflow-y-auto thin-scroll border border-ink-900/[0.06]">
-          {item.draft}
-        </div>
+        <div className="mt-2 text-[12.5px] whitespace-pre-wrap max-h-52 overflow-y-auto p-3 rounded-lg" style={{ background: "var(--surface-sunken)", color: "var(--fg-muted)" }}>{item.draft}</div>
       )}
-      {item.meta?.reason && <p className="mt-1.5 text-[11px] text-ink-400 italic">{item.meta.reason}</p>}
+      {item.meta?.reason && <p className="mt-1.5 text-[11px] mg-subtle italic">{item.meta.reason}</p>}
 
       <div className="mt-2.5 flex items-center gap-2">
         {owned ? (
-          <button onClick={() => onAct(item, "posted")} className="grad-genie text-white text-xs font-semibold px-3 py-2 rounded-lg">✓ Approve & publish</button>
+          <button onClick={() => onAct(item, "posted")} className="mg-btn mg-btn--dawn" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>Approve & publish</button>
         ) : (
-          <button onClick={tapPost} className="grad-genie text-white text-xs font-semibold px-3 py-2 rounded-lg">
-            {copied ? "Copied. Paste & post" : "Copy & open thread"}
-          </button>
+          <button onClick={tapPost} className="mg-btn mg-btn--dawn" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>{copied ? "Copied — paste & post" : "Copy & open thread"}</button>
         )}
-        <button onClick={() => onAct(item, "snoozed")} className="text-xs text-ink-400 hover:text-ink-600 px-2">Later</button>
-        <button onClick={() => onAct(item, "skipped")} className="text-xs text-ink-400 hover:text-red-500 px-2">Skip</button>
+        <button onClick={() => onAct(item, "snoozed")} className="text-[11.5px] mg-subtle mg-focus px-1">Later</button>
+        <button onClick={() => onAct(item, "skipped")} className="text-[11.5px] mg-subtle mg-focus px-1">Skip</button>
       </div>
     </div>
   );
 }
 
-function ResultsSection({ results, onCheck, busy }) {
-  if (!results || results.total === 0) return null;
+function ResultsStrip({ results }) {
   const { total, winning, flat, dud, pending, top } = results;
   return (
-    <div className="mt-8 bg-surface border border-ink-900/[0.06] rounded-2xl p-6 shadow-sm">
+    <Card className="mt-4 p-5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-xl font-extrabold text-ink-900">What Genie posted · results</h2>
-          <p className="text-sm text-ink-400">Genie tracks back every post, doubles down on winners, and bins the duds.</p>
+          <h3 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>What Genie posted — results</h3>
+          <p className="text-[12.5px] mg-muted">It tracks every post, doubles down on winners, bins the duds.</p>
         </div>
-        <button onClick={onCheck} disabled={busy} className="text-xs bg-surface border border-ink-900/[0.1] text-ink-900 font-semibold px-3 py-2 rounded-xl disabled:opacity-50">
-          {busy ? "Checking…" : "↻ Check my results now"}
-        </button>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-2">
-        <Stat label="Posted" value={total} tint="text-ink-900" />
-        <Stat label="Winning" value={winning} tint="text-emerald-600" />
-        <Stat label="Flat" value={flat} tint="text-ink-600" />
-        <Stat label="Duds (binned)" value={dud} tint="text-amber-600" />
-        <Stat label="Still fresh" value={pending} tint="text-brand-violet" />
+      <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3">
+        <MiniStat value={total} label="Posted" />
+        <MiniStat value={winning} label="Winning" tint="var(--signal-live-ink)" />
+        <MiniStat value={flat} label="Flat" />
+        <MiniStat value={dud} label="Binned" tint="var(--signal-warn)" />
+        <MiniStat value={pending} label="Fresh" tint="var(--accent-ink)" />
       </div>
-
       {top?.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">🔥 Top performers</p>
+          <SectionLabel className="mb-2">Top performers</SectionLabel>
           <div className="space-y-2">
             {top.map((t, i) => (
-              <a key={i} href={t.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 bg-surface2 border border-ink-900/[0.06] rounded-xl px-3 py-2.5 hover:border-brand-violet/30 transition">
+              <a key={i} href={t.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 mg-surface-quiet px-3 py-2.5 mg-focus">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-ink-900 truncate">{t.title}</p>
-                  {t.keyword && <p className="text-[11px] text-brand-violet">🎯 {t.keyword}</p>}
+                  <p className="text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{t.title}</p>
+                  {t.keyword && <p className="text-[11px]" style={{ color: "var(--accent-ink)" }}>{t.keyword}</p>}
                 </div>
                 {t.engagement && (
-                  <div className="text-right text-[11px] text-ink-400 font-mono shrink-0">
-                    {t.engagement.upvotes != null && <span className="text-emerald-600">▲ {t.engagement.upvotes}</span>}
-                    {t.engagement.comments != null && <span className="ml-2">💬 {t.engagement.comments}</span>}
+                  <div className="text-right text-[11px] mg-subtle mg-num shrink-0">
+                    {t.engagement.upvotes != null && <span style={{ color: "var(--signal-live-ink)" }}>▲ {t.engagement.upvotes}</span>}
+                    {t.engagement.comments != null && <span className="ml-2">{t.engagement.comments} replies</span>}
                   </div>
                 )}
               </a>
@@ -336,54 +293,52 @@ function ResultsSection({ results, onCheck, busy }) {
           </div>
         </div>
       )}
-      {winning > 0 && (
-        <p className="mt-3 text-[11px] text-ink-400">Genie drafts follow-up taps for winning threads automatically. Look for the Follow-up cards above.</p>
-      )}
+    </Card>
+  );
+}
+
+function MiniStat({ value, label, tint }) {
+  return (
+    <div className="mg-surface-quiet p-3 text-center">
+      <p className="text-[22px] font-bold leading-none mg-num" style={{ color: tint || "var(--fg)" }}>{value}</p>
+      <p className="mt-1 text-[11px] mg-subtle">{label}</p>
     </div>
   );
 }
 
-function Stat({ label, value, tint }) {
+function KeywordStat({ value, label, accent }) {
   return (
-    <div className="bg-surface2 border border-ink-900/[0.06] rounded-xl p-3 text-center">
-      <p className={`text-2xl font-mono font-bold leading-none ${tint}`}>{value}</p>
-      <p className="mt-1 text-[11px] text-ink-400">{label}</p>
-    </div>
+    <Card className="p-4">
+      <p className="text-[26px] font-bold leading-none mg-num" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" }}>{value}</p>
+      <p className="mt-1.5 text-[12px] mg-muted">{label}</p>
+    </Card>
   );
 }
 
-function ProductCorrection({ onDerive, busy }) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
+function KeywordRow({ k }) {
+  const m = HEALTH[k.health] || HEALTH.new;
+  const comp = k.competition ?? 50;
+  const diff = comp < 40 ? { label: "Easy", tone: "live" } : comp < 65 ? { label: "Medium", tone: "warn" } : { label: "Hard", tone: "danger" };
+  const pot = k.traffic_potential ?? 0;
+  const traffic = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
+  const real = (k.gsc_impressions || 0) > 0;
   return (
-    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-      {!open ? (
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-sm text-amber-800">
-            <span className="font-semibold">Do these keywords match your product?</span> If Genie misread what you do, correct him in one line.
-          </p>
-          <button onClick={() => setOpen(true)} className="text-sm font-semibold text-amber-800 underline">Fix my keywords →</button>
-        </div>
-      ) : (
-        <div>
-          <p className="text-sm font-semibold text-amber-900">Tell Genie exactly what your product is</p>
-          <p className="text-xs text-amber-700 mt-0.5">One clear sentence about the benefit customers get, not the tech. Genie will rebuild the whole strategy.</p>
-          <textarea
-            value={text} onChange={(e) => setText(e.target.value)}
-            placeholder="e.g. An online store where customers view products in AR inside their room before buying, like Amazon but you try items in your space first."
-            className="mt-2 w-full rounded-xl border border-amber-300 bg-white p-3 text-sm text-ink-900 outline-none focus:ring-2 focus:ring-amber-300 min-h-[70px]"
-          />
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              onClick={() => { if (text.trim()) onDerive(text.trim()); setOpen(false); }}
-              disabled={busy || !text.trim()}
-              className="grad-genie text-white text-sm font-semibold px-4 py-2 rounded-xl disabled:opacity-50">
-              {busy ? "Rebuilding…" : "Rebuild my keywords →"}
-            </button>
-            <button onClick={() => setOpen(false)} className="text-sm text-amber-700">Cancel</button>
-          </div>
-        </div>
-      )}
+    <div className="mg-surface-quiet p-3.5">
+      <div className="flex items-center gap-2">
+        <p className="text-[13.5px] font-semibold flex-1 truncate" style={{ color: "var(--fg)" }}>{k.keyword}</p>
+        <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: diffColor(diff.tone), background: diffBg(diff.tone) }}>{diff.label}</span>
+        <span className="text-[13.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>{k.score}</span>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
+        <div className="h-full rounded-full" style={{ width: `${Math.max(3, k.score)}%`, background: m.bar, transition: "width .8s var(--ease-out)" }} />
+      </div>
+      <div className="mt-1.5 flex items-center gap-2 text-[11px] mg-subtle flex-wrap">
+        <span className="font-medium" style={{ color: "var(--fg-muted)" }}>{traffic}</span>
+        <span>·</span>
+        <span>Coverage {k.coverage || 0}×</span>
+        {real && <span style={{ color: "var(--signal-live-ink)" }}>· ↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>}
+        {!real && k.source === "gsc" && <span style={{ color: "var(--signal-live-ink)" }}>· real Google keyword</span>}
+      </div>
     </div>
   );
 }
@@ -395,292 +350,29 @@ function AddKeyword({ host, onAdded }) {
     if (!val.trim()) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/keywords", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keyword: val.trim() }) });
-      const j = await res.json();
+      const j = await fetch("/api/keywords", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keyword: val.trim() }) }).then((r) => r.json());
       if (j.ok) { setVal(""); onAdded?.(j); }
     } catch {}
     setBusy(false);
   }
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="mt-4 flex items-center gap-2">
       <input
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && add()}
-        placeholder="Add your own keyword and Genie will work it into the rotation"
-        className="flex-1 px-3 py-2 rounded-xl border border-hairline bg-panel text-ink text-sm outline-none focus:border-ink-300 transition"
+        value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+        placeholder="Add your own keyword — Genie weaves it into the rotation"
+        className="flex-1 px-3 py-2 rounded-lg text-[13px] mg-focus"
+        style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }}
       />
-      <button onClick={add} disabled={busy || !val.trim()} className="btn-ink px-4 py-2 text-sm disabled:opacity-50 flex items-center gap-1">
-        <Icon.plus size={16} /> Add
+      <button onClick={add} disabled={busy || !val.trim()} className="mg-btn mg-btn--quiet disabled:opacity-50" style={{ fontSize: 12.5 }}>
+        {busy ? "Adding…" : "Add"}
       </button>
     </div>
   );
 }
 
-function SyncButton({ host }) {
-  const [state, setState] = useState("idle"); // idle | syncing | done | nogoogle
-  const [msg, setMsg] = useState("");
-  async function sync() {
-    setState("syncing"); setMsg("");
-    try {
-      const res = await fetch("/api/keywords/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) });
-      const j = await res.json();
-      if (j.available) {
-        setState("done");
-        const bits = [];
-        if (j.updated) bits.push(`${j.updated} updated`);
-        if (j.added) bits.push(`${j.added} new`);
-        if (j.killed) bits.push(`${j.killed} retired`);
-        setMsg(bits.length ? bits.join(" · ") : "All current");
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        setState("nogoogle");
-        setMsg(j.reason === "not_connected" ? "Connect Google first" : "No Google data yet");
-      }
-    } catch { setState("idle"); }
-  }
-  return (
-    <div className="text-right">
-      <button onClick={sync} disabled={state === "syncing"} className="btn-ghost text-xs px-3 py-2 flex items-center gap-1.5 disabled:opacity-50">
-        {state === "syncing" ? "Syncing…" : "↻ Sync real Google data"}
-      </button>
-      {msg && <p className={`text-[10px] mt-0.5 ${state === "done" ? "accent-text" : "text-ink-400"}`}>{msg}</p>}
-    </div>
-  );
+function diffColor(tone) {
+  return tone === "live" ? "var(--signal-live-ink)" : tone === "warn" ? "var(--signal-warn)" : "var(--signal-danger)";
 }
-
-function KeywordResearch({ host, ai }) {
-  const [seed, setSeed] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState(null);
-  const [note, setNote] = useState("");
-  const [selected, setSelected] = useState({});
-  const [added, setAdded] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  async function research() {
-    if (!seed.trim()) return;
-    setBusy(true); setResults(null); setAdded(false); setSelected({});
-    try {
-      const r = await fetch("/api/keywords/research", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ seed, productContext: ai?.whatTheySell || ai?.businessName }) });
-      const j = await r.json();
-      if (j.ok) { setResults(j.keywords || []); setNote(j.note || ""); }
-    } catch {}
-    setBusy(false);
-  }
-
-  async function addSelected() {
-    const picks = (results || []).filter((k) => selected[k.keyword]);
-    if (!picks.length) return;
-    try {
-      await fetch("/api/keywords/research", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keywords: picks }) });
-      setAdded(true);
-      setTimeout(() => window.location.reload(), 900);
-    } catch {}
-  }
-
-  const selCount = Object.values(selected).filter(Boolean).length;
-
-  return (
-    <div className="mb-8">
-      {!open ? (
-        <button onClick={() => setOpen(true)} className="w-full card card-hover p-5 flex items-center gap-3 text-left">
-          <span className="w-11 h-11 rounded-xl bg-ink text-paper flex items-center justify-center shrink-0"><Icon.search size={22} /></span>
-          <div className="flex-1">
-            <p className="font-bold text-ink">Research new keywords</p>
-            <p className="text-sm text-ink-400">Discover hundreds of real keywords to feed your marketing engine.</p>
-          </div>
-          <Icon.chevronRight size={20} />
-        </button>
-      ) : (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="font-bold text-ink text-lg">Keyword research</p>
-              <p className="text-sm text-ink-400">Type a topic. Genie finds real keywords people search, then you add the good ones to grow.</p>
-            </div>
-            <button onClick={() => setOpen(false)} className="text-ink-400 hover:text-ink"><Icon.x size={20} /></button>
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              value={seed} onChange={(e) => setSeed(e.target.value)} onKeyDown={(e) => e.key === "Enter" && research()}
-              placeholder="e.g. hiking shoes, ar shopping, project management"
-              className="flex-1 px-4 py-2.5 rounded-xl border border-hairline bg-paper text-ink outline-none focus:border-ink-300"
-            />
-            <button onClick={research} disabled={busy || !seed.trim()} className="btn-ink px-5 py-2.5 disabled:opacity-50">
-              {busy ? "Researching…" : "Research"}
-            </button>
-          </div>
-
-          {busy && <p className="mt-3 text-sm text-ink-400 animate-soft-pulse">Discovering real keywords from Google and estimating demand…</p>}
-
-          {results && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-ink-500">{results.length} keywords found</p>
-                {selCount > 0 && (
-                  <button onClick={addSelected} className="btn-accent px-4 py-2 text-sm">
-                    {added ? "Added!" : `Add ${selCount} to my keywords`}
-                  </button>
-                )}
-              </div>
-              {note && <p className="text-[11px] text-ink-400 mb-2">{note}</p>}
-
-              <div className="border border-hairline rounded-xl overflow-hidden">
-                <div className="grid grid-cols-[24px_1fr_80px_70px_80px] gap-2 px-3 py-2 bg-paper text-[11px] font-semibold text-ink-500 uppercase tracking-wide">
-                  <span></span><span>Keyword</span><span className="text-right">Volume</span><span className="text-center">Trend</span><span className="text-right">Difficulty</span>
-                </div>
-                <div className="max-h-96 overflow-y-auto thin-scroll divide-y divide-hairline">
-                  {results.map((k) => {
-                    const diff = k.difficulty === "easy" ? "text-emerald-700" : k.difficulty === "hard" ? "text-red-600" : "text-amber-600";
-                    const trend = k.trend === "up" ? "↑" : k.trend === "down" ? "↓" : "→";
-                    const trendC = k.trend === "up" ? "text-emerald-600" : k.trend === "down" ? "text-red-500" : "text-ink-300";
-                    return (
-                      <label key={k.keyword} className="grid grid-cols-[24px_1fr_80px_70px_80px] gap-2 px-3 py-2 items-center hover:bg-paper cursor-pointer text-sm">
-                        <input type="checkbox" checked={!!selected[k.keyword]} onChange={(e) => setSelected((s) => ({ ...s, [k.keyword]: e.target.checked }))} />
-                        <span className="text-ink truncate">{k.keyword}</span>
-                        <span className="text-right font-mono text-ink-600">{k.volume ? k.volume.toLocaleString() : "~"}</span>
-                        <span className={`text-center ${trendC}`}>{trend}</span>
-                        <span className={`text-right font-medium ${diff} capitalize`}>{k.difficulty}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-              <p className="mt-2 text-[11px] text-ink-400">Volumes are estimates. Connect Google Search Console for your real numbers.</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function KeywordPortfolio({ portfolio, host, ai, onDerive, busy }) {
-  const [history, setHistory] = useState({});
-  useEffect(() => {
-    if (!host) return;
-    (async () => {
-      try { const r = await fetch(`/api/keywords/sync?host=${encodeURIComponent(host)}`); const j = await r.json(); if (j.ok) setHistory(j.series || {}); } catch {}
-    })();
-  }, [host]);
-  if (!portfolio || !portfolio.graded?.length) {
-    return (
-      <div className="mt-8 bg-surface border border-brand-violet/20 rounded-2xl p-6 text-center shadow-sm">
-        <p className="text-lg font-bold text-ink-900">🎯 Genie builds your keyword strategy</p>
-        <p className="mt-1 text-sm text-ink-600 max-w-md mx-auto">He reads your product and derives the keywords to rank for, no input from you. Then he manages them, keeping winners and pruning losers.</p>
-        <button onClick={onDerive} disabled={busy} className="mt-4 grad-genie text-white font-semibold px-5 py-2.5 rounded-xl disabled:opacity-60">
-          {busy ? "Genie is analyzing…" : "Build my keyword strategy →"}
-        </button>
-      </div>
-    );
-  }
-
-  const { graded, counts = {}, portfolioScore } = portfolio;
-  const active = graded.filter((k) => k.health !== "retired");
-  const retired = graded.filter((k) => k.health === "retired");
-  const strongCount = (counts.strong || 0) + (counts.growing || 0);
-  const easyCount = active.filter((k) => (k.competition ?? 50) < 40).length;
-  const realCount = active.filter((k) => (k.gsc_impressions || 0) > 0).length;
-
-  return (
-    <div className="mt-6">
-      <ProductCorrection onDerive={onDerive} busy={busy} />
-
-      {/* Command-center stat tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="card p-4">
-          <p className="text-2xl font-mono font-bold text-ink">{active.length}</p>
-          <p className="text-xs text-ink-400 mt-0.5">keywords tracked</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-2xl font-mono font-bold text-ink">{portfolioScore}</p>
-          <p className="text-xs text-ink-400 mt-0.5">portfolio health</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-2xl font-mono font-bold accent-text">{easyCount}</p>
-          <p className="text-xs text-ink-400 mt-0.5">easy wins</p>
-        </div>
-        <div className="card p-4">
-          <p className="text-2xl font-mono font-bold accent-text">{realCount}</p>
-          <p className="text-xs text-ink-400 mt-0.5">bringing real traffic</p>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-lg font-bold text-ink">Top keywords</h2>
-        <SyncButton host={host} />
-      </div>
-
-      {/* Add your own keyword */}
-      <AddKeyword host={host} onAdded={(p) => window.location.reload()} />
-
-      {/* Active keywords — high to low */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-2">
-        {active.map((k) => <KeywordRow key={k.id} k={k} history={history[k.keyword]} />)}
-      </div>
-
-      {/* Retired (pruned) */}
-      {retired.length > 0 && (
-        <details className="mt-5">
-          <summary className="cursor-pointer text-sm text-ink-400 hover:text-ink-600">Retired keywords ({retired.length}). Genie stopped using these.</summary>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {retired.map((k) => <span key={k.id} className="text-xs text-ink-400 line-through bg-ink-50 rounded-full px-2 py-0.5">{k.keyword}</span>)}
-          </div>
-        </details>
-      )}
-    </div>
-  );
-}
-
-function Sparkline({ points }) {
-  if (!points || points.length < 2) return null;
-  const w = 60, h = 18;
-  const vals = points.map((p) => p.clicks);
-  const max = Math.max(...vals, 1);
-  const step = w / (points.length - 1);
-  const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${(h - (p.clicks / max) * h).toFixed(1)}`).join(" ");
-  const rising = vals[vals.length - 1] >= vals[0];
-  return (
-    <svg width={w} height={h} className="shrink-0">
-      <path d={d} fill="none" stroke={rising ? "#1E9E6A" : "#E5484D"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function KeywordRow({ k, history }) {
-  const m = HEALTH_META[k.health] || HEALTH_META.new;
-  // Difficulty from competition: low comp = easy to rank.
-  const comp = k.competition ?? 50;
-  const diff = comp < 40 ? { label: "Easy", cls: "text-emerald-700 bg-emerald-50 border-emerald-200" }
-    : comp < 65 ? { label: "Medium", cls: "text-amber-700 bg-amber-50 border-amber-200" }
-    : { label: "Hard", cls: "text-red-600 bg-red-50 border-red-200" };
-  // Expected traffic label from potential.
-  const pot = k.traffic_potential ?? 0;
-  const traffic = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
-  return (
-    <div className="bg-panel border border-hairline rounded-xl p-3.5 shadow-xs card-hover">
-      <div className="flex items-center gap-2">
-        <p className="text-sm font-semibold text-ink flex-1 truncate">{k.keyword}</p>
-        {history && history.length >= 2 && <Sparkline points={history} />}
-        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${diff.cls}`}>{diff.label}</span>
-        <span className="text-sm font-mono font-bold text-ink">{k.score}</span>
-      </div>
-      <div className="mt-2 h-1.5 rounded-full bg-ink-100 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${k.score}%`, background: m.bar, transition: "width .8s cubic-bezier(0.2,0.8,0.2,1)" }} />
-      </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[11px] text-ink-400">
-        <span className="font-medium text-ink-500">{traffic}</span>
-        <span>·</span>
-        <span>Coverage {k.coverage || 0}×</span>
-        {(k.gsc_impressions || 0) > 0 ? (
-          <span className="accent-text font-medium">↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>
-        ) : k.source === "gsc" ? (
-          <span className="accent-text font-medium">real Google keyword</span>
-        ) : null}
-        {k.dead && <span className="text-red-500 font-medium">retired</span>}
-      </div>
-    </div>
-  );
+function diffBg(tone) {
+  return tone === "live" ? "var(--signal-live-soft)" : tone === "warn" ? "var(--signal-warn-soft)" : "var(--signal-danger-soft)";
 }
