@@ -52,27 +52,19 @@ export default function ImpactPage() {
         <ConnectRevenue ingest={d.ingest} empty />
       ) : (
         <>
-          {/* headline numbers */}
-          <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="p-5">
-              <p className="text-[12px] mg-muted">Revenue Genie influenced</p>
-              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
-              <p className="mt-2 text-[12px] mg-subtle">{live ? "from connected revenue" : "sample"}</p>
+          {/* headline — one dominant number, everything else in support */}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-4">
+            <Card className="mg-ambient p-6 flex flex-col justify-center">
+              <p className="mg-eyebrow">Revenue Genie influenced</p>
+              <p className="mt-3 mg-display-lg mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
+              <p className="mt-2.5 text-[13px] mg-muted max-w-sm">{live ? "Traced from the action to the sale. Real money, not activity." : "Representative sample — connect revenue to see your own."}</p>
             </Card>
-            <Card className="p-5">
-              <p className="text-[12px] mg-muted">Customers / conversions</p>
-              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.conversions}</p>
-              <p className="mt-2 text-[12px] mg-subtle">last 500 events</p>
-            </Card>
-            <Card className="p-5">
-              <p className="text-[12px] mg-muted">Traced to a Genie action</p>
-              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{d.attributed}<span className="text-[16px] mg-subtle"> / {d.conversions}</span></p>
-              <p className="mt-2 text-[12px] mg-subtle">the rest is context</p>
-            </Card>
-            <Card className="p-5">
-              <p className="text-[12px] mg-muted">Sessions Genie drove</p>
-              <p className="mt-1.5 text-[32px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{(d.traffic?.genieSessions || 0).toLocaleString()}</p>
-              <p className="mt-2 text-[12px] mg-subtle">{d.traffic?.share ? `${d.traffic.share}% of traffic · GA4` : "connect GA4 for traffic"}</p>
+            <Card className="p-5 flex flex-col justify-center gap-3.5">
+              <ImpactStat label="Customers won" sub="last 500 events" value={d.conversions} />
+              <div className="mg-hairline" />
+              <ImpactStat label="Traced to a Genie action" sub="the rest is context" value={<>{d.attributed}<span className="text-[15px] mg-subtle"> / {d.conversions}</span></>} />
+              <div className="mg-hairline" />
+              <ImpactStat label="Sessions Genie drove" sub={d.traffic?.share ? `${d.traffic.share}% of traffic · GA4` : "connect GA4"} value={(d.traffic?.genieSessions || 0).toLocaleString()} />
             </Card>
           </div>
 
@@ -146,6 +138,18 @@ function ConnectRevenue({ ingest, empty }) {
       </div>
       <p className="mt-3 text-[11px] mg-subtle">Provider-agnostic by design — Stripe, Shopify, Paddle, Lemon Squeezy, and more are each a thin adapter. Your URL is private to your account.</p>
     </Card>
+  );
+}
+
+function ImpactStat({ label, value, sub }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[12.5px] mg-muted">{label}</p>
+        {sub && <p className="text-[11px] mg-subtle mt-0.5">{sub}</p>}
+      </div>
+      <p className="mg-num text-[22px] font-bold leading-none shrink-0" style={{ color: "var(--fg)" }}>{value}</p>
+    </div>
   );
 }
 
