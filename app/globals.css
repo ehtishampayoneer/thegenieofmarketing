@@ -126,35 +126,46 @@ html, body {
   --font-mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
 }
 
-/* ---- NIGHT theme: Mission Control — deep, layered, premium ---- */
+/* ---- NIGHT theme: cinematic, layered — light in the dark, not inverted ----
+   Principle (Linear/Vercel/Cursor): elevation = luminance. The base is near-black
+   and cool; every surface that rises gets LIGHTER, catches a hairline of light on
+   its top edge, and casts a soft shadow. Text lives in three contrast-checked
+   tiers. Accent is used as glow, sparingly, like a real light source. */
 [data-theme="night"] {
-  --bg:#0A0F18;
-  --surface:#0E1623;
-  --surface-2:#151F2E;
-  --surface-sunken:#070B12;
-  --fg:#F3F7FB; --fg-muted:#A8B7C3; --fg-subtle:#758794; --fg-on-dark:#F3F7FB;
-  --border:rgba(255,255,255,.075); --border-strong:rgba(255,255,255,.15); --hair:rgba(255,255,255,.05);
+  --bg:#0A0D14;              /* the field — near-black, cool undertone */
+  --surface:#141A26;         /* cards — clearly float above the field */
+  --surface-2:#1C2331;       /* nested / quiet / inputs — one step higher */
+  --surface-sunken:#070A0F;  /* wells & tracks — recede below the field */
+  --fg:#F5F8FC;              /* primary text — ~15:1 */
+  --fg-muted:#B6C2CE;        /* secondary — ~8:1, always readable */
+  --fg-subtle:#8695A2;       /* tertiary — ~4.7:1, passes AA */
+  --fg-on-dark:#F5F8FC;
+  --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.19); --hair:rgba(255,255,255,.06);
   --primary:var(--mg-dawn-glow); --on-primary:#1A1206;
-  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.11); --accent-ink:var(--mg-dawn-300);
-  --signal-live-soft:rgba(30,158,106,.15); --signal-live-ink:#68D9A6;
-  --signal-danger-soft:rgba(214,72,59,.16); --signal-info-soft:rgba(62,124,194,.16); --signal-warn-soft:rgba(201,138,22,.16);
+  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.12); --accent-ink:#FFD79E;
+  --signal-live:#3FD79A; --signal-live-soft:rgba(45,215,154,.15); --signal-live-ink:#5FE0A6;
+  --signal-danger:#FF6B5E; --signal-danger-soft:rgba(255,107,94,.16);
+  --signal-info:#7FB0EC; --signal-info-soft:rgba(127,176,236,.15);
+  --signal-warn:#E7B85E; --signal-warn-soft:rgba(231,184,94,.15);
   --ring:var(--mg-dawn-glow);
-  --shadow-1:0 1px 2px rgba(0,0,0,.5);
-  --shadow-2:0 4px 18px rgba(0,0,0,.5);
-  --shadow-3:0 24px 64px rgba(0,0,0,.62);
-  --shadow-dawn:0 0 54px rgba(255,200,118,.20);
+  --shadow-1:0 1px 2px rgba(0,0,0,.55);
+  --shadow-2:0 6px 22px rgba(0,0,0,.55);
+  --shadow-3:0 28px 70px rgba(0,0,0,.66);
+  --shadow-dawn:0 0 48px rgba(255,200,118,.22);
 }
-/* Premium depth — a top-lit field with a real light source (dawn bleeding over
-   the horizon) + surface luminance so Night reads layered and cinematic, never
-   flat. Two stacked radials: a cool wash from above, a warm dawn bloom off-axis. */
+/* Atmosphere — a lit field, not a flat black rectangle. A dawn bloom on one
+   horizon, a cool wash on the other, over a soft vertical gradient. */
 [data-theme="night"] .mg {
   background:
-    radial-gradient(58% 42% at 82% -8%, rgba(255,200,118,.055), transparent 60%),
-    radial-gradient(150% 100% at 50% -25%, #131F31 0%, var(--bg) 55%);
+    radial-gradient(56% 40% at 86% -10%, rgba(255,200,118,.06), transparent 60%),
+    radial-gradient(80% 55% at 8% -8%, rgba(96,150,220,.055), transparent 62%),
+    radial-gradient(150% 100% at 50% -22%, #10151F 0%, var(--bg) 55%);
 }
-[data-theme="night"] .mg-surface { background-image:linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,0) 42%); }
-[data-theme="night"] .mg-surface-quiet { background-image:linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,0) 50%); }
-[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 72%, transparent); }
+/* Cards catch a hairline of light on their top edge and cast a soft shadow —
+   that (plus being lighter than the field) is what makes them float. No milky wash. */
+[data-theme="night"] .mg-surface { box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.06); }
+[data-theme="night"] .mg-surface-quiet { box-shadow:inset 0 1px 0 rgba(255,255,255,.045); }
+[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 68%, transparent); }
 
 /* ============================================================================
    PREMIUM LAYER — editorial type · atmosphere · tactile surfaces
