@@ -11,6 +11,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Button } from "@/components/ui/v2/primitives";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { fetchLive } from "@/lib/live";
 
 const FALLBACK = {
@@ -41,13 +42,13 @@ export default function ConnectionsPage() {
   const I = d.integrations;
   return (
     <OperatorShell active="connections">
-      <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted"><Icon.connect size={15} /> Connections {!live && <span className="mg-pill">Sample</span>}</p>
-        <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-          Connect your world. <span className="dawn-text">Genie does the rest.</span>
-        </h1>
-        <p className="mt-2.5 text-[15px] mg-muted">Every connection turns Genie’s work into real, measured results — and lets it publish for you. Connect what you can; Genie adapts to the rest.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.connect}
+        label="Connections"
+        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        title="Connect your world."
+        accent="Genie does the rest."
+      />
 
       {/* Measure */}
       <Group title="Measure your growth" sub="So Genie’s impact becomes real numbers, not estimates.">

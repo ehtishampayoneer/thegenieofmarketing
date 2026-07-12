@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Provenance } from "@/components/ui/v2/primitives";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { OpportunityCard } from "@/components/ui/v2/OpportunityCard";
 import { fetchLive } from "@/lib/live";
 
@@ -69,16 +70,12 @@ export default function AiSearchPage() {
   const empty = live && d.opportunities.length === 0;
   return (
     <OperatorShell active="aisearch">
-      <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-          <Icon.spark size={15} /> AI Search Visibility {!live && <Provenance kind="sample" />}
-        </p>
-        <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-          Buyers are asking AI about you.<br />
-          <span className="dawn-text">Right now, it’s recommending competitors instead.</span>
-        </h1>
-        <p className="mt-2.5 text-[15px] mg-muted">When someone asks ChatGPT, Perplexity, or Google’s AI a buying question in your space, Genie checks whether you’re the answer — and wins the ones you’re missing.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.spark}
+        label="AI Search Visibility"
+        provenance={!live ? <Provenance kind="sample" /> : null}
+        title={<>Buyers are asking AI about you.<br /><span className="dawn-text">Right now, it’s recommending competitors instead.</span></>}
+      />
 
       {empty ? (
         <Card className="mt-6 p-12 text-center">

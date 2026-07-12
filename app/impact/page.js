@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card, Provenance } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
@@ -39,17 +40,13 @@ export default function ImpactPage() {
 
   return (
     <OperatorShell active="impact">
-      <div className="mg-rise flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-            <Icon.bolt size={15} /> Impact {live ? (hasRevenue ? <Provenance kind="verified">Real revenue</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
-          </p>
-          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-            What Genie has <span className="dawn-text">actually earned you.</span>
-          </h1>
-          <p className="mt-2.5 text-[15px] mg-muted">Real revenue and customers Genie drove — traced from the action to the sale. Not activity, results.</p>
-        </div>
-      </div>
+      <OperatorHeader
+        icon={Icon.bolt}
+        label="Impact"
+        provenance={live ? (hasRevenue ? <Provenance kind="verified">Real revenue</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
+        title="What Genie has"
+        accent="actually earned you."
+      />
 
       {live && !hasRevenue ? (
         <ConnectRevenue ingest={d.ingest} empty />

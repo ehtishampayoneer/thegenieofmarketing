@@ -144,12 +144,58 @@ html, body {
   --shadow-3:0 24px 64px rgba(0,0,0,.62);
   --shadow-dawn:0 0 54px rgba(255,200,118,.20);
 }
-/* Premium depth — a subtle top-lit field + surface luminance so Night reads
-   layered and rich, never flat. A whisper of dawn on the horizon. */
-[data-theme="night"] .mg { background:radial-gradient(150% 100% at 50% -25%, #111C2C 0%, var(--bg) 52%); }
-[data-theme="night"] .mg-surface { background-image:linear-gradient(180deg, rgba(255,255,255,.028), rgba(255,255,255,0) 40%); }
-[data-theme="night"] .mg-surface-quiet { background-image:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0) 50%); }
-[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 76%, transparent); }
+/* Premium depth — a top-lit field with a real light source (dawn bleeding over
+   the horizon) + surface luminance so Night reads layered and cinematic, never
+   flat. Two stacked radials: a cool wash from above, a warm dawn bloom off-axis. */
+[data-theme="night"] .mg {
+  background:
+    radial-gradient(58% 42% at 82% -8%, rgba(255,200,118,.055), transparent 60%),
+    radial-gradient(150% 100% at 50% -25%, #131F31 0%, var(--bg) 55%);
+}
+[data-theme="night"] .mg-surface { background-image:linear-gradient(180deg, rgba(255,255,255,.032), rgba(255,255,255,0) 42%); }
+[data-theme="night"] .mg-surface-quiet { background-image:linear-gradient(180deg, rgba(255,255,255,.022), rgba(255,255,255,0) 50%); }
+[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 72%, transparent); }
+
+/* ============================================================================
+   PREMIUM LAYER — editorial type · atmosphere · tactile surfaces
+   The cues that separate "world-class product" from "well-designed SaaS":
+   one type system, light that has a source, and surfaces that respond to intent.
+   ============================================================================ */
+
+/* One editorial type system — used on every operator screen so nothing is
+   hand-sized inline. Confident display, quiet everything-else. */
+.mg-eyebrow { display:inline-flex; align-items:center; gap:.45rem; font-size:12px; font-weight:600; letter-spacing:.005em; color:var(--fg-subtle); }
+.mg-display { font-size:clamp(27px,3vw,37px); line-height:1.05; letter-spacing:-.023em; font-weight:800; color:var(--fg); text-wrap:balance; }
+.mg-display-lg { font-size:clamp(32px,4.2vw,50px); line-height:1.0; letter-spacing:-.03em; font-weight:800; color:var(--fg); text-wrap:balance; }
+.mg-title { font-size:16px; line-height:1.2; letter-spacing:-.012em; font-weight:700; color:var(--fg); }
+.mg-lede { font-size:14.5px; line-height:1.5; color:var(--fg-muted); max-width:60ch; }
+
+/* Genie's voice — a first-person line; key facts lift to full-strength ink. */
+.mg-voice { font-size:15px; line-height:1.55; color:var(--fg-muted); max-width:62ch; }
+.mg-voice b, .mg-voice strong { color:var(--fg); font-weight:650; }
+
+/* Atmosphere — dawn light spilling into the field behind a header. The single
+   strongest "premium" cue: light comes from somewhere. Static (reduced-motion safe). */
+.mg-ambient { position:relative; isolation:isolate; }
+.mg-ambient::before { content:""; position:absolute; inset:-24px 0 auto 0; height:280px; pointer-events:none; z-index:-1;
+  background:radial-gradient(46% 100% at 20% 0%, var(--accent-quiet), transparent 70%); opacity:.85; }
+[data-theme="night"] .mg-ambient::before { background:radial-gradient(44% 100% at 18% 0%, rgba(255,200,118,.11), transparent 64%); opacity:1; }
+
+/* Tactile surfaces — cards that acknowledge intent. In Night, the edge catches
+   dawn light on hover, so interactive things feel lit from within. */
+.mg-surface--interactive { transition:transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2), border-color var(--dur-2); cursor:pointer; }
+.mg-surface--interactive:hover { transform:translateY(-2px); box-shadow:var(--shadow-3); border-color:var(--border-strong); }
+[data-theme="night"] .mg-surface--interactive:hover { border-color:rgba(255,200,118,.28); box-shadow:var(--shadow-3), inset 0 1px 0 rgba(255,255,255,.05); }
+
+/* Stat — a number that reads as a stated fact, not a widget in a box. */
+.mg-stat-num { font-size:clamp(24px,2.2vw,30px); font-weight:750; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:var(--fg); }
+.mg-stat-label { font-size:12px; color:var(--fg-muted); margin-top:.35rem; }
+
+/* Hairline column rule — for glance-able stat strips (density without boxes). */
+.mg-rule-l { border-left:1px solid var(--hair); }
+
+/* A calm divider that carries a faint dawn center — a signature, used once. */
+.mg-seam { height:1px; width:100%; background:linear-gradient(90deg, transparent, var(--border-strong) 22%, var(--border-strong) 78%, transparent); }
 
 /* ---- Surfaces & helpers ---- */
 .mg { background:var(--bg); color:var(--fg); }

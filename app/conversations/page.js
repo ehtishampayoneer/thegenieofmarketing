@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Pill, Provenance } from "@/components/ui/v2/primitives";
@@ -82,20 +83,16 @@ export default function ConversationsPage() {
 
   return (
     <OperatorShell active="conversations">
-      <div className="mg-rise flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-            <Icon.conversations size={15} /> Conversations {live ? (hasStories ? <Provenance kind="live">Running now</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
-          </p>
-          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-            Genie is out there <span className="dawn-text">talking to your market.</span>
-          </h1>
-          <p className="mt-2.5 text-[15px] mg-muted max-w-xl">Every conversation it found, wrote for you, and keeps watching — so the thread never goes cold. This is the work happening on your behalf.</p>
-        </div>
-      </div>
+      <OperatorHeader
+        icon={Icon.conversations}
+        label="Conversations"
+        provenance={live ? (hasStories ? <Provenance kind="live">Running now</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
+        title="Genie is out there"
+        accent="talking to your market."
+      />
 
       {/* Summary strip */}
-      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <SummaryTile n={s.total || 0} label="Conversations" iconKey="conversations" tint="dawn" />
         <SummaryTile n={s.live || 0} label="Live now" iconKey="live" tint="live" />
         <SummaryTile n={s.replies || 0} label="Replies waiting" iconKey="reply" tint="info" />
@@ -125,12 +122,12 @@ function SummaryTile({ n, label, iconKey, tint }) {
   const IconC = iconKey === "live" ? null : (Icon[iconKey] || Icon.spark);
   return (
     <Card className="p-4 flex items-center gap-3">
-      <span className="mg-tile" style={{ width: 34, height: 34, background: t.bg, color: t.fg }}>
+      <span className="mg-tile" style={{ width: 36, height: 36, background: t.bg, color: t.fg }}>
         {iconKey === "live" ? <span className="mg-live-dot" /> : <IconC size={16} />}
       </span>
       <div>
-        <div className="text-[24px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{n}</div>
-        <div className="text-[12px] mg-muted mt-1">{label}</div>
+        <div className="mg-stat-num">{n}</div>
+        <div className="mg-stat-label">{label}</div>
       </div>
     </Card>
   );

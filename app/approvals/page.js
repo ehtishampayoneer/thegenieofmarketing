@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Button, Pill, Kbd } from "@/components/ui/v2/primitives";
@@ -98,20 +99,16 @@ export default function ApprovalsPage() {
 
   return (
     <OperatorShell active="approvals">
-      <div className="mg-rise flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-            <Icon.tasks size={15} /> Approvals {!live && <span className="mg-pill" style={{ marginLeft: 6 }}>Sample</span>}
-          </p>
-          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-            {items.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
-          </h1>
-          <p className="mt-2.5 text-[15px] mg-muted">
-            {items.length > 0 ? "Owned accounts publish automatically. Community posts copy + open the exact thread. One key each." : "Nothing waiting — Genie is hunting more while you’re away."}
-          </p>
-        </div>
-        {ownedCount > 0 && <Button variant="ghost" onClick={approveAllOwned}>Approve all {ownedCount} owned</Button>}
-      </div>
+      <OperatorHeader
+        icon={Icon.tasks}
+        label="Approvals"
+        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        title={items.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
+        action={ownedCount > 0 ? <Button variant="ghost" onClick={approveAllOwned}>Approve all {ownedCount} owned</Button> : null}
+      />
+      {items.length === 0 && (
+        <p className="mg-lede mt-3 mg-rise">Nothing waiting — Genie is hunting more while you’re away.</p>
+      )}
 
       {items.length > 0 && current ? (
         <>

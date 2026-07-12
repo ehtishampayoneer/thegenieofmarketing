@@ -9,6 +9,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Pill, Provenance, SectionLabel } from "@/components/ui/v2/primitives";
@@ -119,20 +120,16 @@ function Growth() {
 
   return (
     <OperatorShell active="growth">
-      <div className="mg-rise flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-            <Icon.growth size={15} /> Growth {live ? <Provenance kind="verified">Your engine</Provenance> : <Provenance kind="sample" />}
-          </p>
-          <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-            Where Genie is <span className="dawn-text">growing you.</span>
-          </h1>
-          <p className="mt-2.5 text-[15px] mg-muted max-w-xl">The openings it found and staged for you, and the keyword strategy it derived and manages on its own. This is the engine — you just steer.</p>
-        </div>
-      </div>
+      <OperatorHeader
+        icon={Icon.growth}
+        label="Growth"
+        provenance={live ? <Provenance kind="verified">Your engine</Provenance> : <Provenance kind="sample" />}
+        title="Where Genie is"
+        accent="growing you."
+      />
 
       {/* ── OPPORTUNITIES ── */}
-      <div className="mt-6 flex items-center gap-2">
+      <div className="mt-7 flex items-center gap-2">
         <SectionLabel>Opportunities</SectionLabel>
         {taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}
       </div>
@@ -309,8 +306,8 @@ function MiniStat({ value, label, tint }) {
 function KeywordStat({ value, label, accent }) {
   return (
     <Card className="p-4">
-      <p className="text-[26px] font-bold leading-none mg-num" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" }}>{value}</p>
-      <p className="mt-1.5 text-[12px] mg-muted">{label}</p>
+      <p className="mg-stat-num" style={accent ? { color: "var(--accent-ink)" } : undefined}>{value}</p>
+      <p className="mg-stat-label">{label}</p>
     </Card>
   );
 }

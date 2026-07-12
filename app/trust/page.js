@@ -10,6 +10,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card } from "@/components/ui/v2/primitives";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { fetchLive } from "@/lib/live";
 
 const CHANNELS = [
@@ -50,13 +51,13 @@ export default function TrustCenterPage() {
 
   return (
     <OperatorShell active="trust">
-      <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted"><Icon.check size={15} /> Trust Center {!live && <span className="mg-pill">Sample</span>}</p>
-        <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-          You’re always <span className="dawn-text">in control.</span>
-        </h1>
-        <p className="mt-2.5 text-[15px] mg-muted">Genie earns autonomy as it proves itself — and you decide how much freedom it has, on every channel. Nothing risky ever goes out under your name.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.check}
+        label="Trust Center"
+        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        title="You’re always"
+        accent="in control."
+      />
 
       {/* Kill switch */}
       <Card className="mt-5 p-5 flex items-center gap-4" style={kill ? { borderColor: "var(--signal-danger)" } : {}}>

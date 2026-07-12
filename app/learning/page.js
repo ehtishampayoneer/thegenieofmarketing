@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Verified, Estimated, Provenance } from "@/components/ui/v2/primitives";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { fetchLive, relTime } from "@/lib/live";
 
 const FALLBACK = {
@@ -47,13 +48,12 @@ export default function LearningPage() {
 
   return (
     <OperatorShell active="analytics">
-      <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted"><Icon.brain size={15} /> Intelligence {!live && <Provenance kind="sample" />}</p>
-        <h1 className="mt-2 text-[32px] leading-[1.08] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-          Genie is getting <span className="dawn-text">smarter about you</span> every day.
-        </h1>
-        <p className="mt-2.5 text-[15px] mg-muted">Every result teaches Genie what works for your entity — and it’s already changing what it does next. Unlike a tool, it remembers.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.brain}
+        label="Intelligence"
+        provenance={!live ? <Provenance kind="sample" /> : null}
+        title={<>Genie is getting <span className="dawn-text">smarter about you</span> every day.</>}
+      />
 
       {empty ? (
         <Card className="mt-6 p-12 text-center">

@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
@@ -71,19 +72,17 @@ export default function TodayPage() {
     <OperatorShell active="today">
       {needsConfirm && <EntityConfirm entity={entity} onConfirmed={(e) => setEntity(e)} />}
 
-      <div className="mg-rise">
-        <p className="flex items-center gap-2 text-[13px] font-medium mg-muted">
-          <Sunrise /> Good morning{d.greetingName ? `, ${cap(d.greetingName)}` : ""}
-          {!live && <span className="mg-pill" style={{ marginLeft: 6 }}>Sample</span>}
-        </p>
-        <h1 className="mt-2 text-[40px] leading-[1.04] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-          While you slept,<br /><span className="dawn-text">Genie got to work.</span>
-        </h1>
-        <p className="mt-2.5 text-[15px] mg-muted">{d.summaryLine}</p>
-      </div>
+      <OperatorHeader
+        large
+        icon={Sunrise}
+        label={`Good morning${d.greetingName ? `, ${cap(d.greetingName)}` : ""}`}
+        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        title={<>While you slept,<br /><span className="dawn-text">Genie got to work.</span></>}
+        kicker={d.summaryLine}
+      />
 
       {/* Stats */}
-      <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mg-stagger">
+      <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mg-stagger">
         {d.stats.map((s, i) => {
           const IconC = ic(s.iconKey); const t = tint(s.tint);
           return (
