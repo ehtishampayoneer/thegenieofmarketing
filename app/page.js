@@ -59,6 +59,15 @@ export default function Home() {
     }
   }, []);
 
+  // Signed-in users belong in the Operator, not the V1 scan landing. Send them
+  // to Today (the morning reveal) — unless they arrived to run a scan (?scan=).
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("scan")) return; // let the onboarding auto-scan run
+    window.location.replace("/today");
+  }, [user]);
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
