@@ -9,13 +9,18 @@
 
 import React from "react";
 
+// Round to fixed precision so the generated path string is byte-identical on
+// server and client — otherwise last-ULP float differences trigger a React
+// hydration mismatch on the brand mark, which appears on every screen.
+const r3 = (n) => Number(n.toFixed(3));
+
 function bladePath(i, cx, cy, rOut, rIn, gapDeg) {
   const seg = 360 / 6;
   const a0 = i * seg + gapDeg / 2;
   const a1 = (i + 1) * seg - gapDeg / 2;
   const p = (r, a) => {
     const rad = ((a - 90) * Math.PI) / 180;
-    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    return [r3(cx + r * Math.cos(rad)), r3(cy + r * Math.sin(rad))];
   };
   const [x0o, y0o] = p(rOut, a0);
   const [x1o, y1o] = p(rOut, a1);
