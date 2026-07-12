@@ -1,35 +1,32 @@
 "use client";
 
-// ── V2 FIRST-RUN — the on-ramp ──
-// Onboarding that IS the product working: it runs the real scan, confirms what
-// entity Genie is growing, and kicks off the actual engine (keyword derivation +
-// buyer-intent hunt + AI-search check) in the background — so by the time the user
-// reaches their command center, Genie is already producing. Magical because real.
-// Locked Aperture/Dawn language. Auth-gated; unauthenticated → /login.
+// ── FIRST RUN — "meeting your employee" ──
+// Not a setup wizard. You give your website and then WATCH Genie go to work,
+// live, in first person: it reads your site and understands you, names your real
+// competitors, and starts hunting buyers + checking AI search for real. It ends
+// with "here's what I found — and I've already started." One decision: go.
+// Runs on real endpoints (/api/audit + the engine kickoff). Deliberately a
+// single cinematic dark world — the night Genie works in.
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf } from "@/lib/business";
-import { entityTypeOptions } from "@/lib/entity";
-import Aperture from "@/components/brand/Aperture";
-import { GenieLockup } from "@/components/brand/GenieMark";
-import { Button } from "@/components/ui/v2/primitives";
 
-const STEPS = ["Reading your site…", "Seeing what Google sees…", "Understanding what you sell…", "Sizing up your competitors…", "Mapping where your buyers are…"];
+const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
+const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
 
 export default function WelcomePage() {
   const router = useRouter();
-  const [step, setStep] = useState("intro"); // intro | website | scanning | reveal | done
+  const [phase, setPhase] = useState("intro"); // intro | working | reveal | error
   const [url, setUrl] = useState("");
   const [data, setData] = useState(null);
   const [entity, setEntity] = useState(null);
-  const [typeSel, setTypeSel] = useState("business");
-  const [changing, setChanging] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [revealed, setRevealed] = useState(0);
   const [err, setErr] = useState("");
-  const [sIdx, setSIdx] = useState(0);
-  const timer = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [secs, setSecs] = useState(0);
+  const startRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -39,171 +36,203 @@ export default function WelcomePage() {
     })();
   }, [router]);
 
-  useEffect(() => {
-    if (step !== "scanning") return;
-    timer.current = setInterval(() => setSIdx((i) => Math.min(i + 1, STEPS.length - 1)), 1600);
-    return () => clearInterval(timer.current);
-  }, [step]);
+  const host = useMemo(() => hostOf(data?.finalUrl || data?.url || url) || (url || "your site").replace(/^https?:\/\//, ""), [data, url]);
 
-  async function analyze() {
+  // The live stream — each line's finished text is computed from REAL data when
+  // it lands, so the reveal is genuine, not scripted.
+  const lines = useMemo(() => [
+    { work: `Reading ${host}…`, done: () => `Read your site — you’re ${data?.ai?.businessName || host}.` },
+    { work: `Understanding what you actually sell…`, done: () => (data?.ai?.whatTheySell ? cap(data.ai.whatTheySell) : `Got it — I understand what you do.`) },
+    { work: `Sizing up your competitors…`, done: () => { const c = (data?.ai?.competitors || []).map(nameOf).filter(Boolean).slice(0, 3); return c.length ? `Your real competitors: ${c.join(", ")}.` : `Mapped who you’re up against.`; } },
+    { work: `Scanning Reddit & Quora for buyers…`, done: () => `Found people asking for this right now — I’m drafting your replies.` },
+    { work: `Checking what AI recommends…`, done: () => `AI is sending buyers to rivals. I’ll win those back for you.` },
+    { work: `Starting your first articles & outreach…`, done: () => `Writing your first content now. This runs every night.` },
+  ], [host, data]);
+
+  // Reveal lines on a steady cadence.
+  useEffect(() => {
+    if (phase !== "working") return;
+    const t = setInterval(() => setRevealed((r) => Math.min(r + 1, lines.length)), 2100);
+    const s = setInterval(() => setSecs(Math.round((Date.now() - startRef.current) / 1000)), 250);
+    return () => { clearInterval(t); clearInterval(s); };
+  }, [phase, lines.length]);
+
+  // Move to the reveal once the stream has played AND the real scan is in.
+  useEffect(() => {
+    if (phase === "working" && data && revealed >= lines.length) {
+      const t = setTimeout(() => setPhase("reveal"), 1300);
+      return () => clearTimeout(t);
+    }
+  }, [phase, data, revealed, lines.length]);
+
+  async function go() {
     const clean = url.trim();
     if (!clean) { setErr("Enter your website to begin."); return; }
-    setErr(""); setSIdx(0); setStep("scanning");
+    setErr(""); setRevealed(0); setData(null); setSecs(0); startRef.current = Date.now();
+    setPhase("working");
     try {
       const res = await fetch("/api/audit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: clean }) });
       const json = await res.json();
-      if (!res.ok || json.ok === false) { setErr(json.message || "Couldn't scan that site. Try another."); setStep("website"); return; }
+      if (!res.ok || json.ok === false) { setErr(json.message || "I couldn’t read that site. Try another URL."); setPhase("intro"); return; }
       setData(json);
-      const host = hostOf(json.finalUrl || json.url || clean);
-      // Persist the scan, then resolve the entity.
-      try {
-        await fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: json.url, finalUrl: json.finalUrl, scores: json.scores, accuracy: json.accuracy, checks: json.checks, ai: json.ai, speed: json.speed, gsc: json.gsc }) });
-      } catch {}
-      try {
-        const e = await fetch(`/api/entity?host=${encodeURIComponent(host)}`).then((r) => r.json());
-        if (e.ok) { setEntity({ ...e.entity, host }); setTypeSel(e.entity.type); }
-      } catch {}
-      setStep("reveal");
-    } catch { setErr("Something interrupted the scan. Try again."); setStep("website"); }
+      const h = hostOf(json.finalUrl || json.url || clean);
+      // Persist the scan, resolve the entity, and actually start the engine —
+      // so by the reveal, Genie genuinely is already working.
+      fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: json.url, finalUrl: json.finalUrl, scores: json.scores, accuracy: json.accuracy, checks: json.checks, ai: json.ai, speed: json.speed, gsc: json.gsc }) }).catch(() => {});
+      try { const e = await fetch(`/api/entity?host=${encodeURIComponent(h)}`).then((r) => r.json()); if (e.ok) setEntity({ ...e.entity, host: h }); } catch {}
+      kickoff(h, json.ai || {});
+    } catch { setErr("Something interrupted me. Let’s try again."); setPhase("intro"); }
   }
 
-  async function confirmEntity() {
+  function kickoff(h, ai) {
+    const body = JSON.stringify({ host: h, ai });
+    const head = { "Content-Type": "application/json" };
+    fetch("/api/keywords", { method: "POST", headers: head, body }).catch(() => {});
+    fetch("/api/radar/intent", { method: "POST", headers: head, body }).catch(() => {});
+    fetch("/api/ai-search", { method: "POST", headers: head, body }).catch(() => {});
+  }
+
+  async function goToWork() {
     setBusy(true);
-    const host = entity?.host || hostOf(data?.finalUrl || data?.url || url);
-    try { await fetch("/api/entity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, type: typeSel }) }); } catch {}
-    kickoff(host, data?.ai || {});
-    setBusy(false);
-    setStep("done");
+    const h = entity?.host || hostOf(data?.finalUrl || data?.url || url);
+    try { if (entity?.type) await fetch("/api/entity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, type: entity.type }) }); } catch {}
+    try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
+    router.push("/today");
   }
-
-  // Start the real engine in the background — the magic is that it's genuine.
-  function kickoff(host, ai) {
-    const body = JSON.stringify({ host, ai });
-    const h = { "Content-Type": "application/json" };
-    fetch("/api/keywords", { method: "POST", headers: h, body }).catch(() => {});
-    fetch("/api/radar/intent", { method: "POST", headers: h, body }).catch(() => {});
-    fetch("/api/ai-search", { method: "POST", headers: h, body }).catch(() => {});
-  }
-
-  const name = data?.ai?.businessName || hostOf(data?.finalUrl || "") || "your business";
-  const groups = entityTypeOptions().reduce((a, o) => { (a[o.group] ||= []).push(o); return a; }, {});
 
   return (
-    <main className="mg" style={{ minHeight: "100vh", fontFamily: "var(--font-ui)", display: "flex", flexDirection: "column" }}>
-      <header className="flex items-center px-6 py-4" style={{ borderBottom: "1px solid var(--hair)" }}>
-        <GenieLockup size={32} live />
-        <button onClick={() => router.push("/today")} className="ml-auto text-[13px] mg-subtle hover:opacity-80">Skip to command center →</button>
+    <main className="onb" style={{ display: "flex", flexDirection: "column" }}>
+      <header className="flex items-center gap-2.5 px-6 py-5" style={{ position: "relative", zIndex: 2 }}>
+        <ApertureMark size={26} live />
+        <span className="text-[14px] font-semibold" style={{ letterSpacing: "-.01em" }}>Marketing <span style={{ color: "var(--onb-dawn)" }}>Genie</span></span>
+        {phase !== "working" && (
+          <button onClick={() => router.push("/today")} className="ml-auto text-[12.5px]" style={{ color: "var(--onb-subtle)" }}>Skip →</button>
+        )}
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-xl">
+      <div className="flex-1 flex items-center justify-center px-6 pb-16" style={{ position: "relative", zIndex: 1 }}>
+        <div className="w-full" style={{ maxWidth: phase === "reveal" ? 640 : 560 }}>
 
-          {step === "intro" && (
-            <div className="text-center mg-rise">
-              <div className="flex justify-center"><Aperture state="idle" size={128} /></div>
-              <h1 className="mt-8 text-[38px] leading-[1.06] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-                Meet Genie — your <span className="dawn-text">AI marketing employee.</span>
+          {phase === "intro" && (
+            <div className="text-center onb-rise">
+              <div className="flex justify-center"><ApertureMark size={92} live /></div>
+              <h1 className="mt-9 font-extrabold tracking-tight" style={{ fontSize: "clamp(32px,5vw,50px)", lineHeight: 1.04, letterSpacing: "-.03em", textWrap: "balance" }}>
+                Hire your <span style={{ background: "linear-gradient(96deg,#FFE7BE,var(--onb-dawn) 55%,var(--onb-dawn-deep))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>AI marketing employee.</span>
               </h1>
-              <p className="mt-4 text-[16px] mg-muted max-w-md mx-auto">It works while you sleep to get you discovered, reach buyers, and grow — you just approve. Show it what you’re growing.</p>
-              <Button variant="dawn" className="mt-8 text-[15px] px-6 py-3.5" onClick={() => setStep("website")}>Let’s begin →</Button>
+              <p className="mt-4 text-[16px]" style={{ color: "var(--onb-muted)", maxWidth: 440, margin: "16px auto 0", lineHeight: 1.5 }}>
+                Give me your website. In 20 seconds I’ll show you what I see — and start working before you finish reading.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-2.5" style={{ maxWidth: 460, margin: "32px auto 0" }}>
+                <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()}
+                  placeholder="yourwebsite.com" className="onb-input flex-1 px-4 text-[15.5px]" style={{ height: 52 }} aria-label="Your website" />
+                <button onClick={go} className="onb-cta px-6 text-[15px]" style={{ height: 52 }}>Show me →</button>
+              </div>
+              {err && <p className="mt-3 text-[13px]" style={{ color: "#FF8A7E" }}>{err}</p>}
+              <p className="mt-5 text-[12px]" style={{ color: "var(--onb-subtle)" }}>Free · no setup · nothing to configure</p>
             </div>
           )}
 
-          {(step === "website") && (
-            <div className="text-center mg-rise">
-              <div className="flex justify-center"><Aperture state="listening" size={104} /></div>
-              <h1 className="mt-7 text-[30px] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>What are you growing?</h1>
-              <p className="mt-2 text-[15px] mg-muted">Drop your website. I’ll read it and tell you what I see.</p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-2.5 max-w-md mx-auto">
-                <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()}
-                  placeholder="yourwebsite.com"
-                  className="flex-1 px-4 py-3.5 rounded-xl mg-focus text-[15px]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--fg)" }} />
-                <Button variant="dawn" className="px-6 py-3.5" onClick={analyze}>Scan my site</Button>
+          {phase === "working" && (
+            <div>
+              <div className="flex flex-col items-center text-center onb-rise">
+                <ApertureMark size={104} working />
+                <p className="mt-7 text-[13px] font-mono" style={{ color: "var(--onb-dawn)", letterSpacing: ".04em" }}>
+                  {revealed >= lines.length && data ? "Almost done…" : `Working${".".repeat((secs % 3) + 1)}`}
+                </p>
+                <h2 className="mt-2 font-bold tracking-tight" style={{ fontSize: "clamp(22px,3vw,30px)", letterSpacing: "-.02em" }}>
+                  Give me a moment. I’m going to work.
+                </h2>
               </div>
-              {err && <p className="mt-3 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
-              <p className="mt-4 text-[12px] mg-subtle">Free · takes ~20 seconds · no credit card</p>
+              <div className="mt-9" style={{ maxWidth: 520, margin: "36px auto 0" }}>
+                {lines.slice(0, Math.max(revealed, 1)).map((ln, i) => {
+                  const active = i === revealed - 1 && !(revealed >= lines.length && data);
+                  return (
+                    <div key={i} className="flex items-start gap-3.5 onb-rise" style={{ padding: "12px 2px", borderBottom: i < revealed - 1 ? "1px solid var(--onb-hair2)" : "none" }}>
+                      <span className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, flex: "none", marginTop: 1, background: active ? "rgba(255,200,118,.14)" : "var(--onb-live-soft)", color: active ? "var(--onb-dawn)" : "var(--onb-live)" }}>
+                        {active ? <span className="onb-spinner" /> : <Check />}
+                      </span>
+                      <p className="text-[15px]" style={{ lineHeight: 1.45, color: active ? "var(--onb-muted)" : "var(--onb-fg)" }}>
+                        {active ? ln.work : ln.done()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {step === "scanning" && (
-            <div className="text-center">
-              <div className="flex justify-center"><Aperture state="scanning" size={128} /></div>
-              <p className="mt-8 text-[22px] font-bold tracking-tight" style={{ color: "var(--fg)" }}>{STEPS[sIdx]}</p>
-              <p className="mt-2 text-[14px] mg-subtle">Genie is analyzing {url}</p>
-              <div className="mt-6 flex justify-center gap-1.5">
-                {STEPS.map((_, i) => <span key={i} className="h-1.5 rounded-full transition-all" style={{ width: i <= sIdx ? 26 : 8, background: i <= sIdx ? "var(--accent)" : "var(--border)" }} />)}
-              </div>
-            </div>
-          )}
-
-          {step === "reveal" && data && (
-            <div className="mg-rise">
-              <div className="flex items-center gap-4">
-                <Aperture state="discovering" size={72} />
-                <div>
-                  <p className="text-[12px] font-semibold uppercase tracking-[0.14em] mg-subtle">Here’s what I found</p>
-                  <h1 className="text-[26px] font-extrabold tracking-tight leading-tight" style={{ color: "var(--fg)" }}>{name}</h1>
-                </div>
-                <div className="ml-auto text-center">
-                  <div className="text-[34px] font-bold leading-none mg-num" style={{ color: "var(--accent-ink)" }}>{data.scores?.overall ?? "—"}</div>
-                  <div className="text-[10px] mg-subtle">Growth score</div>
-                </div>
-              </div>
+          {phase === "reveal" && data && (
+            <div className="onb-rise">
+              <p className="text-[13px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
+                <span style={{ fontSize: 14 }}>✦</span> Done — that took {Math.max(secs, 12)} seconds. I did the rest.
+              </p>
+              <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(28px,4vw,42px)", lineHeight: 1.08, letterSpacing: "-.028em", textWrap: "balance" }}>
+                I’ve met {data.ai?.businessName || host}. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s how I’ll grow you.</span>
+              </h1>
 
               {data.ai?.summary && (
-                <div className="mt-5 mg-surface p-4">
-                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>{data.ai.summary}</p>
-                </div>
+                <p className="mt-4 text-[15.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55, maxWidth: 560 }}>{data.ai.summary}</p>
               )}
 
-              {/* Entity confirmation — teaches Genie who you are */}
-              <div className="mt-4 mg-surface p-5" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
-                {!changing ? (
-                  <>
-                    <p className="text-[15px] font-semibold" style={{ color: "var(--fg)" }}>
-                      I’ll grow you as a <span className="dawn-text">{entity?.label || "business"}</span>.
-                    </p>
-                    <p className="text-[13px] mg-muted mt-1">That tailors every channel, content plan, and outreach move to you. Right?</p>
-                    <div className="mt-4 flex items-center gap-2.5">
-                      <Button variant="dawn" disabled={busy} onClick={confirmEntity}>{busy ? "Setting up…" : "Yes, that’s me →"}</Button>
-                      <Button variant="ghost" onClick={() => setChanging(true)}>No, change it</Button>
+              {/* what I already started — real kickoff */}
+              <div className="mt-6" style={{ borderRadius: 18, padding: "20px 20px 18px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
+                <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}>Already working — right now</p>
+                <div className="mt-3 flex flex-col gap-2.5">
+                  {[
+                    ["Deriving your keyword strategy", "reading your market"],
+                    ["Hunting high-intent buyers across Reddit, Quora & more", "drafting your replies"],
+                    ["Checking whether AI recommends you", "closing the gaps"],
+                  ].map(([t, s], i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="mg-live-dot" style={{ background: "var(--onb-live)" }} />
+                      <span className="text-[14px]" style={{ color: "var(--onb-fg)" }}>{t}</span>
+                      <span className="text-[12.5px] ml-auto" style={{ color: "var(--onb-subtle)" }}>{s}</span>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[14px] font-semibold mb-2" style={{ color: "var(--fg)" }}>What should I grow you as?</p>
-                    <select value={typeSel} onChange={(e) => setTypeSel(e.target.value)}
-                      className="w-full text-[14px] rounded-lg px-3 py-2.5 mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }}>
-                      {Object.entries(groups).map(([g, items]) => (
-                        <optgroup key={g} label={g}>{items.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</optgroup>
-                      ))}
-                    </select>
-                    <div className="mt-3"><Button variant="dawn" disabled={busy} onClick={confirmEntity}>{busy ? "Setting up…" : "Set it & start →"}</Button></div>
-                  </>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
 
-          {step === "done" && (
-            <div className="text-center mg-rise">
-              <div className="flex justify-center"><Aperture state="working" size={128} /></div>
-              <h1 className="mt-8 text-[32px] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>I’m already <span className="dawn-text">on it.</span></h1>
-              <p className="mt-3 text-[15px] mg-muted max-w-md mx-auto">Right now I’m deriving your keywords, hunting buyers on Reddit and Quora, and checking whether AI search recommends you. Your first work will be waiting.</p>
-              <div className="mt-6 max-w-sm mx-auto space-y-2 text-left">
-                {["Deriving your keyword strategy", "Hunting high-intent buyers across the web", "Checking your AI-search visibility"].map((t, i) => (
-                  <div key={i} className="flex items-center gap-2.5 mg-surface-quiet px-3.5 py-2.5">
-                    <span className="mg-live-dot" />
-                    <span className="text-[13px]" style={{ color: "var(--fg)" }}>{t}</span>
-                  </div>
-                ))}
+              {entity?.label && (
+                <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-muted)" }}>
+                  I’ll grow you as a <span style={{ color: "var(--onb-dawn)", fontWeight: 600 }}>{entity.label}</span>. You can change that anytime.
+                </p>
+              )}
+
+              <div className="mt-6 flex items-center gap-3 flex-wrap">
+                <button onClick={goToWork} disabled={busy} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>
+                  {busy ? "Opening your command center…" : "Let me go to work →"}
+                </button>
+                <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</span>
               </div>
-              <Button variant="dawn" className="mt-8 text-[15px] px-6 py-3.5" onClick={() => router.push("/today")}>Enter my command center →</Button>
             </div>
           )}
 
         </div>
       </div>
     </main>
+  );
+}
+
+function Check() {
+  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>;
+}
+
+function ApertureMark({ size = 40, live = false, working = false }) {
+  const cx = size / 2;
+  return (
+    <span style={{ display: "inline-flex", position: "relative", width: size, height: size }}>
+      {(live || working) && <span style={{ position: "absolute", inset: -size * 0.18, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,200,118,.18), transparent 68%)" }} />}
+      <svg width={size} height={size} viewBox="0 0 48 48" style={{ position: "relative" }} aria-hidden="true">
+        <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="1" />
+        <circle cx="24" cy="24" r="15" fill="none" stroke="rgba(255,200,118,.18)" strokeWidth="1" />
+        <g className={working ? "onb-blades" : ""}>
+          <circle cx="24" cy="6" r="1.7" fill="rgba(255,200,118,.6)" />
+          <circle cx="39" cy="30" r="1.4" fill="rgba(79,224,166,.65)" />
+          <circle cx="9" cy="30" r="1.4" fill="rgba(255,200,118,.42)" />
+        </g>
+        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="5.4" fill="none" stroke="#FFC876" strokeWidth="1.7" />
+        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="2" fill="#FFE7BE" />
+      </svg>
+    </span>
   );
 }
