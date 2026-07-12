@@ -117,6 +117,10 @@ function Growth() {
   const active = graded.filter((k) => k.health !== "retired");
   const retired = graded.filter((k) => k.health === "retired");
   const taps = d.totalTaps || 0;
+  const allTaps = (d.blocks || []).flatMap((b) => (b.items || []).map((it) => ({ ...it, platform: b.platform, owned: b.owned })));
+  const heroTap = allTaps[0] || null;
+  const restTaps = allTaps.slice(1);
+  const activeShown = active.slice(0, 8);
 
   return (
     <OperatorShell active="growth">
@@ -128,16 +132,24 @@ function Growth() {
         accent="growing you."
       />
 
-      {/* ── OPPORTUNITIES ── */}
-      <div className="mt-7 flex items-center gap-2">
-        <SectionLabel>Opportunities</SectionLabel>
-        {taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}
+      {/* ── OPPORTUNITIES — one to act on now, the rest in a quiet queue ── */}
+      <div className="mt-7 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <SectionLabel>Opportunities</SectionLabel>
+          {taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}
+        </div>
+        {restTaps.length > 0 && <a href="/conversations" className="text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>See running →</a>}
       </div>
 
-      {d.blocks && d.blocks.length > 0 ? (
-        <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {d.blocks.map((b) => <OpportunityBlock key={b.platform} block={b} onAct={act} />)}
-        </div>
+      {heroTap ? (
+        <>
+          <HeroTap item={heroTap} onAct={act} />
+          {restTaps.length > 0 && (
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {restTaps.map((it) => <CompactTap key={it.id} item={it} onAct={act} />)}
+            </div>
+          )}
+        </>
       ) : (
         <Card className="mt-3 p-8 text-center">
           <span className="mg-tile mx-auto" style={{ width: 42, height: 42, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={19} /></span>
@@ -176,8 +188,16 @@ function Growth() {
           {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
 
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {active.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+            {activeShown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
           </div>
+          {active.length > activeShown.length && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Show all {active.length} keywords</summary>
+              <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {active.slice(8).map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+              </div>
+            </details>
+          )}
 
           {retired.length > 0 && (
             <details className="mt-4">
@@ -193,61 +213,58 @@ function Growth() {
   );
 }
 
-function OpportunityBlock({ block, onAct }) {
+const brandOf = (p) => (p === "guest" ? "wordpress" : p);
+
+// The one opportunity worth acting on now — featured, with Genie's reasoning.
+function HeroTap({ item, onAct }) {
+  const [copied, setCopied] = useState(false);
+  function primary() {
+    if (item.owned) { onAct(item, "posted"); return; }
+    try { navigator.clipboard.writeText(item.draft || ""); } catch {}
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
+    if (item.target_url) window.open(item.target_url, "_blank");
+    onAct(item, "posted");
+  }
   return (
-    <Card className="overflow-hidden">
-      <div className="px-5 pt-4 pb-3 flex items-center gap-3">
-        <BrandIcon brand={block.platform === "guest" ? "wordpress" : block.platform} size={18} />
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold capitalize" style={{ color: "var(--fg)" }}>{block.platform}</p>
-          <p className="text-[11.5px] mg-muted">{block.owned ? "Genie publishes automatically" : `${block.count} tap${block.count > 1 ? "s" : ""} — you post from your account`}</p>
-        </div>
-        <span className="text-[17px] font-bold mg-num" style={{ color: "var(--accent-ink)" }}>{block.count}</span>
+    <Card className="mg-ambient mt-3 p-6">
+      <div className="flex items-center gap-2 flex-wrap">
+        <BrandIcon brand={brandOf(item.platform)} size={17} />
+        <span className="text-[12.5px] font-semibold capitalize" style={{ color: "var(--fg-muted)" }}>{item.platform}</span>
+        <Pill tone="dawn">Start here</Pill>
+        {item.keyword && <span className="text-[12px]" style={{ color: "var(--accent-ink)" }}>{item.keyword}</span>}
       </div>
-      <div className="px-3 pb-3">
-        {block.items.map((item) => <PlacementItem key={item.id} item={item} owned={block.owned} onAct={onAct} />)}
+      <h3 className="mt-3 text-[19px] font-bold leading-snug" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</h3>
+      {item.meta?.reason && <p className="mt-1.5 text-[13.5px] mg-muted max-w-2xl">{item.meta.reason}</p>}
+      {item.draft && (
+        <div className="mt-3.5 mg-surface-quiet p-3.5 text-[13px] whitespace-pre-wrap max-h-36 overflow-y-auto thin-scroll" style={{ color: "var(--fg-muted)" }}>{item.draft}</div>
+      )}
+      <div className="mt-4 flex items-center gap-2">
+        <button onClick={primary} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>
+          {item.owned ? "Approve & publish" : copied ? "Copied — paste & post" : "Copy & open thread"}
+        </button>
+        <button onClick={() => onAct(item, "snoozed")} className="text-[12.5px] mg-subtle mg-focus px-2">Later</button>
+        <button onClick={() => onAct(item, "skipped")} className="text-[12.5px] mg-subtle mg-focus px-2">Skip</button>
       </div>
     </Card>
   );
 }
 
-function PlacementItem({ item, owned, onAct }) {
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  async function tapPost() {
-    try { await navigator.clipboard.writeText(item.draft || ""); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch {}
+// Everything else — a tight, scannable queue, not a wall of equal cards.
+function CompactTap({ item, onAct }) {
+  function primary() {
+    if (item.owned) { onAct(item, "posted"); return; }
+    try { navigator.clipboard.writeText(item.draft || ""); } catch {}
     if (item.target_url) window.open(item.target_url, "_blank");
     onAct(item, "posted");
   }
-
   return (
-    <div className="mg-surface-quiet p-3 mt-2 first:mt-0">
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</p>
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {item.keyword && <Pill tone="dawn">{item.keyword}</Pill>}
-            <span className="text-[10.5px] mg-subtle capitalize">{String(item.kind || "reply").replace("_", " ")}</span>
-          </div>
-        </div>
-        {item.draft && <button onClick={() => setOpen((v) => !v)} className="text-[11.5px] font-medium shrink-0 mg-focus" style={{ color: "var(--accent-ink)" }}>{open ? "Hide" : "Preview"}</button>}
+    <div className="mg-surface-quiet p-3.5 flex items-center gap-3">
+      <BrandIcon brand={brandOf(item.platform)} size={16} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</p>
+        <p className="text-[11px] mg-subtle truncate mt-0.5">{item.keyword ? `${item.keyword} · ` : ""}{item.meta?.reason || item.platform}</p>
       </div>
-
-      {open && item.draft && (
-        <div className="mt-2 text-[12.5px] whitespace-pre-wrap max-h-52 overflow-y-auto p-3 rounded-lg" style={{ background: "var(--surface-sunken)", color: "var(--fg-muted)" }}>{item.draft}</div>
-      )}
-      {item.meta?.reason && <p className="mt-1.5 text-[11px] mg-subtle italic">{item.meta.reason}</p>}
-
-      <div className="mt-2.5 flex items-center gap-2">
-        {owned ? (
-          <button onClick={() => onAct(item, "posted")} className="mg-btn mg-btn--dawn" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>Approve & publish</button>
-        ) : (
-          <button onClick={tapPost} className="mg-btn mg-btn--dawn" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>{copied ? "Copied — paste & post" : "Copy & open thread"}</button>
-        )}
-        <button onClick={() => onAct(item, "snoozed")} className="text-[11.5px] mg-subtle mg-focus px-1">Later</button>
-        <button onClick={() => onAct(item, "skipped")} className="text-[11.5px] mg-subtle mg-focus px-1">Skip</button>
-      </div>
+      <button onClick={primary} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>{item.owned ? "Publish" : "Copy"}</button>
     </div>
   );
 }
