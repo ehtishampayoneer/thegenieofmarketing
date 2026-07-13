@@ -13,7 +13,7 @@ export async function GET() {
   const clientId = process.env.X_CLIENT_ID;
   const redirectUri = process.env.X_REDIRECT_URI;
   if (!clientId || !redirectUri) {
-    return NextResponse.redirect(absolute("/dashboard?view=integrations&x_error=not_configured"));
+    return NextResponse.redirect(absolute("/connections?x_error=not_configured"));
   }
 
   const verifier = base64url(crypto.randomBytes(48));

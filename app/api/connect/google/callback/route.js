@@ -15,8 +15,7 @@ export async function GET(request) {
   const cookieState = request.cookies.get("g_oauth_state")?.value;
   const err = searchParams.get("error");
 
-  const fromSetup = request.cookies.get("genie_return")?.value === "setup";
-  const back = (q) => NextResponse.redirect(fromSetup ? `${origin}/setup?connected=google` : `${origin}/dashboard${q}`);
+  const back = (q) => NextResponse.redirect(`${origin}/connections${q}`);
 
   if (err) return back(`?connect_error=${encodeURIComponent(err)}`);
   if (!code || !state || state !== cookieState) {
