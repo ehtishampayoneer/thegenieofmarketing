@@ -90,6 +90,9 @@ export default function WelcomePage() {
     fetch("/api/keywords", { method: "POST", headers: head, body }).catch(() => {});
     fetch("/api/radar/intent", { method: "POST", headers: head, body }).catch(() => {});
     fetch("/api/ai-search", { method: "POST", headers: head, body }).catch(() => {});
+    // Draft real, publish-ready content so the Approvals queue fills immediately —
+    // this is what turns "0 decisions waiting" into something the user can act on.
+    fetch("/api/content", { method: "POST", headers: head, body }).catch(() => {});
   }
 
   async function goToWork() {

@@ -23,6 +23,18 @@ export default function ApprovalsPage() {
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [done, setDone] = useState(0);
+  const [drafting, setDrafting] = useState(false);
+
+  // Ask Genie to draft your first publish-ready content right now (uses your
+  // latest scan for context). Takes ~30–60s, then the queue fills.
+  async function draftFirstContent() {
+    setDrafting(true);
+    try {
+      const r = await fetch("/api/content", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((x) => x.json());
+      if (r.ok) { window.location.reload(); return; }
+    } catch {}
+    setDrafting(false);
+  }
 
   useEffect(() => {
     if (Array.isArray(feed?.items)) { setItems(feed.items); setIdx(0); }
@@ -185,11 +197,11 @@ export default function ApprovalsPage() {
       ) : (
         <div className="mt-8 mg-surface p-12 text-center">
           <div className="inline-flex mb-3" style={{ color: "var(--signal-live-ink)" }}><Icon.check size={40} /></div>
-          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>{done > 0 ? "That’s a wrap — beautiful work." : "Nothing to approve right now."}</p>
-          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? "Genie is already lining up tomorrow’s work. Go enjoy your day." : "Genie works overnight to find buyers and draft your moves. Run a scan or find openings to get started."}</p>
+          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>{done > 0 ? "That’s a wrap — beautiful work." : "Nothing in your queue yet."}</p>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? "Genie is already lining up tomorrow’s work. Go enjoy your day." : "Have me draft your first publish-ready article and social posts right now — from what I already learned about you."}</p>
           <div className="mt-5 flex items-center justify-center gap-2.5">
-            <a href="/today" className="mg-btn mg-btn--dawn">Back to Today</a>
-            <a href="/growth" className="mg-btn mg-btn--ghost">Find openings</a>
+            {done === 0 && <button onClick={draftFirstContent} disabled={drafting} className="mg-btn mg-btn--dawn disabled:opacity-60">{drafting ? "Genie is writing… (~30s)" : "Draft my first content →"}</button>}
+            <a href={done > 0 ? "/today" : "/growth"} className="mg-btn mg-btn--ghost">{done > 0 ? "Back to Today" : "See opportunities"}</a>
           </div>
         </div>
       )}

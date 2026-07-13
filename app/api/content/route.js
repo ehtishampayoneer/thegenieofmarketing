@@ -6,6 +6,8 @@
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
+import { resolveRadarUser } from "@/lib/radar-auth";
+import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +21,20 @@ export async function POST(request) {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
-  const { ai, gsc, topic, scanId, host } = body || {};
-  if (!ai) return json({ ok: false, error: "Missing business context." }, 400);
+  let { ai, gsc, topic, scanId, host } = body || {};
+
+  // Resolve the caller up front (browser session or trusted cron).
+  const { supabase, userId } = await resolveRadarUser(request, body);
+
+  // Self-sufficient: with no business context passed, use the caller's latest
+  // scan — so a one-tap "draft my content" works without re-onboarding.
+  if (!ai && userId) {
+    try {
+      const { data: scan } = await supabase.from("scans").select("ai, final_url, url, id").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (scan) { ai = scan.ai; host = host || hostOf(scan); scanId = scanId || scan.id; }
+    } catch {}
+  }
+  if (!ai) return json({ ok: false, error: "No business yet — run a scan first." }, 400);
 
   let data = null;
   let provider = null;
@@ -48,9 +62,7 @@ export async function POST(request) {
   // Ephemeral no more — these are ready for approval + auto-publish (F2/F3).
   let actionIds = [];
   try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    if (userId) {
       const rows = [];
       // Validate AI priorities; reject unknowns → 'medium'.
       const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
@@ -60,7 +72,7 @@ export async function POST(request) {
 
       if (data.article) {
         rows.push({
-          user_id: user.id,
+          user_id: userId,
           scan_id: scanId || null,
           type: "article",
           title: `Article: ${data.article.title || "Untitled"}`,
@@ -73,7 +85,7 @@ export async function POST(request) {
       const social = data.social || {};
       const pushSocial = (platform, text) =>
         rows.push({
-          user_id: user.id,
+          user_id: userId,
           scan_id: scanId || null,
           type: "social_post",
           title: `${platform} post`,
