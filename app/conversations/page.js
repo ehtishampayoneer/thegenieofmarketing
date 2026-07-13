@@ -12,48 +12,13 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
-import { Card, Pill, Provenance } from "@/components/ui/v2/primitives";
-import { fetchLive } from "@/lib/live";
+import { Card, Pill } from "@/components/ui/v2/primitives";
+import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { useLive } from "@/lib/useLive";
 
 const PLATFORM = {
   reddit: "reddit", quora: "quora", forum: "forum", guest: "wordpress",
   x: "x", linkedin: "linkedin", medium: "medium", wordpress: "blog", blog: "blog",
-};
-
-const FALLBACK = {
-  summary: { total: 8, live: 5, replies: 3, winning: 2 },
-  stories: [
-    {
-      id: "s1", title: "How do you handle AR product returns at scale?", platform: "reddit",
-      keyword: "ar try before you buy", status: "posted", performance: "winning", replyCount: 2,
-      steps: [
-        { stage: "found", title: "Found the conversation", meta: "r/ecommerce · high buyer intent", detail: "Someone comparing AR try-on tools and asking which actually reduces returns." },
-        { stage: "wrote", title: "Wrote your reply", detail: "A specific, non-promotional answer that leads with the returns data." },
-        { stage: "posted", title: "You posted it", meta: "3 hours ago" },
-        { stage: "winning", title: "It's gaining traction", meta: "▲ 34 upvotes · top comment" },
-        { stage: "reply", title: "Someone replied to you", detail: "“This is exactly the breakdown I needed — does it work for apparel?”", draft: "Yes — apparel is where try-before-you-buy pays off most, because fit is the #1 return reason. Here's how we approached sizing…", url: "https://reddit.com" },
-      ],
-    },
-    {
-      id: "s2", title: "Best AR shopping tools for small Shopify stores?", platform: "quora",
-      keyword: "ar shopping tools", status: "posted", performance: "flat", replyCount: 0,
-      steps: [
-        { stage: "found", title: "Found the question", meta: "Quora · 2.1k views" },
-        { stage: "wrote", title: "Wrote your answer", detail: "Framed around budget-first stores, mentions you as one of three options." },
-        { stage: "posted", title: "You posted it", meta: "yesterday" },
-        { stage: "watching", title: "Watching for engagement", meta: "Genie checks back daily" },
-      ],
-    },
-    {
-      id: "s3", title: "Guest post: 10 AR trends reshaping eCommerce in 2026", platform: "guest",
-      keyword: "ar ecommerce trends", status: "ready", performance: null, replyCount: 0,
-      steps: [
-        { stage: "found", title: "Found a publisher accepting pitches", meta: "DR 68 · eCommerce audience" },
-        { stage: "wrote", title: "Drafted the full article", detail: "1,400 words, ready to submit — links back to your trends page." },
-        { stage: "ready", title: "Ready for you to send", detail: "Approve and Genie hands you the pitch + draft." },
-      ],
-    },
-  ],
 };
 
 const STAGE = {
@@ -68,50 +33,40 @@ const STAGE = {
 };
 
 export default function ConversationsPage() {
-  const [d, setD] = useState(FALLBACK);
-  const [live, setLive] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { data, live } = await fetchLive("/api/stories");
-      if (live && data) { setD({ summary: data.summary || {}, stories: data.stories || [] }); setLive(true); }
-    })();
-  }, []);
-
-  const s = d.summary || {};
-  const hasStories = (d.stories || []).length > 0;
+  const { data: d, state } = useLive("/api/stories", (j) => !(j.stories?.length));
+  const s = d?.summary || {};
 
   return (
     <OperatorShell active="conversations">
       <OperatorHeader
         icon={Icon.conversations}
         label="Conversations"
-        provenance={live ? (hasStories ? <Provenance kind="live">Running now</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
+        provenance={<DataStateBadge state={state} />}
         title="Genie is out there"
         accent="talking to your market."
       />
 
-      {/* Summary strip */}
-      <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <SummaryTile n={s.total || 0} label="Conversations" iconKey="conversations" tint="dawn" />
-        <SummaryTile n={s.live || 0} label="Live now" iconKey="live" tint="live" />
-        <SummaryTile n={s.replies || 0} label="Replies waiting" iconKey="reply" tint="info" />
-        <SummaryTile n={s.winning || 0} label="Winning" iconKey="growth" tint="live" />
-      </div>
-
-      {!hasStories ? (
-        <Card className="mt-5 p-10 text-center">
-          <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.conversations size={20} /></span>
-          <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>No conversations yet</p>
-          <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">Genie is scanning for openings across Reddit, Quora, forums and more. Each one it finds becomes a living story here — from the moment it's found to every reply after you post.</p>
-          <a href="/growth" className="mg-btn mg-btn--dawn mt-4 inline-flex" style={{ fontSize: 13 }}>See where Genie is growing you →</a>
-        </Card>
+      {state !== "real" ? (
+        <EmptyState
+          state={state === "disconnected" ? "disconnected" : "empty"}
+          icon={Icon.conversations}
+          title="No conversations yet"
+          sub="Once I run your first scan, I hunt for openings across Reddit, Quora, forums and more. Each one becomes a living story here — from the moment I find it to every reply after you post."
+        />
       ) : (
-        <div className="mt-5 space-y-4">
-          {(d.stories || []).map((story, i) => (
-            <StoryCard key={story.id || i} story={story} delay={i * 55} />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <SummaryTile n={s.total || 0} label="Conversations" iconKey="conversations" tint="dawn" />
+            <SummaryTile n={s.live || 0} label="Live now" iconKey="live" tint="live" />
+            <SummaryTile n={s.replies || 0} label="Replies waiting" iconKey="reply" tint="info" />
+            <SummaryTile n={s.winning || 0} label="Winning" iconKey="growth" tint="live" />
+          </div>
+          <div className="mt-5 space-y-4">
+            {(d.stories || []).map((story, i) => (
+              <StoryCard key={story.id || i} story={story} delay={i * 55} />
+            ))}
+          </div>
+        </>
       )}
     </OperatorShell>
   );

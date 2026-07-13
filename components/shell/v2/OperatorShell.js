@@ -40,19 +40,6 @@ const VERB = {
   keywords: { icon: Icon.target, tint: "dawn" }, working: { icon: Icon.bolt, tint: "ink" },
 };
 
-const FALLBACK_ACTIVITY = [
-  { verb: "writing", tint: "reddit", title: "Writing Reddit comment reply", sub: "in r/Entrepreneur", time: "2m" },
-  { verb: "discovered", tint: "emerald", title: "Found buying conversation", sub: "“AR try before you buy apps?” · r/SaaS", time: "4m" },
-  { verb: "published", tint: "blue", title: "Published blog article", sub: "10 AR trends changing eCommerce", time: "15m" },
-  { verb: "traction", tint: "emerald", title: "Keyword ranking improved", sub: "“ar product viewer” +5 positions", time: "18m" },
-  { verb: "writing", tint: "dawn", title: "Sent outreach email", sub: "to info@luxuryfurniture.com", time: "24m" },
-  { verb: "replied", tint: "blue", title: "Detected new reply", sub: "on your LinkedIn post", time: "28m" },
-  { verb: "scanning", tint: "ink", title: "Scanning Quora for opportunities", sub: "“AR shopping experience”", time: "32m" },
-  { verb: "discovered", tint: "dawn", title: "Backlink opportunity found", sub: "Forbes expert roundup", time: "45m" },
-  { verb: "learning", tint: "dawn", title: "Genie learned something new", sub: "Reddit is your best channel", time: "51m" },
-  { verb: "traction", tint: "emerald", title: "Performance update", sub: "Organic traffic up 28%", time: "1h" },
-];
-
 function tintOf(name) {
   switch (name) {
     case "emerald": return { bg: "var(--signal-live-soft)", fg: "var(--signal-live-ink)" };
@@ -65,9 +52,9 @@ function tintOf(name) {
 
 export default function OperatorShell({ active = "today", children }) {
   const [theme, setTheme] = useState("day");
-  const [activity, setActivity] = useState(FALLBACK_ACTIVITY);
-  const [counts, setCounts] = useState({ approvals: 7 });
-  const [user, setUser] = useState({ name: "Asim", entity: "Holos AR Commerce" });
+  const [activity, setActivity] = useState([]);
+  const [counts, setCounts] = useState({ approvals: 0 });
+  const [user, setUser] = useState({ name: "", entity: "" });
 
   useEffect(() => {
     try { const t = localStorage.getItem("mg-theme"); if (t === "night" || t === "day") setTheme(t); } catch {}
@@ -114,14 +101,10 @@ export default function OperatorShell({ active = "today", children }) {
           <div className="px-3 pb-3">
             <div className="mg-surface-quiet p-3.5">
               <div className="flex items-center gap-2">
-                <span className="mg-live-dot" />
-                <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>Genie is working</span>
+                <span className="mg-live-dot" style={activity.length ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
+                <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{activity.length ? "Genie is working" : "Genie is standing by"}</span>
               </div>
-              <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">Scanning Reddit r/SaaS for buying conversations…</p>
-              <div className="mt-2.5 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
-                <div className="h-full rounded-full dawn-fill" style={{ width: "42%" }} />
-              </div>
-              <p className="mt-1.5 text-[10.5px] mg-subtle">Active since 2:13 AM</p>
+              <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
             </div>
           </div>
 
@@ -172,6 +155,12 @@ export default function OperatorShell({ active = "today", children }) {
             <p className="mt-0.5 text-[12px] mg-muted">Everything Genie is doing, right now.</p>
           </div>
           <div className="flex-1 overflow-y-auto thin-scroll px-3 py-2">
+            {activity.length === 0 && (
+              <div className="px-3 py-8 text-center">
+                <p className="text-[12.5px] mg-muted">No activity yet.</p>
+                <p className="text-[11.5px] mg-subtle mt-1">Your first scan starts the stream — everything I do shows up here, live.</p>
+              </div>
+            )}
             {activity.map((a, i) => {
               const v = VERB[a.verb] || VERB.working;
               const t = tintOf(a.tint || v.tint);
@@ -193,9 +182,8 @@ export default function OperatorShell({ active = "today", children }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle">Genie’s focus right now</p>
               <div className="mt-2.5 flex items-center gap-3">
                 <Radar />
-                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--fg)" }}>Finding high-intent conversations in r/SaaS and Quora</p>
+                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--fg)" }}>{activity[0]?.title || "Standing by — run your first scan to begin."}</p>
               </div>
-              <button className="mg-btn mg-btn--ghost w-full mt-3.5" style={{ fontSize: 12.5, padding: ".55rem" }}>View current task</button>
             </div>
           </div>
         </aside>

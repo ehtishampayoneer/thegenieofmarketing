@@ -10,45 +10,30 @@ import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
-import { Card, Provenance } from "@/components/ui/v2/primitives";
-import { fetchLive, relTime } from "@/lib/live";
-
-const FALLBACK = {
-  conversions: 23, value: 4820, currency: "USD", attributed: 17,
-  bySource: [{ source: "reddit", count: 9 }, { source: "email", count: 6 }, { source: "blog", count: 5 }, { source: "stripe", count: 3 }],
-  recent: [
-    { at: null, value: 249, source: "reddit", campaign: "ar-try-before-you-buy" },
-    { at: null, value: 89, source: "email", campaign: "outreach" },
-    { at: null, value: 349, source: "blog", campaign: "ar-trends-2026" },
-  ],
-  traffic: { genieSessions: 1240, share: 22, totalSessions: 5600 },
-  ingest: { token: "demo-token", base: "", providers: [{ id: "stripe", label: "Stripe" }, { id: "shopify", label: "Shopify" }, { id: "paddle", label: "Paddle" }, { id: "lemonsqueezy", label: "Lemon Squeezy" }] },
-};
+import { Card } from "@/components/ui/v2/primitives";
+import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { relTime } from "@/lib/live";
+import { useLive } from "@/lib/useLive";
 
 export default function ImpactPage() {
-  const [d, setD] = useState(FALLBACK);
-  const [live, setLive] = useState(false);
-  useEffect(() => {
-    (async () => {
-      const { data, live } = await fetchLive("/api/impact");
-      if (live && data) { setD({ ...FALLBACK, ...data, ingest: data.ingest || FALLBACK.ingest }); setLive(true); }
-    })();
-  }, []);
-
-  const hasRevenue = d.conversions > 0;
-  const money = fmtMoney(d.value, d.currency);
+  const { data: d, state } = useLive("/api/impact");
+  const hasRevenue = (d?.conversions || 0) > 0;
+  const money = fmtMoney(d?.value, d?.currency);
+  const displayState = state === "real" ? (hasRevenue ? "real" : "empty") : state;
 
   return (
     <OperatorShell active="impact">
       <OperatorHeader
         icon={Icon.bolt}
         label="Impact"
-        provenance={live ? (hasRevenue ? <Provenance kind="verified">Real revenue</Provenance> : <Provenance kind="early" />) : <Provenance kind="sample" />}
+        provenance={<DataStateBadge state={displayState} />}
         title="What Genie has"
         accent="actually earned you."
       />
 
-      {live && !hasRevenue ? (
+      {state === "disconnected" ? (
+        <EmptyState state="disconnected" icon={Icon.bolt} />
+      ) : !d ? null : !hasRevenue ? (
         <ConnectRevenue ingest={d.ingest} empty />
       ) : (
         <>
