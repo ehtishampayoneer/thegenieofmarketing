@@ -12,9 +12,23 @@ import { Card } from "@/components/ui/v2/primitives";
 import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
 import { useLive } from "@/lib/useLive";
 import { relTime } from "@/lib/live";
+import { useState } from "react";
 
 export default function DiagnosticsPage() {
   const { data: d, state } = useLive("/api/diagnostics");
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
+
+  async function factoryReset() {
+    if (!window.confirm("Wipe THIS account's generated data (scans, keywords, approvals, activity…) and replay onboarding? Your login and connected accounts are kept.")) return;
+    setResetting(true); setResetMsg("");
+    try {
+      const r = await fetch("/api/diagnostics/reset", { method: "POST" }).then((x) => x.json());
+      setResetMsg(r.ok ? "Reset complete. Reloading…" : "Reset failed.");
+      if (r.ok) setTimeout(() => (window.location.href = "/welcome"), 1200);
+    } catch { setResetMsg("Reset failed."); }
+    setResetting(false);
+  }
 
   return (
     <OperatorShell active="">
@@ -24,6 +38,14 @@ export default function DiagnosticsPage() {
         provenance={<DataStateBadge state={state} />}
         title="Engine"
         accent="console."
+        action={state === "real" ? (
+          <div className="text-right">
+            <button onClick={factoryReset} disabled={resetting} className="mg-btn mg-btn--ghost" style={{ fontSize: 12.5, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
+              {resetting ? "Resetting…" : "Factory reset this account"}
+            </button>
+            {resetMsg && <p className="text-[11px] mt-1" style={{ color: "var(--signal-live-ink)" }}>{resetMsg}</p>}
+          </div>
+        ) : null}
       />
 
       {state === "disconnected" ? (
