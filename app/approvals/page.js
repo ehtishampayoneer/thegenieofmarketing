@@ -24,6 +24,9 @@ export default function ApprovalsPage() {
   const [editDraft, setEditDraft] = useState("");
   const [done, setDone] = useState(0);
   const [drafting, setDrafting] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [toast, setToast] = useState("");
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 5000); return () => clearTimeout(t); }, [toast]);
 
   // Ask Genie to draft your first publish-ready content right now (uses your
   // latest scan for context). Takes ~30–60s, then the queue fills.
@@ -52,24 +55,48 @@ export default function ApprovalsPage() {
   async function fireApprove(item, draft) {
     try {
       if (item.source === "action" && item.executable) {
-        await fetch(`/api/actions/${item.id}/execute`, { method: "POST" });
-      } else {
-        await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, source: item.source, act: "approve", draft }) });
+        return await fetch(`/api/actions/${item.id}/execute`, { method: "POST" }).then((x) => x.json()).catch(() => ({ ok: false }));
       }
-    } catch {}
+      await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, source: item.source, act: "approve", draft }) }).catch(() => {});
+      return { ok: true, acted: true };
+    } catch { return { ok: false }; }
   }
 
   async function approveCurrent() {
-    if (!current) return;
+    if (!current || working) return;
+    const item = current;
     const draft = editing ? editDraft : current.draft;
-    // Community placements: copy the draft + open the exact thread to post.
-    if (!current.owned && current.source === "placement") {
+
+    // Community reply → copy it + open the exact thread; you post it there.
+    if (!item.owned && item.source === "placement") {
       try { await navigator.clipboard.writeText(draft || ""); } catch {}
-      if (current.target_url && current.target_url !== "#") window.open(current.target_url, "_blank");
+      if (item.target_url && item.target_url !== "#") window.open(item.target_url, "_blank");
+      fireApprove(item, draft);
+      setToast("Copied — paste it into the thread that just opened.");
+      setDone((d) => d + 1); removeAt(idx);
+      return;
     }
-    fireApprove(current, draft);
-    setDone((d) => d + 1);
-    removeAt(idx);
+
+    // Owned content (article → your blog, or post → X): publish for real, and be
+    // honest about the outcome instead of pretending it worked.
+    setWorking(true);
+    setToast(item.kind === "article" ? "Publishing to your blog…" : "Posting…");
+    const r = await fireApprove(item, draft);
+    setWorking(false);
+    if (r?.ok && r?.result?.url) {
+      setToast(`Published ✓ ${r.result.channel === "x" ? "on X" : "to your blog"}`);
+      setDone((d) => d + 1); removeAt(idx);
+    } else if (r?.needsConnection) {
+      try { await navigator.clipboard.writeText(draft || ""); } catch {}
+      setToast(item.kind === "article"
+        ? "I wrote it and copied it to your clipboard. Connect WordPress on Connections and I’ll publish automatically next time."
+        : "Connect that account on Connections and I’ll post it for you — I copied the draft for now.");
+      setDone((d) => d + 1); removeAt(idx);
+    } else if (r?.blocked) {
+      setToast("I held this back to protect your brand. Press E to edit, then re-approve.");
+    } else {
+      setToast(r?.error || "That didn’t publish — try again in a moment.");
+    }
   }
   function skipCurrent() {
     if (!current) return;
@@ -203,6 +230,12 @@ export default function ApprovalsPage() {
             {done === 0 && <button onClick={draftFirstContent} disabled={drafting} className="mg-btn mg-btn--dawn disabled:opacity-60">{drafting ? "Genie is writing… (~30s)" : "Draft my first content →"}</button>}
             <a href={done > 0 ? "/today" : "/growth"} className="mg-btn mg-btn--ghost">{done > 0 ? "Back to Today" : "See opportunities"}</a>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed left-1/2 z-50" style={{ bottom: 24, transform: "translateX(-50%)" }}>
+          <div className="mg-surface px-4 py-2.5 text-[13px] mg-rise" style={{ boxShadow: "var(--shadow-3)", color: "var(--fg)", borderColor: "var(--border-strong)", maxWidth: "90vw" }}>{toast}</div>
         </div>
       )}
     </OperatorShell>

@@ -17,6 +17,23 @@ import { useLive } from "@/lib/useLive";
 export default function AiSearchPage() {
   const { data: d, state } = useLive("/api/ai-search", (j) => !(j.opportunities?.length));
   const pct = d?.score ?? 0;
+  const [msg, setMsg] = useState("");
+  const [writing, setWriting] = useState("");
+  useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(""), 6000); return () => clearTimeout(t); }, [msg]);
+
+  // Turn a gap into real, approvable content: Genie writes the AEO answer page and
+  // it lands in the Approvals queue. (This button used to do nothing.)
+  async function writeGap(o, i) {
+    if (writing) return;
+    setWriting(String(i));
+    setMsg("Genie is writing this — it’ll appear in Approvals in ~30 seconds.");
+    try {
+      const r = await fetch("/api/content", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: o.recommendation || o.discovered }) }).then((x) => x.json());
+      setMsg(r?.ok ? "Done — it’s waiting for your approval in Approvals." : "Couldn’t start that one — try again in a moment.");
+    } catch { setMsg("Couldn’t start that one — try again in a moment."); }
+    setWriting("");
+  }
+
   return (
     <OperatorShell active="aisearch">
       <OperatorHeader
@@ -59,12 +76,18 @@ export default function AiSearchPage() {
             <span className="mg-pill mg-pill--dawn">{d.opportunities.length} ready</span>
             <span className="ml-auto text-[12px] mg-subtle">ranked by buyer intent</span>
           </div>
-          {d.opportunities.map((o, i) => <OpportunityCard key={i} {...o} primaryLabel="Approve & write it" onApprove={() => {}} />)}
+          {d.opportunities.map((o, i) => <OpportunityCard key={i} {...o} primaryLabel={writing === String(i) ? "Writing…" : "Approve & write it"} onApprove={() => writeGap(o, i)} />)}
         </div>
       </div>
       )}
 
       <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie re-checks AI search as your content publishes — and learns which plays win citations for you.</p>
+
+      {msg && (
+        <div className="fixed left-1/2 z-50" style={{ bottom: 24, transform: "translateX(-50%)" }}>
+          <div className="mg-surface px-4 py-2.5 text-[13px] mg-rise" style={{ boxShadow: "var(--shadow-3)", color: "var(--fg)", borderColor: "var(--border-strong)", maxWidth: "90vw" }}>{msg}</div>
+        </div>
+      )}
     </OperatorShell>
   );
 }
