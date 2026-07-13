@@ -11,78 +11,29 @@ import Icon from "@/components/ui/Icon";
 import { Card, Provenance } from "@/components/ui/v2/primitives";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { OpportunityCard } from "@/components/ui/v2/OpportunityCard";
-import { fetchLive } from "@/lib/live";
-
-const FALLBACK = {
-  score: 33,
-  competitors: ["ARShop", "TryOn.io", "Vody"],
-  opportunities: [
-    {
-      discovered: 'When buyers ask AI “best AR try-before-you-buy app,” you’re not mentioned',
-      badges: [{ label: "Comparing", tone: "dawn" }, { label: "Intent 92", tone: "neutral" }, { label: "Not cited", tone: "danger" }],
-      why: "ChatGPT and Perplexity recommend 3 competitors instead — you’re invisible at the exact moment of decision.",
-      recommendation: 'Publish an AEO answer page: “Best AR try-before-you-buy apps (2026)” with a direct answer + comparison table.',
-      ifApproved: "Genie writes it in your voice, structures it to be quoted by AI (direct answer, comparison table, FAQ schema), and publishes.",
-      outcome: "Become citable for a decision-stage query AI answers thousands of times a month.",
-      rationale: "Modelled the AI answer from the current top-ranking sources; your domain appears in none. AI cites sources with a clear, structured comparison answer — which none of your pages provide for this query.",
-      sources: [{ title: "10 Best AR Shopping Apps — TechRadar", url: "#" }, { title: "AR try-on tools compared — Reddit", url: "#" }],
-      confidence: 74, tint: "dawn",
-    },
-    {
-      discovered: '“alternatives to ARShop” — AI lists 4 competitors, not you',
-      badges: [{ label: "Comparing", tone: "dawn" }, { label: "Competitor query", tone: "info" }, { label: "Not cited", tone: "danger" }],
-      why: "People searching for alternatives to your competitor are your warmest buyers — and AI is handing them to other options.",
-      recommendation: 'Publish “ARShop alternatives: honest comparison” positioning your ‘no enterprise bill’ edge.',
-      ifApproved: "Genie drafts the comparison, fact-checks claims, and adds you to the answer set AI draws from.",
-      outcome: "Intercept competitor-alternative demand — the highest-converting AI query type.",
-      rationale: "The competitor is cited in 4 of 4 modelled answers; you in 0. A fair comparison page is the fastest path into the citation set.",
-      sources: [{ title: "ARShop alternatives — G2", url: "#" }],
-      confidence: 81, tint: "dawn",
-    },
-    {
-      discovered: '“is AR shopping worth it” — AI answers without naming a product',
-      badges: [{ label: "Ready to buy", tone: "dawn" }, { label: "Open citation", tone: "live" }],
-      why: "A decision-stage question with no clear winner yet — the citation is up for grabs, and you can own it first.",
-      recommendation: 'Publish a proof-led answer: “Is AR shopping worth it? Data from 250k try-ons.”',
-      ifApproved: "Genie writes the data-backed answer and structures it as the definitive AI-citable source.",
-      outcome: "Own an uncontested, high-intent AI answer before a competitor does.",
-      rationale: "No brand is consistently cited for this question — a rare open slot. First-mover, proof-heavy content tends to win the citation.",
-      sources: [{ title: "Does AR reduce returns? — Shopify", url: "#" }],
-      confidence: 69, tint: "emerald",
-    },
-  ],
-};
+import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { useLive } from "@/lib/useLive";
 
 export default function AiSearchPage() {
-  const [d, setD] = useState(FALLBACK);
-  const [live, setLive] = useState(false);
-  useEffect(() => {
-    (async () => {
-      const { data, live } = await fetchLive("/api/ai-search");
-      if (live && data) {
-        setD({ score: data.score ?? 0, competitors: data.competitors || [], opportunities: data.opportunities || [] });
-        setLive(true);
-      }
-    })();
-  }, []);
-
-  const pct = d.score ?? 0;
-  const empty = live && d.opportunities.length === 0;
+  const { data: d, state } = useLive("/api/ai-search", (j) => !(j.opportunities?.length));
+  const pct = d?.score ?? 0;
   return (
     <OperatorShell active="aisearch">
       <OperatorHeader
         icon={Icon.spark}
         label="AI Search Visibility"
-        provenance={!live ? <Provenance kind="sample" /> : null}
+        provenance={<DataStateBadge state={state} />}
         title={<>Buyers are asking AI about you.<br /><span className="dawn-text">Right now, it’s recommending competitors instead.</span></>}
       />
 
-      {empty ? (
+      {state === "disconnected" ? (
+        <EmptyState state="disconnected" icon={Icon.spark} />
+      ) : state !== "real" ? (
         <Card className="mt-6 p-12 text-center">
           <div className="inline-flex mb-3" style={{ color: "var(--accent-ink)" }}><Icon.spark size={38} /></div>
-          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>Genie is still checking AI search</p>
-          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">Your first AI-search visibility report lands after tonight’s run — Genie models what ChatGPT, Perplexity, and Google’s AI recommend for your buyers, then finds the gaps.</p>
-          <a href="/growth" className="mg-btn mg-btn--ghost inline-flex mt-5">Add keywords to speed it up</a>
+          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>I haven’t checked AI search yet</p>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">After your first scan, I model what ChatGPT, Perplexity, and Google’s AI recommend for your buyers — then find the gaps where they cite competitors instead of you.</p>
+          <a href="/welcome" className="mg-btn mg-btn--dawn inline-flex mt-5">Run my first scan →</a>
         </Card>
       ) : (
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">

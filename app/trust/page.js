@@ -11,6 +11,7 @@ import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card } from "@/components/ui/v2/primitives";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
 const CHANNELS = [
@@ -23,18 +24,19 @@ const LEVELS = [
   { id: "assisted", label: "Assisted", desc: "Genie drafts, you one-tap" },
   { id: "auto", label: "Auto", desc: "Genie acts on its own" },
 ];
-const FALLBACK = { channels: Object.fromEntries(CHANNELS.map((c) => [c.id, "review"])) };
+const DEFAULT_LEVELS = Object.fromEntries(CHANNELS.map((c) => [c.id, "review"]));
 
 export default function TrustCenterPage() {
-  const [levels, setLevels] = useState(FALLBACK.channels);
-  const [live, setLive] = useState(false);
+  const [levels, setLevels] = useState(DEFAULT_LEVELS);
+  const [state, setState] = useState("loading");
   const [kill, setKill] = useState(false);
   const [host, setHost] = useState(null);
 
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/trust");
-      if (live && data?.channels) { setLevels({ ...FALLBACK.channels, ...data.channels }); setHost(data.host || null); setLive(true); }
+      if (live && data?.channels) { setLevels({ ...DEFAULT_LEVELS, ...data.channels }); setHost(data.host || null); setState("real"); }
+      else setState("disconnected");
       const s = await fetchLive("/api/safety");
       if (s.live && s.data?.settings) setKill(!!s.data.settings.kill_switch);
     })();
@@ -54,7 +56,7 @@ export default function TrustCenterPage() {
       <OperatorHeader
         icon={Icon.check}
         label="Trust Center"
-        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        provenance={<DataStateBadge state={state} />}
         title="You’re always"
         accent="in control."
       />

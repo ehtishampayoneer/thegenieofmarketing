@@ -12,6 +12,7 @@ import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Button } from "@/components/ui/v2/primitives";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
 const FALLBACK = {
@@ -27,13 +28,13 @@ const FALLBACK = {
 
 export default function ConnectionsPage() {
   const [d, setD] = useState(FALLBACK);
-  const [live, setLive] = useState(false);
+  const [state, setState] = useState("loading");
   const [ingest, setIngest] = useState(null);
 
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/connections/status");
-      if (live && data?.integrations) { setD(data); setLive(true); }
+      if (live && data?.integrations) { setD(data); setState("real"); } else setState("disconnected");
       const imp = await fetchLive("/api/impact");
       if (imp.live && imp.data?.ingest) setIngest(imp.data.ingest);
     })();
@@ -45,7 +46,7 @@ export default function ConnectionsPage() {
       <OperatorHeader
         icon={Icon.connect}
         label="Connections"
-        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        provenance={<DataStateBadge state={state} />}
         title="Connect your world."
         accent="Genie does the rest."
       />

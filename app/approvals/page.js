@@ -13,29 +13,20 @@ import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Button, Pill, Kbd } from "@/components/ui/v2/primitives";
-import { fetchLive } from "@/lib/live";
-
-const DEMO = [
-  { id: "d1", source: "placement", kind: "reply", platform: "reddit", owned: false, brand: "reddit", title: "r/Entrepreneur · “best AR app for conversions?”", outcome: "Reach a comparing buyer who’s deciding right now", draft: "Honestly it depends on the questions you’re trying to answer, not the tool. If you just need to see whether AR lifts conversions, start with the free tier of one and only upgrade when a real decision is blocked. We’ve been using it for the try-before-you-buy side and it’s been enough without the enterprise bill…", why: "Comparison query, competitor mentioned, intent 92.", target_url: "#", impact: 92, tags: [{ label: "Buyer intent", tone: "dawn" }, { label: "comparing", tone: "neutral" }] },
-  { id: "d2", source: "action", kind: "article", platform: "", owned: true, executable: true, brand: "blog", title: "Publish: “10 AR trends changing eCommerce (2026)”", outcome: "Win the AI-search citation + compound organic traffic", draft: "# 10 AR Trends Changing eCommerce in 2026\n\nAugmented reality has quietly become the highest-intent shopping surface…", why: "Closes the “best AR apps” AI-search gap where you’re not cited.", impact: 88, tags: [{ label: "High impact", tone: "dawn" }] },
-  { id: "d3", source: "placement", kind: "answer", platform: "quora", owned: false, brand: "quora", title: "Quora · “alternatives to ARShop”", outcome: "Reach a ready-to-buy buyer at the moment of choice", draft: "If you’re weighing ARShop alternatives, the main thing to check is whether you actually need the enterprise tier — most teams don’t. A few options handle try-on well without it…", why: "Competitor-alternative seekers convert highest.", target_url: "#", impact: 81, tags: [{ label: "Buyer intent", tone: "dawn" }, { label: "ready to buy", tone: "neutral" }] },
-  { id: "d4", source: "action", kind: "social_post", platform: "x", owned: true, executable: true, brand: "x", title: "Post to X", outcome: "Reach your audience where they already scroll", draft: "AR try-before-you-buy is quietly becoming the default for online furniture and fashion. The stores adding it are seeing fewer returns and higher AOV. Here’s what’s working →", why: "Rides a trending conversation in your niche.", impact: 74, tags: [{ label: "Engagement", tone: "info" }] },
-];
+import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { useLive } from "@/lib/useLive";
 
 export default function ApprovalsPage() {
-  const [items, setItems] = useState(DEMO);
-  const [live, setLive] = useState(false);
+  const { data: feed, state } = useLive("/api/approvals", (j) => !(j.items?.length));
+  const [items, setItems] = useState([]);
   const [idx, setIdx] = useState(0);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [done, setDone] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      const { data, live } = await fetchLive("/api/approvals");
-      if (live && data && Array.isArray(data.items)) { setItems(data.items); setLive(true); setIdx(0); }
-    })();
-  }, []);
+    if (Array.isArray(feed?.items)) { setItems(feed.items); setIdx(0); }
+  }, [feed]);
 
   const current = items[idx] || null;
   const ownedCount = items.filter((i) => i.owned).length;
@@ -102,15 +93,14 @@ export default function ApprovalsPage() {
       <OperatorHeader
         icon={Icon.tasks}
         label="Approvals"
-        provenance={!live ? <span className="mg-pill">Sample</span> : null}
+        provenance={<DataStateBadge state={state} />}
         title={items.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
         action={ownedCount > 0 ? <Button variant="ghost" onClick={approveAllOwned}>Approve all {ownedCount} owned</Button> : null}
       />
-      {items.length === 0 && (
-        <p className="mg-lede mt-3 mg-rise">Nothing waiting — Genie is hunting more while you’re away.</p>
-      )}
 
-      {items.length > 0 && current ? (
+      {state === "disconnected" ? (
+        <EmptyState state="disconnected" icon={Icon.tasks} />
+      ) : items.length > 0 && current ? (
         <>
           {/* progress */}
           <div className="mt-5 flex items-center gap-3">

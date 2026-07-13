@@ -12,7 +12,8 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
-import { Card, Pill, Provenance, SectionLabel } from "@/components/ui/v2/primitives";
+import { Card, Pill, SectionLabel } from "@/components/ui/v2/primitives";
+import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
 const HEALTH = {
@@ -23,48 +24,13 @@ const HEALTH = {
   retired: { label: "Retired", bar: "var(--border-strong)" },
 };
 
-const FALLBACK = {
-  blocks: [
-    { platform: "reddit", owned: false, count: 3, items: [
-      { id: "d1", target_title: "What AR tools actually reduce returns for apparel?", keyword: "ar try before you buy", kind: "reply", meta: { reason: "High buyer intent — they're comparing tools right now." }, draft: "Returns on apparel are mostly a fit problem, so the tools that move the needle are the ones that nail sizing…" },
-      { id: "d2", target_title: "Small Shopify stores — is AR worth it yet?", keyword: "ar shopping tools", kind: "reply", meta: { reason: "Budget-conscious buyer, good fit for your entry tier." }, draft: "For a small store the ROI question is really about return rate…" },
-      { id: "d3", target_title: "Best way to show 3D products on a product page?", keyword: "3d product viewer", kind: "reply", meta: { reason: "Technical question you can answer credibly." }, draft: "A few options depending on your stack…" },
-    ] },
-    { platform: "quora", owned: false, count: 2, items: [
-      { id: "d4", target_title: "How does augmented reality shopping work?", keyword: "augmented reality shopping", kind: "answer", meta: { reason: "2.1k views, evergreen — long-tail traffic." }, draft: "AR shopping lets a customer place a product in their real space before buying…" },
-      { id: "d5", target_title: "Is AR the future of eCommerce?", keyword: "ar ecommerce trends", kind: "answer", meta: { reason: "Trend question — positions you as the expert." }, draft: "The short answer is yes, and the data is getting hard to ignore…" },
-    ] },
-    { platform: "wordpress", owned: true, count: 1, items: [
-      { id: "d6", target_title: "10 AR trends reshaping eCommerce in 2026", keyword: "ar ecommerce trends", kind: "article", meta: { reason: "Ranks for a rising keyword, links to your trends page." }, draft: "Augmented reality has quietly crossed from novelty to expectation…" },
-    ] },
-  ],
-  totalTaps: 5, totalAuto: 1,
-  results: { total: 24, winning: 6, flat: 11, dud: 5, pending: 2, top: [
-    { title: "How we cut AR returns by 34%", keyword: "ar try before you buy", url: "#", engagement: { upvotes: 128, comments: 22 } },
-    { title: "AR sizing for apparel — a practical guide", keyword: "ar sizing", url: "#", engagement: { upvotes: 74, comments: 9 } },
-  ] },
-  keywords: {
-    portfolioScore: 72,
-    graded: [
-      { id: "k1", keyword: "ar try before you buy", health: "strong", score: 88, competition: 34, traffic_potential: 72, coverage: 6, gsc_impressions: 1200, gsc_clicks: 84, gsc_position: 11, source: "gsc" },
-      { id: "k2", keyword: "augmented reality shopping", health: "growing", score: 74, competition: 52, traffic_potential: 66, coverage: 4, gsc_impressions: 640, gsc_clicks: 31, gsc_position: 18 },
-      { id: "k3", keyword: "ar shopping tools", health: "growing", score: 69, competition: 44, traffic_potential: 58, coverage: 3 },
-      { id: "k4", keyword: "3d product viewer", health: "new", score: 51, competition: 38, traffic_potential: 47, coverage: 1 },
-      { id: "k5", keyword: "virtual try on", health: "strong", score: 82, competition: 61, traffic_potential: 70, coverage: 5, gsc_impressions: 980, gsc_clicks: 47, gsc_position: 14 },
-      { id: "k6", keyword: "ar ecommerce trends", health: "growing", score: 64, competition: 41, traffic_potential: 55, coverage: 2 },
-      { id: "k7", keyword: "shopify ar app", health: "weak", score: 38, competition: 72, traffic_potential: 40, coverage: 1 },
-      { id: "k8", keyword: "product visualization software", health: "retired", score: 12, competition: 80, traffic_potential: 20, coverage: 0 },
-    ],
-  },
-};
-
 export default function GrowthPage() {
   return <Suspense fallback={null}><Growth /></Suspense>;
 }
 
 function Growth() {
-  const [d, setD] = useState(FALLBACK);
-  const [live, setLive] = useState(false);
+  const [d, setD] = useState({ blocks: [], totalTaps: 0, totalAuto: 0, results: null, keywords: { graded: [] } });
+  const [state, setState] = useState("loading");
   const [host, setHost] = useState("");
   const [busy, setBusy] = useState("");
 
@@ -73,21 +39,22 @@ function Growth() {
       fetch(`/api/placements?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       fetch(`/api/keywords?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
     ]);
-    setD({
+    const next = {
       blocks: p?.ok ? (p.blocks || []) : [],
       totalTaps: p?.ok ? (p.totalTaps || 0) : 0,
       totalAuto: p?.ok ? (p.totalAuto || 0) : 0,
       results: p?.ok ? (p.results || null) : null,
       keywords: k?.ok ? { portfolioScore: k.portfolioScore, graded: k.graded || [], counts: k.counts } : { graded: [] },
-    });
-    setLive(true);
+    };
+    setD(next);
+    setState(next.blocks.length || next.keywords.graded.length ? "real" : "empty");
   }
 
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/today");
       const h = live && data?.entity?.host;
-      if (!h) return; // public preview → keep the representative sample
+      if (!h) { setState(live ? "empty" : "disconnected"); return; }
       setHost(h);
       await loadFor(h);
     })();
@@ -127,7 +94,7 @@ function Growth() {
       <OperatorHeader
         icon={Icon.growth}
         label="Growth"
-        provenance={live ? <Provenance kind="verified">Your engine</Provenance> : <Provenance kind="sample" />}
+        provenance={<DataStateBadge state={state} />}
         title="Where Genie is"
         accent="growing you."
       />
@@ -172,8 +139,8 @@ function Growth() {
           <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
           <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
           <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
-          <button onClick={derive} disabled={!live || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
-            {busy === "derive" ? "Genie is analyzing…" : live ? "Build my keyword strategy →" : "Sign in to build strategy"}
+          <button onClick={derive} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
+            {busy === "derive" ? "Genie is analyzing…" : host ? "Build my keyword strategy →" : "Run your first scan →"}
           </button>
         </Card>
       ) : (
