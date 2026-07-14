@@ -58,6 +58,16 @@ export async function POST(request) {
 
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
 
+  // Guarantee the em-dash "AI tell" is gone, whatever the model actually did.
+  if (data.article) { data.article.body = deDash(data.article.body); data.article.title = deDash(data.article.title); data.article.metaDescription = deDash(data.article.metaDescription); }
+  if (data.social) {
+    const cleanArr = (a) => (Array.isArray(a) ? a.map(deDash) : a);
+    data.social.twitter = cleanArr(data.social.twitter);
+    data.social.instagram = cleanArr(data.social.instagram);
+    data.social.facebook = cleanArr(data.social.facebook);
+    data.social.linkedin = deDash(data.social.linkedin);
+  }
+
   // Persist everything Genie generated as PROPOSED actions (the autopilot spine).
   // Ephemeral no more — these are ready for approval + auto-publish (F2/F3).
   let actionIds = [];
@@ -111,6 +121,12 @@ export async function POST(request) {
   return json({ ok: true, content: data, actionIds, meta: { engine: provider } });
 }
 
+// Replace em-dashes (and spaced en-dashes in prose) with natural punctuation.
+function deDash(s) {
+  if (typeof s !== "string") return s;
+  return s.replace(/\s*—\s*/g, ", ").replace(/ – /g, ", ");
+}
+
 function buildPrompt({ ai, gsc, topic }) {
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
@@ -129,6 +145,18 @@ ${voice}
 ${kw}
 ${topic ? `Write about this specific topic: "${topic}".` : "Choose a high-value article topic that would attract this business's ideal customers via Google search."}
 
+REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
+knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.
+"you found the perfect couch online, but will it actually fit — and look right — in
+your room?"), make them feel understood, then bridge naturally to how ${ai.businessName || "the business"}
+solves it. Never open by naming your product or technology. Earn the introduction.
+
+WRITE LIKE A SHARP HUMAN, NOT AN AI. This is critical:
+- No em-dashes (—). Use commas, periods, or parentheses.
+- Ban AI clichés: "in today's fast-paced world", "furthermore", "moreover", "in conclusion", "unlock", "elevate", "seamless", "delve", "leverage", "game-changer", "navigate the landscape".
+- Vary sentence length. Use short punchy sentences. Sound like a real person who knows this niche talking to a friend, not a press release.
+- Be specific and concrete (real scenarios, numbers, examples), never generic filler.
+
 Also assign a PRIORITY to the article and to the social posts. Use EXACTLY one of these literal values:
 - "high" = high impact AND the user should act soon
 - "quick_win" = easy + fast + still meaningful impact
@@ -146,8 +174,10 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     "metaTitle": "SEO meta title (<60 chars)",
     "metaDescription": "compelling meta description (150-160 chars)",
     "slug": "url-friendly-slug",
-    "body": "the full article in markdown, 600-900 words, with an engaging intro, ## H2 subheadings, useful specific content, and a short ## FAQ section with 2-3 Q&As",
-    "wordCount": approximate integer
+    "body": "the full article in markdown, 600-900 words, opening with the reader's problem, then bridging to the solution, with ## H2 subheadings, specific useful content, and a short ## FAQ section with 2-3 Q&As. No em-dashes anywhere.",
+    "wordCount": approximate integer,
+    "imagePrompt": "a vivid, specific prompt to generate a photorealistic hero image for this article (describe the scene, style, and mood — no text in the image)",
+    "heroImageAlt": "descriptive alt text for the hero image"
   },
   "social": {
     "twitter": ["3 different tweet-length posts promoting the article, each with 1-2 relevant hashtags"],

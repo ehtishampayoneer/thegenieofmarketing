@@ -73,7 +73,7 @@ export async function POST(request) {
       keyword: String(k.keyword || "").slice(0, 120).trim().toLowerCase(),
       intent: VALID_INTENT.has(k.intent) ? k.intent : "informational",
       priority: Number.isInteger(k.priority) && k.priority >= 1 && k.priority <= 5 ? k.priority : 3,
-      rationale: k.rationale || null,
+      rationale: k.stage ? `[${String(k.stage).toLowerCase().trim()}] ${k.rationale || ""}`.trim() : (k.rationale || null),
       traffic_potential,
       competition,
       health: "new",
@@ -147,16 +147,33 @@ Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
 Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
 
-CRITICAL: Derive keywords for what the CUSTOMER wants and searches for — the benefit and the product category — NOT the underlying technology used to build it. Example: for an online store that shows products in AR before buying, target shopper terms like "see furniture in my room before buying", "AR shopping app", "try before you buy furniture", NOT developer terms like "webgl", "3d website builder", or "how to build". Think like the buyer, not the engineer.
+CRITICAL — target the BUYER'S problem in THEIR words, then bridge to the product.
+Most buyers do NOT know your technology or category exists. Someone who needs a couch
+searches "will this sofa fit my living room" or "buying furniture online tips" — NOT
+"AR furniture", because they've never heard of it. If you only target your own
+product-category terms, you miss the huge, warm crowd who have the PROBLEM but not the
+VOCABULARY. Never use engineer/tech terms ("webgl", "3d website builder"). Think like
+the buyer at every stage of their journey.
 
-Derive the SEO keyword strategy yourself. Return ONLY this JSON:
+Derive keywords across the FULL buyer journey:
+1. PROBLEM (they don't know your solution exists yet) — their pain/desire in plain
+   words: e.g. "will this sofa fit my living room", "furniture looks different in person",
+   "how to buy furniture online without regret". Highest volume, warmest untapped crowd.
+2. SOLUTION-SEEKING (they want a way to solve it): "see furniture in my room before
+   buying", "visualize furniture at home".
+3. PRODUCT-AWARE (they know the category): "ar furniture app", "virtual try on furniture".
+4. BUYING / COMPARISON: "best ar furniture apps", "[competitor] alternative".
+Weight toward PROBLEM + SOLUTION — that's the untapped demand. For each keyword, the
+rationale must say HOW the content will bridge that searcher into the product.
+
+Return ONLY this JSON:
 {
   "strategy": "2 sentences: how you'll rank this product and where the traffic will come from",
   "keywords": [
-    { "keyword": "lowercase phrase people actually search", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "rationale": "why this one, short" }
+    { "keyword": "lowercase phrase people actually search", "stage": "problem|solution|product|comparison", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "rationale": "why + how content bridges this searcher to the product" }
   ]
 }
-Give 20-30 keywords. Balance: some high-intent buyer terms, some informational blog terms, some phrased the way people ask in Reddit/Quora threads. Priority 1 = attack first.
+Give 24-32 keywords spread across ALL FOUR stages — at least a third at the PROBLEM/SOLUTION stages. Priority 1 = attack first.
 traffic_potential = your estimate of monthly search demand (0=none, 100=huge). competition = how hard to rank (0=easy/open, 100=dominated by giants). Favor high potential + low competition. These are honest estimates, not measured data.`;
 }
 
