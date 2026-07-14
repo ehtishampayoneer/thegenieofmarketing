@@ -14,6 +14,7 @@ import Icon from "@/components/ui/Icon";
 import { GenieMark, GenieLockup } from "@/components/brand/GenieMark";
 import { Kbd } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
+import GenieChat from "@/components/shell/v2/GenieChat";
 
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
 // where it's growing you (Growth), and how you stay in control (Control).
@@ -55,6 +56,13 @@ export default function OperatorShell({ active = "today", children }) {
   const [activity, setActivity] = useState([]);
   const [counts, setCounts] = useState({ approvals: 0 });
   const [user, setUser] = useState({ name: "", entity: "" });
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setChatOpen(true); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     try { const t = localStorage.getItem("mg-theme"); if (t === "night" || t === "day") setTheme(t); } catch {}
@@ -121,11 +129,11 @@ export default function OperatorShell({ active = "today", children }) {
         {/* ── WORK-STREAM ── */}
         <div className="flex-1 flex flex-col min-w-0">
           <header className="mg-chrome sticky top-0 z-20 flex items-center gap-3 px-6" style={{ height: 60 }}>
-            <div className="mg-searchbar mg-focus" style={{ width: 340, maxWidth: "42vw" }} tabIndex={0} role="button">
+            <button onClick={() => setChatOpen(true)} className="mg-searchbar mg-focus" style={{ width: 340, maxWidth: "42vw" }}>
               <Icon.search size={16} />
-              <span className="flex-1">Search or command…</span>
+              <span className="flex-1 text-left">Ask Genie, or tell it what to do…</span>
               <span className="flex items-center gap-0.5"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
-            </div>
+            </button>
             <div className="ml-auto flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2.5">
                 <GenieMark size={30} live />
@@ -188,6 +196,8 @@ export default function OperatorShell({ active = "today", children }) {
           </div>
         </aside>
       </div>
+
+      <GenieChat open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }
