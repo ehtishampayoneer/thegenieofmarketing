@@ -163,18 +163,25 @@ Derive keywords across the FULL buyer journey:
    buying", "visualize furniture at home".
 3. PRODUCT-AWARE (they know the category): "ar furniture app", "virtual try on furniture".
 4. BUYING / COMPARISON: "best ar furniture apps", "[competitor] alternative".
-Weight toward PROBLEM + SOLUTION — that's the untapped demand. For each keyword, the
-rationale must say HOW the content will bridge that searcher into the product.
+BALANCE THE MIX — this is critical for real traffic. Do NOT return only obscure
+long-tail problem phrases; a strategy of only tiny-volume terms will not move the
+needle. You MUST include:
+- HIGHER-VOLUME head / category terms buyers type in real numbers (e.g. "ar shopping
+  app", "virtual try on", "3d product viewer", "augmented reality shopping"), even if
+  more competitive.
+- SOLUTION terms of medium volume.
+- PROBLEM long-tails (lower volume each, but warm and winnable).
+For each keyword, the rationale says HOW content bridges that searcher to the product.
 
 Return ONLY this JSON:
 {
   "strategy": "2 sentences: how you'll rank this product and where the traffic will come from",
   "keywords": [
-    { "keyword": "lowercase phrase people actually search", "stage": "problem|solution|product|comparison", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "rationale": "why + how content bridges this searcher to the product" }
+    { "keyword": "lowercase phrase people actually search", "stage": "problem|solution|product|comparison", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "monthly_volume": "your best estimate of real monthly searches as a rough number, e.g. 90, 1200, 18000", "rationale": "why + how content bridges this searcher to the product" }
   ]
 }
-Give 24-32 keywords spread across ALL FOUR stages — at least a third at the PROBLEM/SOLUTION stages. Priority 1 = attack first.
-traffic_potential = your estimate of monthly search demand (0=none, 100=huge). competition = how hard to rank (0=easy/open, 100=dominated by giants). Favor high potential + low competition. These are honest estimates, not measured data.`;
+Give 24-32 keywords with a realistic SPREAD of volume: roughly a third higher-volume head terms, a third solution terms, a third problem long-tails. Priority 1 = attack first (best mix of demand, winnability, and buyer value).
+traffic_potential = realistic RELATIVE monthly demand (a broad head term = high; a niche long-tail = low). competition = how hard to rank (0=easy/open, 100=dominated by giants). monthly_volume = a rough real-number estimate so the owner sees scale. These are honest estimates, not measured data — real numbers come from Google Search Console once connected.`;
 }
 
 function json(obj, status = 200) {

@@ -48,6 +48,7 @@ export default function TodayPage() {
           icon={Icon.spark}
           title={state === "disconnected" ? "I can’t reach your account" : "I haven’t met your business yet"}
           sub={state === "disconnected" ? "Sign in and I’ll pick right back up." : "Point me at your website and I’ll research you, find your buyers, and start working — everything on this screen fills itself in from that first scan."}
+          action={state === "disconnected" ? undefined : <a href="/welcome" className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>Run my first scan →</a>}
         />
       ) : (
         <>

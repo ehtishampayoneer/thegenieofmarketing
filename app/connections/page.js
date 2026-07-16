@@ -73,7 +73,7 @@ export default function ConnectionsPage() {
 
       {/* Reach */}
       <Group title="Reach buyers" sub="So Genie can run outreach — compliantly.">
-        <Row icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" sub={I.email.connected ? "Ready · every email is CAN-SPAM compliant (unsubscribe + address)" : "Set up by us — email sending is configured at the platform level"}
+        <Row icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" connectedLabel="Built-in · ready" sub={I.email.connected ? "Built in — every email is CAN-SPAM compliant (unsubscribe + address). Nothing to connect." : "Email sending is configured for you at the platform level"}
           connected={I.email.connected} action={null} />
       </Group>
 
@@ -95,7 +95,7 @@ function Group({ title, sub, children }) {
   );
 }
 
-function Row({ icon, label, sub, connected, action, children }) {
+function Row({ icon, label, sub, connected, connectedLabel = "Connected", action, children }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -103,7 +103,7 @@ function Row({ icon, label, sub, connected, action, children }) {
         <div className="flex-1 min-w-[160px]">
           <p className="text-[13.5px] font-semibold flex items-center gap-2" style={{ color: "var(--fg)" }}>
             {label}
-            {connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Connected</span>}
+            {connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
           </p>
           <p className="text-[12px] mg-muted mt-0.5">{sub}</p>
         </div>

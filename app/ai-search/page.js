@@ -34,6 +34,20 @@ export default function AiSearchPage() {
     setWriting("");
   }
 
+  const [checking, setChecking] = useState(false);
+  // Run the AI-search check on the EXISTING business (no re-scan). This is what
+  // the empty state should do instead of sending the user back to onboarding.
+  async function checkNow() {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const t = await fetch("/api/today", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+      const h = t?.entity?.host;
+      if (h) await fetch("/api/ai-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h }) });
+    } catch {}
+    window.location.reload();
+  }
+
   return (
     <OperatorShell active="aisearch">
       <OperatorHeader
@@ -49,8 +63,8 @@ export default function AiSearchPage() {
         <Card className="mt-6 p-12 text-center">
           <div className="inline-flex mb-3" style={{ color: "var(--accent-ink)" }}><Icon.spark size={38} /></div>
           <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>I haven’t checked AI search yet</p>
-          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">After your first scan, I model what ChatGPT, Perplexity, and Google’s AI recommend for your buyers — then find the gaps where they cite competitors instead of you.</p>
-          <a href="/welcome" className="mg-btn mg-btn--dawn inline-flex mt-5">Run my first scan →</a>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">I model what ChatGPT, Perplexity, and Google’s AI recommend for your buyers, then find the gaps where they cite competitors instead of you. It runs right after your scan and takes about 30 seconds.</p>
+          <button onClick={checkNow} disabled={checking} className="mg-btn mg-btn--dawn inline-flex mt-5 disabled:opacity-60">{checking ? "Checking AI search…" : "Check AI search now →"}</button>
         </Card>
       ) : (
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">

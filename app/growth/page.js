@@ -152,6 +152,8 @@ function Growth() {
             <KeywordStat value={active.filter((k) => (k.gsc_impressions || 0) > 0).length} label="Bringing real traffic" accent />
           </div>
 
+          <p className="mt-3 text-[12px] mg-subtle">Traffic and difficulty are Genie’s estimates, chosen for a mix of demand, winnability, and buyer value. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google</a> for your real search volumes and rankings.</p>
+
           {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
 
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">

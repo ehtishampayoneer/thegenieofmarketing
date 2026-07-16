@@ -30,13 +30,12 @@ export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, s
       <p className="mg-muted" style={{ marginTop: 7, fontSize: 14, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>
         {sub || (disconnected
           ? "I can’t reach your account right now. Sign in and try again."
-          : "This fills up the moment I finish your first scan. Point me at your website and I’ll build everything from scratch.")}
+          : "This fills in from your scan as I work. If it’s been a few minutes, refresh, or connect the missing account.")}
       </p>
       <div style={{ marginTop: 18 }}>
-        {action || (
-          <a href={disconnected ? "/login" : "/welcome"} className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>
-            {disconnected ? "Sign in →" : "Run my first scan →"}
-          </a>
+        {action || (disconnected
+          ? <a href="/login" className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>Sign in →</a>
+          : <button onClick={() => window.location.reload()} className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>Refresh</button>
         )}
       </div>
     </div>

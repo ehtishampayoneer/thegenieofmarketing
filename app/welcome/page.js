@@ -95,13 +95,15 @@ export default function WelcomePage() {
     fetch("/api/content", { method: "POST", headers: head, body }).catch(() => {});
   }
 
-  async function goToWork() {
-    setBusy(true);
+  // Mark onboarding complete up front, so connecting an account (which leaves the
+  // page for OAuth) never traps the user in a re-onboarding loop.
+  async function markDone() {
     const h = entity?.host || hostOf(data?.finalUrl || data?.url || url);
     try { if (entity?.type) await fetch("/api/entity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, type: entity.type }) }); } catch {}
     try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
-    router.push("/today");
   }
+  async function toConnect() { setBusy(true); await markDone(); setBusy(false); setPhase("connect"); }
+  function enterApp() { router.push("/today"); }
 
   return (
     <main className="onb" style={{ display: "flex", flexDirection: "column" }}>
@@ -202,17 +204,49 @@ export default function WelcomePage() {
               )}
 
               <div className="mt-6 flex items-center gap-3 flex-wrap">
-                <button onClick={goToWork} disabled={busy} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>
-                  {busy ? "Opening your command center…" : "Let me go to work →"}
+                <button onClick={toConnect} disabled={busy} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>
+                  {busy ? "One sec…" : "Next: connect my accounts →"}
                 </button>
                 <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</span>
               </div>
             </div>
           )}
 
+          {phase === "connect" && (
+            <div className="onb-rise">
+              <p className="text-[13px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 14 }}>✦</span> Almost there.</p>
+              <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(25px,4vw,38px)", lineHeight: 1.1, letterSpacing: "-.028em", textWrap: "balance" }}>
+                Give me hands. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Connect your accounts so I can publish and measure, not just draft.</span>
+              </h1>
+              <div className="mt-6 flex flex-col gap-2.5">
+                <ConnectRow icon="G" label="Google (Search Console + Analytics)" sub="Your real rankings and the traffic I drive" href="/api/connect/google/start" cta="Connect" />
+                <ConnectRow icon="W" label="WordPress" sub="I publish approved articles straight to your blog" href="/connections" cta="Set up" />
+                <ConnectRow icon="X" label="X (Twitter)" sub="I post approved tweets and threads for you" href="/api/connect/x/start" cta="Connect" />
+              </div>
+              <div className="mt-6 flex items-center gap-4 flex-wrap">
+                <button onClick={enterApp} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>Enter my command center →</button>
+                <button onClick={enterApp} style={{ fontSize: 13, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>I’ll connect these later</button>
+              </div>
+              <p className="mt-3 text-[12px]" style={{ color: "var(--onb-subtle)" }}>You can connect or change these anytime in Connections. Nothing publishes without your approval.</p>
+            </div>
+          )}
+
         </div>
       </div>
     </main>
+  );
+}
+
+function ConnectRow({ icon, label, sub, href, cta }) {
+  return (
+    <a href={href} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)", textDecoration: "none" }}>
+      <span style={{ width: 34, height: 34, borderRadius: 9, flex: "none", background: "#20293a", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "var(--onb-dawn)" }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--onb-fg)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: 12, color: "var(--onb-subtle)" }}>{sub}</span>
+      </span>
+      <span className="onb-ghost" style={{ padding: ".45rem .9rem", fontSize: 13, fontWeight: 600 }}>{cta}</span>
+    </a>
   );
 }
 
