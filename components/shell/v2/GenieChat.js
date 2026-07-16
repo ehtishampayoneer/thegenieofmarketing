@@ -39,7 +39,7 @@ export default function GenieChat({ open, onClose }) {
     setMessages(next); setInput(""); setSending(true);
     try {
       const r = await fetch("/api/genie/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next }) }).then((x) => x.json());
-      setMessages((m) => [...m, { role: "genie", content: r.reply || "I couldn’t reply just now, try again in a moment." }]);
+      setMessages((m) => [...m, { role: "genie", content: r.reply || "I couldn’t reply just now, try again in a moment.", saved: !!r.savedDirective }]);
     } catch {
       setMessages((m) => [...m, { role: "genie", content: "I couldn’t reach my brain just now. Try again in a moment." }]);
     }
@@ -75,7 +75,7 @@ export default function GenieChat({ open, onClose }) {
             </div>
           )}
           {messages.map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
               <div className="mg-rise" style={{
                 maxWidth: "86%", padding: "9px 13px", fontSize: 13.5, lineHeight: 1.5, borderRadius: 14,
                 background: m.role === "user" ? "var(--accent-quiet)" : "var(--surface-2)",
@@ -83,6 +83,7 @@ export default function GenieChat({ open, onClose }) {
                 border: m.role === "user" ? "none" : "1px solid var(--hair)",
                 whiteSpace: "pre-wrap",
               }}>{m.content}</div>
+              {m.saved && <span className="mg-verified" style={{ marginTop: 4, fontSize: 11 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved — I’ll remember this from now on</span>}
             </div>
           ))}
           {sending && (

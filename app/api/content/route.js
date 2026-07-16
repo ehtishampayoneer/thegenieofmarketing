@@ -36,16 +36,26 @@ export async function POST(request) {
   }
   if (!ai) return json({ ok: false, error: "No business yet — run a scan first." }, 400);
 
+  // Standing instructions the owner gave Genie in chat (tone, focus, dos/don'ts).
+  // These make "write more casually" actually stick across everything Genie writes.
+  let directives = [];
+  if (userId) {
+    try {
+      const { data: dirs } = await supabase.from("growth_memory").select("insight").eq("user_id", userId).ilike("mkey", "directive:%").order("updated_at", { ascending: false }).limit(10);
+      directives = (dirs || []).map((d) => d.insight).filter(Boolean);
+    } catch {}
+  }
+
   let data = null;
   let provider = null;
   try {
     const result = await callAI({
       system:
-        "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given. Return ONLY valid JSON, no markdown fences.",
+        "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given, and follow the owner's standing instructions exactly. Return ONLY valid JSON, no markdown fences.",
       json: true,
       maxTokens: 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic }),
+      prompt: buildPrompt({ ai, gsc, topic, directives }),
     });
     data = result.json;
     provider = result.provider;
@@ -127,10 +137,13 @@ function deDash(s) {
   return s.replace(/\s*—\s*/g, ", ").replace(/ – /g, ", ");
 }
 
-function buildPrompt({ ai, gsc, topic }) {
+function buildPrompt({ ai, gsc, topic, directives = [] }) {
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
     : "Brand voice: clear, warm, professional.";
+  const standing = directives.length
+    ? `OWNER'S STANDING INSTRUCTIONS — these OVERRIDE everything else, follow them exactly:\n${directives.map((d) => `- ${d}`).join("\n")}\n`
+    : "";
 
   const kw = gsc?.available
     ? `Keywords they already rank for: ${gsc.topQueries.slice(0, 8).map((q) => q.query).join(", ")}.`
@@ -138,7 +151,7 @@ function buildPrompt({ ai, gsc, topic }) {
     ? `Target keywords: ${ai.keywordsToOwn.slice(0, 6).join(", ")}.`
     : "";
 
-  return `Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
+  return `${standing}Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${voice}
