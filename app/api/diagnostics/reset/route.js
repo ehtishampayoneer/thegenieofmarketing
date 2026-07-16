@@ -1,18 +1,24 @@
 // app/api/diagnostics/reset/route.js
-// ── FACTORY RESET (dev, self-scoped) ──
-// Wipes THIS account's generated data so you can test Marketing Genie exactly
-// like a brand-new user. Deletes only rows owned by the caller (eq user_id) from
-// the content/engine tables — never touches auth, profile identity, or OAuth
-// connections. Also flips onboarding_completed back to false so the first-run
-// experience plays again. Auth-gated; POST only.
+// ── FACTORY RESET (dev, self-scoped) — TOTAL WIPE ──
+// Makes THIS account genuinely brand-new: deletes every row the caller owns
+// (eq user_id) across ALL data tables, INCLUDING connected accounts (Google / X /
+// WordPress) and history, and flips onboarding_completed back to false so the
+// first-run experience replays. Only the auth login and the profile row survive.
+// Auth-gated; POST only. Cannot be undone.
 
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Generated data only. Real connections/integrations are intentionally preserved.
-const TABLES = ["placements", "actions", "keywords", "growth_memory", "events", "activity", "scans"];
+// Every user-scoped table. `profiles` is intentionally excluded (only its
+// onboarding flag is reset, below) so the login itself survives.
+const TABLES = [
+  "action_outcomes", "actions", "activity", "cadence_plans", "chat_messages",
+  "connections", "decisions", "directory_contacts", "entities", "events",
+  "growth_memory", "keyword_history", "keywords", "links", "notifications",
+  "outreach_log", "placements", "safety_settings", "scans", "suppressions",
+];
 
 export async function POST() {
   const supabase = createClient();

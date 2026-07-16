@@ -20,7 +20,7 @@ export default function DiagnosticsPage() {
   const [resetMsg, setResetMsg] = useState("");
 
   async function factoryReset() {
-    if (!window.confirm("Wipe THIS account's generated data (scans, keywords, approvals, activity…) and replay onboarding? Your login and connected accounts are kept.")) return;
+    if (!window.confirm("FULL RESET — wipe EVERYTHING for this account: scans, keywords, content, approvals, learnings, history, AND your connected accounts (Google / X / WordPress). Onboarding replays from scratch. Only your login stays. This cannot be undone. Continue?")) return;
     setResetting(true); setResetMsg("");
     try {
       const r = await fetch("/api/diagnostics/reset", { method: "POST" }).then((x) => x.json());
@@ -41,7 +41,7 @@ export default function DiagnosticsPage() {
         action={state === "real" ? (
           <div className="text-right">
             <button onClick={factoryReset} disabled={resetting} className="mg-btn mg-btn--ghost" style={{ fontSize: 12.5, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
-              {resetting ? "Resetting…" : "Factory reset this account"}
+              {resetting ? "Wiping everything…" : "Full reset — wipe everything"}
             </button>
             {resetMsg && <p className="text-[11px] mt-1" style={{ color: "var(--signal-live-ink)" }}>{resetMsg}</p>}
           </div>
