@@ -43,16 +43,24 @@ function normalizeAction(a) {
   const p = a.payload || {};
   const platform = String(p.platform || a.target?.channel || p.channel || "").toLowerCase();
   const isX = /\b(x|twitter)\b/.test(platform);
-  const owned = a.type === "article" || (a.type === "social_post" && isX) || (a.type === "distribution" && isX);
-  const executable = a.type === "article" || isX;
   const o = toOutcome(a);
   const draft = p.body || p.text || (Array.isArray(p.draft) ? p.draft.join("\n\n") : p.draft) || "";
+  // ── REPUTATION SAFETY ──
+  // Only content on YOUR OWN site (article → WordPress) auto-publishes via API.
+  // Social platforms (X, etc.) are draft-and-you-post: we open the platform's own
+  // composer with your text ready and YOU tap post. Automated API posting to
+  // social is what gets accounts flagged/suspended — we never do it by default.
+  const owned = a.type === "article";
+  const executable = a.type === "article";
+  const target_url = isX
+    ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(String(draft).slice(0, 270))}`
+    : (p.url || null);
   return {
     id: a.id, source: "action", kind: a.type, platform, owned, executable,
     brand: brandFor(a.type, p, platform),
     title: o.title || a.title || labelFor(a.type),
     outcome: o.value || "",
-    draft, why: p.rationale || null, target_url: p.url || null,
+    draft, why: p.rationale || null, target_url,
     impact: clampNum(p.impact, priorityScore(a.priority)),
     tags: tagsFor(a.priority),
   };

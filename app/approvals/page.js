@@ -67,12 +67,14 @@ export default function ApprovalsPage() {
     const item = current;
     const draft = editing ? editDraft : current.draft;
 
-    // Community reply → copy it + open the exact thread; you post it there.
-    if (!item.owned && item.source === "placement") {
+    // Anything not on your own site (X, Reddit, Quora…) → draft-and-you-post:
+    // copy it + open the platform's own composer; YOU tap post. Keeps your
+    // accounts safe — we never auto-post to platforms that ban automation.
+    if (!item.owned) {
       try { await navigator.clipboard.writeText(draft || ""); } catch {}
       if (item.target_url && item.target_url !== "#") window.open(item.target_url, "_blank");
       fireApprove(item, draft);
-      setToast("Copied — paste it into the thread that just opened.");
+      setToast("Opened it with your post ready — just review and tap post. (I never auto-post to your social accounts.)");
       setDone((d) => d + 1); removeAt(idx);
       return;
     }

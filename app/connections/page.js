@@ -64,10 +64,10 @@ export default function ConnectionsPage() {
       </Group>
 
       {/* Publish */}
-      <Group title="Publish for you" sub="So Genie can execute, not just draft.">
-        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress" sub={I.wordpress.connected ? "Connected · Genie can publish articles" : "Genie publishes approved articles to your blog"}
+      <Group title="Publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap — so your accounts stay safe.">
+        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (your blog)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles" : "Genie auto-publishes approved articles here. Safe — it's your own site."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
-        <Row icon={<BrandIcon brand="x" size={18} />} label="X (Twitter)" sub={I.x.connected ? "Connected · Genie can post" : "Genie posts approved tweets & threads"}
+        <Row icon={<BrandIcon brand="x" size={18} />} label="X (Twitter)" sub={I.x.connected ? "Connected · Genie drafts, opens X, you tap post" : "Genie writes your tweets and threads and opens X with them ready — you tap post. It never auto-posts, to keep your account safe."}
           connected={I.x.connected} action={<a href="/api/connect/x/start" className="mg-btn mg-btn--ghost" style={btn}>{I.x.connected ? "Reconnect" : "Connect X"}</a>} />
       </Group>
 
