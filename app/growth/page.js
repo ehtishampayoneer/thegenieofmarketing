@@ -303,12 +303,15 @@ function KeywordRow({ k }) {
   const comp = k.competition ?? 50;
   const diff = comp < 40 ? { label: "Easy", tone: "live" } : comp < 65 ? { label: "Medium", tone: "warn" } : { label: "Hard", tone: "danger" };
   const pot = k.traffic_potential ?? 0;
-  const traffic = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
+  const trafficEst = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
+  const hasVol = Number(k.volume) > 0;
+  const hist = Array.isArray(k.volume_history) ? k.volume_history : [];
   const real = (k.gsc_impressions || 0) > 0;
   return (
     <div className="mg-surface-quiet p-3.5">
       <div className="flex items-center gap-2">
         <p className="text-[13.5px] font-semibold flex-1 truncate" style={{ color: "var(--fg)" }}>{k.keyword}</p>
+        {hasVol && hist.length > 1 && <VolSpark points={hist} />}
         <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: diffColor(diff.tone), background: diffBg(diff.tone) }}>{diff.label}</span>
         <span className="text-[13.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>{k.score}</span>
       </div>
@@ -316,13 +319,30 @@ function KeywordRow({ k }) {
         <div className="h-full rounded-full" style={{ width: `${Math.max(3, k.score)}%`, background: m.bar, transition: "width .8s var(--ease-out)" }} />
       </div>
       <div className="mt-1.5 flex items-center gap-2 text-[11px] mg-subtle flex-wrap">
-        <span className="font-medium" style={{ color: "var(--fg-muted)" }}>{traffic}</span>
+        {hasVol ? (
+          <span className="font-semibold mg-num" style={{ color: "var(--fg-muted)" }}>~{Number(k.volume).toLocaleString()}/mo <span className="mg-subtle" style={{ fontWeight: 400 }}>· Google</span></span>
+        ) : (
+          <span className="font-medium" style={{ color: "var(--fg-muted)" }}>{trafficEst} <span style={{ opacity: .6 }}>· est.</span></span>
+        )}
         <span>·</span>
         <span>Coverage {k.coverage || 0}×</span>
         {real && <span style={{ color: "var(--signal-live-ink)" }}>· ↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>}
-        {!real && k.source === "gsc" && <span style={{ color: "var(--signal-live-ink)" }}>· real Google keyword</span>}
       </div>
     </div>
+  );
+}
+
+// 12-month search-volume sparkline (real Google data).
+function VolSpark({ points }) {
+  const vals = points.map((p) => Number(p.v) || 0);
+  if (vals.length < 2) return null;
+  const w = 54, h = 16, max = Math.max(...vals, 1), step = w / (vals.length - 1);
+  const d = vals.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`).join(" ");
+  const rising = vals[vals.length - 1] >= vals[0];
+  return (
+    <svg width={w} height={h} className="shrink-0" aria-hidden>
+      <path d={d} fill="none" stroke={rising ? "var(--signal-live)" : "var(--fg-subtle)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

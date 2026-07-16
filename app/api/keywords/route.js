@@ -9,6 +9,8 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { logActivity } from "@/lib/activity";
+import { expandSeeds } from "@/lib/autocomplete";
+import { enrichWithVolumes } from "@/lib/google-ads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +47,14 @@ export async function POST(request) {
   const { host, ai, productOverride } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
+  // Layer 0 (free): ground candidates in REAL Google searches via Autocomplete.
+  let realSearches = [];
+  try {
+    const seeds = [ai?.whatTheySell, ai?.subCategory, ai?.industry, ai?.businessName, productOverride]
+      .filter(Boolean).flatMap((s) => String(s).split(/[,/]|\band\b/)).map((s) => s.trim()).filter((s) => s.length > 2).slice(0, 6);
+    realSearches = await expandSeeds(seeds.length ? seeds : [host]);
+  } catch {}
+
   let derived = null;
   try {
     const result = await callAI({
@@ -53,7 +63,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 1800,
       temperature: 0.5,
-      prompt: buildPrompt(host, ai, productOverride),
+      prompt: buildPrompt(host, ai, productOverride, realSearches),
     });
     derived = result.json;
   } catch (e) {
@@ -64,13 +74,21 @@ export async function POST(request) {
   const list = Array.isArray(derived?.keywords) ? derived.keywords : [];
   if (list.length === 0) return json({ ok: false, error: "No keywords produced." }, 500);
 
+  // Layer 1 (Google Ads Keyword Planner): real monthly volume + competition, when
+  // the dev token + Google connection exist. Returns {} otherwise (AI estimates stand).
+  const kwStrings = list.map((k) => String(k.keyword || "").slice(0, 120).trim().toLowerCase()).filter(Boolean);
+  let vols = {};
+  try { vols = await enrichWithVolumes(supabase, user.id, host, kwStrings); } catch {}
+
   const rows = list.slice(0, 40).map((k) => {
-    const traffic_potential = clampInt(k.traffic_potential, 50);
-    const competition = clampInt(k.competition, 50);
+    const key = String(k.keyword || "").slice(0, 120).trim().toLowerCase();
+    const real = vols[key];
+    const competition = real ? clampInt(real.competition, 50) : clampInt(k.competition, 50);
+    const traffic_potential = real ? volumeToPotential(real.volume) : clampInt(k.traffic_potential, 50);
     return {
       user_id: user.id,
       host,
-      keyword: String(k.keyword || "").slice(0, 120).trim().toLowerCase(),
+      keyword: key,
       intent: VALID_INTENT.has(k.intent) ? k.intent : "informational",
       priority: Number.isInteger(k.priority) && k.priority >= 1 && k.priority <= 5 ? k.priority : 3,
       rationale: k.stage ? `[${String(k.stage).toLowerCase().trim()}] ${k.rationale || ""}`.trim() : (k.rationale || null),
@@ -88,6 +106,16 @@ export async function POST(request) {
     await supabase.from("keywords").delete().eq("user_id", user.id).eq("host", host);
   }
   await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
+
+  // Store the raw volume + 12-month history for real numbers + charts. Best-effort:
+  // if the volume columns aren't added yet (db/keyword-volume.sql), this no-ops.
+  if (Object.keys(vols).length) {
+    try {
+      for (const [kw, d] of Object.entries(vols)) {
+        await supabase.from("keywords").update({ volume: d.volume, volume_history: d.history }).eq("user_id", user.id).eq("host", host).eq("keyword", kw);
+      }
+    } catch {}
+  }
 
   const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
   const portfolio = gradePortfolio(saved || []);
@@ -137,16 +165,19 @@ function clampInt(n, dflt) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function buildPrompt(host, ai, productOverride) {
+function buildPrompt(host, ai, productOverride, realSearches = []) {
   const correction = productOverride
     ? `\n\nIMPORTANT — the owner has clarified what this product actually is. This description OVERRIDES anything inferred from the page. Build the keyword strategy for THIS:\n"${productOverride}"\n`
+    : "";
+  const real = realSearches.length
+    ? `\nREAL searches people actually type (from Google Autocomplete) — these are grounded in reality, prioritise covering the relevant ones and phrase keywords the way these are phrased:\n${realSearches.slice(0, 40).map((s) => `- ${s}`).join("\n")}\n`
     : "";
   return `Product/business: ${ai?.businessName || host}
 Website: ${host}
 Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory : ""}
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
 Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
-
+${real}
 CRITICAL — target the BUYER'S problem in THEIR words, then bridge to the product.
 Most buyers do NOT know your technology or category exists. Someone who needs a couch
 searches "will this sofa fit my living room" or "buying furniture online tips" — NOT
