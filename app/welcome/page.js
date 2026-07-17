@@ -27,6 +27,7 @@ export default function WelcomePage() {
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const startRef = useRef(0);
+  const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "" });
 
   useEffect(() => {
     (async () => {
@@ -37,6 +38,16 @@ export default function WelcomePage() {
   }, [router]);
 
   const host = useMemo(() => hostOf(data?.finalUrl || data?.url || url) || (url || "your site").replace(/^https?:\/\//, ""), [data, url]);
+
+  // Prefill the details form from the scan — business name + a best-guess logo.
+  useEffect(() => {
+    if (!data?.ai && !host) return;
+    setDetails((d) => ({
+      ...d,
+      company_name: d.company_name || data?.ai?.businessName || "",
+      logo_url: d.logo_url || (host && host !== "your site" ? `https://logo.clearbit.com/${host.replace(/^www\./, "")}` : ""),
+    }));
+  }, [data, host]);
 
   // The live stream — each line's finished text is computed from REAL data when
   // it lands, so the reveal is genuine, not scripted.
@@ -103,7 +114,13 @@ export default function WelcomePage() {
     try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
   }
   async function toConnect() { setBusy(true); await markDone(); setBusy(false); setPhase("connect"); }
-  function enterApp() { router.push("/today"); }
+  async function enterApp() {
+    setBusy(true);
+    const payload = { ...details, setup_completed: true };
+    if (host && host !== "your site") payload.company_website = host;
+    try { await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); } catch {}
+    router.push("/today");
+  }
 
   return (
     <main className="onb" style={{ display: "flex", flexDirection: "column" }}>
@@ -223,6 +240,21 @@ export default function WelcomePage() {
                 <ConnectRow icon="W" label="WordPress" sub="I publish approved articles straight to your blog" href="/connections" cta="Set up" />
                 <ConnectRow icon="X" label="X (Twitter)" sub="I post approved tweets and threads for you" href="/api/connect/x/start" cta="Connect" />
               </div>
+
+              {/* Your details — so outreach goes out as YOU, with your logo. */}
+              <div className="mt-7">
+                <p className="text-[13px] font-semibold" style={{ color: "var(--onb-fg, #fff)" }}>Your details</p>
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--onb-subtle)" }}>So the emails and content I send go out as you. I pre-filled what I could — fix anything.</p>
+                <div className="mt-3 flex flex-col gap-2.5">
+                  <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
+                  <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
+                  <div>
+                    <OnbField label="Logo URL (shown at the top of your emails)" value={details.logo_url} onChange={(v) => setDetails((d) => ({ ...d, logo_url: v }))} placeholder="https://yoursite.com/logo.png" />
+                    {details.logo_url ? <img src={details.logo_url} alt="logo" style={{ maxHeight: 34, marginTop: 8, borderRadius: 6, background: "#fff", padding: 3 }} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : null}
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-6 flex items-center gap-4 flex-wrap">
                 <button onClick={enterApp} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>Enter my command center →</button>
                 <button onClick={enterApp} style={{ fontSize: 13, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>I’ll connect these later</button>
@@ -247,6 +279,16 @@ function ConnectRow({ icon, label, sub, href, cta }) {
       </span>
       <span className="onb-ghost" style={{ padding: ".45rem .9rem", fontSize: 13, fontWeight: 600 }}>{cta}</span>
     </a>
+  );
+}
+
+function OnbField({ label, value, onChange, placeholder, type = "text" }) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--onb-subtle)" }}>{label}</span>
+      <input type={type} value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        style={{ padding: "10px 13px", borderRadius: 11, fontSize: 13.5, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)", color: "var(--onb-fg, #fff)", outline: "none" }} />
+    </label>
   );
 }
 

@@ -10,6 +10,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
+import { createClient } from "@/lib/supabase/client";
 
 const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" };
 
@@ -38,6 +39,11 @@ export default function SettingsPage() {
       setSaved(!!r.ok);
     } catch {}
     setSaving(false);
+  }
+
+  async function signOut() {
+    try { await createClient().auth.signOut(); } catch {}
+    window.location.href = "/login";
   }
 
   return (
@@ -88,6 +94,7 @@ export default function SettingsPage() {
           <div className="lg:col-span-2 flex items-center gap-3">
             <button onClick={save} disabled={saving} className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>{saving ? "Saving…" : "Save settings"}</button>
             {saved && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved</span>}
+            <button onClick={signOut} className="mg-btn mg-btn--ghost ml-auto" style={{ fontSize: 13 }}>Sign out</button>
           </div>
         </div>
       )}
