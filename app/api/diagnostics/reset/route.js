@@ -34,7 +34,16 @@ export async function POST() {
     } catch (e) { deleted[t] = `error: ${e.message || "failed"}`; }
   }
 
-  try { await supabase.from("profiles").update({ onboarding_completed: false }).eq("id", uid); } catch {}
+  // Clear the business info too (but keep the row so the login survives), and
+  // replay onboarding. This makes it genuinely brand-new for the project.
+  try {
+    await supabase.from("profiles").update({
+      onboarding_completed: false, setup_completed: false,
+      company_name: null, company_pitch: null, company_website: null,
+      company_phone: null, company_address: null,
+      sender_name: null, sender_email: null, logo_url: null,
+    }).eq("id", uid);
+  } catch {}
 
   return json({ ok: true, deleted, message: "Your account is reset. Head to /welcome to run your first scan." });
 }

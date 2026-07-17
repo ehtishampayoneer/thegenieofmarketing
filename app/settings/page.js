@@ -46,6 +46,18 @@ export default function SettingsPage() {
     window.location.href = "/login";
   }
 
+  const [resetting, setResetting] = useState(false);
+  async function startOver() {
+    if (!window.confirm("Start over? This permanently deletes ALL data for this project — every connected account (Google, X, WordPress), all scans, keywords, content, outreach, and everything Genie has learned. Your login stays. This cannot be undone.")) return;
+    setResetting(true);
+    try {
+      const r = await fetch("/api/diagnostics/reset", { method: "POST" }).then((x) => x.json());
+      if (r.ok) { window.location.href = "/welcome"; return; }
+    } catch {}
+    setResetting(false);
+    alert("Reset failed. Try again in a moment.");
+  }
+
   return (
     <OperatorShell active="settings">
       <OperatorHeader
@@ -96,6 +108,17 @@ export default function SettingsPage() {
             {saved && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved</span>}
             <button onClick={signOut} className="mg-btn mg-btn--ghost ml-auto" style={{ fontSize: 13 }}>Sign out</button>
           </div>
+
+          {/* Danger zone — start this project completely over */}
+          <Card className="lg:col-span-2 p-5" style={{ borderColor: "var(--signal-danger-soft)" }}>
+            <h2 className="text-[15px] font-bold" style={{ color: "var(--signal-danger)" }}>Start over</h2>
+            <p className="text-[12.5px] mg-muted mt-0.5" style={{ maxWidth: 560 }}>
+              Make this project brand-new: permanently delete every connected account (Google, X, WordPress), all scans, keywords, content, outreach, and everything Genie has learned. Your login stays; you’ll go straight to a fresh first scan.
+            </p>
+            <button onClick={startOver} disabled={resetting} className="mg-btn mg-btn--ghost mt-3" style={{ fontSize: 13, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
+              {resetting ? "Wiping everything…" : "Delete everything & start over"}
+            </button>
+          </Card>
         </div>
       )}
     </OperatorShell>
