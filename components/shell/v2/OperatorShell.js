@@ -31,6 +31,7 @@ const NAV = [
   { section: "Control" },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "connections", label: "Connections", icon: Icon.connect },
+  { id: "settings", label: "Settings", icon: Icon.settings },
 ];
 
 const VERB = {
@@ -116,14 +117,14 @@ export default function OperatorShell({ active = "today", children }) {
             </div>
           </div>
 
-          <button className="mx-3 mb-3 flex items-center gap-2.5 p-2 rounded-xl mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+          <a href="/settings" className="mx-3 mb-3 flex items-center gap-2.5 p-2 rounded-xl mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
             <span className="mg-tile" style={{ width: 32, height: 32, background: "var(--primary)", color: "var(--on-primary)", fontSize: 12, fontWeight: 700 }}>{(user.name || "Y").charAt(0).toUpperCase()}</span>
             <span className="text-left leading-tight flex-1 min-w-0">
               <span className="block text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{user.name}</span>
               <span className="block text-[11px] mg-subtle truncate">{user.entity || "Set up your entity"}</span>
             </span>
             <Icon.chevronRight size={15} />
-          </button>
+          </a>
         </aside>
 
         {/* ── WORK-STREAM ── */}
@@ -219,7 +220,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", conversations: "/conversations", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning",
-    trust: "/trust", connections: "/connections",
+    trust: "/trust", connections: "/connections", settings: "/settings",
   };
   return map[id] || "/today";
 }
