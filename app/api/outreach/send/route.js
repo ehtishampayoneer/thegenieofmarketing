@@ -26,10 +26,6 @@ export async function POST(request) {
   const { data: safety } = await supabase.from("safety_settings").select("kill_switch").eq("user_id", user.id).maybeSingle();
   if (safety?.kill_switch) return json({ ok: false, error: "Kill switch is on — turn it off in Settings to let Genie send." }, 403);
 
-  if (!process.env.RESEND_API_KEY) {
-    return json({ ok: false, needsConfig: true, error: "Email isn't configured yet (RESEND_API_KEY missing)." }, 400);
-  }
-
   // Load the outreach action (RLS ensures ownership).
   const { data: action } = await supabase.from("actions").select("*").eq("id", actionId).single();
   if (!action) return json({ ok: false, error: "Action not found." }, 404);
@@ -47,34 +43,17 @@ export async function POST(request) {
 
   await supabase.from("actions").update({ status: "executing", updated_at: new Date().toISOString() }).eq("id", action.id);
 
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.6;color:#111">${escapeHtml(text).replace(/\n/g, "<br>")}</div>`;
-  let ok = false, errMsg = null, id = null;
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.BRIEF_FROM || "Genie <onboarding@resend.dev>",
-        to: [to],
-        subject: finalSubject,
-        html,
-      }),
-    });
-    const j = await res.json().catch(() => ({}));
-    ok = res.ok;
-    id = j?.id || null;
-    if (!ok) errMsg = j?.message || `Resend error ${res.status}`;
-  } catch (e) {
-    errMsg = "Send failed.";
+  // One sender: the user's own Gmail if connected, else the platform domain with
+  // replies routed to their inbox. Includes their logo + address.
+  const { deliverEmail } = await import("@/lib/email-engine");
+  const r = await deliverEmail(supabase, user.id, { to, subject: finalSubject, body: text });
+  if (!r.ok) {
+    await supabase.from("actions").update({ status: "failed", result: { error: r.error }, updated_at: new Date().toISOString() }).eq("id", action.id);
+    try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "failed", meta: { error: r.error } }); } catch {}
+    return json({ ok: false, needsConfig: !!r.needsConfig, error: r.error }, r.needsConfig ? 400 : 502);
   }
 
-  if (!ok) {
-    await supabase.from("actions").update({ status: "failed", result: { error: errMsg }, updated_at: new Date().toISOString() }).eq("id", action.id);
-    try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "failed", meta: { error: errMsg } }); } catch {}
-    return json({ ok: false, error: errMsg }, 502);
-  }
-
-  const result = { to, subject: finalSubject, emailId: id, sentAt: new Date().toISOString(), channel: "email" };
+  const result = { to, subject: finalSubject, emailId: r.id, via: r.via, from: r.from, sentAt: new Date().toISOString(), channel: "email" };
   await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
   try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
   return json({ ok: true, result });

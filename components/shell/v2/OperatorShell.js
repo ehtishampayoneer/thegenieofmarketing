@@ -58,6 +58,8 @@ export default function OperatorShell({ active = "today", children }) {
   const [counts, setCounts] = useState({ approvals: 0 });
   const [user, setUser] = useState({ name: "", entity: "" });
   const [chatOpen, setChatOpen] = useState(false);
+  const [missingConns, setMissingConns] = useState([]);
+  const [connDismissed, setConnDismissed] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setChatOpen(true); } };
@@ -80,7 +82,20 @@ export default function OperatorShell({ active = "today", children }) {
         if (data.entity || data.greetingName) setUser({ name: data.greetingName || "You", entity: data.entity?.name || "" });
       }
     })();
+    (async () => {
+      try { if (sessionStorage.getItem("mg-connect-dismissed")) setConnDismissed(true); } catch {}
+      const { data, live } = await fetchLive("/api/connections/status");
+      if (live && data?.integrations) {
+        const I = data.integrations;
+        const missing = [];
+        if (!I.search_console?.connected) missing.push({ label: "Google", why: "real keywords + send from your Gmail" });
+        if (!I.wordpress?.connected) missing.push({ label: "your blog", why: "auto-publish articles" });
+        setMissingConns(missing);
+      }
+    })();
   }, []);
+
+  function dismissConnect() { setConnDismissed(true); try { sessionStorage.setItem("mg-connect-dismissed", "1"); } catch {} }
 
   function pick(t) { setTheme(t); try { localStorage.setItem("mg-theme", t); } catch {} }
 
@@ -151,7 +166,19 @@ export default function OperatorShell({ active = "today", children }) {
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto thin-scroll"><div className="px-6 py-6 xl:px-8">{children}</div></main>
+          <main className="flex-1 overflow-y-auto thin-scroll">
+            {missingConns.length > 0 && !connDismissed && (
+              <div className="flex items-center gap-3 px-6 py-2.5" style={{ background: "var(--accent-quiet)", borderBottom: "1px solid var(--border)" }}>
+                <Icon.link size={15} style={{ color: "var(--accent-ink)" }} />
+                <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>
+                  Connect <b>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful — {missingConns.map((m) => m.why).join(", ")}.
+                </span>
+                <a href="/connections" className="mg-btn mg-btn--dawn ml-auto shrink-0" style={{ fontSize: 11.5, padding: ".32rem .7rem" }}>Connect</a>
+                <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--fg-subtle)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
+              </div>
+            )}
+            <div className="px-6 py-6 xl:px-8">{children}</div>
+          </main>
         </div>
 
         {/* ── LIVE ACTIVITY ── */}

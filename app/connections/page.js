@@ -53,8 +53,8 @@ export default function ConnectionsPage() {
 
       {/* Measure */}
       <Group title="Measure your growth" sub="So Genie’s impact becomes real numbers, not estimates.">
-        <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console + Analytics)"
-          sub={I.search_console.connected ? (I.ga4.connected ? "Connected · rankings + real traffic" : "Connected · enable Analytics for traffic proof") : "See your real keywords, rankings, and the traffic Genie drives"}
+        <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
+          sub={I.search_console.connected ? (I.ga4.connected ? "Connected · rankings, traffic, real keyword volume + send from your Gmail" : "Connected · enable Analytics for traffic proof") : "Real rankings + traffic + real keyword search volume, AND lets Genie send outreach from your own Gmail"}
           connected={I.search_console.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.search_console.connected ? "Reconnect" : "Connect Google"}</a>} />
         <Row icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
           sub={I.commerce.connected ? "Receiving real revenue events" : "Point your payment provider’s webhook here so Genie proves the dollars it earns you"}
