@@ -2,72 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-  --ink: #11202E;
-  --paper: #F8F8F6;
-  --accent: #1E9E6A;
-  --hairline: #E9ECEE;
-  --shadow-xs: 0 1px 2px rgba(17,32,46,0.04);
-  --shadow-sm: 0 1px 3px rgba(17,32,46,0.06), 0 1px 2px rgba(17,32,46,0.03);
-  --shadow-md: 0 4px 16px rgba(17,32,46,0.07), 0 1px 3px rgba(17,32,46,0.04);
-  --shadow-lg: 0 16px 40px rgba(17,32,46,0.10), 0 4px 12px rgba(17,32,46,0.05);
-}
+/* One design system: the "Aperture / Dawn" mg V2 token layer defined below is the
+   single source of truth. There is no V1 layer — every surface, shadow, and state
+   flows from the tokens in the :root block further down. */
+:root { color-scheme: light; }
 
 html, body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--fg);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Core surfaces ── */
-.card { background:#fff; border:1px solid var(--hairline); border-radius:16px; box-shadow:var(--shadow-sm); transition: box-shadow .25s ease, transform .2s ease, border-color .2s ease; }
-.card-hover:hover { box-shadow:var(--shadow-md); border-color:#DDE2E5; }
-.card-lift:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
-
-/* ── Buttons ── */
-.btn-ink { background:var(--ink); color:var(--paper); border-radius:12px; font-weight:600; transition:transform .15s ease, opacity .2s ease, box-shadow .2s ease; box-shadow:var(--shadow-sm); }
-.btn-ink:hover { box-shadow:var(--shadow-md); }
-.btn-ink:active { transform:scale(.98); }
-.btn-ink:disabled { opacity:.5; }
-.btn-ghost { background:#fff; color:var(--ink); border:1px solid var(--hairline); border-radius:12px; font-weight:500; transition:border-color .2s ease, background .2s ease; }
-.btn-ghost:hover { border-color:#C9D0D4; background:#FCFCFB; }
-.btn-accent { background:var(--accent); color:#fff; border-radius:12px; font-weight:600; transition:transform .15s ease, box-shadow .2s ease; }
-.btn-accent:active { transform:scale(.98); }
-
-/* ── The one accent, used sparingly ── */
-.accent-text { color:var(--accent); }
-.accent-soft { background:#E6F4EE; color:#127350; }
-
-/* Legacy aliases so old screens keep working during migration */
-.grad-genie { background:#11202E; }
-.aperture-grad { background:#11202E; }
-.aperture-text { color:#11202E; }
-.btn-primary { background:#11202E; color:#F8F8F6; border-radius:12px; font-weight:600; }
-.card-premium { background:#fff; border:1px solid #E9ECEE; border-radius:16px; box-shadow:var(--shadow-sm); }
-
-/* ── Sweet, restrained motion ── */
-@keyframes rise { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:translateY(0);} }
-.animate-rise { animation: rise .5s cubic-bezier(0.2,0.8,0.2,1) both; }
-@keyframes fade { from { opacity:0;} to { opacity:1;} }
-.animate-fade { animation: fade .4s ease both; }
-@keyframes scale-in { from { opacity:0; transform:scale(.96);} to { opacity:1; transform:scale(1);} }
-.animate-scale-in { animation: scale-in .35s cubic-bezier(0.2,0.8,0.2,1) both; }
-@keyframes shimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
-.shimmer { background:linear-gradient(90deg,#EEF0F0 25%,#F6F7F6 50%,#EEF0F0 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
-@keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
-.animate-soft-pulse { animation: soft-pulse 2s ease-in-out infinite; }
-@keyframes draw { to { stroke-dashoffset:0; } }
-
-/* Stagger helper */
-.stagger > * { opacity:0; animation: rise .5s cubic-bezier(0.2,0.8,0.2,1) forwards; }
-.stagger > *:nth-child(1){animation-delay:.04s} .stagger > *:nth-child(2){animation-delay:.09s}
-.stagger > *:nth-child(3){animation-delay:.14s} .stagger > *:nth-child(4){animation-delay:.19s}
-.stagger > *:nth-child(5){animation-delay:.24s} .stagger > *:nth-child(6){animation-delay:.29s}
-.stagger > *:nth-child(7){animation-delay:.34s} .stagger > *:nth-child(8){animation-delay:.39s}
-
-.thin-scroll::-webkit-scrollbar { width: 6px; height:6px; }
-.thin-scroll::-webkit-scrollbar-thumb { background: rgba(17,32,46,0.12); border-radius: 999px; }
+/* Shared, theme-aware scroll + numerics (consumed across the V2 app) */
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 
 .font-mono { font-variant-numeric: tabular-nums; }
@@ -290,20 +238,36 @@ html, body {
 
 /* ---- V2 OPERATOR SHELL utilities ---- */
 .mg-chrome { background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--hair); }
-.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:11px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2), transform var(--dur-1) var(--ease-out); cursor:pointer; user-select:none; }
-.mg-rail-item:hover { background:var(--surface-2); color:var(--fg); transform:translateX(1px); }
-.mg-rail-item[data-active="true"] { background:var(--accent-quiet); color:var(--accent-ink); font-weight:600; }
-/* Active indicator — a lit dawn bar at the rail edge (Linear/Vercel cue). */
-.mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-2.5px; top:50%; transform:translateY(-50%); width:3px; height:17px; border-radius:0 3px 3px 0; background:var(--accent); }
-[data-theme="night"] .mg-rail-item[data-active="true"] { background:rgba(255,200,118,.13); color:var(--mg-dawn-glow); }
-[data-theme="night"] .mg-rail-item[data-active="true"]::before { background:var(--mg-dawn-glow); box-shadow:0 0 10px rgba(255,200,118,.6); }
+/* Rail item — Linear/Vercel minimal. Rest: quiet muted label, no chrome.
+   Hover: a barely-there surface. Active: full-strength text + a dawn spine at
+   the rail's left edge + the faintest neutral pill. Colour lives in the spine,
+   not a loud background wash. */
+.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.5rem .7rem; border-radius:9px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
+.mg-rail-item svg { color:var(--fg-subtle); transition:color var(--dur-2); }
+.mg-rail-item:hover { background:color-mix(in srgb, var(--surface-2) 60%, transparent); color:var(--fg); }
+.mg-rail-item:hover svg { color:var(--fg-muted); }
+.mg-rail-item[data-active="true"] { background:var(--surface-2); color:var(--fg); font-weight:600; }
+.mg-rail-item[data-active="true"] svg { color:var(--fg); }
+/* The spine — a short lit dawn bar flush to the rail's left edge. */
+.mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:18px; border-radius:0 3px 3px 0; background:var(--accent); }
+[data-theme="night"] .mg-rail-item[data-active="true"]::before { box-shadow:0 0 10px rgba(255,200,118,.55); }
 .mg-rail-count { margin-left:auto; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
-.mg-rail-item[data-active="true"] .mg-rail-count { color:inherit; }
+.mg-rail-item[data-active="true"] .mg-rail-count { color:var(--accent-ink); }
 .mg-activity-row { display:flex; gap:.65rem; padding:.55rem .5rem; border-radius:10px; transition:background var(--dur-2); }
 .mg-activity-row:hover { background:var(--surface-2); }
 .mg-tile { border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .mg-searchbar { display:flex; align-items:center; gap:.55rem; height:38px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:13.5px; transition:border-color var(--dur-2); cursor:text; }
 .mg-searchbar:hover { border-color:var(--border-strong); }
+/* Genie's presence — a calm dawn aura that breathes behind the operator mark,
+   so it reads as alive and watching, not a static logo. Subtle by design. */
+.mg-presence { position:relative; display:inline-flex; }
+.mg-presence::before { content:""; position:absolute; inset:-7px; border-radius:50%; pointer-events:none; z-index:0;
+  background:radial-gradient(circle, var(--accent-quiet), transparent 68%); animation:mg-aura 4.6s var(--ease-out) infinite; }
+.mg-presence > * { position:relative; z-index:1; }
+[data-theme="night"] .mg-presence::before { background:radial-gradient(circle, rgba(255,200,118,.20), transparent 66%); }
+@keyframes mg-aura { 0%,100%{ opacity:.45; transform:scale(.94);} 50%{ opacity:.85; transform:scale(1.06);} }
+@media (prefers-reduced-motion: reduce){ .mg-presence::before{ animation:none; } }
+
 .mg-live-dot { width:7px; height:7px; border-radius:999px; background:var(--signal-live); box-shadow:0 0 0 0 rgba(30,158,106,.5); animation:mg-livepulse 2s var(--ease-out) infinite; }
 @keyframes mg-livepulse { 0%{box-shadow:0 0 0 0 rgba(30,158,106,.45)} 70%{box-shadow:0 0 0 6px rgba(30,158,106,0)} 100%{box-shadow:0 0 0 0 rgba(30,158,106,0)} }
 @media (prefers-reduced-motion: reduce){ .mg-live-dot{ animation:none !important; } }

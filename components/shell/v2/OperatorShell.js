@@ -152,10 +152,14 @@ export default function OperatorShell({ active = "today", children }) {
             </button>
             <div className="ml-auto flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2.5">
-                <GenieMark size={30} live />
+                <span className="mg-presence"><GenieMark size={30} live /></span>
                 <div className="leading-tight">
                   <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
-                  <p className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live · working</p>
+                  {activity.length ? (
+                    <p className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live · working</p>
+                  ) : (
+                    <p className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>Standing by</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>

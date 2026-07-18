@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { GenieLockup } from "@/components/brand/GenieMark";
+
+const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)", borderRadius: 12, height: 46, padding: "0 14px", fontSize: 14, width: "100%", outline: "none" };
 
 export default function LoginPage() {
   const [mode, setMode] = useState("signin"); // signin | signup
@@ -65,88 +68,53 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col">
-      <header className="px-6 py-5 flex items-center gap-2">
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg genie-gradient" aria-hidden />
-          <span className="font-bold tracking-tight text-genie-ink">
-            Marketing Genie
-          </span>
-        </a>
+    <main className="mg mg-ambient" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <header className="px-6 py-5">
+        <a href="/" className="inline-flex"><GenieLockup size={32} live /></a>
       </header>
 
-      <section className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-sm">
-          <h1 className="text-2xl font-extrabold text-genie-ink text-center">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
-          </h1>
-          <p className="mt-1 text-center text-sm text-genie-ink/55">
-            {mode === "signin"
-              ? "Sign in to save scans and track your score."
-              : "Save your reports and watch your score grow."}
-          </p>
-
-          <button
-            onClick={google}
-            disabled={busy}
-            className="mt-6 w-full flex items-center justify-center gap-3 border border-genie-ink/15 bg-white rounded-xl py-3 font-medium text-genie-ink hover:bg-genie-mist transition disabled:opacity-60"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          <div className="my-5 flex items-center gap-3 text-genie-ink/40 text-sm">
-            <div className="h-px flex-1 bg-genie-ink/10" />
-            or
-            <div className="h-px flex-1 bg-genie-ink/10" />
+      <section className="flex-1 flex items-center justify-center px-6 pb-16">
+        <div className="w-full" style={{ maxWidth: 400 }}>
+          <div className="text-center">
+            <p className="mg-eyebrow" style={{ justifyContent: "center" }}>{mode === "signin" ? "Welcome back" : "Get started"}</p>
+            <h1 className="mg-display mt-2" style={{ fontSize: "clamp(26px,3.4vw,34px)" }}>
+              {mode === "signin" ? "Sign in to Genie." : "Create your account."}
+            </h1>
+            <p className="mg-lede mt-2" style={{ marginInline: "auto" }}>
+              {mode === "signin" ? "Your AI marketing employee has been working. Pick up where it left off." : "Hire an AI marketing employee that works while you sleep."}
+            </p>
           </div>
 
-          <div className="space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@business.com"
-              className="w-full px-4 py-3 rounded-xl border border-genie-ink/15 bg-white outline-none focus:ring-2 focus:ring-genie-purple/40 transition"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && emailAuth()}
-              placeholder="Password"
-              className="w-full px-4 py-3 rounded-xl border border-genie-ink/15 bg-white outline-none focus:ring-2 focus:ring-genie-purple/40 transition"
-            />
-            <button
-              onClick={emailAuth}
-              disabled={busy}
-              className="w-full genie-gradient text-white font-semibold py-3 rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition disabled:opacity-60"
-            >
-              {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
+          <div className="mg-surface mt-8 p-6">
+            <button onClick={google} disabled={busy} className="mg-btn mg-btn--ghost w-full mg-focus" style={{ height: 46, fontSize: 14 }}>
+              <GoogleIcon /> Continue with Google
             </button>
+
+            <div className="my-5 flex items-center gap-3" style={{ color: "var(--fg-subtle)", fontSize: 12.5 }}>
+              <span className="mg-hairline" style={{ flex: 1 }} /> or <span className="mg-hairline" style={{ flex: 1 }} />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" className="mg-focus" style={FIELD} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && emailAuth()} placeholder="Password" className="mg-focus" style={FIELD} />
+              <button onClick={emailAuth} disabled={busy} className="mg-btn mg-btn--dawn w-full mg-focus" style={{ height: 46, fontSize: 14.5 }}>
+                {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
+              </button>
+            </div>
+
+            {msg && (
+              <div className="mt-4 p-3" style={{
+                fontSize: 13, borderRadius: 12, lineHeight: 1.45,
+                background: msgType === "error" ? "var(--signal-danger-soft)" : "var(--signal-live-soft)",
+                color: msgType === "error" ? "var(--signal-danger)" : "var(--signal-live-ink)",
+              }}>{msg}</div>
+            )}
           </div>
 
-          {msg && (
-            <div
-              className={`mt-4 text-sm rounded-xl p-3 ${
-                msgType === "error"
-                  ? "bg-amber-50 border border-amber-200 text-amber-800"
-                  : "bg-emerald-50 border border-emerald-200 text-emerald-800"
-              }`}
-            >
-              {msg}
-            </div>
-          )}
-
-          <p className="mt-5 text-center text-sm text-genie-ink/60">
+          <p className="mt-5 text-center" style={{ fontSize: 13.5, color: "var(--fg-muted)" }}>
             {mode === "signin" ? "New here? " : "Already have an account? "}
-            <button
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setMsg("");
-              }}
-              className="text-genie-purple font-medium hover:underline"
-            >
+            <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMsg(""); }}
+              className="mg-focus" style={{ color: "var(--accent-ink)", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>
               {mode === "signin" ? "Create an account" : "Sign in"}
             </button>
           </p>
