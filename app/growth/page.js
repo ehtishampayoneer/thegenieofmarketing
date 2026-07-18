@@ -12,7 +12,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
-import { Card, Pill, SectionLabel } from "@/components/ui/v2/primitives";
+import { Card, Pill, SectionLabel, SectionHead } from "@/components/ui/v2/primitives";
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
@@ -88,6 +88,7 @@ function Growth() {
   const heroTap = allTaps[0] || null;
   const restTaps = allTaps.slice(1);
   const activeShown = active.slice(0, 8);
+  const winning = d.results?.winning || 0;
 
   return (
     <OperatorShell active="growth">
@@ -99,86 +100,109 @@ function Growth() {
         accent="growing you."
       />
 
-      {/* ── OPPORTUNITIES — one to act on now, the rest in a quiet queue ── */}
-      <div className="mt-7 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <SectionLabel>Opportunities</SectionLabel>
-          {taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}
-        </div>
-        {restTaps.length > 0 && <a href="/conversations" className="text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>See running →</a>}
-      </div>
-
-      {heroTap ? (
-        <>
-          <HeroTap item={heroTap} onAct={act} />
-          {restTaps.length > 0 && (
-            <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {restTaps.map((it) => <CompactTap key={it.id} item={it} onAct={act} />)}
-            </div>
-          )}
-        </>
-      ) : (
-        <Card className="mt-3 p-8 text-center">
-          <span className="mg-tile mx-auto" style={{ width: 42, height: 42, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={19} /></span>
-          <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No openings staged right now</p>
-          <p className="mt-1 text-[13px] mg-muted max-w-md mx-auto">Genie scans continuously and stages new conversations overnight. Check back tomorrow morning, or see what's already running.</p>
-          <a href="/conversations" className="mg-btn mg-btn--quiet mt-4 inline-flex" style={{ fontSize: 12.5 }}>See running conversations →</a>
-        </Card>
+      {/* The operation, in one honest sentence — Genie's current mission. */}
+      {state === "real" && (active.length > 0 || taps > 0) && (
+        <p className="mg-voice mt-3">
+          I’ve built you a strategy of <b>{active.length} {active.length === 1 ? "search" : "searches"}</b>
+          {taps > 0 ? <> and staged <b>{taps}</b> {taps === 1 ? "opening" : "openings"} to ship</> : null}
+          {winning > 0 ? <>, with <b>{winning}</b> already compounding</> : null}. Here’s the operation, live.
+        </p>
       )}
 
-      {d.results && d.results.total > 0 && <ResultsStrip results={d.results} />}
+      {/* ── ACT 01 — THE STRATEGY: what Genie is pursuing ── */}
+      <section className="mg-act">
+        <SectionHead index="01" title="What I’m pursuing" note={graded.length ? "The searches I’m ranking you for — winners rise, dead ends retire." : undefined} />
 
-      {/* ── KEYWORD STRATEGY ── */}
-      <div className="mt-8 flex items-center justify-between flex-wrap gap-2">
-        <SectionLabel>Keyword strategy</SectionLabel>
-        {graded.length > 0 && <span className="text-[12px] mg-subtle">Genie derived and manages these — winners rise, dead ones retire.</span>}
-      </div>
+        {graded.length === 0 ? (
+          <Card className="p-9 text-center" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
+            <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
+            <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
+            <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
+            <button onClick={derive} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
+              {busy === "derive" ? "Genie is analyzing…" : host ? "Build my keyword strategy →" : "Run your first scan →"}
+            </button>
+          </Card>
+        ) : (
+          <>
+            <div className="mg-statstrip">
+              <StatCell value={active.length} label="Keywords tracked" />
+              <StatCell value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
+              <StatCell value={active.filter((k) => (k.competition ?? 50) < 40).length} label="Easy wins" accent />
+              <StatCell value={active.filter((k) => (k.gsc_impressions || 0) > 0).length} label="Bringing real traffic" accent />
+            </div>
 
-      {graded.length === 0 ? (
-        <Card className="mt-3 p-9 text-center" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
-          <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
-          <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
-          <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
-          <button onClick={derive} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
-            {busy === "derive" ? "Genie is analyzing…" : host ? "Build my keyword strategy →" : "Run your first scan →"}
-          </button>
-        </Card>
-      ) : (
-        <>
-          <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <KeywordStat value={active.length} label="Keywords tracked" />
-            <KeywordStat value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
-            <KeywordStat value={active.filter((k) => (k.competition ?? 50) < 40).length} label="Easy wins" accent />
-            <KeywordStat value={active.filter((k) => (k.gsc_impressions || 0) > 0).length} label="Bringing real traffic" accent />
-          </div>
+            <p className="text-[12px] mg-subtle">Traffic and difficulty are Genie’s estimates, chosen for a mix of demand, winnability, and buyer value. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google</a> for your real search volumes and rankings.</p>
 
-          <p className="mt-3 text-[12px] mg-subtle">Traffic and difficulty are Genie’s estimates, chosen for a mix of demand, winnability, and buyer value. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google</a> for your real search volumes and rankings.</p>
+            {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
 
-          {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {activeShown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+            </div>
+            {active.length > activeShown.length && (
+              <details>
+                <summary className="cursor-pointer text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Show all {active.length} keywords</summary>
+                <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {active.slice(8).map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+                </div>
+              </details>
+            )}
+            {retired.length > 0 && (
+              <details>
+                <summary className="cursor-pointer text-[12.5px] mg-subtle mg-focus">Retired keywords ({retired.length}) — Genie stopped using these</summary>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {retired.map((k) => <span key={k.id || k.keyword} className="text-[11.5px] mg-subtle line-through mg-surface-quiet px-2 py-0.5 rounded-full">{k.keyword}</span>)}
+                </div>
+              </details>
+            )}
+          </>
+        )}
+      </section>
 
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {activeShown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
-          </div>
-          {active.length > activeShown.length && (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Show all {active.length} keywords</summary>
-              <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {active.slice(8).map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+      {/* ── ACT 02 — SHIPPING NOW: what's going out ── */}
+      <section className="mg-act">
+        <SectionHead
+          index="02"
+          title="Shipping now"
+          note={taps > 0 ? undefined : "Fresh openings land here each morning."}
+          action={<>{taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}{restTaps.length > 0 && <a href="/conversations" className="text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>See running →</a>}</>}
+        />
+
+        {heroTap ? (
+          <>
+            <HeroTap item={heroTap} onAct={act} />
+            {restTaps.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {restTaps.map((it) => <CompactTap key={it.id} item={it} onAct={act} />)}
               </div>
-            </details>
-          )}
+            )}
+          </>
+        ) : (
+          <Card className="p-8 text-center">
+            <span className="mg-tile mx-auto" style={{ width: 42, height: 42, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={19} /></span>
+            <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No openings staged right now</p>
+            <p className="mt-1 text-[13px] mg-muted max-w-md mx-auto">Genie scans continuously and stages new conversations overnight. Check back tomorrow morning, or see what's already running.</p>
+            <a href="/conversations" className="mg-btn mg-btn--quiet mt-4 inline-flex" style={{ fontSize: 12.5 }}>See running conversations →</a>
+          </Card>
+        )}
+      </section>
 
-          {retired.length > 0 && (
-            <details className="mt-4">
-              <summary className="cursor-pointer text-[12.5px] mg-subtle mg-focus">Retired keywords ({retired.length}) — Genie stopped using these</summary>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {retired.map((k) => <span key={k.id || k.keyword} className="text-[11.5px] mg-subtle line-through mg-surface-quiet px-2 py-0.5 rounded-full">{k.keyword}</span>)}
-              </div>
-            </details>
-          )}
-        </>
+      {/* ── ACT 03 — MOMENTUM: what's compounding over time ── */}
+      {d.results && d.results.total > 0 && (
+        <section className="mg-act">
+          <SectionHead index="03" title="What’s compounding" note="Every post tracked — winners doubled down, duds binned." />
+          <ResultsStrip results={d.results} />
+        </section>
       )}
     </OperatorShell>
+  );
+}
+
+function StatCell({ value, label, accent }) {
+  return (
+    <div className="mg-statcell">
+      <p className="mg-stat-num" style={accent ? { color: "var(--accent-ink)" } : undefined}>{value}</p>
+      <p className="mg-stat-label">{label}</p>
+    </div>
   );
 }
 
@@ -241,14 +265,8 @@ function CompactTap({ item, onAct }) {
 function ResultsStrip({ results }) {
   const { total, winning, flat, dud, pending, top } = results;
   return (
-    <Card className="mt-4 p-5">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h3 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>What Genie posted — results</h3>
-          <p className="text-[12.5px] mg-muted">It tracks every post, doubles down on winners, bins the duds.</p>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3">
+    <Card className="p-5">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
         <MiniStat value={total} label="Posted" />
         <MiniStat value={winning} label="Winning" tint="var(--signal-live-ink)" />
         <MiniStat value={flat} label="Flat" />
@@ -286,15 +304,6 @@ function MiniStat({ value, label, tint }) {
       <p className="text-[22px] font-bold leading-none mg-num" style={{ color: tint || "var(--fg)" }}>{value}</p>
       <p className="mt-1 text-[11px] mg-subtle">{label}</p>
     </div>
-  );
-}
-
-function KeywordStat({ value, label, accent }) {
-  return (
-    <Card className="p-4">
-      <p className="mg-stat-num" style={accent ? { color: "var(--accent-ink)" } : undefined}>{value}</p>
-      <p className="mg-stat-label">{label}</p>
-    </Card>
   );
 }
 

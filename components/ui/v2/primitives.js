@@ -51,6 +51,22 @@ export function SectionLabel({ children, className = "" }) {
   );
 }
 
+// An editorial section header — a quiet dawn ordinal, a confident title, and an
+// optional note + right-side action. One rung below the page display headline,
+// so pages read as: display → section title → body (real hierarchy, not flat).
+export function SectionHead({ index, title, note, action, className = "" }) {
+  return (
+    <div className={`flex items-baseline justify-between gap-3 flex-wrap ${className}`}>
+      <div className="flex items-baseline gap-2.5 min-w-0">
+        {index != null && <span className="text-[11px] font-bold mg-num tracking-widest" style={{ color: "var(--accent-ink)" }}>{index}</span>}
+        <h2 className="mg-title">{title}</h2>
+        {note && <span className="text-[12.5px] mg-subtle">{note}</span>}
+      </div>
+      {action && <div className="shrink-0 flex items-center gap-2">{action}</div>}
+    </div>
+  );
+}
+
 export function Stat({ value, label, accent = false, className = "" }) {
   return (
     <div className={className}>

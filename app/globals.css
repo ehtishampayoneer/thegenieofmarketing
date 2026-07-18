@@ -156,6 +156,24 @@ html, body {
 /* A calm divider that carries a faint dawn center — a signature, used once. */
 .mg-seam { height:1px; width:100%; background:linear-gradient(90deg, transparent, var(--border-strong) 22%, var(--border-strong) 78%, transparent); }
 
+/* Section rhythm — a labelled "act" gets generous air above it, so pages breathe
+   in clear movements instead of an even wall of cards. */
+.mg-act { margin-top:2.75rem; }
+.mg-act > * + * { margin-top:1rem; }
+/* Glance-able stat panel — numbers as stated facts inside one surface, not four
+   separate widget boxes. Hairline column rules appear only at the wide (4-up)
+   layout, where a single non-wrapping row makes them read cleanly. */
+.mg-statstrip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--card-border); border-radius:var(--card-radius); background:var(--card-bg); box-shadow:var(--card-shadow); overflow:hidden; }
+.mg-statcell { padding:1.1rem 1.25rem; }
+.mg-statcell:nth-child(n+3) { border-top:1px solid var(--hair); }
+.mg-statcell:nth-child(2n) { border-left:1px solid var(--hair); }
+@media (min-width:1024px){
+  .mg-statstrip { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .mg-statcell:nth-child(n+3) { border-top:none; }
+  .mg-statcell:nth-child(2n) { border-left:none; }
+  .mg-statcell + .mg-statcell { border-left:1px solid var(--hair); }
+}
+
 /* ---- Surfaces & helpers ---- */
 .mg { background:var(--bg); color:var(--fg); }
 .mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow); }
@@ -181,6 +199,18 @@ html, body {
 .mg-btn--ghost:hover { border-color:var(--border-strong); background:var(--surface-2); }
 .mg-btn--quiet { background:var(--surface-2); color:var(--fg-muted); }
 .mg-btn--quiet:hover { color:var(--fg); }
+
+/* ---- The draft the operator reviews — reading-optimised, the star of Approvals.
+   Full-strength ink (it's the actual work, not chrome), generous line-height. ---- */
+.mg-draft { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; padding:1.1rem 1.3rem;
+  font-size:14.5px; line-height:1.68; color:var(--fg); white-space:pre-wrap; max-height:46vh; overflow-y:auto; }
+
+/* ---- Fields — one input surface everywhere (promoted from repeated inline styles) ---- */
+.mg-field { width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--fg); border-radius:11px;
+  padding:.62rem .85rem; font-size:13.5px; font-family:var(--font-ui); line-height:1.5;
+  transition:border-color var(--dur-2), box-shadow var(--dur-2); }
+.mg-field::placeholder { color:var(--fg-subtle); }
+.mg-field:focus, .mg-field:focus-visible { outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent); }
 
 /* ---- Focus (accessibility, both themes) ---- */
 .mg-btn:focus-visible, .mg-focus:focus-visible, a.mg-link:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
@@ -258,14 +288,25 @@ html, body {
 .mg-tile { border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .mg-searchbar { display:flex; align-items:center; gap:.55rem; height:38px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:13.5px; transition:border-color var(--dur-2); cursor:text; }
 .mg-searchbar:hover { border-color:var(--border-strong); }
-/* Genie's presence — a calm dawn aura that breathes behind the operator mark,
-   so it reads as alive and watching, not a static logo. Subtle by design. */
+/* Genie's presence — a dawn aura behind the operator mark whose STATE is driven
+   by real data (see OperatorShell): idle when nothing's happening, working when
+   the activity stream is live, alerting when approvals are waiting. Honesty
+   applies to motion too: no state animates unless something real is true. */
 .mg-presence { position:relative; display:inline-flex; }
 .mg-presence::before { content:""; position:absolute; inset:-7px; border-radius:50%; pointer-events:none; z-index:0;
-  background:radial-gradient(circle, var(--accent-quiet), transparent 68%); animation:mg-aura 4.6s var(--ease-out) infinite; }
+  background:radial-gradient(circle, var(--accent-quiet), transparent 68%); animation:mg-aura 4.8s var(--ease-out) infinite; }
 .mg-presence > * { position:relative; z-index:1; }
 [data-theme="night"] .mg-presence::before { background:radial-gradient(circle, rgba(255,200,118,.20), transparent 66%); }
+/* working — the stream is live; a steadier, quicker breath. */
+.mg-presence[data-state="working"]::before { animation-duration:2.6s; }
+/* thinking — an active job is running; quicker still (used only when real). */
+.mg-presence[data-state="thinking"]::before { animation-duration:1.8s; }
+/* alerting — approvals are waiting; warmer, brighter, a touch faster. */
+.mg-presence[data-state="alerting"]::before { animation-duration:2.1s; background:radial-gradient(circle, rgba(245,158,61,.30), transparent 66%); }
+[data-theme="night"] .mg-presence[data-state="alerting"]::before { background:radial-gradient(circle, rgba(255,200,118,.36), transparent 64%); }
 @keyframes mg-aura { 0%,100%{ opacity:.45; transform:scale(.94);} 50%{ opacity:.85; transform:scale(1.06);} }
+/* Reduced motion: no breathing, but the STATE still reads — alerting keeps its
+   brighter warm glow statically, so the meaning survives without animation. */
 @media (prefers-reduced-motion: reduce){ .mg-presence::before{ animation:none; } }
 
 .mg-live-dot { width:7px; height:7px; border-radius:999px; background:var(--signal-live); box-shadow:0 0 0 0 rgba(30,158,106,.5); animation:mg-livepulse 2s var(--ease-out) infinite; }

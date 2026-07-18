@@ -4,8 +4,8 @@
 // Everything Genie drafted, in a single keyboard-driven queue: owned accounts
 // first (auto-publish), then community taps. A = approve, E = edit, S = skip,
 // ← → move. Reads /api/approvals; writes via /api/approvals/act (and the gated
-// execute route for real WordPress/X publishing). Falls back to a demo queue on
-// the public preview so it's always drivable.
+// execute route for real WordPress/X publishing). Honest empty states — a
+// brand-new account shows a real "nothing yet" until the first content is drafted.
 
 import { useState, useEffect, useCallback } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
@@ -152,46 +152,38 @@ export default function ApprovalsPage() {
           </div>
 
           {/* the card */}
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
-            <div className="mg-surface p-6">
-              <div className="flex items-center gap-3">
-                <BrandIcon brand={current.brand} size={20} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {(current.tags || []).map((t, i) => <Pill key={i} tone={t.tone}>{t.label}</Pill>)}
-                    {current.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[17px] font-bold leading-none mg-num" style={{ color: current.impact >= 85 ? "var(--accent-ink)" : "var(--fg)" }}>{current.impact}</div>
-                  <div className="text-[10px] mg-subtle">Impact</div>
-                </div>
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_290px] gap-5 items-start">
+            <div className="mg-surface" style={{ overflow: "hidden" }}>
+              {/* meta chrome — one quiet line, so the work below is the star */}
+              <div className="flex items-center gap-2 px-6 pt-5">
+                <BrandIcon brand={current.brand} size={17} />
+                {current.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
+                {(current.tags || []).map((t, i) => <Pill key={i} tone={t.tone}>{t.label}</Pill>)}
+                <span className="ml-auto text-[11px] mg-subtle mg-num" title="Genie’s impact estimate">Impact {current.impact}</span>
               </div>
 
-              <h2 className="mt-3 text-[18px] font-bold tracking-tight" style={{ color: "var(--fg)" }}>{current.title}</h2>
-              {current.outcome && <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>{current.outcome}</p>}
+              {/* the work */}
+              <div className="px-6 pt-3.5">
+                <h2 className="text-[21px] font-bold tracking-tight leading-snug" style={{ color: "var(--fg)" }}>{current.title}</h2>
+                {current.outcome && <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>{current.outcome}</p>}
+              </div>
 
-              {editing ? (
-                <textarea
-                  value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus
-                  className="mt-3 w-full rounded-xl p-3.5 text-[13.5px] leading-relaxed mg-focus"
-                  style={{ minHeight: 200, background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)", fontFamily: "var(--font-ui)" }}
-                />
-              ) : (
-                current.draft && (
-                  <div className="mt-3 rounded-xl p-4 text-[13.5px] leading-relaxed whitespace-pre-wrap" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", color: "var(--fg-muted)", maxHeight: 260, overflowY: "auto" }}>
-                    {current.draft}
-                  </div>
-                )
-              )}
+              <div className="px-6 pt-4">
+                {editing ? (
+                  <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus
+                    className="mg-field mg-focus" style={{ minHeight: "40vh", lineHeight: 1.68, fontSize: 14.5 }} />
+                ) : (
+                  current.draft && <div className="mg-draft thin-scroll">{current.draft}</div>
+                )}
+                {current.why && <p className="mt-3 text-[12px] mg-subtle"><span className="font-semibold" style={{ color: "var(--fg-muted)" }}>Why this:</span> {current.why}</p>}
+              </div>
 
-              {current.why && <p className="mt-2.5 text-[12px] mg-subtle"><span className="font-semibold" style={{ color: "var(--fg-muted)" }}>Why this:</span> {current.why}</p>}
-
-              <div className="mt-5 flex items-center gap-2.5 flex-wrap">
+              {/* action bar — separated, so approving feels decisive */}
+              <div className="flex items-center gap-2.5 px-6 py-4 mt-4" style={{ borderTop: "1px solid var(--hair)", background: "var(--surface-2)" }}>
                 {editing ? (
                   <>
                     <Button variant="dawn" onClick={approveCurrent}>Save &amp; approve</Button>
-                    <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => setEditing(false)}>Cancel <span className="mg-kbd" style={{ marginLeft: 4 }}>Esc</span></Button>
                   </>
                 ) : (
                   <>
@@ -206,16 +198,16 @@ export default function ApprovalsPage() {
               </div>
             </div>
 
-            {/* up next */}
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle mb-2">Up next</p>
-              <div className="space-y-1.5">
+            {/* up next — the queue, so you feel the leverage of clearing it fast */}
+            <div className="lg:sticky lg:top-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle mb-2 px-1">Up next</p>
+              <div className="space-y-1">
                 {items.map((it, i) => (
                   <button key={it.id} onClick={() => { setIdx(i); setEditing(false); }}
-                    className="w-full text-left flex items-center gap-2.5 p-2.5 rounded-xl transition mg-focus"
-                    style={{ background: i === idx ? "var(--accent-quiet)" : "var(--surface)", border: `1px solid ${i === idx ? "var(--accent)" : "var(--hair)"}` }}>
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-[10px] mg-focus transition"
+                    style={{ background: i === idx ? "var(--surface-2)" : "transparent", boxShadow: i === idx ? "inset 2px 0 0 var(--accent)" : "none", color: "var(--fg)" }}>
                     <BrandIcon brand={it.brand} size={15} />
-                    <span className="flex-1 min-w-0 text-[12px] font-medium truncate" style={{ color: "var(--fg)" }}>{it.title}</span>
+                    <span className="flex-1 min-w-0 text-[12px] font-medium truncate text-left" style={{ color: i === idx ? "var(--fg)" : "var(--fg-muted)" }}>{it.title}</span>
                     {it.owned && <span className="mg-live-dot" />}
                   </button>
                 ))}
@@ -224,9 +216,9 @@ export default function ApprovalsPage() {
           </div>
         </>
       ) : (
-        <div className="mt-8 mg-surface p-12 text-center">
-          <div className="inline-flex mb-3" style={{ color: "var(--signal-live-ink)" }}><Icon.check size={40} /></div>
-          <p className="text-[18px] font-bold" style={{ color: "var(--fg)" }}>{done > 0 ? "That’s a wrap — beautiful work." : "Nothing in your queue yet."}</p>
+        <div className="mt-8 mg-surface mg-ambient p-12 text-center">
+          <span className="mg-tile mx-auto" style={{ width: 62, height: 62, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={30} /></span>
+          <p className="mt-4 mg-title" style={{ fontSize: 21 }}>{done > 0 ? <>Cleared. <span className="mg-num">{done}</span> {done === 1 ? "decision" : "decisions"} approved.</> : "Nothing in your queue yet."}</p>
           <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? "Genie is already lining up tomorrow’s work. Go enjoy your day." : "Have me draft your first publish-ready article and social posts right now — from what I already learned about you."}</p>
           <div className="mt-5 flex items-center justify-center gap-2.5">
             {done === 0 && <button onClick={draftFirstContent} disabled={drafting} className="mg-btn mg-btn--dawn disabled:opacity-60">{drafting ? "Genie is writing… (~30s)" : "Draft my first content →"}</button>}

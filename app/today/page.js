@@ -117,9 +117,9 @@ export default function TodayPage() {
           {needsConfirm && <div className="mt-5"><EntityConfirm entity={entity} onConfirmed={(e) => setEntity(e)} /></div>}
 
           {(d?.learned || []).length > 0 && (
-            <div className="mt-8">
+            <section className="mg-act">
               <p className="mg-eyebrow">What I’ve learned about you</p>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {d.learned.slice(0, 3).map((l, i) => (
                   <Card key={i} className="p-4 flex gap-3">
                     <span style={{ color: "var(--accent-ink)", marginTop: 1 }}><Icon.spark size={15} /></span>
@@ -127,7 +127,7 @@ export default function TodayPage() {
                   </Card>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           <p className="mt-9 mb-1 text-center text-[13px] mg-subtle">That’s your night. I’ll keep working — come back anytime.</p>

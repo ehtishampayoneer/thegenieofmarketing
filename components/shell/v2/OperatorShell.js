@@ -99,6 +99,12 @@ export default function OperatorShell({ active = "today", children }) {
 
   function pick(t) { setTheme(t); try { localStorage.setItem("mg-theme", t); } catch {} }
 
+  // Genie's presence state — driven by REAL data, never decoration. Approvals
+  // waiting wins (you have a decision to make); else a live stream = working;
+  // else idle. "thinking" is reserved for a real in-flight job signal we don't
+  // surface yet, so we don't fake it.
+  const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
+
   return (
     <div className="mg" data-theme={theme === "night" ? "night" : undefined}
          style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--font-ui)", overflow: "hidden" }}>
@@ -152,7 +158,7 @@ export default function OperatorShell({ active = "today", children }) {
             </button>
             <div className="ml-auto flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2.5">
-                <span className="mg-presence"><GenieMark size={30} live /></span>
+                <span className="mg-presence" data-state={genieState}><GenieMark size={30} live /></span>
                 <div className="leading-tight">
                   <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
                   {activity.length ? (
