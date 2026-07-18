@@ -16,7 +16,16 @@ export async function GET(request) {
   const cookieState = request.cookies.get("x_oauth_state")?.value;
   const verifier = request.cookies.get("x_pkce_verifier")?.value;
 
-  const back = (q) => NextResponse.redirect(absolute(`/connections${q}`));
+  // Return to the onboarding welcome step if that's where the connect began.
+  const fromWelcome = request.cookies.get("oauth_from")?.value === "welcome";
+  const back = (q) => {
+    const params = String(q || "").replace(/^&/, "");
+    const dest = fromWelcome ? "/welcome" : "/connections";
+    const all = [params, fromWelcome ? "resume=connect" : ""].filter(Boolean).join("&");
+    const r = NextResponse.redirect(absolute(`${dest}${all ? `?${all}` : ""}`));
+    r.cookies.set("oauth_from", "", { maxAge: 0, path: "/" });
+    return r;
+  };
 
   if (!code || !state || !verifier || state !== cookieState) {
     return back("&x_error=state_mismatch");

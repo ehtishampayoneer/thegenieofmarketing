@@ -30,6 +30,7 @@ export async function GET() {
   try { const c = await getEvents(supabase, { userId: user.id, types: ["conversion.recorded"], limit: 1 }); commerce = c.length > 0; } catch {}
 
   const integrations = {
+    google: { label: "Google", connected: !!google, category: "measure" },
     search_console: { label: "Google Search Console", connected: !!google?.gsc_site, category: "measure" },
     ga4: { label: "Google Analytics (GA4)", connected: ga4, category: "measure", needs: google ? null : "connect_google" },
     wordpress: { label: "WordPress", connected: !!byProvider.wordpress, category: "publish" },

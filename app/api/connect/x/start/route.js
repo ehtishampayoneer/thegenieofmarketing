@@ -9,9 +9,10 @@ import crypto from "crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request) {
   const clientId = process.env.X_CLIENT_ID;
   const redirectUri = process.env.X_REDIRECT_URI;
+  const from = new URL(request.url).searchParams.get("from"); // "welcome" → resume onboarding
   if (!clientId || !redirectUri) {
     return NextResponse.redirect(absolute("/connections?x_error=not_configured"));
   }
@@ -35,6 +36,7 @@ export async function GET() {
   const cookieOpts = { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 600 };
   res.cookies.set("x_pkce_verifier", verifier, cookieOpts);
   res.cookies.set("x_oauth_state", state, cookieOpts);
+  if (from === "welcome") res.cookies.set("oauth_from", "welcome", cookieOpts);
   return res;
 }
 

@@ -15,7 +15,16 @@ export async function GET(request) {
   const cookieState = request.cookies.get("g_oauth_state")?.value;
   const err = searchParams.get("error");
 
-  const back = (q) => NextResponse.redirect(`${origin}/connections${q}`);
+  // Return to wherever the connect flow began: the onboarding welcome step, or
+  // the Connections page.
+  const fromWelcome = request.cookies.get("oauth_from")?.value === "welcome";
+  const dest = fromWelcome ? "/welcome" : "/connections";
+  const back = (q) => {
+    const sep = q ? (fromWelcome ? `${q}&resume=connect` : q) : (fromWelcome ? "?resume=connect" : "");
+    const r = NextResponse.redirect(`${origin}${dest}${sep}`);
+    r.cookies.set("oauth_from", "", { maxAge: 0, path: "/" });
+    return r;
+  };
 
   if (err) return back(`?connect_error=${encodeURIComponent(err)}`);
   if (!code || !state || state !== cookieState) {

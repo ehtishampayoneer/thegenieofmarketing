@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  const { origin } = new URL(request.url);
+  const { origin, searchParams } = new URL(request.url);
+  const from = searchParams.get("from"); // "welcome" → return to the onboarding flow
 
   // Must be logged in to connect.
   const supabase = createClient();
@@ -18,12 +19,8 @@ export async function GET(request) {
 
   const state = crypto.randomBytes(16).toString("hex");
   const res = NextResponse.redirect(buildAuthUrl(state));
-  res.cookies.set("g_oauth_state", state, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 600,
-    path: "/",
-  });
+  const opts = { httpOnly: true, secure: true, sameSite: "lax", maxAge: 600, path: "/" };
+  res.cookies.set("g_oauth_state", state, opts);
+  if (from === "welcome") res.cookies.set("oauth_from", "welcome", opts);
   return res;
 }

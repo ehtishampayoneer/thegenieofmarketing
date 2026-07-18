@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf } from "@/lib/business";
+import { BrandIcon } from "@/components/ui/BrandIcon";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -28,12 +29,36 @@ export default function WelcomePage() {
   const [secs, setSecs] = useState(0);
   const startRef = useRef(0);
   const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "" });
+  const [conns, setConns] = useState(null); // live connection status for the connect step
+
+  async function loadConns() {
+    try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
+  }
 
   useEffect(() => {
     (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.replace("/login");
+      if (!user) { router.replace("/login"); return; }
+
+      // Returning from an OAuth connect during onboarding — resume the flow at the
+      // connect step, reflect what's now connected, and restore what we know.
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("resume") === "connect") {
+        setPhase("connect");
+        loadConns();
+        try {
+          const p = await fetch("/api/profile", { cache: "no-store" }).then((x) => x.json());
+          if (p?.profile) {
+            setDetails((d) => ({
+              company_name: d.company_name || p.profile.company_name || "",
+              sender_email: d.sender_email || p.profile.sender_email || "",
+              logo_url: d.logo_url || p.profile.logo_url || "",
+            }));
+            if (p.profile.company_website) setUrl(p.profile.company_website);
+          }
+        } catch {}
+      }
     })();
   }, [router]);
 
@@ -113,7 +138,7 @@ export default function WelcomePage() {
     try { if (entity?.type) await fetch("/api/entity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, type: entity.type }) }); } catch {}
     try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
   }
-  async function toConnect() { setBusy(true); await markDone(); setBusy(false); setPhase("connect"); }
+  async function toConnect() { setBusy(true); await markDone(); setBusy(false); setPhase("connect"); loadConns(); }
   function toDetails() { setPhase("details"); }
   async function saveDetails() {
     setBusy(true);
@@ -135,8 +160,8 @@ export default function WelcomePage() {
         )}
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 pb-16" style={{ position: "relative", zIndex: 1 }}>
-        <div className="w-full" style={{ maxWidth: phase === "reveal" ? 640 : 560 }}>
+      <div className="flex-1 flex items-center justify-center px-6 sm:px-10 lg:px-16 pb-16" style={{ position: "relative", zIndex: 1 }}>
+        <div className="w-full" style={{ maxWidth: ["reveal", "connect", "details", "ready"].includes(phase) ? 1120 : 620 }}>
 
           {phase === "intro" && (
             <div className="text-center onb-rise">
@@ -187,47 +212,48 @@ export default function WelcomePage() {
           )}
 
           {phase === "reveal" && data && (
-            <div className="onb-rise">
-              <p className="text-[13px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
-                <span style={{ fontSize: 14 }}>✦</span> Done — that took {Math.max(secs, 12)} seconds. I did the rest.
-              </p>
-              <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(28px,4vw,42px)", lineHeight: 1.08, letterSpacing: "-.028em", textWrap: "balance" }}>
-                I’ve met {data.ai?.businessName || host}. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s how I’ll grow you.</span>
-              </h1>
-
-              {data.ai?.summary && (
-                <p className="mt-4 text-[15.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55, maxWidth: 560 }}>{data.ai.summary}</p>
-              )}
+            <div className="onb-rise lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
+              <div>
+                <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
+                  <span style={{ fontSize: 15 }}>✦</span> Done — that took {Math.max(secs, 12)} seconds. I did the rest.
+                </p>
+                <h1 className="mt-4 font-extrabold tracking-tight" style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
+                  I’ve met {data.ai?.businessName || host}. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s how I’ll grow you.</span>
+                </h1>
+                {data.ai?.summary && (
+                  <p className="mt-5 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>{data.ai.summary}</p>
+                )}
+                {entity?.label && (
+                  <p className="mt-4 text-[14.5px]" style={{ color: "var(--onb-muted)" }}>
+                    I’ll grow you as a <span style={{ color: "var(--onb-dawn)", fontWeight: 600 }}>{entity.label}</span>. You can change that anytime.
+                  </p>
+                )}
+                <div className="mt-8 flex items-center gap-4 flex-wrap">
+                  <button onClick={toConnect} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
+                    {busy ? "One sec…" : "Next: connect my accounts →"}
+                  </button>
+                </div>
+              </div>
 
               {/* what I already started — real kickoff */}
-              <div className="mt-6" style={{ borderRadius: 18, padding: "20px 20px 18px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
-                <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}>Already working — right now</p>
-                <div className="mt-3 flex flex-col gap-2.5">
+              <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
+                <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working — right now</p>
+                <div className="mt-5 flex flex-col gap-4">
                   {[
                     ["Deriving your keyword strategy", "reading your market"],
                     ["Hunting high-intent buyers across Reddit, Quora & more", "drafting your replies"],
                     ["Checking whether AI recommends you", "closing the gaps"],
                   ].map(([t, s], i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="mg-live-dot" style={{ background: "var(--onb-live)" }} />
-                      <span className="text-[14px]" style={{ color: "var(--onb-fg)" }}>{t}</span>
-                      <span className="text-[12.5px] ml-auto" style={{ color: "var(--onb-subtle)" }}>{s}</span>
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="onb-spinner" style={{ marginTop: 3 }} />
+                      <span className="flex-1">
+                        <span className="block text-[15.5px]" style={{ color: "var(--onb-fg)", lineHeight: 1.35 }}>{t}</span>
+                        <span className="block text-[13px]" style={{ color: "var(--onb-subtle)" }}>{s}</span>
+                      </span>
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {entity?.label && (
-                <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-muted)" }}>
-                  I’ll grow you as a <span style={{ color: "var(--onb-dawn)", fontWeight: 600 }}>{entity.label}</span>. You can change that anytime.
-                </p>
-              )}
-
-              <div className="mt-6 flex items-center gap-3 flex-wrap">
-                <button onClick={toConnect} disabled={busy} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>
-                  {busy ? "One sec…" : "Next: connect my accounts →"}
-                </button>
-                <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</span>
+                <p className="mt-6 pt-5 text-[13px]" style={{ borderTop: "1px solid var(--onb-hair)", color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</p>
               </div>
             </div>
           )}
@@ -236,20 +262,27 @@ export default function WelcomePage() {
           {phase === "connect" && (
             <div className="onb-rise">
               <StepDots step={2} />
-              <p className="mt-4 text-[13px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 14 }}>✦</span> Step 2 of 4 · Connect</p>
-              <h1 className="mt-2 font-extrabold tracking-tight" style={{ fontSize: "clamp(25px,4vw,38px)", lineHeight: 1.1, letterSpacing: "-.028em", textWrap: "balance" }}>
-                Give me hands. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Connect your accounts so I can publish and measure, not just draft.</span>
-              </h1>
-              <div className="mt-6 flex flex-col gap-2.5">
-                <ConnectRow icon="G" label="Google (Search Console + Analytics)" sub="Your real rankings and the traffic I drive" href="/api/connect/google/start" cta="Connect" />
-                <ConnectRow icon="W" label="WordPress" sub="I publish approved articles straight to your blog" href="/connections" cta="Set up" />
-                <ConnectRow icon="X" label="X (Twitter)" sub="I post approved tweets and threads for you" href="/api/connect/x/start" cta="Connect" />
+              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
+                <div className="lg:sticky lg:top-16">
+                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 2 of 4 · Connect</p>
+                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                    Give me hands.
+                  </h1>
+                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>Connect what you have so I can publish and measure, not just draft. Connect one, come right back here for the next.</p>
+                  <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-subtle)", lineHeight: 1.5 }}>Nothing publishes without your approval. You can change these anytime in Connections.</p>
+                </div>
+                <div className="mt-8 lg:mt-0 flex flex-col gap-3">
+                  <ConnectRow brand="google" label="Google" sub="Real rankings, traffic, and send outreach from your Gmail" href="/api/connect/google/start?from=welcome" cta="Connect" connected={conns?.google?.connected} />
+                  <WordPressInline connected={conns?.wordpress?.connected} onConnected={loadConns} />
+                  <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads and open X ready — you tap post" href="/api/connect/x/start?from=welcome" cta="Connect" connected={conns?.x?.connected} />
+                  <ConnectRow brand="linkedin" label="LinkedIn" sub="I draft posts for you — you post them, no login needed" ready />
+                  <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies — you post" ready />
+                </div>
               </div>
-              <div className="mt-6 flex items-center gap-4 flex-wrap">
-                <button onClick={toDetails} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>Next: your details →</button>
-                <button onClick={toDetails} style={{ fontSize: 13, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>I’ll connect these later</button>
+              <div className="mt-10 flex items-center gap-5 flex-wrap">
+                <button onClick={toDetails} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>Next: your details →</button>
+                <button onClick={toDetails} style={{ fontSize: 14, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>I’ll connect these later</button>
               </div>
-              <p className="mt-3 text-[12px]" style={{ color: "var(--onb-subtle)" }}>You can connect or change these anytime in Connections. Nothing publishes without your approval.</p>
             </div>
           )}
 
@@ -257,23 +290,28 @@ export default function WelcomePage() {
           {phase === "details" && (
             <div className="onb-rise">
               <StepDots step={3} />
-              <p className="mt-4 text-[13px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 14 }}>✦</span> Step 3 of 4 · Your details</p>
-              <h1 className="mt-2 font-extrabold tracking-tight" style={{ fontSize: "clamp(25px,4vw,38px)", lineHeight: 1.1, letterSpacing: "-.028em", textWrap: "balance" }}>
-                Who are you? <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>So every email and post I send goes out as you, with your logo.</span>
-              </h1>
-              <div className="mt-6 flex flex-col gap-2.5" style={{ maxWidth: 460 }}>
-                <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
-                <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
-                <div>
-                  <OnbField label="Logo URL (shown at the top of your emails)" value={details.logo_url} onChange={(v) => setDetails((d) => ({ ...d, logo_url: v }))} placeholder="https://yoursite.com/logo.png" />
-                  {details.logo_url ? <img src={details.logo_url} alt="logo" style={{ maxHeight: 40, marginTop: 8, borderRadius: 6, background: "#fff", padding: 4 }} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : null}
+              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
+                <div className="lg:sticky lg:top-16">
+                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 3 of 4 · Your details</p>
+                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                    Who are you?
+                  </h1>
+                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>So every email and post I send goes out as you, with your logo. I pre-filled what I could — fix anything.</p>
+                  <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-subtle)" }}>You can edit all of this later in Settings.</p>
+                </div>
+                <div className="mt-8 lg:mt-0 flex flex-col gap-4">
+                  <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
+                  <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
+                  <div>
+                    <OnbField label="Logo URL (shown at the top of your emails)" value={details.logo_url} onChange={(v) => setDetails((d) => ({ ...d, logo_url: v }))} placeholder="https://yoursite.com/logo.png" />
+                    {details.logo_url ? <img src={details.logo_url} alt="logo" style={{ maxHeight: 44, marginTop: 10, borderRadius: 8, background: "#fff", padding: 5 }} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : null}
+                  </div>
                 </div>
               </div>
-              <div className="mt-6 flex items-center gap-4 flex-wrap">
-                <button onClick={saveDetails} disabled={busy} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>{busy ? "Saving…" : "Finish setup →"}</button>
-                <button onClick={() => setPhase("connect")} style={{ fontSize: 13, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>← Back</button>
+              <div className="mt-10 flex items-center gap-5 flex-wrap">
+                <button onClick={saveDetails} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>{busy ? "Saving…" : "Finish setup →"}</button>
+                <button onClick={() => setPhase("connect")} style={{ fontSize: 14, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>← Back</button>
               </div>
-              <p className="mt-3 text-[12px]" style={{ color: "var(--onb-subtle)" }}>You can edit all of this later in Settings.</p>
             </div>
           )}
 
@@ -281,27 +319,32 @@ export default function WelcomePage() {
           {phase === "ready" && (
             <div className="onb-rise">
               <StepDots step={4} />
-              <div className="mt-4 flex items-center gap-3"><ApertureMark size={44} live /><p className="text-[13px] font-mono" style={{ color: "var(--onb-live)" }}>Step 4 of 4 · You’re all set</p></div>
-              <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(26px,4vw,40px)", lineHeight: 1.08, letterSpacing: "-.028em", textWrap: "balance" }}>
-                You’re hired me. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s what I’ll do from now on.</span>
-              </h1>
-              <div className="mt-6" style={{ borderRadius: 18, padding: "20px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-                <div className="flex flex-col gap-3.5">
-                  {[
-                    ["Every night", "I find high-intent buyers, write your content and outreach, and check where you rank."],
-                    ["Every morning", "You wake up to a short list of ready work — articles, replies, posts — waiting for your one-tap approval."],
-                    ["Nothing goes out without you", "I draft; you approve. On social I open the post ready, you tap send. Your accounts stay safe."],
-                    ["Ask me anything", "Open Talk to Genie (⌘K) for progress, tips, or to have me build a full Meta / Google / social campaign plan."],
-                  ].map(([t, s], i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="mg-live-dot" style={{ background: "var(--onb-live)", marginTop: 6 }} />
-                      <span><span className="text-[14px] font-semibold" style={{ color: "var(--onb-fg)" }}>{t}. </span><span className="text-[13.5px]" style={{ color: "var(--onb-muted)" }}>{s}</span></span>
-                    </div>
-                  ))}
+              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
+                <div>
+                  <div className="flex items-center gap-3"><ApertureMark size={48} live /><p className="text-[13.5px] font-mono" style={{ color: "var(--onb-live)" }}>Step 4 of 4 · You’re all set</p></div>
+                  <h1 className="mt-4 font-extrabold tracking-tight" style={{ fontSize: "clamp(32px,4.4vw,50px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
+                    You’ve hired me. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s what happens now.</span>
+                  </h1>
+                  <p className="mt-5 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>You’ll land on your command center — where you see what I’m doing and approve the work I’ve lined up for you.</p>
+                  <div className="mt-8 flex items-center gap-4 flex-wrap">
+                    <button onClick={enterApp} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>Enter my command center →</button>
+                  </div>
                 </div>
-              </div>
-              <div className="mt-6 flex items-center gap-4 flex-wrap">
-                <button onClick={enterApp} className="onb-cta px-7 text-[15.5px]" style={{ height: 54 }}>Enter my command center →</button>
+                <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
+                  <div className="flex flex-col gap-5">
+                    {[
+                      ["Every night", "I find high-intent buyers, write your content and outreach, and check where you rank."],
+                      ["Every morning", "You wake up to a short list of ready work — articles, replies, posts — waiting for your one-tap approval."],
+                      ["Nothing goes out without you", "I draft; you approve. On social I open the post ready, you tap send. Your accounts stay safe."],
+                      ["Ask me anything", "Open Talk to Genie (⌘K) for progress, tips, or to have me build a full Meta / Google / social campaign plan."],
+                    ].map(([t, s], i) => (
+                      <div key={i} className="flex items-start gap-3.5">
+                        <span className="mg-live-dot" style={{ background: "var(--onb-live)", marginTop: 7 }} />
+                        <span><span className="text-[15.5px] font-semibold" style={{ color: "var(--onb-fg)" }}>{t}. </span><span className="text-[14.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>{s}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -312,16 +355,75 @@ export default function WelcomePage() {
   );
 }
 
-function ConnectRow({ icon, label, sub, href, cta }) {
+const rowBox = (connected) => ({
+  display: "flex", alignItems: "center", gap: 15, padding: "16px 18px", borderRadius: 16,
+  background: connected ? "rgba(79,224,166,.06)" : "var(--onb-panel)",
+  border: `1px solid ${connected ? "rgba(79,224,166,.4)" : "var(--onb-hair)"}`, textDecoration: "none",
+});
+
+function RowBody({ brand, label, sub }) {
   return (
-    <a href={href} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)", textDecoration: "none" }}>
-      <span style={{ width: 34, height: 34, borderRadius: 9, flex: "none", background: "#20293a", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "var(--onb-dawn)" }}>{icon}</span>
+    <>
+      <BrandIcon brand={brand} size={22} />
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--onb-fg)" }}>{label}</span>
-        <span style={{ display: "block", fontSize: 12, color: "var(--onb-subtle)" }}>{sub}</span>
+        <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, color: "var(--onb-fg)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: 13, color: "var(--onb-subtle)", lineHeight: 1.4 }}>{sub}</span>
       </span>
-      <span className="onb-ghost" style={{ padding: ".45rem .9rem", fontSize: 13, fontWeight: 600 }}>{cta}</span>
+    </>
+  );
+}
+
+function ConnectedTag() {
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, flex: "none", fontSize: 13, fontWeight: 600, color: "var(--onb-live)" }}><Check /> Connected</span>;
+}
+
+// Google / X — one-tap OAuth. Returns to this step when done (?from=welcome).
+function ConnectRow({ brand, label, sub, href, cta, connected, ready }) {
+  if (connected) return <div style={rowBox(true)}><RowBody brand={brand} label={label} sub={sub} /><ConnectedTag /></div>;
+  if (ready) return <div style={rowBox(false)}><RowBody brand={brand} label={label} sub={sub} /><span className="onb-ghost" style={{ padding: ".4rem .8rem", fontSize: 12.5, fontWeight: 600, cursor: "default" }}>I draft, you post</span></div>;
+  return (
+    <a href={href} style={rowBox(false)}>
+      <RowBody brand={brand} label={label} sub={sub} />
+      <span className="onb-cta" style={{ padding: ".55rem 1.1rem", fontSize: 14, fontWeight: 700, flex: "none" }}>{cta}</span>
     </a>
+  );
+}
+
+// WordPress — inline app-password form so you never leave the flow.
+function WordPressInline({ connected, onConnected }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ siteUrl: "", username: "", appPassword: "" });
+  const [state, setState] = useState("idle");
+  async function connect() {
+    setState("saving");
+    try {
+      const r = await fetch("/api/connect/wordpress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+      const j = await r.json();
+      if (j.ok) { setState("done"); setOpen(false); onConnected?.(); }
+      else setState("error");
+    } catch { setState("error"); }
+  }
+  if (connected) return <div style={rowBox(true)}><RowBody brand="wordpress" label="WordPress" sub="Genie auto-publishes approved articles to your blog" /><ConnectedTag /></div>;
+  return (
+    <div style={{ ...rowBox(false), flexDirection: "column", alignItems: "stretch" }}>
+      <div className="flex items-center gap-4">
+        <RowBody brand="wordpress" label="WordPress" sub="I publish approved articles straight to your blog" />
+        <button onClick={() => setOpen((v) => !v)} className={open ? "onb-ghost" : "onb-cta"} style={{ padding: ".55rem 1.1rem", fontSize: 14, fontWeight: 700, flex: "none" }}>{open ? "Close" : "Set up"}</button>
+      </div>
+      {open && (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {[["siteUrl", "Site URL — https://yourblog.com"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
+            <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
+              className="onb-input px-3.5 text-[14px]" style={{ height: 46 }} />
+          ))}
+          <div className="flex items-center gap-3">
+            <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
+            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF8A7E" }}>Couldn’t connect — check your details.</span>}
+          </div>
+          <p className="text-[11.5px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+        </div>
+      )}
+    </div>
   );
 }
 
