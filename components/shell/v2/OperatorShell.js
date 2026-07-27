@@ -58,6 +58,7 @@ export default function OperatorShell({ active = "today", children }) {
   const [counts, setCounts] = useState({ approvals: 0 });
   const [user, setUser] = useState({ name: "", entity: "" });
   const [chatOpen, setChatOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false); // mobile rail drawer
   const [missingConns, setMissingConns] = useState([]);
   const [connDismissed, setConnDismissed] = useState(false);
 
@@ -68,7 +69,7 @@ export default function OperatorShell({ active = "today", children }) {
   }, []);
 
   useEffect(() => {
-    try { const t = localStorage.getItem("mg-theme"); if (t === "night" || t === "day") setTheme(t); } catch {}
+    try { const t = localStorage.getItem("mg-theme"); if (t === "night" || t === "day") { setTheme(t); applyTheme(t); } } catch {}
     (async () => {
       const { data, live } = await fetchLive("/api/activity");
       if (live && Array.isArray(data?.activity) && data.activity.length) {
@@ -97,7 +98,10 @@ export default function OperatorShell({ active = "today", children }) {
 
   function dismissConnect() { setConnDismissed(true); try { sessionStorage.setItem("mg-connect-dismissed", "1"); } catch {} }
 
-  function pick(t) { setTheme(t); try { localStorage.setItem("mg-theme", t); } catch {} }
+  // Keep <html data-theme> authoritative so the pre-paint script (in layout) and
+  // the in-app toggle never disagree — this is what kills the day→night flash.
+  function applyTheme(t) { try { if (t === "night") document.documentElement.setAttribute("data-theme", "night"); else document.documentElement.removeAttribute("data-theme"); } catch {} }
+  function pick(t) { setTheme(t); applyTheme(t); try { localStorage.setItem("mg-theme", t); } catch {} }
 
   // Genie's presence state — driven by REAL data, never decoration. Approvals
   // waiting wins (you have a decision to make); else a live stream = working;
@@ -105,52 +109,76 @@ export default function OperatorShell({ active = "today", children }) {
   // surface yet, so we don't fake it.
   const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
 
+  // The rail's content — rendered once, used in the desktop aside AND the mobile
+  // drawer, so navigation exists on every screen size (phones had none before).
+  const railInner = (
+    <>
+      <div className="px-4 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--hair)" }}>
+        <GenieLockup size={34} live />
+        <button onClick={() => setNavOpen(false)} className="md:hidden mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 4 }} aria-label="Close menu"><Icon.x size={18} /></button>
+      </div>
+      <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">
+        {NAV.map((item, i) =>
+          item.section ? (
+            <p key={i} className="px-2.5 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
+          ) : (
+            <a key={item.id} href={hrefFor(item.id)} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
+              <item.icon size={18} />
+              <span>{item.label}</span>
+              {(item.countKey ? counts[item.countKey] : item.count) != null && (
+                <span className="mg-rail-count">{item.countKey ? counts[item.countKey] : item.count}</span>
+              )}
+            </a>
+          )
+        )}
+      </nav>
+
+      <div className="px-3 pb-3">
+        <div className="mg-surface-quiet p-3.5">
+          <div className="flex items-center gap-2">
+            <span className="mg-live-dot" style={activity.length ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
+            <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{activity.length ? "Genie is working" : "Genie is standing by"}</span>
+          </div>
+          <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
+        </div>
+      </div>
+
+      <a href="/settings" className="mx-3 mb-3 flex items-center gap-2.5 p-2 rounded-xl mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+        <span className="mg-tile" style={{ width: 32, height: 32, background: "var(--primary)", color: "var(--on-primary)", fontSize: 12, fontWeight: 700 }}>{(user.name || "Y").charAt(0).toUpperCase()}</span>
+        <span className="text-left leading-tight flex-1 min-w-0">
+          <span className="block text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{user.name}</span>
+          <span className="block text-[11px] mg-subtle truncate">{user.entity || "Set up your entity"}</span>
+        </span>
+        <Icon.chevronRight size={15} />
+      </a>
+    </>
+  );
+
   return (
     <div className="mg" data-theme={theme === "night" ? "night" : undefined}
          style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "var(--font-ui)", overflow: "hidden" }}>
       <div className="flex-1 flex min-h-0">
-        {/* ── COMMAND RAIL ── */}
+        {/* ── COMMAND RAIL (desktop) ── */}
         <aside className="hidden md:flex flex-col shrink-0" style={{ width: 234, borderRight: "1px solid var(--hair)", background: "var(--surface)" }}>
-          <div className="px-4 py-4" style={{ borderBottom: "1px solid var(--hair)" }}><GenieLockup size={34} live /></div>
-          <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">
-            {NAV.map((item, i) =>
-              item.section ? (
-                <p key={i} className="px-2.5 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
-              ) : (
-                <a key={item.id} href={hrefFor(item.id)} className="mg-rail-item mg-focus" data-active={active === item.id}>
-                  <item.icon size={18} />
-                  <span>{item.label}</span>
-                  {(item.countKey ? counts[item.countKey] : item.count) != null && (
-                    <span className="mg-rail-count">{item.countKey ? counts[item.countKey] : item.count}</span>
-                  )}
-                </a>
-              )
-            )}
-          </nav>
-
-          <div className="px-3 pb-3">
-            <div className="mg-surface-quiet p-3.5">
-              <div className="flex items-center gap-2">
-                <span className="mg-live-dot" style={activity.length ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
-                <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{activity.length ? "Genie is working" : "Genie is standing by"}</span>
-              </div>
-              <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
-            </div>
-          </div>
-
-          <a href="/settings" className="mx-3 mb-3 flex items-center gap-2.5 p-2 rounded-xl mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-            <span className="mg-tile" style={{ width: 32, height: 32, background: "var(--primary)", color: "var(--on-primary)", fontSize: 12, fontWeight: 700 }}>{(user.name || "Y").charAt(0).toUpperCase()}</span>
-            <span className="text-left leading-tight flex-1 min-w-0">
-              <span className="block text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{user.name}</span>
-              <span className="block text-[11px] mg-subtle truncate">{user.entity || "Set up your entity"}</span>
-            </span>
-            <Icon.chevronRight size={15} />
-          </a>
+          {railInner}
         </aside>
+
+        {/* ── COMMAND RAIL (mobile drawer) ── */}
+        {navOpen && (
+          <div className="md:hidden" style={{ position: "fixed", inset: 0, zIndex: 50 }}>
+            <div onClick={() => setNavOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(3,6,12,.5)", backdropFilter: "blur(2px)" }} />
+            <aside className="flex flex-col mg-rise" style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "min(280px,86vw)", background: "var(--surface)", borderRight: "1px solid var(--hair)", boxShadow: "var(--shadow-3)" }}>
+              {railInner}
+            </aside>
+          </div>
+        )}
 
         {/* ── WORK-STREAM ── */}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="mg-chrome sticky top-0 z-20 flex items-center gap-3 px-6" style={{ height: 60 }}>
+          <header className="mg-chrome sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6" style={{ height: 60 }}>
+            <button onClick={() => setNavOpen(true)} className="md:hidden mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: -6 }} aria-label="Open menu">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            </button>
             <button onClick={() => setChatOpen(true)} className="mg-searchbar mg-focus" style={{ width: 340, maxWidth: "42vw" }}>
               <Icon.search size={16} />
               <span className="flex-1 text-left">Ask Genie, or tell it what to do…</span>

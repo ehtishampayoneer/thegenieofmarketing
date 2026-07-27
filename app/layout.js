@@ -17,7 +17,12 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {/* Set the saved theme before first paint so Night users never see a
+            flash of Day. The in-app toggle keeps <html data-theme> in sync. */}
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mg-theme')==='night')document.documentElement.setAttribute('data-theme','night');}catch(e){}" }} />
+        {children}
+      </body>
     </html>
   );
 }
