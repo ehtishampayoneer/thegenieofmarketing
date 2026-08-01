@@ -7,6 +7,7 @@
 // Auth-gated; POST only. Cannot be undone.
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,31 +22,39 @@ const TABLES = [
 ];
 
 export async function POST() {
+  // Verify the caller with their own session…
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
   const uid = user.id;
 
+  // …then wipe with the service role so RLS can never silently block a delete.
+  // Still strictly scoped to THIS user's rows (eq user_id / id).
+  const admin = createAdminClient();
+
   const deleted = {};
+  let hadErrors = false;
   for (const t of TABLES) {
     try {
-      const { error } = await supabase.from(t).delete().eq("user_id", uid);
-      deleted[t] = error ? `error: ${error.message}` : "cleared";
-    } catch (e) { deleted[t] = `error: ${e.message || "failed"}`; }
+      const { error } = await admin.from(t).delete().eq("user_id", uid);
+      if (error) { hadErrors = true; deleted[t] = `error: ${error.message}`; }
+      else deleted[t] = "cleared";
+    } catch (e) { hadErrors = true; deleted[t] = `error: ${e.message || "failed"}`; }
   }
 
   // Clear the business info too (but keep the row so the login survives), and
   // replay onboarding. This makes it genuinely brand-new for the project.
   try {
-    await supabase.from("profiles").update({
+    const { error } = await admin.from("profiles").update({
       onboarding_completed: false, setup_completed: false,
       company_name: null, company_pitch: null, company_website: null,
       company_phone: null, company_address: null,
       sender_name: null, sender_email: null, logo_url: null,
     }).eq("id", uid);
-  } catch {}
+    if (error) hadErrors = true;
+  } catch { hadErrors = true; }
 
-  return json({ ok: true, deleted, message: "Your account is reset. Head to /welcome to run your first scan." });
+  return json({ ok: true, hadErrors, deleted, message: "Your account is reset. Head to /welcome to run your first scan." });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
