@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf } from "@/lib/business";
 import { BrandIcon } from "@/components/ui/BrandIcon";
+import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -302,9 +303,9 @@ export default function WelcomePage() {
                 <div className="mt-8 lg:mt-0 flex flex-col gap-4">
                   <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
                   <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
-                  <div>
-                    <OnbField label="Logo URL (shown at the top of your emails)" value={details.logo_url} onChange={(v) => setDetails((d) => ({ ...d, logo_url: v }))} placeholder="https://yoursite.com/logo.png" />
-                    {details.logo_url ? <img src={details.logo_url} alt="logo" style={{ maxHeight: 44, marginTop: 10, borderRadius: 8, background: "#fff", padding: 5 }} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : null}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--onb-subtle)" }}>Logo (shown at the top of your emails)</span>
+                    <LogoUpload value={details.logo_url} onChange={(url) => setDetails((d) => ({ ...d, logo_url: url }))} buttonClassName="onb-ghost" mutedColor="var(--onb-subtle)" />
                   </div>
                 </div>
               </div>

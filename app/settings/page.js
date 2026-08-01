@@ -10,6 +10,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
+import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 import { createClient } from "@/lib/supabase/client";
 
 const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" };
@@ -52,7 +53,17 @@ export default function SettingsPage() {
     setResetting(true);
     try {
       const r = await fetch("/api/diagnostics/reset", { method: "POST" }).then((x) => x.json());
-      if (r.ok) { window.location.href = "/welcome"; return; }
+      if (r.ok) {
+        // Wipe Genie-only browser storage too (theme, dismissed banners) so the
+        // front end is as brand-new as the backend. Nothing outside the app.
+        try {
+          [localStorage, sessionStorage].forEach((store) => {
+            Object.keys(store).filter((k) => k.startsWith("mg-")).forEach((k) => store.removeItem(k));
+          });
+        } catch {}
+        window.location.href = "/welcome";
+        return;
+      }
     } catch {}
     setResetting(false);
     alert("Reset failed. Try again in a moment.");
@@ -80,9 +91,9 @@ export default function SettingsPage() {
               <Field label="What you sell (one line)" value={f.company_pitch} onChange={upd("company_pitch")} placeholder="An AR commerce marketplace for immersive product experiences" textarea />
               <Field label="Website" value={f.company_website} onChange={upd("company_website")} placeholder="holos.com" />
               <Field label="Phone (optional)" value={f.company_phone} onChange={upd("company_phone")} placeholder="+1 …" />
-              <div>
-                <Field label="Logo URL (shown at the top of your emails)" value={f.logo_url} onChange={upd("logo_url")} placeholder="https://yoursite.com/logo.png" />
-                {f.logo_url ? <img src={f.logo_url} alt="logo preview" style={{ maxHeight: 36, marginTop: 8, borderRadius: 6 }} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : null}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-medium mg-muted">Logo (shown at the top of your emails)</span>
+                <LogoUpload value={f.logo_url} onChange={(url) => { setF((p) => ({ ...p, logo_url: url })); setSaved(false); }} />
               </div>
             </div>
           </Card>
