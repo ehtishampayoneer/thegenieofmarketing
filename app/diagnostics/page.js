@@ -52,6 +52,25 @@ export default function DiagnosticsPage() {
         <EmptyState state="disconnected" icon={Icon.bolt} title="Sign in to see the engine" />
       ) : !d ? null : (
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Schema health — the database is edited by hand, so it can silently fall
+              behind the code. Name exactly what's missing instead of failing quietly. */}
+          {d.schema && !d.schema.ok && (
+            <Card className="p-5 lg:col-span-2" style={{ borderColor: "var(--signal-danger)", background: "var(--signal-danger-soft)" }}>
+              <SectionHead title="Your database is behind the app" hint={d.schema.fix} />
+              <div className="mt-3 flex flex-col gap-1">
+                {d.schema.missing.map((m) => (
+                  <Row key={m.name} ok={false} label={`${m.name}`} right={m.why} dim />
+                ))}
+              </div>
+            </Card>
+          )}
+          {d.schema?.ok && (
+            <Card className="p-5 lg:col-span-2">
+              <SectionHead title="Database schema" hint="Every table, column and function the app needs is present" />
+              <Row ok label="Schema up to date" right="ok" />
+            </Card>
+          )}
+
           {/* Engines */}
           <Card className="p-5">
             <SectionHead title="System status" hint="What each engine has produced for this account" />

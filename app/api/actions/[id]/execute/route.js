@@ -64,7 +64,7 @@ export async function POST(_request, { params }) {
     ? (Array.isArray(p.draft) ? p.draft.join("\n\n") : (p.text || p.draft || p.body || ""))
     : (p.body || "");
   const { guardContent } = await import("@/lib/publish-guard");
-  const guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, deep: true });
+  const guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true });
   if (guard.decision === "block") {
     await supabase.from("actions").update({ status: "needs_review", result: { blocked: true, reasons: guard.reasons, flags: guard.flags }, updated_at: new Date().toISOString() }).eq("id", action.id);
     try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "blocked", meta: { reasons: guard.reasons, flags: guard.flags, confidence: guard.confidence } }); } catch {}

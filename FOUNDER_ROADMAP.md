@@ -11,6 +11,46 @@ dependencies · effort · why · when to build.
 
 ---
 
+## 0. The north star & the wedge _(decided 2026-08-02)_
+
+### North-star metric
+**Clients who get their first attributed customer within 30 days.**
+
+Not signups, not articles published, not keywords tracked — those are activity, and
+activity is what a product optimises when it doesn't know if it works. This metric is
+the promise: someone with a product but no customers gets a customer. Every roadmap
+item below should be judged by whether it moves it.
+
+Supporting (leading) indicators, in order:
+1. **Time to first real finding** — minutes from signup to the AI-search verdict
+   (who AI recommends instead of them) and the first buyer conversation found.
+2. **Weekly visible win** — % of active clients who see something move in a week
+   (a rank climbing, an AI citation won, a reply landed). This is the churn defence:
+   SEO pays in months, users churn in weeks.
+3. **Coverage → ranking conversion** — of keywords Genie has covered with content,
+   how many actually climb. This measures whether the engine genuinely works.
+
+### The wedge: AI-search visibility
+"AI marketing employee" is a crowded, undifferentiated claim (Jasper, Copy.ai,
+AirOps, Surfer all make it). The defensible, *timely* wedge is the one thing
+incumbents haven't taken:
+
+> **Get recommended when your buyers ask ChatGPT.**
+
+Genie measures whether AI assistants cite the client for their real buyer questions,
+names who gets cited instead, and writes the AI-citable answer pages that win the
+citation — then re-scores to show whether it worked. Lead with this. SEO, content and
+outreach are how the wedge is *delivered*, not the headline.
+
+**Honest limits to state publicly** (they build trust rather than cost sales, and
+they prevent the churn that comes from expecting overnight results): it's a climb of
+weeks-to-months, not a switch; it amplifies a real product rather than rescuing a
+bad one; nobody can force an AI to name you — you can only become the most citable
+answer; and it needs ~10 minutes a day to approve drafts and post community replies
+(deliberate: auto-posting to social gets accounts banned).
+
+---
+
 ## A. Company-operations systems (running Genie as a business)
 
 ### A1. Marketing Genie HQ — Internal Admin Platform
