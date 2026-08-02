@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getEvents } from "@/lib/events";
+import { swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,17 @@ export async function GET() {
   // select("*") on purpose: naming optional columns (meta, gsc_site) here means a
   // single missing column would throw and (via the catch) report EVERY integration
   // as disconnected — even ones that saved fine. "*" is resilient to schema drift.
-  try { const { data } = await supabase.from("connections").select("*").eq("user_id", user.id); conns = data || []; } catch {}
+  // If the read genuinely fails we must say "couldn't check", NOT "not connected" —
+  // reporting a false negative is what sent the owner chasing a phantom OAuth bug.
+  let readError = null;
+  try {
+    const { data, error } = await supabase.from("connections").select("*").eq("user_id", user.id);
+    if (error) throw error;
+    conns = data || [];
+  } catch (e) {
+    readError = e?.message || "Couldn't read your connections.";
+    swallow("connections.status.read", e, { userId: user.id });
+  }
   const byProvider = Object.fromEntries(conns.map((c) => [c.provider, c]));
 
   const google = byProvider.google;
@@ -27,10 +38,11 @@ export async function GET() {
   try {
     const t = await getEvents(supabase, { userId: user.id, types: ["traffic.recorded"], limit: 1 });
     ga4 = !!google?.meta?.ga4_property || t.length > 0;
-  } catch {}
+  } catch (e) { swallow("connections.status.ga4", e, { userId: user.id }); }
   // Are we receiving real revenue? (any conversion event from a commerce webhook)
   let commerce = false;
-  try { const c = await getEvents(supabase, { userId: user.id, types: ["conversion.recorded"], limit: 1 }); commerce = c.length > 0; } catch {}
+  try { const c = await getEvents(supabase, { userId: user.id, types: ["conversion.recorded"], limit: 1 }); commerce = c.length > 0; }
+  catch (e) { swallow("connections.status.commerce", e, { userId: user.id }); }
 
   const integrations = {
     google: { label: "Google", connected: !!google, category: "measure" },
@@ -50,7 +62,9 @@ export async function GET() {
     durable_queue: !!process.env.QSTASH_TOKEN,
   };
 
-  return json({ ok: true, integrations, capabilities });
+  // degraded = we could not read your connections, so "connected: false" below is
+  // NOT trustworthy. The UI must say "couldn't check" rather than "not connected".
+  return json({ ok: true, integrations, capabilities, degraded: !!readError, error: readError });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

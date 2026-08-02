@@ -35,12 +35,14 @@ export async function GET(request) {
     return {
       keyword: k.keyword, volume, competition, difficulty,
       cpc: estimateCpc(k.intent, competition),
-      trend: real ? "up" : "flat",
+      // "flat" = direction unknown. Real direction needs a period-over-period compare
+      // from keyword_history; we never claim "up" just because some data exists.
+      trend: "flat",
       intent: k.intent || "informational", isQuestion,
       opportunity, easyWin: competition < 45 && volume >= 200, highPotential: opportunity >= 45,
-      spark: sparkFrom(k.keyword, real ? "up" : "flat"),
-      ranking: real ? Math.round(k.gsc_position || 0) || null : (volume > 0 ? Math.max(3, Math.min(98, Math.round(100 - opportunity + competition / 3))) : null),
-      rankChange: real ? (k.gsc_clicks > 0 ? Math.ceil(k.gsc_clicks % 12) : 0) : 0,
+      // Rank comes ONLY from real Search Console data — never invented. No rank, no number.
+      ranking: real ? Math.round(k.gsc_position || 0) || null : null,
+      rankChange: 0,
       inPortfolio: true, real,
       coverage: k.coverage || 0,
     };
@@ -58,14 +60,6 @@ function estimateCpc(intent, comp) {
   const base = intent === "transactional" ? 3.2 : intent === "commercial" ? 1.8 : 0.6;
   return Math.round((base + comp / 40) * 100) / 100;
 }
-function sparkFrom(seed, trend) {
-  let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt(0)) % 1000;
-  const pts = []; let v = 30 + (h % 30);
-  const drift = trend === "up" ? 3 : trend === "down" ? -3 : 0;
-  for (let i = 0; i < 12; i++) { h = (h * 17 + 7) % 1000; v += drift + ((h % 16) - 8); v = Math.max(8, Math.min(92, v)); pts.push(Math.round(v)); }
-  return pts;
-}
-
 export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

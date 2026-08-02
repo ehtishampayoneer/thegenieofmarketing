@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { exchangeCode, getGoogleEmail } from "@/lib/google";
 import { createClient } from "@/lib/supabase/server";
+import { logger, swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +39,8 @@ export async function GET(request) {
   let tokens;
   try {
     tokens = await exchangeCode(code);
-  } catch {
+  } catch (e) {
+    swallow("connect.google.exchange", e, { userId: user.id });
     return back("?connect_error=exchange");
   }
 
@@ -71,7 +73,14 @@ export async function GET(request) {
     { onConflict: "user_id,provider" }
   );
 
-  if (error) return back("?connect_error=save");
+  // The save is the step that silently broke before: a missing column on
+  // `connections` makes this fail, the user sees "not connected", and nothing
+  // anywhere explains why. Log the real Postgres error.
+  if (error) {
+    swallow("connect.google.save", error, { userId: user.id, hint: "run db/setup.sql — connections columns/unique index" });
+    return back("?connect_error=save");
+  }
+  logger.info("connect.google.ok", { userId: user.id, hasRefresh: !!refresh });
 
   const res = back("?connected=1");
   res.cookies.set("g_oauth_state", "", { maxAge: 0, path: "/" }); // clear state

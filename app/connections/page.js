@@ -15,6 +15,16 @@ import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
+// Plain-language reasons a Google connect can fail. Before this existed, the OAuth
+// callback redirected back with ?connect_error=… and the page showed NOTHING — the
+// owner saw "not connected" after granting access, with no way to know why.
+const CONNECT_ERRORS = {
+  state: "Security check failed — the sign-in took too long, or cookies were blocked. Please try connecting again.",
+  exchange: "Google rejected the sign-in. Check that the redirect URL in your Google Cloud console exactly matches this site, then try again.",
+  save: "Google signed you in, but Genie couldn't save the connection. This usually means the database is missing recent columns — run db/setup.sql in Supabase, then reconnect.",
+  access_denied: "You declined the permissions, so Genie can't read your data. Connect again and approve access.",
+};
+
 const FALLBACK = {
   integrations: {
     search_console: { label: "Google Search Console", connected: false, category: "measure" },
@@ -30,11 +40,27 @@ export default function ConnectionsPage() {
   const [d, setD] = useState(FALLBACK);
   const [state, setState] = useState("loading");
   const [ingest, setIngest] = useState(null);
+  const [notice, setNotice] = useState(null);
+
+  // Report the outcome of an OAuth round-trip, in words the owner can act on.
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const err = p.get("connect_error");
+      if (err) setNotice({ tone: "error", text: CONNECT_ERRORS[err] || `Couldn't connect (${err}). Please try again.` });
+      else if (p.get("connected")) setNotice({ tone: "ok", text: "Connected. Genie can now read your real data." });
+      if (err || p.get("connected")) window.history.replaceState({}, "", window.location.pathname);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     (async () => {
       const { data, live } = await fetchLive("/api/connections/status");
-      if (live && data?.integrations) { setD(data); setState("real"); } else setState("disconnected");
+      if (live && data?.integrations) {
+        setD(data); setState("real");
+        // "Couldn't check" is NOT the same as "not connected" — never imply the latter.
+        if (data.degraded) setNotice({ tone: "error", text: "Genie couldn't read your connections, so the statuses below may be wrong. This usually means the database needs db/setup.sql run in Supabase." });
+      } else setState("disconnected");
       const imp = await fetchLive("/api/impact");
       if (imp.live && imp.data?.ingest) setIngest(imp.data.ingest);
     })();
@@ -50,6 +76,20 @@ export default function ConnectionsPage() {
         title="Connect your world."
         accent="Genie does the rest."
       />
+
+      {notice && (
+        <div className="mb-4 p-3.5 rounded-lg text-[13px] flex items-start gap-2.5" style={{
+          background: notice.tone === "error" ? "var(--signal-danger-soft)" : "var(--signal-live-soft)",
+          border: `1px solid ${notice.tone === "error" ? "var(--signal-danger)" : "var(--signal-live)"}`,
+          color: "var(--fg)",
+        }}>
+          <span className="shrink-0 mt-0.5" style={{ color: notice.tone === "error" ? "var(--signal-danger)" : "var(--signal-live-ink)" }}>
+            {notice.tone === "error" ? <Icon.x size={16} /> : <Icon.check size={16} />}
+          </span>
+          <span className="flex-1">{notice.text}</span>
+          <button onClick={() => setNotice(null)} className="shrink-0 mg-subtle mg-focus" style={{ fontSize: 16, lineHeight: 1 }} aria-label="Dismiss">×</button>
+        </div>
+      )}
 
       {/* Measure */}
       <Group title="Measure your growth" sub="So Genie’s impact becomes real numbers, not estimates.">
