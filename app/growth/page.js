@@ -88,7 +88,8 @@ function Growth() {
   const allTaps = (d.blocks || []).flatMap((b) => (b.items || []).map((it) => ({ ...it, platform: b.platform, owned: b.owned })));
   const heroTap = allTaps[0] || null;
   const restTaps = allTaps.slice(1);
-  const activeShown = active.slice(0, 8);
+  const waves = buildWaves(active);
+  const totalEst = active.reduce((s, k) => s + estVolume(k), 0);
   const winning = d.results?.winning || 0;
 
   return (
@@ -132,27 +133,24 @@ function Growth() {
         ) : (
           <>
             <div className="mg-statstrip">
-              <StatCell value={active.length} label="Keywords tracked" />
+              <StatCell value={active.length} label="Keywords found" />
+              <StatCell value={waves[0].items.length} label="Easy wins — attacking first" accent />
+              <StatCell value={fmtNum(totalEst)} label="Est. searches in reach /mo" accent />
               <StatCell value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
-              <StatCell value={active.filter((k) => (k.competition ?? 50) < 40).length} label="Easy wins" accent />
-              <StatCell value={active.filter((k) => (k.gsc_impressions || 0) > 0).length} label="Bringing real traffic" accent />
+            </div>
+
+            <p className="text-[13.5px] mg-muted" style={{ maxWidth: 700 }}>
+              I don’t chase everything at once. I win the easy, high-intent searches first to build your authority — then use that momentum to take the bigger, harder terms. Here’s the plan:
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {waves.map((w) => <WaveCard key={w.key} wave={w} />)}
             </div>
 
             <p className="text-[12px] mg-subtle">Traffic and difficulty are Genie’s estimates, chosen for a mix of demand, winnability, and buyer value. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google</a> for your real search volumes and rankings.</p>
 
             {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {activeShown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
-            </div>
-            {active.length > activeShown.length && (
-              <details>
-                <summary className="cursor-pointer text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Show all {active.length} keywords</summary>
-                <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {active.slice(8).map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
-                </div>
-              </details>
-            )}
             {retired.length > 0 && (
               <details>
                 <summary className="cursor-pointer text-[12.5px] mg-subtle mg-focus">Retired keywords ({retired.length}) — Genie stopped using these</summary>
@@ -311,6 +309,82 @@ function MiniStat({ value, label, tint }) {
       <p className="text-[22px] font-bold leading-none mg-num" style={{ color: tint || "var(--fg)" }}>{value}</p>
       <p className="mt-1 text-[11px] mg-subtle">{label}</p>
     </div>
+  );
+}
+
+// ── GENIE'S KEYWORD GAME PLAN ──
+// Turns the flat keyword list into a sequenced strategy the user can trust:
+// win the easy, high-intent terms first (fast ranking → authority), then medium,
+// then the hard high-traffic head terms. Waves are by difficulty band so the
+// story ("start winnable, climb to the big traffic") is honest and legible.
+
+// Rough monthly-search estimate: real Google volume if we have it, else derived
+// from Genie's relative potential. Clearly an estimate until GSC/Ads is connected.
+function estVolume(k) {
+  const real = Number(k.volume);
+  if (real > 0) return real;
+  const p = k.traffic_potential ?? 0;
+  if (p >= 85) return 22000;
+  if (p >= 70) return 8000;
+  if (p >= 55) return 2500;
+  if (p >= 45) return 900;
+  if (p >= 35) return 350;
+  return 120;
+}
+
+function fmtNum(n) {
+  n = Number(n) || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k";
+  return String(Math.round(n));
+}
+
+function buildWaves(active) {
+  const withEst = active
+    .map((k) => ({ ...k, _vol: estVolume(k), _comp: k.competition ?? 50 }))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  return [
+    { key: "w1", n: 1, title: "Quick wins", when: "Weeks 1–4", tone: "live", band: "Easy",
+      why: "Low-competition, high-intent searches I can rank you for fast — this builds the authority that unlocks everything after.",
+      items: withEst.filter((k) => k._comp < 40) },
+    { key: "w2", n: 2, title: "Build momentum", when: "Month 2", tone: "warn", band: "Medium",
+      why: "Medium-competition terms. The trust earned in Wave 1 makes these winnable now.",
+      items: withEst.filter((k) => k._comp >= 40 && k._comp <= 65) },
+    { key: "w3", n: 3, title: "Go for the big traffic", when: "Month 3+", tone: "danger", band: "Hard",
+      why: "The high-demand head terms. We attack these once you've proven relevance — that's how you win the hard ones.",
+      items: withEst.filter((k) => k._comp > 65) },
+  ];
+}
+
+function WaveCard({ wave }) {
+  const [open, setOpen] = useState(false);
+  const col = diffColor(wave.tone), bg = diffBg(wave.tone);
+  const vol = wave.items.reduce((s, k) => s + (k._vol || 0), 0);
+  const shown = open ? wave.items : wave.items.slice(0, 4);
+  return (
+    <Card className="p-5" style={{ borderLeft: `3px solid ${col}` }}>
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className="flex items-center justify-center font-bold mg-num" style={{ width: 26, height: 26, borderRadius: 999, fontSize: 13, color: col, background: bg }}>{wave.n}</span>
+        <p className="text-[15.5px] font-bold" style={{ color: "var(--fg)" }}>{wave.title}</p>
+        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ color: col, background: bg }}>{wave.when}</span>
+        <span className="ml-auto text-[12px] mg-subtle mg-num">{wave.items.length} keyword{wave.items.length === 1 ? "" : "s"}{vol > 0 ? ` · ~${fmtNum(vol)}/mo est.` : ""}</span>
+      </div>
+      <p className="mt-2 text-[13px] mg-muted" style={{ maxWidth: 640 }}>{wave.why}</p>
+      {wave.items.length === 0 ? (
+        <p className="mt-3 text-[12.5px] mg-subtle">None yet — I’ll add {wave.band.toLowerCase()} targets here as your authority grows.</p>
+      ) : (
+        <>
+          <div className="mt-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {shown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+          </div>
+          {wave.items.length > 4 && (
+            <button onClick={() => setOpen((v) => !v)} className="mt-3 text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>
+              {open ? "Show less" : `Show all ${wave.items.length} →`}
+            </button>
+          )}
+        </>
+      )}
+    </Card>
   );
 }
 
