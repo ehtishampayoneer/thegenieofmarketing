@@ -44,7 +44,7 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
-  const { host, ai, productOverride } = body || {};
+  const { host, ai, productOverride, rebuild } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
   // Layer 0 (free): ground candidates in REAL Google searches via Autocomplete.
@@ -100,10 +100,16 @@ export async function POST(request) {
   }).filter((r) => r.keyword);
 
   // Upsert (Genie can re-derive; keep coverage + real GSC data on existing rows).
-  // If the owner corrected the product, wipe the wrong keywords first so the
-  // fresh, correct set fully replaces them (not merged).
-  if (productOverride) {
-    await supabase.from("keywords").delete().eq("user_id", user.id).eq("host", host);
+  // If the owner corrected the product OR asked for a clean rebuild, wipe the old
+  // Genie-derived keywords first so the fresh, correct set fully replaces them
+  // (not merged with the stale ones). Keeps keywords the owner added by hand.
+  if (productOverride || rebuild) {
+    let del = supabase.from("keywords").delete().eq("user_id", user.id).eq("host", host);
+    // On a plain rebuild, keep keywords the owner added by hand (source='user');
+    // clear everything Genie derived — including legacy rows with a null source
+    // (neq alone won't match nulls in Postgres, so match null explicitly).
+    if (rebuild && !productOverride) del = del.or("source.is.null,source.neq.user");
+    await del;
   }
   await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
 

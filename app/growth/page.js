@@ -69,11 +69,12 @@ function Growth() {
     try { await fetch("/api/placements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, action }) }); } catch {}
   }
 
-  async function derive() {
+  async function derive({ rebuild = false } = {}) {
     if (!host) return;
+    if (rebuild && !confirm("Rebuild the keyword strategy from scratch? Genie will replace the keywords it picked with a fresh set (any you added by hand are kept).")) return;
     setBusy("derive");
     try {
-      const r = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) }).then((x) => x.json());
+      const r = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, rebuild }) }).then((x) => x.json());
       if (r.ok) setD((prev) => ({ ...prev, keywords: { portfolioScore: r.portfolioScore, graded: r.graded || [], counts: r.counts } }));
     } catch {}
     setBusy("");
@@ -111,14 +112,20 @@ function Growth() {
 
       {/* ── ACT 01 — THE STRATEGY: what Genie is pursuing ── */}
       <section className="mg-act">
-        <SectionHead index="01" title="What I’m pursuing" note={graded.length ? "The searches I’m ranking you for — winners rise, dead ends retire." : undefined} />
+        <SectionHead index="01" title="What I’m pursuing" note={graded.length ? "The searches I’m ranking you for — winners rise, dead ends retire." : undefined}
+          action={graded.length ? (
+            <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive"} className="text-[12.5px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)" }}>
+              {busy === "derive" ? "Rebuilding…" : "↻ Rebuild strategy"}
+            </button>
+          ) : undefined}
+        />
 
         {graded.length === 0 ? (
           <Card className="p-9 text-center" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
             <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
             <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
             <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
-            <button onClick={derive} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
+            <button onClick={() => derive()} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
               {busy === "derive" ? "Genie is analyzing…" : host ? "Build my keyword strategy →" : "Run your first scan →"}
             </button>
           </Card>
