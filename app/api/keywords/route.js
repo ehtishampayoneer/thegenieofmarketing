@@ -59,7 +59,7 @@ export async function POST(request) {
     const seeds = [ai?.whatTheySell, ai?.subCategory, ai?.industry, ai?.businessName, productOverride]
       .filter(Boolean).flatMap((s) => String(s).split(/[,/]|\band\b/)).map((s) => s.trim()).filter((s) => s.length > 2).slice(0, 6);
     realSearches = await expandSeeds(seeds.length ? seeds : [host]);
-  } catch {}
+  } catch (e) { swallow("keywords.derive.autocomplete", e, { userId: user.id, host }); }
 
   let derived = null;
   try {
@@ -158,7 +158,9 @@ export async function POST(request) {
   const { data: saved } = await supabase.from("keywords").select("*").eq("user_id", user.id).eq("host", host);
   const portfolio = gradePortfolio(saved || []);
   await logActivity(supabase, user.id, { host, verb: "keywords", message: `Built your keyword strategy — ${(saved || []).length} targets`, detail: (portfolio.graded || []).slice(0,3).map((k)=>k.keyword).join(", "), meta: { count: (saved||[]).length } });
-  return json({ ok: true, ...portfolio, strategy: derived.strategy || null });
+  // grounded = these keywords were shaped by REAL Google Autocomplete phrases, not
+  // AI guesses alone. Surfaced so the owner knows which they're looking at.
+  return json({ ok: true, ...portfolio, strategy: derived.strategy || null, grounded: realSearches.length > 0 });
 }
 
 // Add the user's OWN keyword.
