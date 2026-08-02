@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveEntity } from "@/lib/growth-memory";
 import { hostOf } from "@/lib/business";
+import { swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +72,28 @@ export async function GET() {
       out.summaryLine = `While you were away I found ${found} conversation${found !== 1 ? "s" : ""}, published ${published}, sent ${emails} email${emails !== 1 ? "s" : ""}, and handled ${replies} repl${replies !== 1 ? "ies" : "y"}.`;
     }
   } catch {}
+
+  // AI-search standing. Deliberately NOT the onboarding reveal repeated — that's a
+  // one-time shock and repeating it daily turns it into wallpaper. This is the
+  // number that should MOVE: where you stand now, and how many answer pages are in
+  // flight to change it.
+  if (host) {
+    try {
+      const { data: mem } = await supabase.from("growth_memory").select("meta")
+        .eq("user_id", user.id).eq("host", host).eq("mkey", "ai_search_visibility").limit(1);
+      const m = mem?.[0]?.meta;
+      if (m && typeof m.score === "number") {
+        const { data: aeoKw } = await supabase.from("keywords").select("ai_cited")
+          .eq("user_id", user.id).eq("host", host).eq("source", "aeo");
+        out.aiSearch = {
+          score: m.score,
+          topCompetitor: m.topCompetitors?.[0]?.name || null,
+          working: (aeoKw || []).length,
+          won: (aeoKw || []).filter((k) => k.ai_cited).length,
+        };
+      }
+    } catch (e) { swallow("today.aiSearch", e, { userId: user.id, host }); }
+  }
 
   // Approvals (proposed actions) → top cards + count.
   try {

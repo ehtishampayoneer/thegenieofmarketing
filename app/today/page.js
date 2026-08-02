@@ -111,6 +111,27 @@ export default function TodayPage() {
                   </div>
                 </>
               )}
+
+              {/* AI-search standing — the number that should move over time. Not the
+                  onboarding reveal repeated; that lands once. This is the scoreboard. */}
+              {d?.aiSearch && (
+                <>
+                  <div className="mg-hairline my-5" />
+                  <p className="mg-eyebrow">When buyers ask AI</p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="mg-num leading-none" style={{ fontSize: 26, fontWeight: 800, color: d.aiSearch.score > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{d.aiSearch.score}%</span>
+                    <span className="text-[12.5px] mg-muted">of answers name you</span>
+                  </div>
+                  <p className="mt-1 text-[12.5px] mg-muted leading-snug">
+                    {d.aiSearch.working > 0
+                      ? <>I’m writing {d.aiSearch.working} answer {d.aiSearch.working === 1 ? "page" : "pages"} to win more{d.aiSearch.won > 0 ? `, ${d.aiSearch.won} already landed` : ""}.</>
+                      : d.aiSearch.topCompetitor
+                        ? <>AI still recommends {d.aiSearch.topCompetitor} instead.</>
+                        : <>I’ll keep working to get you cited.</>}
+                  </p>
+                  <a href="/ai-search" className="mt-1 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See where AI sends your buyers →</a>
+                </>
+              )}
             </Card>
           </div>
 

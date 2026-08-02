@@ -37,6 +37,11 @@ export default function WelcomePage() {
   const [url, setUrl] = useState("");
   const [data, setData] = useState(null);
   const [entity, setEntity] = useState(null);
+  // The Day-1 win: the REAL findings from the two engines fired at kickoff. Both
+  // used to be fetched and thrown away while the UI showed a scripted claim and
+  // spinners that never resolved. Now the reveal reports what was actually found.
+  const [aeo, setAeo] = useState(null);       // { score, visible, total, topCompetitors }
+  const [intent, setIntent] = useState(null); // { found, staged, summary }
   const [revealed, setRevealed] = useState(0);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -99,10 +104,10 @@ export default function WelcomePage() {
     { work: `Reading ${host}…`, done: () => `Read your site — you’re ${data?.ai?.businessName || host}.` },
     { work: `Understanding what you actually sell…`, done: () => (data?.ai?.whatTheySell ? cap(data.ai.whatTheySell) : `Got it — I understand what you do.`) },
     { work: `Sizing up your competitors…`, done: () => { const c = (data?.ai?.competitors || []).map(nameOf).filter(Boolean).slice(0, 3); return c.length ? `Your real competitors: ${c.join(", ")}.` : `Mapped who you’re up against.`; } },
-    { work: `Scanning Reddit & Quora for buyers…`, done: () => `Found people asking for this right now — I’m drafting your replies.` },
-    { work: `Checking what AI recommends…`, done: () => `AI is sending buyers to rivals. I’ll win those back for you.` },
+    { work: `Scanning Reddit & Quora for buyers…`, done: () => (intent ? (intent.found > 0 ? `Found ${intent.found} ${intent.found === 1 ? "person" : "people"} asking for this right now — I’m drafting your replies.` : `No one’s asking publicly this minute. I’ll keep hunting every night.`) : `Hunting buyers across Reddit, Quora and more.`) },
+    { work: `Checking what AI recommends…`, done: () => (aeo ? (aeo.visible > 0 ? `AI already names you in ${aeo.visible} of ${aeo.total} buyer answers. I’ll widen that lead.` : `AI names ${aeo.topCompetitors?.[0]?.name || "rivals"}, not you, in all ${aeo.total} buyer answers. I’ll win those back.`) : `Modelling what ChatGPT and Perplexity tell your buyers.`) },
     { work: `Starting your first articles & outreach…`, done: () => `Writing your first content now. This runs every night.` },
-  ], [host, data]);
+  ], [host, data, aeo, intent]);
 
   // Reveal lines on a steady cadence.
   useEffect(() => {
@@ -145,8 +150,12 @@ export default function WelcomePage() {
     // NOTE: keyword derivation is deliberately NOT fired here. It runs only after
     // the owner confirms Genie's understanding (confirmUnderstanding), so keywords
     // are built on the CORRECT identity — and there's no race with the rebuild.
-    fetch("/api/radar/intent", { method: "POST", headers: head, body }).catch(() => {});
-    fetch("/api/ai-search", { method: "POST", headers: head, body }).catch(() => {});
+    // Capture both results. These are the owner's Day-1 proof: who AI recommends
+    // instead of them, and how many buyers are asking RIGHT NOW.
+    fetch("/api/radar/intent", { method: "POST", headers: head, body })
+      .then((r) => r.json()).then((j) => { if (j?.ok) setIntent(j); }).catch(() => {});
+    fetch("/api/ai-search", { method: "POST", headers: head, body })
+      .then((r) => r.json()).then((j) => { if (j?.ok) setAeo(j); }).catch(() => {});
   }
 
   // Mark onboarding complete up front, so connecting an account (which leaves the
@@ -301,17 +310,32 @@ export default function WelcomePage() {
               {/* what I already started — real kickoff */}
               <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
                 <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working — right now</p>
+                {/* Real findings resolve the spinners. A spinner that never finishes
+                    is a lie about work being done — each row flips to what was
+                    actually found the moment the engine returns. */}
                 <div className="mt-5 flex flex-col gap-4">
                   {[
-                    ["Deriving your keyword strategy", "reading your market"],
-                    ["Hunting high-intent buyers across Reddit, Quora & more", "drafting your replies"],
-                    ["Checking whether AI recommends you", "closing the gaps"],
-                  ].map(([t, s], i) => (
+                    aeo
+                      ? { done: true, t: aeo.visible > 0
+                            ? `AI names you in ${aeo.visible} of ${aeo.total} buyer answers`
+                            : `AI recommends ${aeo.topCompetitors?.[0]?.name || "your rivals"} — not you`,
+                          s: aeo.visible > 0 ? "I’ll widen that lead" : `Invisible in all ${aeo.total} buyer questions. I’m writing the answers that win the citation.` }
+                      : { done: false, t: "Checking whether AI recommends you", s: "ChatGPT · Perplexity · AI Overviews" },
+                    intent
+                      ? { done: true, t: intent.found > 0
+                            ? `${intent.found} ${intent.found === 1 ? "buyer is" : "buyers are"} asking about this right now`
+                            : "No one’s asking publicly this minute",
+                          s: intent.found > 0 ? `${intent.staged} ${intent.staged === 1 ? "reply" : "replies"} drafted and waiting for you` : "I’ll keep hunting every night" }
+                      : { done: false, t: "Hunting high-intent buyers across Reddit, Quora & more", s: "drafting your replies" },
+                    { done: false, t: "Deriving your keyword strategy", s: "starts the moment you confirm who you are" },
+                  ].map((row, i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <span className="onb-spinner" style={{ marginTop: 3 }} />
+                      {row.done
+                        ? <span style={{ marginTop: 1, color: "var(--onb-live)", fontSize: 15, lineHeight: 1.2 }}>✦</span>
+                        : <span className="onb-spinner" style={{ marginTop: 3 }} />}
                       <span className="flex-1">
-                        <span className="block text-[15.5px]" style={{ color: "var(--onb-fg)", lineHeight: 1.35 }}>{t}</span>
-                        <span className="block text-[13px]" style={{ color: "var(--onb-subtle)" }}>{s}</span>
+                        <span className="block text-[15.5px]" style={{ color: "var(--onb-fg)", lineHeight: 1.35 }}>{row.t}</span>
+                        <span className="block text-[13px]" style={{ color: "var(--onb-subtle)" }}>{row.s}</span>
                       </span>
                     </div>
                   ))}
