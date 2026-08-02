@@ -18,6 +18,19 @@ import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
 
+// Turn Genie's confirmed understanding into a productOverride string — this forces
+// keyword derivation to wipe any earlier guess and rebuild on the correct identity.
+function overrideFrom(ai = {}) {
+  const bits = [];
+  if (ai.businessType) bits.push(String(ai.businessType));
+  if (ai.whatTheySell) bits.push(`that sells ${ai.whatTheySell}`);
+  if (ai.targetCustomer) bits.push(`to ${ai.targetCustomer}`);
+  let s = bits.join(" ").trim();
+  const edge = ai.differentiator || ai.summary;
+  if (edge) s += `${s ? ". " : ""}Its edge / what makes it different: ${edge}`;
+  return s.trim() || String(ai.whatTheySell || "");
+}
+
 export default function WelcomePage() {
   const router = useRouter();
   const [phase, setPhase] = useState("intro"); // intro | working | reveal | error
@@ -31,6 +44,11 @@ export default function WelcomePage() {
   const startRef = useRef(0);
   const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "" });
   const [conns, setConns] = useState(null); // live connection status for the connect step
+  // ── Understanding Check (post-scan "did I get you right?") ──
+  const [understanding, setUnderstanding] = useState(null); // working copy of Genie's read of the business
+  const [convo, setConvo] = useState([]);                   // [{ role:'genie'|'owner', content }]
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
 
   async function loadConns() {
     try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
@@ -124,12 +142,11 @@ export default function WelcomePage() {
   function kickoff(h, ai) {
     const body = JSON.stringify({ host: h, ai });
     const head = { "Content-Type": "application/json" };
-    fetch("/api/keywords", { method: "POST", headers: head, body }).catch(() => {});
+    // NOTE: keyword derivation is deliberately NOT fired here. It runs only after
+    // the owner confirms Genie's understanding (confirmUnderstanding), so keywords
+    // are built on the CORRECT identity — and there's no race with the rebuild.
     fetch("/api/radar/intent", { method: "POST", headers: head, body }).catch(() => {});
     fetch("/api/ai-search", { method: "POST", headers: head, body }).catch(() => {});
-    // Draft real, publish-ready content so the Approvals queue fills immediately —
-    // this is what turns "0 decisions waiting" into something the user can act on.
-    fetch("/api/content", { method: "POST", headers: head, body }).catch(() => {});
   }
 
   // Mark onboarding complete up front, so connecting an account (which leaves the
@@ -139,6 +156,51 @@ export default function WelcomePage() {
     try { if (entity?.type) await fetch("/api/entity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host: h, type: entity.type }) }); } catch {}
     try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
   }
+  // ── Understanding Check ──
+  // Enter the confirmation step: seed Genie's working understanding from the scan
+  // and open with a short "does this look right?" message.
+  function toConfirm() {
+    const ai = data?.ai || {};
+    setUnderstanding(ai);
+    setConvo([{ role: "genie", content: "Here’s how I read your business — does this look right? If anything’s off (what you sell, who buys it, what makes you different), just tell me and I’ll fix it before I build your plan." }]);
+    setPhase("confirm");
+  }
+
+  // One turn of the correction chat.
+  async function sendCorrection() {
+    const msg = chatInput.trim();
+    if (!msg || chatBusy) return;
+    setChatInput("");
+    const history = convo.slice(-8);
+    setConvo((c) => [...c, { role: "owner", content: msg }]);
+    setChatBusy(true);
+    try {
+      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai: understanding, message: msg, history }) }).then((x) => x.json());
+      if (r.ok) {
+        setUnderstanding(r.ai);
+        setConvo((c) => [...c, { role: "genie", content: r.reply }]);
+      } else {
+        setConvo((c) => [...c, { role: "genie", content: r.message || "I couldn’t quite get that — try rephrasing?" }]);
+      }
+    } catch { setConvo((c) => [...c, { role: "genie", content: "Something interrupted me — say that again?" }]); }
+    setChatBusy(false);
+  }
+
+  // Confirmed: persist the understanding, then build the strategy on the CORRECT
+  // identity (productOverride wipes any earlier guess), and draft content off it.
+  async function confirmUnderstanding() {
+    setBusy(true);
+    const h = entity?.host || hostOf(data?.finalUrl || data?.url || url);
+    const ai = understanding || data?.ai || {};
+    const head = { "Content-Type": "application/json" };
+    setDetails((d) => ({ ...d, company_name: ai.businessName || d.company_name || "" }));
+    try { await fetch("/api/understand", { method: "PUT", headers: head, body: JSON.stringify({ host: h, ai }) }); } catch {}
+    try { await fetch("/api/keywords", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai, productOverride: overrideFrom(ai) }) }); } catch {}
+    fetch("/api/content", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai }) }).catch(() => {});
+    setBusy(false);
+    await toConnect();
+  }
+
   async function toConnect() { setBusy(true); await markDone(); setBusy(false); setPhase("connect"); loadConns(); }
   function toDetails() { setPhase("details"); }
   async function saveDetails() {
@@ -162,7 +224,7 @@ export default function WelcomePage() {
       </header>
 
       <div className="flex-1 flex items-center justify-center px-6 sm:px-10 lg:px-16 pb-16" style={{ position: "relative", zIndex: 1 }}>
-        <div className="w-full" style={{ maxWidth: ["reveal", "connect", "details", "ready"].includes(phase) ? 1120 : 620 }}>
+        <div className="w-full" style={{ maxWidth: ["reveal", "confirm", "connect", "details", "ready"].includes(phase) ? 1120 : 620 }}>
 
           {phase === "intro" && (
             <div className="text-center onb-rise">
@@ -230,8 +292,8 @@ export default function WelcomePage() {
                   </p>
                 )}
                 <div className="mt-8 flex items-center gap-4 flex-wrap">
-                  <button onClick={toConnect} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
-                    {busy ? "One sec…" : "Next: connect my accounts →"}
+                  <button onClick={toConfirm} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
+                    {busy ? "One sec…" : "Next: confirm who you are →"}
                   </button>
                 </div>
               </div>
@@ -255,6 +317,61 @@ export default function WelcomePage() {
                   ))}
                 </div>
                 <p className="mt-6 pt-5 text-[13px]" style={{ borderTop: "1px solid var(--onb-hair)", color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</p>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 1b — Understanding Check: "did I get you right?" */}
+          {phase === "confirm" && (
+            <div className="onb-rise">
+              <StepDots step={1} />
+              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
+                <div className="lg:sticky lg:top-16">
+                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 1 of 4 · Confirm</p>
+                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                    Did I get you right?
+                  </h1>
+                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>
+                    Everything I do next — the keywords I target, the content I write, the buyers I reach — is built on this. A moment here means I chase the right customers, not the wrong ones.
+                  </p>
+                  <div className="mt-6" style={{ borderRadius: 18, padding: 22, background: "var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)" }}>
+                    <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".12em", color: "var(--onb-subtle)" }}>Here’s how I read you</p>
+                    <div className="mt-4 flex flex-col gap-3">
+                      <URow label="You are" value={understanding?.businessType} />
+                      <URow label="You sell" value={understanding?.whatTheySell} />
+                      <URow label="Your customers" value={understanding?.targetCustomer} />
+                      <URow label="Your edge" value={understanding?.differentiator || understanding?.summary} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 lg:mt-0 flex flex-col" style={{ minHeight: 360 }}>
+                  <div className="flex-1 flex flex-col gap-3">
+                    {convo.map((m, i) => (
+                      <div key={i} className={m.role === "owner" ? "self-end" : "self-start"} style={{ maxWidth: "90%" }}>
+                        <div style={{
+                          padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
+                          background: m.role === "owner" ? "var(--onb-dawn)" : "var(--onb-panel)",
+                          color: m.role === "owner" ? "#1a1206" : "var(--onb-fg)",
+                          border: m.role === "owner" ? "none" : "1px solid var(--onb-hair)",
+                        }}>{m.content}</div>
+                      </div>
+                    ))}
+                    {chatBusy && <div className="self-start" style={{ padding: "6px 14px" }}><span className="onb-spinner" /></div>}
+                  </div>
+                  <div className="mt-4 flex gap-2.5">
+                    <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendCorrection()}
+                      placeholder="e.g. We’re a store selling furniture & shoes — AR is just how customers preview"
+                      className="onb-input flex-1 px-4 text-[14.5px]" style={{ height: 50 }} aria-label="Correct Genie" />
+                    <button onClick={sendCorrection} disabled={chatBusy || !chatInput.trim()} className="onb-ghost px-4 text-[14px] disabled:opacity-40" style={{ height: 50, flex: "none" }}>Send</button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-10 flex items-center gap-5 flex-wrap">
+                <button onClick={confirmUnderstanding} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
+                  {busy ? "Building your plan…" : "Yes, that’s right — build my plan →"}
+                </button>
+                <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>I’ll target the right buyers based on this.</span>
               </div>
             </div>
           )}
@@ -428,8 +545,19 @@ function WordPressInline({ connected, onConnected }) {
   );
 }
 
+function URow({ label, value }) {
+  return (
+    <div className="flex gap-3">
+      <span style={{ flex: "none", width: 108, fontSize: 12.5, color: "var(--onb-subtle)", paddingTop: 1 }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, color: "var(--onb-fg)", lineHeight: 1.45 }}>
+        {value ? cap(value) : <span style={{ color: "var(--onb-subtle)" }}>— (tell me)</span>}
+      </span>
+    </div>
+  );
+}
+
 function StepDots({ step }) {
-  const labels = ["Scan", "Connect", "Details", "Ready"];
+  const labels = ["Confirm", "Connect", "Details", "Ready"];
   return (
     <div className="flex items-center gap-2">
       {labels.map((l, i) => {
