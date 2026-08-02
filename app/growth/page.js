@@ -360,6 +360,7 @@ function WaveCard({ wave }) {
   const [open, setOpen] = useState(false);
   const col = diffColor(wave.tone), bg = diffBg(wave.tone);
   const vol = wave.items.reduce((s, k) => s + (k._vol || 0), 0);
+  const covered = wave.items.filter((k) => (k.coverage || 0) > 0 || (k.usage?.length || 0) > 0).length;
   const shown = open ? wave.items : wave.items.slice(0, 4);
   return (
     <Card className="p-5" style={{ borderLeft: `3px solid ${col}` }}>
@@ -367,7 +368,7 @@ function WaveCard({ wave }) {
         <span className="flex items-center justify-center font-bold mg-num" style={{ width: 26, height: 26, borderRadius: 999, fontSize: 13, color: col, background: bg }}>{wave.n}</span>
         <p className="text-[15.5px] font-bold" style={{ color: "var(--fg)" }}>{wave.title}</p>
         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ color: col, background: bg }}>{wave.when}</span>
-        <span className="ml-auto text-[12px] mg-subtle mg-num">{wave.items.length} keyword{wave.items.length === 1 ? "" : "s"}{vol > 0 ? ` · ~${fmtNum(vol)}/mo est.` : ""}</span>
+        <span className="ml-auto text-[12px] mg-subtle mg-num">{wave.items.length} keyword{wave.items.length === 1 ? "" : "s"}{covered > 0 ? ` · ${covered} with content` : ""}{vol > 0 ? ` · ~${fmtNum(vol)}/mo est.` : ""}</span>
       </div>
       <p className="mt-2 text-[13px] mg-muted" style={{ maxWidth: 640 }}>{wave.why}</p>
       {wave.items.length === 0 ? (
@@ -418,8 +419,30 @@ function KeywordRow({ k }) {
         <span>Coverage {k.coverage || 0}×</span>
         {real && <span style={{ color: "var(--signal-live-ink)" }}>· ↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>}
       </div>
+      {k.usage?.length > 0 && (
+        <details className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <summary className="cursor-pointer text-[11px] font-semibold mg-focus" style={{ color: "var(--signal-live-ink)" }}>
+            Genie used this in {k.usage.length} {k.usage.length === 1 ? "place" : "places"} →
+          </summary>
+          <div className="mt-1.5 flex flex-col gap-1">
+            {k.usage.map((u, i) => (
+              <div key={i} className="flex items-center gap-2 text-[11px]">
+                <span className="px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "var(--surface-sunken)", color: "var(--fg-muted)", fontSize: 10 }}>{channelLabel(u.channel)}</span>
+                {u.url
+                  ? <a href={u.url} target="_blank" rel="noreferrer" className="truncate flex-1 mg-focus" style={{ color: "var(--accent-ink)" }}>{u.title || channelLabel(u.channel)}</a>
+                  : <span className="truncate flex-1" style={{ color: "var(--fg-muted)" }}>{u.title || channelLabel(u.channel)}</span>}
+                <span className="mg-subtle shrink-0" style={{ fontSize: 10 }}>{u.status}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
+}
+
+function channelLabel(c) {
+  return { article: "Article", social: "Social", reply: "Reply", email: "Email" }[c] || "Content";
 }
 
 // 12-month search-volume sparkline (real Google data).

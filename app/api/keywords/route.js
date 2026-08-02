@@ -11,6 +11,7 @@ import { gradePortfolio } from "@/lib/keyword-health";
 import { logActivity } from "@/lib/activity";
 import { expandSeeds } from "@/lib/autocomplete";
 import { enrichWithVolumes } from "@/lib/google-ads";
+import { getUsageMap } from "@/lib/keyword-usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,10 @@ export async function GET(request) {
     .eq("host", host);
 
   const portfolio = gradePortfolio(data || []);
+  // Attach each keyword's "used in …" trail so the UI can show exactly what Genie
+  // wrote for it (article / social / reply / email).
+  const usage = await getUsageMap(supabase, user.id, host);
+  portfolio.graded = (portfolio.graded || []).map((k) => ({ ...k, usage: usage[k.keyword] || [] }));
   return json({ ok: true, ...portfolio });
 }
 

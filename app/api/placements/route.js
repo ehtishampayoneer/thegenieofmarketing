@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { buildTapPlan, nextEligible } from "@/lib/cadence";
+import { recordUsage } from "@/lib/keyword-usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,14 +60,13 @@ export async function PATCH(request) {
     patch.status = "posted";
     patch.posted_at = now.toISOString();
     patch.next_eligible_at = nextEligible(placement.platform, now);
-    // Advance keyword coverage — this keyword is now seeded in one more place.
+    // Advance coverage AND record the chain — this keyword is now seeded in one more
+    // place, and the user can see the exact reply it went into.
     if (placement.keyword) {
-      try {
-        const { data: kw } = await supabase.from("keywords")
-          .select("id, coverage").eq("user_id", user.id)
-          .eq("host", placement.host).eq("keyword", placement.keyword).maybeSingle();
-        if (kw) await supabase.from("keywords").update({ coverage: (kw.coverage || 0) + 1 }).eq("id", kw.id);
-      } catch {}
+      await recordUsage(supabase, user.id, placement.host, {
+        primary: placement.keyword, channel: "reply", refType: "placement", refId: placement.id,
+        title: placement.target_title || `${placement.platform} reply`, url: placement.target_url || null, status: "posted",
+      });
     }
   } else if (action === "skipped") {
     patch.status = "skipped";

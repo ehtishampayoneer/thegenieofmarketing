@@ -91,6 +91,28 @@ create table if not exists public.suppressions (
 );
 create index if not exists suppressions_user_email_idx on public.suppressions (user_id, email);
 
+-- Keyword usage ledger — the spine of the keyword→content chain. Every time Genie
+-- writes something (article, social post, community reply, email) that targets a
+-- keyword, one row is recorded here. Powers the "used in …" trail on each keyword
+-- and the "targets …" label on each piece, and makes coverage a real, auditable count.
+create table if not exists public.keyword_usage (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  host text not null,
+  keyword text not null,
+  role text not null default 'primary',   -- 'primary' | 'related'
+  channel text not null,                   -- 'article' | 'social' | 'reply' | 'email'
+  ref_type text,                           -- 'action' | 'placement'
+  ref_id uuid,
+  title text,
+  url text,
+  status text not null default 'proposed', -- proposed | approved | published | posted
+  created_at timestamptz not null default now()
+);
+create index if not exists keyword_usage_user_kw_idx on public.keyword_usage (user_id, host, keyword);
+create index if not exists keyword_usage_ref_idx on public.keyword_usage (ref_type, ref_id);
+create unique index if not exists keyword_usage_dedupe_uidx on public.keyword_usage (user_id, keyword, channel, ref_id);
+
 
 -- ── STEP 3 — RECENT COLUMNS (idempotent; add only if missing) ────────────────
 alter table if exists public.keywords add column if not exists volume integer;
@@ -125,7 +147,7 @@ declare
   user_tables text[] := array[
     'actions','action_outcomes','activity','cadence_plans','chat_messages',
     'connections','decisions','entities','events','growth_memory','keyword_history',
-    'keywords','links','notifications','outreach_log','placements','safety_settings',
+    'keywords','keyword_usage','links','notifications','outreach_log','placements','safety_settings',
     'scans','suppressions'
   ];
 begin

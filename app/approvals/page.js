@@ -166,6 +166,13 @@ export default function ApprovalsPage() {
               <div className="px-6 pt-3.5">
                 <h2 className="text-[21px] font-bold tracking-tight leading-snug" style={{ color: "var(--fg)" }}>{current.title}</h2>
                 {current.outcome && <p className="mt-1 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>{current.outcome}</p>}
+                {current.keyword && (
+                  <p className="mt-2 text-[12px] mg-subtle">
+                    <span className="font-semibold" style={{ color: "var(--fg-muted)" }}>Targets:</span>{" "}
+                    <span style={{ color: "var(--accent-ink)", fontWeight: 600 }}>{current.keyword}</span>
+                    {current.relatedKeywords?.length > 0 && <span> · also {current.relatedKeywords.slice(0, 3).join(", ")}</span>}
+                  </p>
+                )}
               </div>
 
               <div className="px-6 pt-4">

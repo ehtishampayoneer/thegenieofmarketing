@@ -61,6 +61,8 @@ function normalizeAction(a) {
     title: o.title || a.title || labelFor(a.type),
     outcome: o.value || "",
     draft, why: p.rationale || null, target_url,
+    keyword: p.targetKeyword || null,
+    relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
     impact: clampNum(p.impact, priorityScore(a.priority)),
     tags: tagsFor(a.priority),
   };
@@ -80,6 +82,8 @@ function normalizePlacement(p) {
     title: p.target_title || p.platform,
     outcome: meta.buyer_intent ? `Reach a ${stage || "buyer"} who’s deciding now` : "Show up where your customers are",
     draft: p.draft || "", why: meta.reason || null, target_url: p.target_url || null,
+    keyword: p.keyword || null,
+    relatedKeywords: [],
     impact: clampNum(meta.intent_score, 70),
     tags,
   };

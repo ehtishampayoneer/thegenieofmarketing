@@ -8,6 +8,7 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
+import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,16 @@ export async function POST(request) {
     } catch {}
   }
 
+  // ── PICK FROM THE REAL STRATEGY ──
+  // Unless a topic was forced, choose the next keyword to write for straight from
+  // the portfolio (wave-aware: uncovered + easy wins first), with its related
+  // cluster. This is what connects the keyword strategy to what actually gets
+  // written — instead of the scan's rough guesses.
+  let pick = null;
+  if (!topic && userId && host) {
+    try { const picks = await selectTargets(supabase, userId, host, { count: 1 }); pick = picks[0] || null; } catch {}
+  }
+
   let data = null;
   let provider = null;
   try {
@@ -55,7 +66,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic, directives }),
+      prompt: buildPrompt({ ai, gsc, topic, directives, pick }),
     });
     data = result.json;
     provider = result.provider;
@@ -83,6 +94,10 @@ export async function POST(request) {
   let actionIds = [];
   try {
     if (userId) {
+      // The keyword this whole batch targets (real portfolio pick, else the AI's own).
+      const primaryKw = pick?.keyword || data.article?.targetKeyword || null;
+      if (data.article && pick) { data.article.targetKeyword = pick.keyword; data.article.relatedKeywords = pick.related; }
+
       const rows = [];
       // Validate AI priorities; reject unknowns → 'medium'.
       const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
@@ -109,7 +124,7 @@ export async function POST(request) {
           scan_id: scanId || null,
           type: "social_post",
           title: `${platform} post`,
-          payload: { platform, text },
+          payload: { platform, text, targetKeyword: primaryKw },
           target: { platform: platform.toLowerCase(), host: host || null },
           priority: socialPriority,
           status: "proposed",
@@ -120,8 +135,18 @@ export async function POST(request) {
       (social.facebook || []).forEach((t) => pushSocial("Facebook", t));
 
       if (rows.length) {
-        const { data: inserted } = await supabase.from("actions").insert(rows).select("id");
+        const { data: inserted } = await supabase.from("actions").insert(rows).select("id, type");
         actionIds = (inserted || []).map((r) => r.id);
+
+        // ── RECORD THE CHAIN ── link the produced pieces back to the keyword they
+        // target (and advance its coverage), so the user can see exactly what Genie
+        // wrote for each keyword. Best-effort; never blocks returning the content.
+        if (primaryKw && host) {
+          const artId = (inserted || []).find((r) => r.type === "article")?.id;
+          const socId = (inserted || []).find((r) => r.type === "social_post")?.id;
+          if (artId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: pick?.related || [], channel: "article", refType: "action", refId: artId, title: data.article?.title || "Article", status: "proposed" });
+          if (socId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: [], channel: "social", refType: "action", refId: socId, title: "Social posts", status: "proposed" });
+        }
       }
     }
   } catch {
@@ -137,7 +162,7 @@ function deDash(s) {
   return s.replace(/\s*—\s*/g, ", ").replace(/ – /g, ", ");
 }
 
-function buildPrompt({ ai, gsc, topic, directives = [] }) {
+function buildPrompt({ ai, gsc, topic, directives = [], pick = null }) {
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
     : "Brand voice: clear, warm, professional.";
@@ -145,18 +170,34 @@ function buildPrompt({ ai, gsc, topic, directives = [] }) {
     ? `OWNER'S STANDING INSTRUCTIONS — these OVERRIDE everything else, follow them exactly:\n${directives.map((d) => `- ${d}`).join("\n")}\n`
     : "";
 
-  const kw = gsc?.available
-    ? `Keywords they already rank for: ${gsc.topQueries.slice(0, 8).map((q) => q.query).join(", ")}.`
-    : ai.keywordsToOwn?.length
-    ? `Target keywords: ${ai.keywordsToOwn.slice(0, 6).join(", ")}.`
-    : "";
+  // What this piece targets. If Genie picked from the real portfolio, write FOR that
+  // exact keyword, matched to its journey stage (problem/learn/compare/buy) — one
+  // focused piece per topic, weaving related terms in naturally (never stuffing).
+  let targetBlock;
+  if (pick) {
+    const kindByStage = {
+      problem: "a genuinely helpful how-to / answer article that solves the reader's exact worry, then shows how the business removes it",
+      learn: "an informative guide that teaches the topic and naturally introduces the business",
+      compare: "a fair comparison / 'best options' article that includes the business as a strong choice",
+      buy: "a focused, high-intent piece for a ready-to-buy searcher — clear value, why choose us, a strong call to action",
+    };
+    targetBlock = `TARGET KEYWORD (primary): "${pick.keyword}" — write the article to rank for this exact search, and set the article "targetKeyword" field to exactly "${pick.keyword}".
+Content type: write ${kindByStage[pick.stage] || kindByStage.learn}.
+Weave in these related searches NATURALLY where they genuinely fit — do NOT stuff or list them: ${pick.related.length ? pick.related.join(", ") : "(none)"}.`;
+  } else {
+    const kw = gsc?.available
+      ? `Keywords they already rank for: ${gsc.topQueries.slice(0, 8).map((q) => q.query).join(", ")}.`
+      : ai.keywordsToOwn?.length
+      ? `Target keywords: ${ai.keywordsToOwn.slice(0, 6).join(", ")}.`
+      : "";
+    targetBlock = `${kw}\n${topic ? `Write about this specific topic: "${topic}".` : "Choose a high-value article topic that would attract this business's ideal customers via Google search."}`;
+  }
 
   return `${standing}Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${voice}
-${kw}
-${topic ? `Write about this specific topic: "${topic}".` : "Choose a high-value article topic that would attract this business's ideal customers via Google search."}
+${targetBlock}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
 knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.
