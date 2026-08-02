@@ -403,6 +403,7 @@ function KeywordRow({ k }) {
       <div className="flex items-center gap-2">
         <p className="text-[13.5px] font-semibold flex-1 truncate" style={{ color: "var(--fg)" }}>{k.keyword}</p>
         {hasVol && hist.length > 1 && <VolSpark points={hist} />}
+        {k.source === "aeo" && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ color: "var(--accent-ink)", background: "var(--accent-quiet)" }} title="A question buyers ask AI assistants — Genie is writing a citable answer">AI search</span>}
         <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: diffColor(diff.tone), background: diffBg(diff.tone) }}>{diff.label}</span>
         <span className="text-[13.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>{k.score}</span>
       </div>
@@ -442,7 +443,7 @@ function KeywordRow({ k }) {
 }
 
 function channelLabel(c) {
-  return { article: "Article", social: "Social", reply: "Reply", email: "Email" }[c] || "Content";
+  return { article: "Article", answer: "Answer page", social: "Social", reply: "Reply", email: "Email" }[c] || "Content";
 }
 
 // 12-month search-volume sparkline (real Google data).

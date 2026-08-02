@@ -144,7 +144,7 @@ export async function POST(request) {
         if (primaryKw && host) {
           const artId = (inserted || []).find((r) => r.type === "article")?.id;
           const socId = (inserted || []).find((r) => r.type === "social_post")?.id;
-          if (artId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: pick?.related || [], channel: "article", refType: "action", refId: artId, title: data.article?.title || "Article", status: "proposed" });
+          if (artId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: pick?.related || [], channel: pick?.aeo ? "answer" : "article", refType: "action", refId: artId, title: data.article?.title || "Article", status: "proposed" });
           if (socId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: [], channel: "social", refType: "action", refId: socId, title: "Social posts", status: "proposed" });
         }
       }
@@ -181,9 +181,16 @@ function buildPrompt({ ai, gsc, topic, directives = [], pick = null }) {
       compare: "a fair comparison / 'best options' article that includes the business as a strong choice",
       buy: "a focused, high-intent piece for a ready-to-buy searcher — clear value, why choose us, a strong call to action",
     };
+    const aeoBlock = pick.aeo
+      ? `\nAI-SEARCH (AEO) — this is a question AI assistants answer, so structure it to be CITED by ChatGPT, Perplexity, Google AI Overviews and Gemini:
+- Open with a direct, quotable 1-2 sentence answer to the question, BEFORE any intro.
+- Use clear question-style H2 headings with concise, factual answers under each.
+- Include a short comparison or criteria list where relevant, and a real FAQ section (AI engines cite these most).
+- Sound authoritative and neutral — factual and specific, not salesy. That's what gets quoted.`
+      : "";
     targetBlock = `TARGET KEYWORD (primary): "${pick.keyword}" — write the article to rank for this exact search, and set the article "targetKeyword" field to exactly "${pick.keyword}".
 Content type: write ${kindByStage[pick.stage] || kindByStage.learn}.
-Weave in these related searches NATURALLY where they genuinely fit — do NOT stuff or list them: ${pick.related.length ? pick.related.join(", ") : "(none)"}.`;
+Weave in these related searches NATURALLY where they genuinely fit — do NOT stuff or list them: ${pick.related.length ? pick.related.join(", ") : "(none)"}.${aeoBlock}`;
   } else {
     const kw = gsc?.available
       ? `Keywords they already rank for: ${gsc.topQueries.slice(0, 8).map((q) => q.query).join(", ")}.`

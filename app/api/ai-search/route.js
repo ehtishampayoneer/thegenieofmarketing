@@ -99,6 +99,22 @@ export async function POST(request) {
     weight: 2, meta: { score: summary.score, topCompetitors: summary.topCompetitors },
   });
 
+  // ── FEED THE CHAIN ── Turn each AI-search gap into a tracked keyword target, so
+  // the content engine writes an AI-citable answer page for it and coverage tracks
+  // the fight to get cited. source='aeo' badges them as AI-search targets. When
+  // ai-search re-runs later, the visibility score reflects whether it's working.
+  try {
+    const rows = summary.gaps.slice(0, 5).map((g) => ({
+      user_id: userId, host,
+      keyword: String(g.question || "").toLowerCase().trim().slice(0, 120),
+      intent: g.stage === "ready_to_buy" ? "transactional" : g.stage === "comparing" ? "commercial" : "informational",
+      priority: 1, source: "aeo",
+      traffic_potential: 55, competition: 45, coverage: 0, health: "new",
+      rationale: g.gap ? `AI-search gap — ${g.gap}` : "AI recommends competitors here. Genie will write an answer page to win the citation.",
+    })).filter((r) => r.keyword.length > 3);
+    if (rows.length) await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
+  } catch {}
+
   await logActivityBatch(supabase, userId, [
     { host, verb: "discovered", icon: "🔮", message: `AI cites you in ${summary.visible}/${summary.total} buyer answers`, detail: summary.gaps.slice(0, 2).map((g) => g.question).join(" · "), meta: { score: summary.score } },
     summary.gaps.length ? { host, verb: "learning", message: `${summary.gaps.length} AI-search gaps found — Genie drafted content plans to win them`, meta: { gaps: summary.gaps.length } } : null,
