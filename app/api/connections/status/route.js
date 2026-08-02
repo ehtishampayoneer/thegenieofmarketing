@@ -15,7 +15,10 @@ export async function GET() {
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
 
   let conns = [];
-  try { const { data } = await supabase.from("connections").select("provider, meta, gsc_site").eq("user_id", user.id); conns = data || []; } catch {}
+  // select("*") on purpose: naming optional columns (meta, gsc_site) here means a
+  // single missing column would throw and (via the catch) report EVERY integration
+  // as disconnected — even ones that saved fine. "*" is resilient to schema drift.
+  try { const { data } = await supabase.from("connections").select("*").eq("user_id", user.id); conns = data || []; } catch {}
   const byProvider = Object.fromEntries(conns.map((c) => [c.provider, c]));
 
   const google = byProvider.google;

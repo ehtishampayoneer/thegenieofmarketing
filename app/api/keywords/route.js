@@ -178,41 +178,61 @@ Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
 Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
 ${real}
-CRITICAL — target the BUYER'S problem in THEIR words, then bridge to the product.
-Most buyers do NOT know your technology or category exists. Someone who needs a couch
-searches "will this sofa fit my living room" or "buying furniture online tips" — NOT
-"AR furniture", because they've never heard of it. If you only target your own
-product-category terms, you miss the huge, warm crowd who have the PROBLEM but not the
-VOCABULARY. Never use engineer/tech terms ("webgl", "3d website builder"). Think like
-the buyer at every stage of their journey.
+════════ HOW TO THINK (read carefully — this is the whole game) ════════
+FIRST, separate two different things:
+  • THE PRODUCTS — the actual things this business sells and that people pay for
+    (e.g. sofas, dining tables, rugs, sneakers, home decor). This is the DEMAND.
+  • THE DIFFERENTIATOR — the special way this business does it (e.g. see it in your
+    room in AR before buying, virtual try-on). This is the ANGLE that wins the click
+    and the sale — it is NOT what most people search for.
 
-Derive keywords across the FULL buyer journey:
-1. PROBLEM (they don't know your solution exists yet) — their pain/desire in plain
-   words: e.g. "will this sofa fit my living room", "furniture looks different in person",
-   "how to buy furniture online without regret". Highest volume, warmest untapped crowd.
-2. SOLUTION-SEEKING (they want a way to solve it): "see furniture in my room before
-   buying", "visualize furniture at home".
-3. PRODUCT-AWARE (they know the category): "ar furniture app", "virtual try on furniture".
-4. BUYING / COMPARISON: "best ar furniture apps", "[competitor] alternative".
-BALANCE THE MIX — this is critical for real traffic. Do NOT return only obscure
-long-tail problem phrases; a strategy of only tiny-volume terms will not move the
-needle. You MUST include:
-- HIGHER-VOLUME head / category terms buyers type in real numbers (e.g. "ar shopping
-  app", "virtual try on", "3d product viewer", "augmented reality shopping"), even if
-  more competitive.
-- SOLUTION terms of medium volume.
-- PROBLEM long-tails (lower volume each, but warm and winnable).
-For each keyword, the rationale says HOW content bridges that searcher to the product.
+The #1 mistake (do NOT make it): targeting the DIFFERENTIATOR as your main keywords.
+A person who wants a couch searches "buy sofa online" or "modern sectional sofa" or
+"affordable couch" — they have NEVER heard of "AR shopping" and will never type it.
+If you build the strategy around "augmented reality shopping app" / "virtual try on"
+/ "3d product viewer", you will rank for tiny tech-curious traffic and MISS the
+millions of actual buyers. The AR/differentiator is how you CONVERT and stand out in
+the content — the keyword itself must be what the buyer really types to buy the product.
+
+════════ THE TIERS (in priority order) ════════
+TIER 1 — CORE COMMERCIAL / PRODUCT (the money keywords — make these the BACKBONE).
+  The real words buyers type to BUY what this store sells. If it sells many categories
+  (a marketplace), cover its MAIN product categories. Patterns:
+  "buy [product] online", "[product] for sale", "[product] online", "best [product]",
+  "affordable/cheap [product]", "modern/[style] [product]", "[product] store online",
+  "online [category] shopping". e.g. for a furniture+decor+shoes marketplace:
+  "buy furniture online", "modern sofa", "sectional sofa for sale", "living room
+  furniture online", "buy shoes online", "home decor online store", "online furniture store".
+  These carry the most buyer intent and real volume — they MUST dominate the list.
+TIER 2 — DIFFERENTIATOR / SOLUTION (medium volume, low competition, HIGH conversion).
+  The buyer's desire that your USP uniquely answers: "see furniture in your room before
+  buying", "visualize furniture at home", "try shoes on virtually", "view sofa in my space".
+TIER 3 — PROBLEM (warm, untapped, long-tail): the pain in plain words before they know
+  a solution exists: "will this couch fit my living room", "furniture looks different in
+  person", "how to buy furniture online without regret".
+TIER 4 — PRODUCT-AWARE / BRANDy tech + COMPARISON (smallest share): "ar furniture app",
+  "virtual try on furniture", "best online furniture stores", "[competitor] alternative".
+
+Never use engineer jargon ("webgl", "3d website builder", "3d model viewer sdk").
+
+════════ THE MIX (enforce this ratio) ════════
+Return 24-32 keywords, weighted toward demand:
+  ~45% TIER 1 (core commercial product terms — the backbone),
+  ~25% TIER 2 (differentiator/solution),
+  ~20% TIER 3 (problem long-tails),
+  ~10% TIER 4 (tech/comparison).
+Priority 1 = attack first (best mix of real demand, winnability, and buyer value) —
+most Priority-1 keywords should be TIER 1. For each keyword, the rationale says how the
+content ranks for that term AND uses the differentiator (e.g. AR preview) to convert.
 
 Return ONLY this JSON:
 {
-  "strategy": "2 sentences: how you'll rank this product and where the traffic will come from",
+  "strategy": "2 sentences: the product demand you'll capture + how the differentiator converts it",
   "keywords": [
-    { "keyword": "lowercase phrase people actually search", "stage": "problem|solution|product|comparison", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "monthly_volume": "your best estimate of real monthly searches as a rough number, e.g. 90, 1200, 18000", "rationale": "why + how content bridges this searcher to the product" }
+    { "keyword": "lowercase phrase people actually search", "stage": "commercial|solution|problem|comparison", "intent": "informational|commercial|transactional|community", "priority": 1, "traffic_potential": 0-100, "competition": 0-100, "monthly_volume": "rough real monthly searches, e.g. 90, 1200, 18000", "rationale": "why it wins + how content ranks for it and uses the differentiator to convert" }
   ]
 }
-Give 24-32 keywords with a realistic SPREAD of volume: roughly a third higher-volume head terms, a third solution terms, a third problem long-tails. Priority 1 = attack first (best mix of demand, winnability, and buyer value).
-traffic_potential = realistic RELATIVE monthly demand (a broad head term = high; a niche long-tail = low). competition = how hard to rank (0=easy/open, 100=dominated by giants). monthly_volume = a rough real-number estimate so the owner sees scale. These are honest estimates, not measured data — real numbers come from Google Search Console once connected.`;
+traffic_potential = realistic RELATIVE monthly demand (a broad product head term = high; a niche long-tail = low). competition = how hard to rank (0=easy/open, 100=dominated by giants). monthly_volume = a rough real-number estimate so the owner sees scale. Commercial product terms should mostly be higher volume than problem long-tails. These are honest estimates, not measured data — real numbers come from Google Search Console once connected.`;
 }
 
 function json(obj, status = 200) {

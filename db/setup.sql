@@ -97,6 +97,22 @@ alter table if exists public.keywords add column if not exists volume integer;
 alter table if exists public.keywords add column if not exists volume_history jsonb;
 alter table if exists public.profiles add column if not exists logo_url text;
 
+-- Connections: ensure every column the OAuth flows read/write exists. Without
+-- these, a Google connection can SAVE fine yet read back as "disconnected"
+-- (the status check selects meta/gsc_site; a missing column throws and the whole
+-- connections read fails). Adding them is safe on an existing table. Idempotent.
+alter table if exists public.connections add column if not exists access_token text;
+alter table if exists public.connections add column if not exists refresh_token text;
+alter table if exists public.connections add column if not exists token_expires_at timestamptz;
+alter table if exists public.connections add column if not exists scopes text;
+alter table if exists public.connections add column if not exists google_email text;
+alter table if exists public.connections add column if not exists gsc_site text;
+alter table if exists public.connections add column if not exists meta jsonb;
+alter table if exists public.connections add column if not exists updated_at timestamptz default now();
+-- The connect flows upsert with onConflict (user_id, provider); that REQUIRES a
+-- unique index on those columns or the upsert errors out (→ "couldn't save").
+create unique index if not exists connections_user_provider_uidx on public.connections (user_id, provider);
+
 
 -- ── STEP 4 — SECURITY: owner-only Row Level Security on per-user tables ───────
 -- Without this, any signed-in user could read another user's data. The service
