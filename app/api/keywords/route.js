@@ -11,6 +11,7 @@ import { gradePortfolio } from "@/lib/keyword-health";
 import { logActivity } from "@/lib/activity";
 import { expandSeeds } from "@/lib/autocomplete";
 import { enrichWithVolumes } from "@/lib/google-ads";
+import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
 
 export const runtime = "nodejs";
@@ -116,7 +117,33 @@ export async function POST(request) {
     if (rebuild && !productOverride) del = del.or("source.is.null,source.neq.user");
     await del;
   }
-  await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
+  // Insert the new keywords, then REFRESH Genie's estimates on ones already tracked.
+  // A plain upsert with ignoreDuplicates silently dropped the whole row for existing
+  // keywords, so a sharper competition/potential estimate could never replace an old
+  // one. Coverage, real GSC data, health and source are deliberately preserved —
+  // those are earned, and re-deriving must never wipe them.
+  try {
+    const { data: existingRows } = await supabase.from("keywords").select("keyword")
+      .eq("user_id", user.id).eq("host", host).in("keyword", rows.map((r) => r.keyword));
+    const existing = new Set((existingRows || []).map((r) => r.keyword));
+
+    const fresh = rows.filter((r) => !existing.has(r.keyword));
+    if (fresh.length) {
+      const { error } = await supabase.from("keywords").insert(fresh);
+      if (error) throw error;
+    }
+    await Promise.all(rows.filter((r) => existing.has(r.keyword)).map((r) =>
+      supabase.from("keywords").update({
+        intent: r.intent, priority: r.priority, rationale: r.rationale,
+        traffic_potential: r.traffic_potential, competition: r.competition,
+        last_scored_at: r.last_scored_at,
+      }).eq("user_id", user.id).eq("host", host).eq("keyword", r.keyword)
+    ));
+  } catch (e) {
+    swallow("keywords.derive.save", e, { userId: user.id, host });
+    // Last resort: at least get the new keywords in.
+    await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
+  }
 
   // Store the raw volume + 12-month history for real numbers + charts. Best-effort:
   // if the volume columns aren't added yet (db/keyword-volume.sql), this no-ops.

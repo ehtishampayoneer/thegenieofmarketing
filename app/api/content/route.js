@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
+import { deDash } from "@/lib/markdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,12 +175,6 @@ export async function POST(request) {
   }
 
   return json({ ok: true, content: data, actionIds, meta: { engine: provider } });
-}
-
-// Replace em-dashes (and spaced en-dashes in prose) with natural punctuation.
-function deDash(s) {
-  if (typeof s !== "string") return s;
-  return s.replace(/\s*—\s*/g, ", ").replace(/ – /g, ", ");
 }
 
 function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [] }) {

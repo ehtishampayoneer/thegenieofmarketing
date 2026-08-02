@@ -142,6 +142,26 @@ alter table if exists public.connections add column if not exists updated_at tim
 create unique index if not exists connections_user_provider_uidx on public.connections (user_id, provider);
 
 
+-- ── STEP 3b — ATOMIC COVERAGE ────────────────────────────────────────────────
+-- Coverage was advanced with read-then-write from the app (select coverage, then
+-- update coverage+1). Two pieces of content finishing at the same moment both read
+-- the same value and one increment is silently lost. This does it in ONE statement,
+-- so concurrent updates can't collide. security invoker = RLS still applies, so a
+-- user can only ever touch their own keywords.
+create or replace function public.increment_keyword_coverage(p_user uuid, p_host text, p_keyword text)
+returns integer
+language sql
+security invoker
+as $$
+  update public.keywords
+     set coverage = coalesce(coverage, 0) + 1
+   where user_id = coalesce(auth.uid(), p_user)
+     and host = p_host
+     and keyword = p_keyword
+  returning coverage;
+$$;
+
+
 -- ── STEP 4 — SECURITY: owner-only Row Level Security on per-user tables ───────
 -- Without this, any signed-in user could read another user's data. The service
 -- role (cron/background jobs) bypasses RLS by design, so this does NOT break the
