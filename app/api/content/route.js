@@ -57,6 +57,26 @@ export async function POST(request) {
     try { const picks = await selectTargets(supabase, userId, host, { count: 1 }); pick = picks[0] || null; } catch {}
   }
 
+  // ── INTERNAL LINKING ── Pull the related articles Genie already wrote on this
+  // site so the new piece can link to them (markdown → /slug). Internal links
+  // between topically-related pages are how a cluster builds ranking authority.
+  let existingLinks = [];
+  if (userId && host) {
+    try {
+      const seed = String(pick?.keyword || topic || "").toLowerCase();
+      const words = new Set(seed.split(/[^a-z0-9]+/).filter((w) => w.length > 3));
+      const { data: arts } = await supabase.from("actions")
+        .select("payload").eq("user_id", userId).eq("type", "article")
+        .order("created_at", { ascending: false }).limit(30);
+      existingLinks = (arts || [])
+        .map((a) => a.payload).filter((p) => p && p.slug && p.title)
+        .map((p) => ({ title: p.title, slug: String(p.slug).replace(/^\/+/, ""), overlap: `${p.title} ${p.targetKeyword || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => words.has(w)).length }))
+        .filter((p) => p.overlap > 0)
+        .sort((a, b) => b.overlap - a.overlap)
+        .slice(0, 3);
+    } catch {}
+  }
+
   let data = null;
   let provider = null;
   try {
@@ -66,7 +86,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic, directives, pick }),
+      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks }),
     });
     data = result.json;
     provider = result.provider;
@@ -162,7 +182,10 @@ function deDash(s) {
   return s.replace(/\s*—\s*/g, ", ").replace(/ – /g, ", ");
 }
 
-function buildPrompt({ ai, gsc, topic, directives = [], pick = null }) {
+function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [] }) {
+  const internalLinks = existingLinks.length
+    ? `\nINTERNAL LINKS — Genie already published these related articles on THIS site. Link to 1-3 of them NATURALLY inside the body using markdown to their slug, e.g. [natural anchor text](/${"slug"}), only where it genuinely helps the reader (this builds topical authority):\n${existingLinks.map((l) => `- "${l.title}" → /${l.slug}`).join("\n")}`
+    : "";
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
     : "Brand voice: clear, warm, professional.";
@@ -204,7 +227,7 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${voice}
-${targetBlock}
+${targetBlock}${internalLinks}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
 knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.

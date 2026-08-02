@@ -419,6 +419,11 @@ function KeywordRow({ k }) {
         <span>·</span>
         <span>Coverage {k.coverage || 0}×</span>
         {real && <span style={{ color: "var(--signal-live-ink)" }}>· ↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>}
+        {k.ai_checked_at && (
+          <span style={{ color: k.ai_cited ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>
+            · AI {k.ai_cited ? "cites you ✓" : "not yet"}
+          </span>
+        )}
       </div>
       {k.usage?.length > 0 && (
         <details className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>

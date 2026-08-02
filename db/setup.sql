@@ -117,6 +117,12 @@ create unique index if not exists keyword_usage_dedupe_uidx on public.keyword_us
 -- ── STEP 3 — RECENT COLUMNS (idempotent; add only if missing) ────────────────
 alter table if exists public.keywords add column if not exists volume integer;
 alter table if exists public.keywords add column if not exists volume_history jsonb;
+-- source tags where a keyword came from (scan / research / user / gsc / aeo);
+-- ai_cited + ai_checked_at record whether AI assistants cite you for it (per-keyword
+-- AI-search result, refreshed each time the AI-search radar runs).
+alter table if exists public.keywords add column if not exists source text;
+alter table if exists public.keywords add column if not exists ai_cited boolean;
+alter table if exists public.keywords add column if not exists ai_checked_at timestamptz;
 alter table if exists public.profiles add column if not exists logo_url text;
 
 -- Connections: ensure every column the OAuth flows read/write exists. Without

@@ -115,6 +115,19 @@ export async function POST(request) {
     if (rows.length) await supabase.from("keywords").upsert(rows, { onConflict: "user_id,host,keyword", ignoreDuplicates: true });
   } catch {}
 
+  // Stamp the per-keyword AI-citation status on every matching keyword, so the
+  // Growth results view can show "AI cites you ✓" vs "not yet" and the change over
+  // time. Runs after the seed so newly-added gaps get stamped too.
+  try {
+    const nowIso = new Date().toISOString();
+    for (const r of results) {
+      const kw = String(r.question || "").toLowerCase().trim().slice(0, 120);
+      if (!kw) continue;
+      await supabase.from("keywords").update({ ai_cited: !!r.aiCitesYou, ai_checked_at: nowIso })
+        .eq("user_id", userId).eq("host", host).eq("keyword", kw);
+    }
+  } catch {}
+
   await logActivityBatch(supabase, userId, [
     { host, verb: "discovered", icon: "🔮", message: `AI cites you in ${summary.visible}/${summary.total} buyer answers`, detail: summary.gaps.slice(0, 2).map((g) => g.question).join(" · "), meta: { score: summary.score } },
     summary.gaps.length ? { host, verb: "learning", message: `${summary.gaps.length} AI-search gaps found — Genie drafted content plans to win them`, meta: { gaps: summary.gaps.length } } : null,
