@@ -15,6 +15,7 @@ import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Pill, SectionLabel, SectionHead } from "@/components/ui/v2/primitives";
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
+import { climbFrom } from "@/lib/keyword-health";
 
 const HEALTH = {
   strong:  { label: "Strong",  bar: "var(--signal-live)" },
@@ -33,11 +34,16 @@ function Growth() {
   const [state, setState] = useState("loading");
   const [host, setHost] = useState("");
   const [busy, setBusy] = useState("");
+  const [step, setStep] = useState("");       // narrated progress during long AI work
+  const [deriveErr, setDeriveErr] = useState("");
 
   async function loadFor(h) {
-    const [p, k] = await Promise.all([
+    // The rank-climb series has been recorded nightly all along (keyword_history)
+    // and had no UI — the single most motivating thing Genie can show.
+    const [p, k, s] = await Promise.all([
       fetch(`/api/placements?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       fetch(`/api/keywords?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      fetch(`/api/keywords/sync?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
     ]);
     const next = {
       blocks: p?.ok ? (p.blocks || []) : [],
@@ -45,6 +51,7 @@ function Growth() {
       totalAuto: p?.ok ? (p.totalAuto || 0) : 0,
       results: p?.ok ? (p.results || null) : null,
       keywords: k?.ok ? { portfolioScore: k.portfolioScore, graded: k.graded || [], counts: k.counts } : { graded: [] },
+      climb: s?.ok ? climbFrom(s.series) : null,
     };
     setD(next);
     setState(next.blocks.length || next.keywords.graded.length ? "real" : "empty");
@@ -73,10 +80,23 @@ function Growth() {
     if (!host) return;
     if (rebuild && !confirm("Rebuild the keyword strategy from scratch? Genie will replace the keywords it picked with a fresh set (any you added by hand are kept).")) return;
     setBusy("derive");
+    setDeriveErr("");
+    // This call routinely takes 20-40s (real Google Autocomplete + an LLM). A frozen
+    // button for that long reads as broken, so narrate the actual steps.
+    const steps = ["Reading what you sell…", "Pulling real Google searches…", "Choosing the terms buyers type…", "Scoring demand vs. winnability…", "Ordering your plan…"];
+    let i = 0;
+    setStep(steps[0]);
+    const tick = setInterval(() => { i = Math.min(i + 1, steps.length - 1); setStep(steps[i]); }, 4500);
     try {
       const r = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, rebuild }) }).then((x) => x.json());
       if (r.ok) setD((prev) => ({ ...prev, keywords: { portfolioScore: r.portfolioScore, graded: r.graded || [], counts: r.counts } }));
-    } catch {}
+      // Don't fail silently — say what went wrong and that it's retryable.
+      else setDeriveErr(r.message || r.error || "I couldn’t build the strategy just then. Try again.");
+    } catch {
+      setDeriveErr("Something interrupted me. Check your connection and try again.");
+    }
+    clearInterval(tick);
+    setStep("");
     setBusy("");
   }
 
@@ -116,7 +136,7 @@ function Growth() {
         <SectionHead index="01" title="What I’m pursuing" note={graded.length ? "The searches I’m ranking you for — winners rise, dead ends retire." : undefined}
           action={graded.length ? (
             <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive"} className="text-[12.5px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)" }}>
-              {busy === "derive" ? "Rebuilding…" : "↻ Rebuild strategy"}
+              {busy === "derive" ? (step || "Rebuilding…") : "↻ Rebuild strategy"}
             </button>
           ) : undefined}
         />
@@ -127,17 +147,24 @@ function Growth() {
             <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
             <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
             <button onClick={() => derive()} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
-              {busy === "derive" ? "Genie is analyzing…" : host ? "Build my keyword strategy →" : "Run your first scan →"}
+              {busy === "derive" ? (step || "Genie is analyzing…") : host ? "Build my keyword strategy →" : "Run your first scan →"}
             </button>
+            {busy === "derive" && <p className="mt-2 text-[12px] mg-subtle">This takes up to a minute — I’m using real Google data, not guessing.</p>}
+            {deriveErr && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
           </Card>
         ) : (
           <>
+            {deriveErr && <p className="text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
             <div className="mg-statstrip">
               <StatCell value={active.length} label="Keywords found" />
               <StatCell value={waves[0].items.length} label="Easy wins — attacking first" accent />
               <StatCell value={fmtNum(totalEst)} label="Est. searches in reach /mo" accent />
               <StatCell value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
             </div>
+
+            {/* Proof the plan is working, before the plan itself. Recorded nightly
+                from Search Console and never shown until now. */}
+            {d.climb && <ClimbChart climb={d.climb} />}
 
             <p className="text-[13.5px] mg-muted" style={{ maxWidth: 700 }}>
               I don’t chase everything at once. I win the easy, high-intent searches first to build your authority — then use that momentum to take the bigger, harder terms. Here’s the plan:
@@ -489,6 +516,59 @@ function AddKeyword({ host, onAdded }) {
         {busy ? "Adding…" : "Add"}
       </button>
     </div>
+  );
+}
+
+// The climb. Position is INVERTED on the y-axis (rank 3 sits above rank 40), so a
+// genuine improvement reads as a rising line instead of a falling one.
+function ClimbChart({ climb }) {
+  const { points, first, last, delta, clicks } = climb;
+  const w = 640, h = 120, pad = 8;
+  const vals = points.map((p) => p.position);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = Math.max(0.5, max - min);
+  const step = (w - pad * 2) / (points.length - 1);
+  const y = (v) => pad + ((v - min) / span) * (h - pad * 2);
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${(pad + i * step).toFixed(1)},${y(p.position).toFixed(1)}`).join(" ");
+  const area = `${line} L${(pad + (points.length - 1) * step).toFixed(1)},${h} L${pad},${h} Z`;
+  const climbed = delta > 0;
+  return (
+    <Card className="p-5 mt-3">
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <p className="mg-eyebrow" style={{ margin: 0 }}>Your climb on Google</p>
+        <span className="text-[12px] mg-subtle">real Search Console data · {points.length} days</span>
+      </div>
+      <div className="mt-3 flex items-end gap-5 flex-wrap">
+        <div>
+          <p className="mg-num leading-none" style={{ fontSize: 34, fontWeight: 800, color: "var(--fg)" }}>{last.toFixed(1)}</p>
+          <p className="text-[11.5px] mg-subtle mt-1">average position today</p>
+        </div>
+        <div>
+          <p className="text-[15px] font-bold mg-num" style={{ color: climbed ? "var(--signal-live-ink)" : delta < 0 ? "var(--signal-warn)" : "var(--fg-muted)" }}>
+            {climbed ? "▲" : delta < 0 ? "▼" : "—"} {Math.abs(delta)}
+          </p>
+          <p className="text-[11.5px] mg-subtle mt-0.5">{climbed ? "places gained" : delta < 0 ? "places lost" : "holding"} since {points[0].date}</p>
+        </div>
+        {clicks > 0 && (
+          <div>
+            <p className="text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>{clicks.toLocaleString()}</p>
+            <p className="text-[11.5px] mg-subtle mt-0.5">clicks in this window</p>
+          </div>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 w-full" style={{ height: 120, overflow: "visible" }} role="img" aria-label={`Average Google position moved from ${first.toFixed(1)} to ${last.toFixed(1)}`}>
+        <defs>
+          <linearGradient id="climbFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.26" />
+            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#climbFill)" />
+        <path d={line} fill="none" stroke="var(--accent-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={pad + (points.length - 1) * step} cy={y(last)} r="3.5" fill="var(--accent-ink)" />
+      </svg>
+      <p className="mt-1 text-[11.5px] mg-subtle">Higher on the chart means a better position (rank 3 sits above rank 40).</p>
+    </Card>
   );
 }
 
