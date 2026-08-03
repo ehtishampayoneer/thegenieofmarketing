@@ -114,6 +114,33 @@ create index if not exists keyword_usage_ref_idx on public.keyword_usage (ref_ty
 create unique index if not exists keyword_usage_dedupe_uidx on public.keyword_usage (user_id, keyword, channel, ref_id);
 
 
+-- Citation targets — the "get into the lists" engine. AI assistants almost never
+-- cite a business's own site when recommending; they cite third parties (buying
+-- guides, roundups, review platforms, community threads). Each row is one source AI
+-- draws on for a real buyer question, and whether this business appears in it. A row
+-- with mentioned=false is the opportunity: get included there and you get cited.
+create table if not exists public.citation_targets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  host text not null,
+  url text not null,
+  domain text,
+  title text,
+  kind text not null default 'unknown',   -- listicle | review | directory | community | competitor | news | unknown
+  question text,                          -- the buyer question AI cited it for
+  mentioned boolean,                      -- already includes this business?
+  competitors_found text[],               -- rivals named on that page
+  status text not null default 'gap',     -- gap | pitched | landed | declined | skipped
+  authority integer,                      -- rough 0-100 weight of the placement
+  pay_to_play boolean default false,      -- sponsored / affiliate list (never pitch blindly)
+  last_checked_at timestamptz,
+  meta jsonb,
+  created_at timestamptz not null default now(),
+  unique (user_id, host, url)
+);
+create index if not exists citation_targets_user_host_idx on public.citation_targets (user_id, host, status);
+
+
 -- ── STEP 3 — RECENT COLUMNS (idempotent; add only if missing) ────────────────
 alter table if exists public.keywords add column if not exists volume integer;
 alter table if exists public.keywords add column if not exists volume_history jsonb;
@@ -172,7 +199,7 @@ declare
   t text;
   user_tables text[] := array[
     'actions','action_outcomes','activity','cadence_plans','chat_messages',
-    'connections','decisions','entities','events','growth_memory','keyword_history',
+    'citation_targets','connections','decisions','entities','events','growth_memory','keyword_history',
     'keywords','keyword_usage','links','notifications','outreach_log','placements','safety_settings',
     'scans','suppressions'
   ];

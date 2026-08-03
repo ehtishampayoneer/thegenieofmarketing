@@ -95,6 +95,8 @@ export default function AiSearchPage() {
       </div>
       )}
 
+      {state === "real" && <CitationGap />}
+
       <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie re-checks AI search as your content publishes — and learns which plays win citations for you.</p>
 
       {msg && (
@@ -103,5 +105,108 @@ export default function AiSearchPage() {
         </div>
       )}
     </OperatorShell>
+  );
+}
+
+// ── THE CITATION GAP ──
+// AI almost never cites a vendor's own site when recommending; it cites buying
+// guides, roundups and review platforms. So the lists you're MISSING from are the
+// real opportunity — get in there and the AI starts naming you.
+const KIND_LABEL = { listicle: "Buying guide", review: "Review platform", community: "Community", directory: "Directory", news: "Press", unknown: "Other" };
+
+function CitationGap() {
+  const [d, setD] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    fetch("/api/citations", { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j?.ok) setD(j); }).catch(() => {});
+  }, []);
+
+  async function run() {
+    if (busy) return;
+    setBusy(true); setErr("");
+    try {
+      const j = await fetch("/api/citations", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => r.json());
+      if (j?.ok) setD(j);
+      else setErr(j?.message || "Couldn’t check the lists just then. Try again.");
+    } catch { setErr("Something interrupted that. Try again."); }
+    setBusy(false);
+  }
+
+  const s = d?.summary;
+  const gaps = (d?.targets || []).filter((t) => t.mentioned === false);
+
+  return (
+    <section className="mg-act mt-8">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>The lists AI reads</h2>
+        {s?.gaps > 0 && <span className="mg-pill mg-pill--danger">missing from {s.gaps}</span>}
+        <button onClick={run} disabled={busy} className="ml-auto text-[12.5px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)" }}>
+          {busy ? "Checking the lists…" : d ? "↻ Re-check" : "Check now →"}
+        </button>
+      </div>
+      <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: 720 }}>
+        When buyers ask AI for a recommendation, it quotes other people’s buying guides and review sites, not your website. These are the pages it draws from for your buyers — getting listed on them is how you get named.
+      </p>
+
+      {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+
+      {s && (
+        <div className="mg-statstrip mt-3">
+          <StatBox value={s.checked} label="Pages AI cites" />
+          <StatBox value={s.gaps} label="You’re missing from" accent />
+          <StatBox value={s.alreadyIn} label="Already listed in" />
+          <StatBox value={s.actionable} label="Worth pitching" accent />
+        </div>
+      )}
+
+      {s?.topRivals?.length > 0 && (
+        <p className="mt-2 text-[12.5px] mg-muted">
+          Taking your slot most often: {s.topRivals.map((r) => `${r.name} (${r.count})`).join(" · ")}
+        </p>
+      )}
+
+      {gaps.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2">
+          {gaps.slice(0, 10).map((t) => (
+            <div key={t.id || t.url} className="mg-surface-quiet p-3.5 flex items-start gap-3">
+              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 mt-0.5" style={{ background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>
+                {KIND_LABEL[t.kind] || "Other"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <a href={t.url} target="_blank" rel="noreferrer" className="text-[13.5px] font-semibold mg-focus block truncate" style={{ color: "var(--fg)" }}>
+                  {t.title || t.domain}
+                </a>
+                <p className="text-[11.5px] mg-subtle mt-0.5 truncate">
+                  {t.domain}
+                  {t.question ? ` · cited when buyers ask “${t.question}”` : ""}
+                </p>
+                {t.competitors_found?.length > 0 && (
+                  <p className="text-[11.5px] mt-0.5" style={{ color: "var(--signal-warn)" }}>Lists {t.competitors_found.join(", ")} — not you</p>
+                )}
+              </div>
+              {t.pay_to_play && <span className="text-[10.5px] shrink-0 mg-subtle" title="Sponsored or affiliate placement — needs payment, not a pitch">paid</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d && s?.checked === 0 && !busy && (
+        <p className="mt-3 text-[13px] mg-muted">Nothing checked yet. Run the AI-search check above first — that’s what finds the pages AI cites.</p>
+      )}
+      {gaps.length > 0 && (
+        <p className="mt-3 text-[12px] mg-subtle">Next: Genie drafts a pitch for each of these and puts it in Approvals — you decide what gets sent. Nothing goes out without you.</p>
+      )}
+    </section>
+  );
+}
+
+function StatBox({ value, label, accent }) {
+  return (
+    <div className="mg-statcell">
+      <p className="mg-stat-num" style={accent ? { color: "var(--accent-ink)" } : undefined}>{value}</p>
+      <p className="mg-stat-label">{label}</p>
+    </div>
   );
 }

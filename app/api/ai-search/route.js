@@ -90,7 +90,10 @@ export async function POST(request) {
       userId, host, kind: "aeo_gap", choice: g.question,
       rationale: g.gap || `Not cited by AI for a ${g.stage} buyer question`,
       confidence: g.confidence / 100,
-      meta: { stage: g.stage, competitorsCited: g.competitorsCited, recommendation: g.recommendation, expectedOutcome: g.expectedOutcome },
+      // sources = the third-party pages AI actually draws on for this question.
+      // The Citation Gap engine turns these into "get into the list" targets, so
+      // they're persisted here rather than recomputed with another round of search.
+      meta: { stage: g.stage, competitorsCited: g.competitorsCited, recommendation: g.recommendation, expectedOutcome: g.expectedOutcome, sources: g.sources || [] },
     });
   }
   await recordLearning(supabase, {
