@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf } from "@/lib/business";
 import { BrandIcon } from "@/components/ui/BrandIcon";
+import Icon from "@/components/ui/Icon";
 import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
@@ -461,30 +462,58 @@ export default function WelcomePage() {
           {phase === "ready" && (
             <div className="onb-rise">
               <StepDots step={4} />
-              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
-                <div>
+              <div className="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14 lg:items-start">
+                <div className="lg:sticky lg:top-16">
                   <div className="flex items-center gap-3"><ApertureMark size={48} live /><p className="text-[13.5px] font-mono" style={{ color: "var(--onb-live)" }}>Step 4 of 4 · You’re all set</p></div>
-                  <h1 className="mt-4 font-extrabold tracking-tight" style={{ fontSize: "clamp(32px,4.4vw,50px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
+                  <h1 className="mt-5 font-extrabold tracking-tight" style={{ fontSize: "clamp(34px,4.8vw,54px)", lineHeight: 1.03, letterSpacing: "-.035em", textWrap: "balance" }}>
                     You’ve hired me. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s what happens now.</span>
                   </h1>
-                  <p className="mt-5 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>You’ll land on your command center — where you see what I’m doing and approve the work I’ve lined up for you.</p>
-                  <div className="mt-8 flex items-center gap-4 flex-wrap">
+                  <p className="mt-6 text-[17.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.6, maxWidth: 460 }}>
+                    You’ll land on your command center every day, where I execute the marketing and keep you informed with real progress.
+                  </p>
+                  <div className="mt-9 flex items-center gap-4 flex-wrap">
                     <button onClick={enterApp} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>Enter my command center →</button>
                   </div>
                 </div>
-                <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-                  <div className="flex flex-col gap-5">
+                <div className="mt-12 lg:mt-0">
+                  <p className="text-[12px] font-mono font-semibold mb-4" style={{ color: "var(--onb-live)", letterSpacing: ".16em" }}>HERE’S THE PLAN</p>
+                  <div className="flex flex-col gap-3">
                     {[
-                      ["Every night", "I find high-intent buyers, write your content and outreach, and check where you rank."],
-                      ["Every morning", "You wake up to a short list of ready work — articles, replies, posts — waiting for your one-tap approval."],
-                      ["Nothing goes out without you", "I draft; you approve. On social I open the post ready, you tap send. Your accounts stay safe."],
-                      ["Ask me anything", "Open Talk to Genie (⌘K) for progress, tips, or to have me build a full Meta / Google / social campaign plan."],
-                    ].map(([t, s], i) => (
-                      <div key={i} className="flex items-start gap-3.5">
-                        <span className="mg-live-dot" style={{ background: "var(--onb-live)", marginTop: 7 }} />
-                        <span><span className="text-[15.5px] font-semibold" style={{ color: "var(--onb-fg)" }}>{t}. </span><span className="text-[14.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>{s}</span></span>
+                      { n: 1, icon: Icon.search, tag: "Discover", t: "Every night, I find high-intent buyers.", s: "I write your content, run outreach, and check where you rank." },
+                      { n: 2, icon: Icon.write, tag: "Deliver", t: "Every morning, you get a short list of ready-to-publish work.", s: "Articles, replies, posts — all waiting for your one-tap approval." },
+                      { n: 3, icon: Icon.check, tag: "Approve", t: "Nothing goes out without you.", s: "I draft, you approve. On social I open the post ready and you tap send, so your accounts stay safe." },
+                      { n: 4, icon: Icon.growth, tag: "Optimize", t: "I learn, follow up, and scale what works.", s: "Open Talk to Genie (⌘K) for progress, or to build a full Meta / Google / social campaign plan." },
+                    ].map((row, i, arr) => (
+                      <div key={row.n} className="flex items-stretch gap-4">
+                        {/* number rail + connector */}
+                        <div className="flex flex-col items-center shrink-0" style={{ width: 30 }}>
+                          <span className="flex items-center justify-center rounded-full text-[13px] font-bold shrink-0"
+                            style={{ width: 30, height: 30, background: "var(--onb-live)", color: "#04120b" }}>{row.n}</span>
+                          {i < arr.length - 1 && <span style={{ flex: 1, width: 1, marginTop: 6, borderLeft: "1px dashed var(--onb-live)", opacity: .45 }} />}
+                        </div>
+                        <div className="flex-1 flex items-start gap-4" style={{ borderRadius: 16, padding: "18px 20px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
+                          <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,.04)", border: "1px solid var(--onb-hair)", color: "var(--onb-live)" }}>
+                            <row.icon size={20} />
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[16.5px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3, letterSpacing: "-.01em" }}>{row.t}</p>
+                            <p className="mt-1.5 text-[14px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>{row.s}</p>
+                          </div>
+                          <span className="shrink-0 text-[12px] font-semibold px-2.5 py-1 rounded-full self-start" style={{ color: "var(--onb-live)", border: "1px solid var(--onb-live)", opacity: .85 }}>{row.tag}</span>
+                        </div>
                       </div>
                     ))}
+
+                    {/* the payoff */}
+                    <div className="flex items-center gap-4 mt-1" style={{ marginLeft: 46, borderRadius: 16, padding: "18px 20px", background: "linear-gradient(100deg, rgba(255,200,118,.10), rgba(255,255,255,.02))", border: "1px solid rgba(255,200,118,.28)" }}>
+                      <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,200,118,.12)", color: "var(--onb-dawn)" }}>
+                        <Icon.spark size={20} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[16.5px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3 }}>You focus on your business.</p>
+                        <p className="mt-1 text-[14px]" style={{ color: "var(--onb-muted)" }}>I’ll handle the marketing — every single day.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

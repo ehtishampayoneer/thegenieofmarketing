@@ -25,8 +25,24 @@ const CONNECT_ERRORS = {
   access_denied: "You declined the permissions, so Genie can't read your data. Connect again and approve access.",
 };
 
+// "Google connected" and "we found your Search Console property" are DIFFERENT
+// things. gsc_site is only filled in later, once an audit finds a verified property
+// for this domain — so judging the Google row by it made a working connection read
+// as "Connect Google" forever. Report the account state, then the detail.
+function googleSub(I) {
+  if (!I.google?.connected) return "Real rankings + traffic + real keyword search volume, AND lets Genie send outreach from your own Gmail";
+  const have = [];
+  const missing = [];
+  (I.search_console?.connected ? have : missing).push("Search Console");
+  (I.ga4?.connected ? have : missing).push("Analytics");
+  let s = `Connected${have.length ? ` · ${have.join(" + ")} live` : ""}`;
+  if (missing.length) s += ` · ${missing.join(" and ")} ${missing.length > 1 ? "aren’t" : "isn’t"} reporting yet — that starts after Genie’s next run, or if the site isn’t a verified property in your Google account`;
+  return s;
+}
+
 const FALLBACK = {
   integrations: {
+    google: { label: "Google", connected: false, category: "measure" },
     search_console: { label: "Google Search Console", connected: false, category: "measure" },
     ga4: { label: "Google Analytics (GA4)", connected: false, category: "measure" },
     wordpress: { label: "WordPress", connected: false, category: "publish" },
@@ -94,8 +110,8 @@ export default function ConnectionsPage() {
       {/* Measure */}
       <Group title="Measure your growth" sub="So Genie’s impact becomes real numbers, not estimates.">
         <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
-          sub={I.search_console.connected ? (I.ga4.connected ? "Connected · rankings, traffic, real keyword volume + send from your Gmail" : "Connected · enable Analytics for traffic proof") : "Real rankings + traffic + real keyword search volume, AND lets Genie send outreach from your own Gmail"}
-          connected={I.search_console.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.search_console.connected ? "Reconnect" : "Connect Google"}</a>} />
+          sub={googleSub(I)}
+          connected={I.google?.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
         <Row icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
           sub={I.commerce.connected ? "Receiving real revenue events" : "Point your payment provider’s webhook here so Genie proves the dollars it earns you"}
           connected={I.commerce.connected} action={null}>

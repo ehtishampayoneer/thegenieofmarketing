@@ -89,7 +89,10 @@ export default function OperatorShell({ active = "today", children }) {
       if (live && data?.integrations) {
         const I = data.integrations;
         const missing = [];
-        if (!I.search_console?.connected) missing.push({ label: "Google", why: "real keywords + send from your Gmail" });
+        // Ask whether the Google ACCOUNT is linked — not whether a Search Console
+        // property has been matched yet (gsc_site fills in later). Judging it by the
+        // latter kept nagging owners to connect something they'd already connected.
+        if (!I.google?.connected) missing.push({ label: "Google", why: "real keywords + send from your Gmail" });
         if (!I.wordpress?.connected) missing.push({ label: "your blog", why: "auto-publish articles" });
         setMissingConns(missing);
       }
