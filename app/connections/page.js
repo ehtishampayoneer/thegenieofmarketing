@@ -172,8 +172,26 @@ function Row({ icon, label, sub, connected, connectedLabel = "Connected", action
 
 function RevenueSetup({ ingest }) {
   const [copied, setCopied] = useState("");
-  const url = (id) => `${ingest?.base || ""}/api/webhooks/${id}?k=${ingest?.token || ""}`;
-  async function copy(id) { try { await navigator.clipboard.writeText(url(id)); setCopied(id); setTimeout(() => setCopied(""), 1600); } catch {} }
+  const base = ingest?.base || "";
+  const token = ingest?.token || "";
+  const url = (id) => `${base}/api/webhooks/${id}?k=${token}`;
+  async function copy(id, text) { try { await navigator.clipboard.writeText(text ?? url(id)); setCopied(id); setTimeout(() => setCopied(""), 1600); } catch {} }
+
+  // The universal pixel — for any business NOT on a supported checkout. Drop on the
+  // site (thank-you page auto-records via the data attribute). Same private token.
+  const pixel = `<!-- Marketing Genie — records a sale so "Customers won" lights up.
+     Put on your thank-you / order-confirmation page. Optionally set the value. -->
+<script>
+(function(){var K=${JSON.stringify(token)},B=${JSON.stringify(base)};
+try{var q=new URLSearchParams(location.search);["utm_content","utm_campaign"].forEach(function(k){var v=q.get(k);if(v)localStorage.setItem("mg_"+k,v);});}catch(e){}
+function s(k){try{return new URLSearchParams(location.search).get(k)||localStorage.getItem("mg_"+k)||"";}catch(e){return"";}}
+window.genieConversion=function(value,currency,orderId){var id;try{id=orderId||sessionStorage.getItem("mg_oid")||(sessionStorage.setItem("mg_oid",Date.now().toString(36)),sessionStorage.getItem("mg_oid"));}catch(e){id=""+Date.now();}
+var b=JSON.stringify({k:K,value:value||0,currency:currency||"USD",ref:s("utm_content"),campaign:s("utm_campaign"),dedupeKey:"px:"+id});
+try{navigator.sendBeacon(B+"/api/px/conversion",new Blob([b],{type:"application/json"}));}catch(e){fetch(B+"/api/px/conversion",{method:"POST",headers:{"Content-Type":"application/json"},body:b,keepalive:true});}};
+var el=document.currentScript;if(el&&el.getAttribute("data-genie-convert")!==null){window.genieConversion(el.getAttribute("data-genie-value"),el.getAttribute("data-genie-currency"),el.getAttribute("data-genie-order"));}
+})();
+</script>`;
+
   return (
     <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
       <p className="text-[11.5px] mg-muted mb-2">Add this webhook URL in your provider (Stripe, Shopify, Paddle, Lemon Squeezy…). Your URL is private to your account.</p>
@@ -185,6 +203,18 @@ function RevenueSetup({ ingest }) {
             <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11, padding: ".3rem .55rem" }}>{copied === p.id ? "✓" : "Copy"}</button>
           </div>
         ))}
+      </div>
+
+      {/* Universal pixel — no Stripe/Shopify needed */}
+      <div className="mt-4">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>No Stripe or Shopify? Use the universal pixel</p>
+          <button onClick={() => copy("__pixel", pixel)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11, padding: ".3rem .55rem" }}>{copied === "__pixel" ? "Copied ✓" : "Copy snippet"}</button>
+        </div>
+        <p className="text-[11.5px] mg-muted mb-2">
+          Paste this on your thank-you / order-confirmation page. To auto-record a sale, add <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>data-genie-convert data-genie-value="49"</code> to the <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>&lt;script&gt;</code> tag, or call <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>genieConversion(total)</code> after checkout.
+        </p>
+        <pre className="mg-surface-quiet p-2.5 overflow-x-auto text-[10.5px] mg-subtle" style={{ fontFamily: "var(--font-mono)", lineHeight: 1.5, maxHeight: 150 }}>{pixel}</pre>
       </div>
     </div>
   );

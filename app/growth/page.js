@@ -16,6 +16,7 @@ import { Card, Pill, SectionLabel, SectionHead } from "@/components/ui/v2/primit
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 import { climbFrom } from "@/lib/keyword-health";
+import { campaignStatus } from "@/lib/keyword-plan";
 
 const HEALTH = {
   strong:  { label: "Strong",  bar: "var(--signal-live)" },
@@ -52,6 +53,7 @@ function Growth() {
       results: p?.ok ? (p.results || null) : null,
       keywords: k?.ok ? { portfolioScore: k.portfolioScore, graded: k.graded || [], counts: k.counts } : { graded: [] },
       climb: s?.ok ? climbFrom(s.series) : null,
+      series: s?.ok ? (s.series || {}) : {},
     };
     setD(next);
     setState(next.blocks.length || next.keywords.graded.length ? "real" : "empty");
@@ -102,7 +104,9 @@ function Growth() {
 
   const kw = d.keywords || { graded: [] };
   const graded = kw.graded || [];
-  const active = graded.filter((k) => k.health !== "retired");
+  const series = d.series || {};
+  // Attach each keyword's live campaign status (vs its target) from real rank history.
+  const active = graded.filter((k) => k.health !== "retired").map((k) => ({ ...k, _status: campaignStatus(k, series[k.keyword] || []) }));
   const retired = graded.filter((k) => k.health === "retired");
   const taps = d.totalTaps || 0;
   const allTaps = (d.blocks || []).flatMap((b) => (b.items || []).map((it) => ({ ...it, platform: b.platform, owned: b.owned })));
@@ -418,6 +422,7 @@ function WaveCard({ wave }) {
 
 function KeywordRow({ k }) {
   const m = HEALTH[k.health] || HEALTH.new;
+  const sv = k._status ? statusView(k._status) : null;
   const comp = k.competition ?? 50;
   const diff = comp < 40 ? { label: "Easy", tone: "live" } : comp < 65 ? { label: "Medium", tone: "warn" } : { label: "Hard", tone: "danger" };
   const pot = k.traffic_potential ?? 0;
@@ -452,6 +457,12 @@ function KeywordRow({ k }) {
           </span>
         )}
       </div>
+      {sv && (
+        <div className="mt-1.5 flex items-center gap-2 text-[11px] flex-wrap">
+          <span className="font-semibold px-1.5 py-0.5 rounded-full" style={{ color: toneColor(sv.tone), background: toneBg(sv.tone) }}>{sv.label}</span>
+          <span className="mg-subtle">{sv.note}</span>
+        </div>
+      )}
       {k.usage?.length > 0 && (
         <details className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
           <summary className="cursor-pointer text-[11px] font-semibold mg-focus" style={{ color: "var(--signal-live-ink)" }}>
@@ -578,3 +589,19 @@ function diffColor(tone) {
 function diffBg(tone) {
   return tone === "live" ? "var(--signal-live-soft)" : tone === "warn" ? "var(--signal-warn-soft)" : "var(--signal-danger-soft)";
 }
+
+// Turn a keyword's campaign status into a plain-language progress chip: where it
+// stands vs its target, and what Genie is doing about it.
+function statusView(st) {
+  const t = st.target || { position: 10, days: 30 };
+  switch (st.state) {
+    case "achieved": return { label: `On page 1 · rank ${Math.round(st.current)}`, tone: "live", note: "Won — defending it" };
+    case "climbing": return { label: `Climbing +${st.trend}`, tone: "live", note: `Goal: top ${t.position} in ~${t.days}d` };
+    case "stalled":  return { label: "Stalled", tone: "warn", note: "Needs authority — Genie is writing support + get listed on trusted lists" };
+    case "indexing": return { label: "Indexing", tone: "info", note: "Published — waiting for Google to place it" };
+    case "working":  return { label: "Building", tone: "info", note: `Goal: top ${t.position} in ~${t.days}d` };
+    default:         return { label: "Not written yet", tone: "muted", note: `Queued · ${t.label || "planned"}` };
+  }
+}
+function toneColor(t) { return t === "live" ? "var(--signal-live-ink)" : t === "warn" ? "var(--signal-warn)" : t === "info" ? "var(--signal-info)" : "var(--fg-subtle)"; }
+function toneBg(t) { return t === "live" ? "var(--signal-live-soft)" : t === "warn" ? "var(--signal-warn-soft)" : t === "info" ? "var(--signal-info-soft)" : "var(--surface-sunken)"; }

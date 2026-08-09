@@ -1,18 +1,19 @@
 // app/api/ai-search/route.js
-// ── AI-SEARCH VISIBILITY RADAR (intent-fused) ──
-// For the buyer questions Genie is hunting, model the AI answer, measure whether
-// the entity is cited, expose who wins instead, and recommend the content that
-// captures the citation. Every gap + recommendation is written to the Decision
-// Ledger and Growth Memory so it's explainable and compounds with content/outreach.
+// ── AI-SEARCH VERDICT RADAR (intent-fused) ──
+// For the buyer questions Genie is hunting, ASK the real AI models directly what
+// they recommend, detect whether the business is named in the actual answer,
+// expose who wins instead, and recommend the content that captures the citation.
+// Every gap + recommendation is written to the Decision Ledger and Growth Memory
+// so it's explainable and compounds with content/outreach.
 
-import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 import { webSearch } from "@/lib/search";
 import { getBrief, recordDecision, recordLearning } from "@/lib/growth-memory";
-import { aiSearchQuestions, buildVisibilityPrompt, summarizeVisibility } from "@/lib/ai-search";
+import { aiSearchQuestions, summarizeVisibility, runVerdict } from "@/lib/ai-search";
 import { logActivity, logActivityBatch } from "@/lib/activity";
+import { recordEvent, getEvents } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,48 +42,34 @@ export async function POST(request) {
 
   await logActivity(supabase, userId, {
     host, verb: "scanning", icon: "🔮",
-    message: `Checking AI search on ${questions.length} buyer questions`,
-    detail: "ChatGPT · Perplexity · Google AI Overviews · Gemini (modelled)",
+    message: `Asking real AI models what they recommend for ${questions.length} buyer questions`,
+    detail: "Google Gemini + any GPT/Llama engine you've connected — asked directly",
   });
 
-  // 1) Retrieve the sources an AI engine would draw from (parallel, bounded).
-  const retrieved = await Promise.allSettled(questions.map((q) => webSearch(q.query, { limit: 4, ctx })));
-  const items = questions.map((q, i) => ({ ...q, sources: retrieved[i].status === "fulfilled" ? retrieved[i].value : [] }));
+  // Run the REAL multi-engine verdict and retrieve the third-party sources an AI
+  // engine draws on (for the Citation Gap "get into these lists" chain) IN
+  // PARALLEL. runVerdict asks each reachable model the buyer question directly and
+  // detects the business in the actual answer — no self-reported "am I cited?".
+  const [verdict, retrieved] = await Promise.all([
+    runVerdict({ entity: { ...entity, host: entity?.host || host }, ai, questions, ctx }),
+    Promise.allSettled(questions.map((q) => webSearch(q.query, { limit: 4, ctx }))),
+  ]);
 
-  // 2) Model the AI answers + citations in one structured call.
-  let modelled;
-  try {
-    const result = await callAI({
-      system: "You are a precise AEO/GEO analyst. Be honest — most smaller brands are NOT cited yet. Return ONLY valid JSON.",
-      json: true, maxTokens: 3200, temperature: 0.4,
-      prompt: buildVisibilityPrompt(items, entity, ai),
-      ctx,
-    });
-    modelled = result.json;
-  } catch (e) {
-    if (e instanceof AllProvidersFailedError) return json({ ok: false, retryable: true, message: "Genie is busy — try again." }, 503);
-    modelled = { results: [] };
+  // Honest failure: if we couldn't reach a single AI model, say so — never report
+  // a fake 0% that reads as "you're invisible" when we simply couldn't ask.
+  if (!verdict.engineCount) {
+    return json({ ok: false, reason: "no_ai_engine", retryable: true, message: "Genie couldn't reach any AI model to ask right now. Add an AI key (Gemini is free) or try again in a moment." }, 503);
   }
 
-  const raw = Array.isArray(modelled?.results) ? modelled.results : [];
-  const results = questions.map((q, i) => {
-    const r = raw.find((x) => x.index === i) || raw[i] || {};
-    return {
-      question: q.query,
-      stage: q.stage,
-      intent: Math.round((q.weight || 0.5) * 100),
-      aiCitesYou: !!r.aiCitesYou,
-      citedBrands: r.citedBrands || [],
-      competitorsCited: r.competitorsCited || [],
-      gap: r.gap || null,
-      recommendation: r.recommendation || null,
-      expectedOutcome: r.expectedOutcome || null,
-      confidence: clampNum(r.confidence, 65),
-      sources: (items[i].sources || []).slice(0, 3).map((s) => ({ title: s.title, url: s.url })),
-    };
-  });
+  // Attach retrieved sources to each question's verdict (the Citation Gap engine
+  // turns these into "get listed here" targets for the gaps).
+  const results = verdict.perQuestion.map((r, i) => ({
+    ...r,
+    sources: (retrieved[i]?.status === "fulfilled" ? retrieved[i].value : []).slice(0, 3).map((s) => ({ title: s.title, url: s.url })),
+  }));
 
   const summary = summarizeVisibility(results);
+  const engineNames = verdict.engines.map((e) => e.label);
 
   // 3) Record every gap (explainability) + the visibility learning (compounding).
   for (const g of summary.gaps.slice(0, 8)) {
@@ -98,9 +85,24 @@ export async function POST(request) {
   }
   await recordLearning(supabase, {
     userId, host, key: "ai_search_visibility",
-    insight: `AI-search visibility ~${summary.score}% across buyer questions${summary.topCompetitors[0] ? `; AI most often cites ${summary.topCompetitors[0].name}` : ""}. Win citations with comparison/answer content.`,
-    weight: 2, meta: { score: summary.score, topCompetitors: summary.topCompetitors },
+    insight: `${engineNames.join(" & ") || "AI"} name you in ${summary.visible}/${summary.total} buyer answers (~${summary.score}%)${summary.topCompetitors[0] ? `; they most often recommend ${summary.topCompetitors[0].name}` : ""}. Win with AEO comparison/answer pages.`,
+    weight: 2, meta: { score: summary.score, topCompetitors: summary.topCompetitors, engines: engineNames },
   });
+
+  // Append a visibility SNAPSHOT to the ledger — the time-series that powers the
+  // "watch AI start recommending you" proof. `cited` = the questions cited THIS run,
+  // so the GET can diff consecutive snapshots into "newly won" citations.
+  try {
+    await recordEvent(supabase, {
+      userId, host, type: "aeo.snapshot", actor: "genie", subject: host,
+      data: {
+        score: summary.score, visible: summary.visible, total: summary.total,
+        engines: engineNames,
+        competitors: summary.topCompetitors.map((c) => c.name).slice(0, 3),
+        cited: results.filter((r) => r.aiCitesYou).map((r) => r.question),
+      },
+    });
+  } catch {}
 
   // ── FEED THE CHAIN ── Turn each AI-search gap into a tracked keyword target, so
   // the content engine writes an AI-citable answer page for it and coverage tracks
@@ -132,13 +134,15 @@ export async function POST(request) {
   } catch {}
 
   await logActivityBatch(supabase, userId, [
-    { host, verb: "discovered", icon: "🔮", message: `AI cites you in ${summary.visible}/${summary.total} buyer answers`, detail: summary.gaps.slice(0, 2).map((g) => g.question).join(" · "), meta: { score: summary.score } },
+    { host, verb: "discovered", icon: "🔮", message: `${engineNames.join(" & ") || "AI"} name you in ${summary.visible}/${summary.total} buyer answers`, detail: `Asked ${engineNames.join(" · ")} directly — ${summary.gaps.slice(0, 2).map((g) => g.question).join(" · ")}`, meta: { score: summary.score, engines: engineNames } },
     summary.gaps.length ? { host, verb: "learning", message: `${summary.gaps.length} AI-search gaps found — Genie drafted content plans to win them`, meta: { gaps: summary.gaps.length } } : null,
   ].filter(Boolean));
 
   return json({
     ok: true,
+    measured: true,
     entity: { type: entity.type, label: entity.label },
+    engines: verdict.engines,
     score: summary.score,
     visible: summary.visible,
     total: summary.total,
@@ -162,7 +166,7 @@ export async function GET(request) {
     }
   } catch {}
 
-  let decisions = [], score = null, competitors = [];
+  let decisions = [], score = null, competitors = [], engines = [];
   try {
     let q = supabase.from("decisions").select("choice, rationale, confidence, meta, created_at").eq("user_id", user.id).eq("kind", "aeo_gap").order("created_at", { ascending: false }).limit(12);
     if (host) q = q.eq("host", host);
@@ -173,7 +177,7 @@ export async function GET(request) {
     if (host) q = q.eq("host", host);
     const { data } = await q;
     const m = data?.[0]?.meta;
-    if (m) { score = m.score ?? null; competitors = (m.topCompetitors || []).map((c) => c.name); }
+    if (m) { score = m.score ?? null; competitors = (m.topCompetitors || []).map((c) => c.name); engines = m.engines || []; }
   } catch {}
 
   const opportunities = decisions.map((d) => {
@@ -191,8 +195,20 @@ export async function GET(request) {
     };
   });
 
-  return json({ ok: true, live: true, score, competitors, opportunities });
+  // The proof timeline — visibility over time + citations newly won since last run.
+  // Read straight from the append-only snapshot events (getEvents is newest-first).
+  let history = [], newlyCited = [];
+  try {
+    const evs = await getEvents(supabase, { userId: user.id, host: host || null, types: ["aeo.snapshot"], limit: 60 });
+    history = evs.map((e) => ({ date: e.created_at, score: Number(e.data?.score) || 0, visible: Number(e.data?.visible) || 0, total: Number(e.data?.total) || 0 })).reverse(); // oldest→newest for charting
+    if (evs.length >= 2) {
+      const latest = new Set(evs[0].data?.cited || []);
+      const prev = new Set(evs[1].data?.cited || []);
+      newlyCited = [...latest].filter((q) => !prev.has(q)).slice(0, 5);
+    }
+  } catch {}
+
+  return json({ ok: true, live: true, score, competitors, engines, history, newlyCited, opportunities });
 }
 
-function clampNum(n, dflt) { const v = Number(n); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : dflt; }
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveEntity } from "@/lib/growth-memory";
 import { hostOf } from "@/lib/business";
+import { getEvents } from "@/lib/events";
 import { swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -88,6 +89,7 @@ export async function GET() {
         out.aiSearch = {
           score: m.score,
           topCompetitor: m.topCompetitors?.[0]?.name || null,
+          engines: m.engines || [],
           working: (aeoKw || []).length,
           won: (aeoKw || []).filter((k) => k.ai_cited).length,
         };
@@ -114,6 +116,22 @@ export async function GET() {
       if (mem?.length) out.learned = mem.map((m) => m.insight);
     } catch {}
   }
+
+  // Customers won (attribution) — the outcome that matters most, read straight from
+  // the event ledger. Counted across the whole account (a conversion may not carry a
+  // host) and summed by value. Zero is reported honestly, never hidden — this is the
+  // number the whole product exists to move.
+  try {
+    const convs = await getEvents(supabase, { userId: user.id, types: ["conversion.recorded"], limit: 1000 });
+    const value = convs.reduce((s, e) => s + (Number(e?.data?.value) || 0), 0);
+    const since = Date.now() - 24 * 3600 * 1000;
+    out.customers = {
+      count: convs.length,
+      value: Math.round(value),
+      currency: convs.find((e) => e?.data?.currency)?.data?.currency || "USD",
+      last24: convs.filter((e) => new Date(e.created_at).getTime() >= since).length,
+    };
+  } catch {}
 
   return json(out);
 }

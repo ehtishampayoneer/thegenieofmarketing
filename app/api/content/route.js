@@ -81,11 +81,14 @@ export async function POST(request) {
   let data = null;
   let provider = null;
   try {
+    // Flagship AEO pages are where AI citations are won — quality is the moat, so
+    // spend the extra token budget on being the single best answer for those.
+    const aeo = !!pick?.aeo;
     const result = await callAI({
       system:
         "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given, and follow the owner's standing instructions exactly. Return ONLY valid JSON, no markdown fences.",
       json: true,
-      maxTokens: 3500,
+      maxTokens: aeo ? 4200 : 3500,
       temperature: 0.7,
       prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks }),
     });
@@ -101,7 +104,10 @@ export async function POST(request) {
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
 
   // Guarantee the em-dash "AI tell" is gone, whatever the model actually did.
-  if (data.article) { data.article.body = deDash(data.article.body); data.article.title = deDash(data.article.title); data.article.metaDescription = deDash(data.article.metaDescription); }
+  if (data.article) {
+    data.article.body = deDash(data.article.body); data.article.title = deDash(data.article.title); data.article.metaDescription = deDash(data.article.metaDescription);
+    if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: deDash(String(f.q)), a: deDash(String(f.a)) }));
+  }
   if (data.social) {
     const cleanArr = (a) => (Array.isArray(a) ? a.map(deDash) : a);
     data.social.twitter = cleanArr(data.social.twitter);
@@ -204,7 +210,8 @@ function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLin
 - Open with a direct, quotable 1-2 sentence answer to the question, BEFORE any intro.
 - Use clear question-style H2 headings with concise, factual answers under each.
 - Include a short comparison or criteria list where relevant, and a real FAQ section (AI engines cite these most).
-- Sound authoritative and neutral — factual and specific, not salesy. That's what gets quoted.`
+- Sound authoritative and neutral — factual and specific, not salesy. That's what gets quoted.
+- Aim to be the single most useful, complete, quotable answer to this question on the internet — more specific and better-organized than any competitor's page. AI cites the best answer, not the longest.`
       : "";
     targetBlock = `TARGET KEYWORD (primary): "${pick.keyword}" — write the article to rank for this exact search, and set the article "targetKeyword" field to exactly "${pick.keyword}".
 Content type: write ${kindByStage[pick.stage] || kindByStage.learn}.
@@ -218,10 +225,23 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
     targetBlock = `${kw}\n${topic ? `Write about this specific topic: "${topic}".` : "Choose a high-value article topic that would attract this business's ideal customers via Google search."}`;
   }
 
+  // What Genie learned by interviewing the owner (onboarding) — the details a
+  // homepage can't give, that make the writing specific and on-brand.
+  const insight = [
+    ai.idealCustomer ? `Best customer to win: ${ai.idealCustomer}.` : "",
+    ai.whyChooseYou ? `Why buyers choose them (lead with this): ${ai.whyChooseYou}.` : "",
+    ai.painPoints ? `Buyer pain points to speak to: ${ai.painPoints}.` : "",
+    ai.keyProducts ? `Products/services to push: ${ai.keyProducts}.` : "",
+    ai.proof ? `Proof to weave in naturally: ${ai.proof}.` : "",
+    ai.conversionGoal ? `The action to drive: ${ai.conversionGoal}.` : "",
+    ai.avoid ? `NEVER say, claim, or promise: ${ai.avoid}.` : "",
+    ai.tone ? `Owner's preferred tone: ${ai.tone}.` : "",
+  ].filter(Boolean).join("\n");
+
   return `${standing}Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
-${voice}
+${insight ? insight + "\n" : ""}${voice}
 ${targetBlock}${internalLinks}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
@@ -256,7 +276,8 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     "body": "the full article in markdown, 600-900 words, opening with the reader's problem, then bridging to the solution, with ## H2 subheadings, specific useful content, and a short ## FAQ section with 2-3 Q&As. No em-dashes anywhere.",
     "wordCount": approximate integer,
     "imagePrompt": "a vivid, specific prompt to generate a photorealistic hero image for this article (describe the scene, style, and mood — no text in the image)",
-    "heroImageAlt": "descriptive alt text for the hero image"
+    "heroImageAlt": "descriptive alt text for the hero image",
+    "faq": [{ "q": "a real question a buyer asks about this topic", "a": "a concise, quotable 1-3 sentence answer" }]
   },
   "social": {
     "twitter": ["3 different tweet-length posts promoting the article, each with 1-2 relevant hashtags"],

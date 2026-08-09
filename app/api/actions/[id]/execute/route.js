@@ -12,6 +12,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { markdownToHtml } from "@/lib/markdown";
+import { taggedLink } from "@/lib/attribution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,22 +94,71 @@ export async function POST(_request, { params }) {
     return json({ ok: true, result });
   }
 
-  // GATE 3 — WordPress connected.
+  // Build the post HTML once (whichever channel ends up publishing it).
+  const html = markdownToHtml(p.body || "");
+
+  // Ensure a hero image (best-effort, generated once so whichever channel publishes
+  // uses it). If no image provider is configured, this stays null and the article
+  // publishes text-only — exactly as before, nothing breaks.
+  let heroImage = p.heroImage || null;
+  if (!heroImage && p.imagePrompt) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const { generateHeroImage } = await import("@/lib/images");
+      heroImage = await generateHeroImage(createAdminClient(), user.id, p.imagePrompt);
+    } catch {}
+  }
+
+  // Which channel? The owner's own WordPress if connected (best — publishes to
+  // THEIR domain); otherwise Genie Pages (hosted) so the article goes LIVE for
+  // everyone, not just the WordPress minority. This is what makes "Approve"
+  // reliably become a real, public URL.
   const { data: wp } = await supabase
     .from("connections")
     .select("access_token, meta")
     .eq("user_id", user.id)
     .eq("provider", "wordpress")
     .maybeSingle();
-  if (!wp?.meta?.siteUrl || !wp?.access_token) {
-    return json({ ok: false, needsConnection: true, error: "Connect your WordPress site first (Integrations)." }, 400);
-  }
+  const hasWP = !!(wp?.meta?.siteUrl && wp?.access_token);
 
-  // Mark executing.
+  // Mark executing (both paths).
   await supabase.from("actions").update({ status: "executing", updated_at: new Date().toISOString() }).eq("id", action.id);
 
-  // Build the post.
-  const html = markdownToHtml(p.body || "");
+  // ── HOSTED FALLBACK — Genie Pages (no WordPress needed) ──
+  if (!hasWP) {
+    try {
+      const host = action.target?.host || null;
+      const { publishHostedPage } = await import("@/lib/pages");
+      const page = await publishHostedPage(supabase, {
+        userId: user.id, host, actionId: action.id,
+        title: p.title || action.title || "Untitled",
+        bodyHtml: html,
+        metaDescription: p.metaDescription || "",
+        heroImage, heroAlt: p.heroImageAlt || null,
+        targetKeyword: p.targetKeyword || null,
+        businessName: await businessNameFor(supabase, user.id, host),
+        // Tag the CTA back to this action so a resulting sale traces to the keyword
+        // (utm_content = action id → keyword_usage → the Learning Loop's money signal).
+        businessUrl: host ? taggedLink(`https://${host}`, { channel: "genie_pages", campaign: "genie", ref: action.id }) : null,
+        slug: p.slug || null,
+        faq: Array.isArray(p.faq) ? p.faq : null,
+      });
+      const result = { url: page.url, pageId: page.id, publishedAt: new Date().toISOString(), channel: "genie_pages", hosted: true };
+      await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+      try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
+      // Instant-index it (free) so Bing/Yandex — and the engines AI search reads —
+      // pick it up in hours, not weeks. No-op if INDEXNOW_KEY isn't set.
+      try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
+      return json({ ok: true, result, hosted: true });
+    } catch (e) {
+      const reason = String(e?.message || "Hosted publish failed").slice(0, 300);
+      await supabase.from("actions").update({ status: "failed", result: { error: reason }, updated_at: new Date().toISOString() }).eq("id", action.id);
+      try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "failed", meta: { reason } }); } catch {}
+      return json({ ok: false, error: "Publishing failed: " + reason }, 502);
+    }
+  }
+
+  // ── WORDPRESS — the owner's own domain ──
   const auth = "Basic " + Buffer.from(`${wp.meta.username}:${wp.access_token}`).toString("base64");
 
   let published;
@@ -118,7 +168,7 @@ export async function POST(_request, { params }) {
       headers: { Authorization: auth, "Content-Type": "application/json" },
       body: JSON.stringify({
         title: p.title || action.title || "Untitled",
-        content: html,
+        content: heroImage ? `<figure><img src="${heroImage}" alt="${escapeAttr(p.heroImageAlt || p.title || "")}" /></figure>\n${html}` : html,
         status: "publish",
         excerpt: p.metaDescription || "",
         slug: p.slug || undefined,
@@ -165,6 +215,22 @@ export async function POST(_request, { params }) {
   } catch {}
 
   return json({ ok: true, result });
+}
+
+// Best-effort friendly business name for the hosted page's byline (falls back to
+// the host inside publishHostedPage when null).
+async function businessNameFor(supabase, userId, host) {
+  if (!host) return null;
+  try {
+    const { data } = await supabase.from("scans").select("ai, final_url, url")
+      .eq("user_id", userId).ilike("final_url", `%${host}%`)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    return data?.ai?.businessName || null;
+  } catch { return null; }
+}
+
+function escapeAttr(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function json(obj, status = 200) {

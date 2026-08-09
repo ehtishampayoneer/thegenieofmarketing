@@ -67,11 +67,15 @@ export default function AiSearchPage() {
           <button onClick={checkNow} disabled={checking} className="mg-btn mg-btn--dawn inline-flex mt-5 disabled:opacity-60">{checking ? "Checking AI search…" : "Check AI search now →"}</button>
         </Card>
       ) : (
+      <>
+      {d.history?.length > 0 && <VisibilityProof history={d.history} newlyCited={d.newlyCited} engines={d.engines} />}
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
         <Card className="p-5 self-start">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-[44px] font-bold leading-none mg-num" style={{ color: "var(--fg)" }}>{pct}%</span>
-            <span className="mg-estimated">AI-modelled</span>
+            {d.engines?.length
+              ? <Provenance kind="verified">Asked {d.engines.slice(0, 3).join(" · ")}</Provenance>
+              : <span className="mg-estimated">AI-modelled</span>}
           </div>
           <p className="mt-1 text-[13px] mg-muted">You’re cited in <span className="font-semibold" style={{ color: "var(--fg)" }}>{pct}%</span> of the buyer questions your customers ask AI.</p>
           <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
@@ -93,6 +97,7 @@ export default function AiSearchPage() {
           {d.opportunities.map((o, i) => <OpportunityCard key={i} {...o} primaryLabel={writing === String(i) ? "Writing…" : "Approve & write it"} onApprove={() => writeGap(o, i)} />)}
         </div>
       </div>
+      </>
       )}
 
       {state === "real" && <CitationGap />}
@@ -105,6 +110,71 @@ export default function AiSearchPage() {
         </div>
       )}
     </OperatorShell>
+  );
+}
+
+// ── THE PROOF LOOP — visibility over time ──
+// The wedge's payoff: not "AI ignores you" but "watch AI start naming you." Reads
+// the append-only snapshot series and shows the climb + citations newly won.
+function VisibilityProof({ history = [], newlyCited = [], engines = [] }) {
+  const scores = history.map((h) => h.score);
+  const cur = scores[scores.length - 1] ?? 0;
+  const first = scores[0] ?? 0;
+  const delta = cur - first;
+  const single = history.length < 2;
+  return (
+    <Card className="mt-5 p-5 mg-ambient">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="mg-eyebrow"><Icon.growth size={14} /> Your AI visibility over time</p>
+        {engines?.length ? <Provenance kind="verified">Asked {engines.slice(0, 3).join(" · ")}</Provenance> : null}
+      </div>
+      <div className="mt-3 flex items-end gap-5 flex-wrap">
+        <div>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="mg-num" style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-.03em", color: cur > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{cur}%</span>
+            {!single && <span className="text-[13px] font-semibold" style={{ color: delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>{delta >= 0 ? "+" : ""}{delta} since first check</span>}
+          </div>
+          <p className="mt-0.5 text-[12.5px] mg-muted">of buyer questions where AI now names you</p>
+        </div>
+        <div className="flex-1 min-w-[200px]"><Sparkline points={scores} /></div>
+      </div>
+      {single ? (
+        <p className="mt-3 text-[12.5px] mg-subtle">First check recorded. As Genie publishes answer pages, come back to watch this line climb — that’s AI starting to recommend you.</p>
+      ) : newlyCited.length > 0 ? (
+        <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--signal-live-ink)" }}>Newly won since last check</p>
+          <ul className="mt-2 space-y-1.5">
+            {newlyCited.map((q, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px]" style={{ color: "var(--fg-muted)" }}>
+                <span style={{ color: "var(--signal-live-ink)", marginTop: 1 }}>✓</span>
+                <span>AI now names you when buyers ask <span style={{ color: "var(--fg)", fontWeight: 600 }}>“{q}”</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function Sparkline({ points = [], width = 320, height = 56 }) {
+  if (!points.length) return null;
+  const n = points.length;
+  const xAt = (i) => (n === 1 ? width : (i / (n - 1)) * width);
+  const yAt = (v) => height - (Math.max(0, Math.min(100, v)) / 100) * (height - 6) - 3;
+  const line = points.map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ");
+  const area = `${line} L ${width} ${height} L 0 ${height} Z`;
+  return (
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: "block", overflow: "visible" }} aria-hidden>
+      <defs>
+        <linearGradient id="mg-spark" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--signal-live)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--signal-live)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#mg-spark)" />
+      <path d={line} fill="none" stroke="var(--signal-live)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 

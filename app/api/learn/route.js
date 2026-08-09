@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 import { getBrief, recordLearning, recordDecision } from "@/lib/growth-memory";
 import { synthesizeLearnings } from "@/lib/learning";
+import { getEvents } from "@/lib/events";
 import { logActivity } from "@/lib/activity";
 
 export const runtime = "nodejs";
@@ -33,7 +34,22 @@ export async function POST(request) {
     safeSelect(supabase, "keywords", "keyword, gsc_clicks", userId, host, 150),
   ]);
 
-  const learnings = synthesizeLearnings({ decisions, placements, keywords });
+  // Learn from MONEY: pull attributed conversions and map each back to the keyword
+  // its content targeted (conversion.ref → keyword_usage.ref_id → keyword). No
+  // conversions yet ⇒ empty ⇒ selection is unchanged (this compounds as sales land).
+  let conversions = [];
+  try {
+    const evs = await getEvents(supabase, { userId, host, types: ["conversion.recorded"], limit: 500 });
+    const refs = [...new Set(evs.map((e) => e.data?.ref).filter(Boolean))];
+    const refToKw = {};
+    if (refs.length) {
+      const { data: usage } = await supabase.from("keyword_usage").select("ref_id, keyword").in("ref_id", refs).eq("role", "primary");
+      for (const u of usage || []) if (!refToKw[u.ref_id]) refToKw[u.ref_id] = u.keyword;
+    }
+    conversions = evs.map((e) => ({ keyword: e.data?.ref ? refToKw[e.data.ref] : null, value: e.data?.value })).filter((c) => c.keyword);
+  } catch {}
+
+  const learnings = synthesizeLearnings({ decisions, placements, keywords, conversions });
   if (learnings.length === 0) {
     return json({ ok: true, count: 0, message: "Not enough results yet — Genie learns as work lands.", learnings: [] });
   }

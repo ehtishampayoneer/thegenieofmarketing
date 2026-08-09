@@ -27,8 +27,10 @@ function overrideFrom(ai = {}) {
   if (ai.whatTheySell) bits.push(`that sells ${ai.whatTheySell}`);
   if (ai.targetCustomer) bits.push(`to ${ai.targetCustomer}`);
   let s = bits.join(" ").trim();
+  if (ai.idealCustomer) s += `${s ? ". " : ""}Best customer: ${ai.idealCustomer}`;
   const edge = ai.differentiator || ai.summary;
   if (edge) s += `${s ? ". " : ""}Its edge / what makes it different: ${edge}`;
+  if (ai.whyChooseYou) s += `. Why buyers choose it: ${ai.whyChooseYou}`;
   return s.trim() || String(ai.whatTheySell || "");
 }
 
@@ -55,6 +57,7 @@ export default function WelcomePage() {
   const [convo, setConvo] = useState([]);                   // [{ role:'genie'|'owner', content }]
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [questions, setQuestions] = useState([]);           // Genie's investigation agenda
 
   async function loadConns() {
     try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
@@ -169,11 +172,22 @@ export default function WelcomePage() {
   // ── Understanding Check ──
   // Enter the confirmation step: seed Genie's working understanding from the scan
   // and open with a short "does this look right?" message.
-  function toConfirm() {
+  async function toConfirm() {
     const ai = data?.ai || {};
     setUnderstanding(ai);
-    setConvo([{ role: "genie", content: "Here’s how I read your business — does this look right? If anything’s off (what you sell, who buys it, what makes you different), just tell me and I’ll fix it before I build your plan." }]);
     setPhase("confirm");
+    setConvo([{ role: "genie", content: "Here’s how I read your business. Before I build anything, I want to really understand you — a few quick questions will make everything I do sharper. And correct anything I got wrong." }]);
+    // Fetch Genie's investigation agenda, then open with the first question.
+    setChatBusy(true);
+    try {
+      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai, action: "questions" }) }).then((x) => x.json());
+      const qs = Array.isArray(r?.questions) ? r.questions : [];
+      if (qs.length) {
+        setQuestions(qs);
+        setConvo((c) => [...c, { role: "genie", content: qs[0] }]);
+      }
+    } catch {}
+    setChatBusy(false);
   }
 
   // One turn of the correction chat.
@@ -365,9 +379,26 @@ export default function WelcomePage() {
                       <URow label="You are" value={understanding?.businessType} />
                       <URow label="You sell" value={understanding?.whatTheySell} />
                       <URow label="Your customers" value={understanding?.targetCustomer} />
+                      {understanding?.idealCustomer && <URow label="Best customer" value={understanding.idealCustomer} />}
                       <URow label="Your edge" value={understanding?.differentiator || understanding?.summary} />
+                      {understanding?.whyChooseYou && <URow label="Why chosen" value={understanding.whyChooseYou} />}
+                      {understanding?.conversionGoal && <URow label="Main goal" value={understanding.conversionGoal} />}
+                      {understanding?.proof && <URow label="Proof" value={understanding.proof} />}
+                      {understanding?.avoid && <URow label="Never say" value={understanding.avoid} />}
                     </div>
                   </div>
+                  {questions.length > 0 && (
+                    <div className="mt-4" style={{ borderRadius: 16, padding: "16px 18px", background: "var(--onb-panel-2)", border: "1px solid var(--onb-hair)" }}>
+                      <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".12em", color: "var(--onb-subtle)" }}>What I want to understand</p>
+                      <ul className="mt-3 flex flex-col gap-2">
+                        {questions.map((q, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.45 }}>
+                            <span style={{ color: "var(--onb-dawn)", marginTop: 1 }}>·</span><span>{q}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-8 lg:mt-0 flex flex-col" style={{ minHeight: 360 }}>

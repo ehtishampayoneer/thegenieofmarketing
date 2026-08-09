@@ -17,7 +17,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const FIELDS = ["businessName", "businessType", "whatTheySell", "targetCustomer", "industry", "subCategory", "differentiator"];
+const FIELDS = ["businessName", "businessType", "whatTheySell", "targetCustomer", "industry", "subCategory", "differentiator", "idealCustomer", "painPoints", "whyChooseYou", "conversionGoal", "keyProducts", "proof", "avoid", "tone"];
+
+// Fallback agenda if the model can't generate business-specific questions.
+const DEFAULT_QUESTIONS = [
+  "Who's your single best type of customer — the one you wish you had ten more of?",
+  "When someone chooses between you and a competitor, why do the ones who pick you say yes?",
+  "What's the one action you most want a visitor to take?",
+  "What have your happiest customers actually gotten out of you (a result, a number, a story)?",
+  "Is there anything I should never say, claim, or promise about you?",
+];
 
 // One turn of the "did I get you right?" conversation.
 export async function POST(request) {
@@ -27,13 +36,34 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
-  const { ai = {}, message = "", history = [] } = body || {};
+  const { ai = {}, message = "", history = [], action = "" } = body || {};
+
+  // ── Investigation agenda ── the highest-value questions to ask THIS owner before
+  // building anything. Called once when the confirm step opens.
+  if (action === "questions") {
+    try {
+      const result = await callAI({
+        system:
+          "You are Genie, an AI marketing employee. Before building a business's marketing you interview the owner to learn what a website can't tell you. Ask the FEWEST, highest-value questions that will most sharpen the marketing — only what you genuinely can't infer from the site. Return ONLY valid JSON.",
+        json: true, maxTokens: 700, temperature: 0.5,
+        prompt: `Business as I understand it so far:
+${describe(ai)}
+
+Give the 4-5 most valuable questions to ask this owner so I market them correctly — the gaps a homepage can't answer: who exactly the ideal customer is, why buyers really choose them over competitors, the #1 action they want a visitor to take, which products/services to push, proof or results worth leading with, anything I must NOT say, and their preferred tone. Each question must be specific to THIS business, short, and plain-spoken. Return ONLY: {"questions":["...","..."]}`,
+      });
+      const qs = Array.isArray(result.json?.questions) ? result.json.questions.map((q) => String(q || "").trim()).filter(Boolean).slice(0, 5) : [];
+      return json({ ok: true, questions: qs.length ? qs : DEFAULT_QUESTIONS });
+    } catch {
+      return json({ ok: true, questions: DEFAULT_QUESTIONS });
+    }
+  }
+
   if (!String(message).trim()) return json({ ok: false, error: "Tell me what to fix." }, 400);
 
   try {
     const result = await callAI({
       system:
-        "You are Genie, an AI marketing employee, confirming your understanding of a business with its owner BEFORE you build their strategy. The owner is correcting or clarifying what the business really is, what it sells, who buys it, and what makes it different. Carefully update your structured understanding from what they say — believe the owner over any earlier guess. Distinguish THE PRODUCTS/SERVICES customers actually buy from THE DIFFERENTIATOR (the special way this business does it). Reply warmly and briefly (1-2 sentences), restating what you now understand in plain words and asking if that's right or if there's more. Return ONLY valid JSON.",
+        "You are Genie, an AI marketing employee INTERVIEWING a business owner to understand them deeply BEFORE you build their marketing. Capture everything they tell you into a structured profile — believe the owner over any website guess. Distinguish THE PRODUCTS/SERVICES customers buy from THE DIFFERENTIATOR (the special way this business does it). After absorbing what they said, reply warmly and briefly (1-2 sentences): acknowledge what you learned, then ask the SINGLE most useful thing you still don't know (ideal customer, why buyers choose them, the main action they want, proof, anything to avoid, or tone). When you have a strong picture — or the owner signals they're done — set resolved:true and say you're ready to build. Return ONLY valid JSON.",
       json: true,
       maxTokens: 900,
       temperature: 0.4,
@@ -45,19 +75,26 @@ ${(history || []).map((m) => `${m.role === "genie" ? "You" : "Owner"}: ${m.conte
 
 The owner just said: "${String(message).trim()}"
 
-Update your understanding and reply. Return ONLY:
+Absorb it, update your understanding, and reply. Only fill a field when the site or the owner gives real signal; otherwise keep it unchanged. Return ONLY:
 {
   "businessName": "...",
   "businessType": "one of: E-commerce, Local service, SaaS, Content/Media, Marketplace, Agency, Other",
   "whatTheySell": "one short sentence — the ACTUAL products/services customers buy (not the technology behind it)",
   "targetCustomer": "who buys it, 1 sentence",
+  "idealCustomer": "the BEST / most-wanted customer segment, if they said",
   "industry": "short label",
   "subCategory": "more specific niche",
   "differentiator": "what makes them different / their edge (the angle, not the main product)",
-  "reply": "1-2 sentence warm reply restating what you now understand + asking to confirm or add more",
+  "whyChooseYou": "why buyers pick them over competitors, if said",
+  "conversionGoal": "the main action they want a visitor to take (buy, book, sign up, get a quote…), if said",
+  "keyProducts": "specific products/services to push, if said",
+  "proof": "results, credentials, or social proof worth leading with, if said",
+  "avoid": "anything to never say/claim/promise, if said",
+  "tone": "preferred voice / tone, if said",
+  "reply": "1-2 sentence warm reply: acknowledge what you learned + ask the next most useful question (or say you're ready to build)",
   "resolved": false
 }
-Set "resolved": true only if the owner clearly signals you've now got it right (e.g. 'yes', 'correct', 'that's it').`,
+Set "resolved": true only when you have a strong picture or the owner clearly signals they're done (e.g. 'that's it', 'build it').`,
     });
     const j = result.json || {};
     const updated = { ...ai };
@@ -112,9 +149,16 @@ function describe(ai = {}) {
     ["Type", ai.businessType],
     ["Sells", ai.whatTheySell],
     ["Customers", ai.targetCustomer],
+    ["Ideal customer", ai.idealCustomer],
     ["Industry", ai.industry],
     ["Niche", ai.subCategory],
     ["Edge", ai.differentiator || ai.summary],
+    ["Why chosen", ai.whyChooseYou],
+    ["Goal", ai.conversionGoal],
+    ["Key products", ai.keyProducts],
+    ["Proof", ai.proof],
+    ["Avoid", ai.avoid],
+    ["Tone", ai.tone],
   ].filter(([, v]) => v && String(v).trim());
   return rows.map(([k, v]) => `- ${k}: ${v}`).join("\n") || "- (almost nothing known yet)";
 }
