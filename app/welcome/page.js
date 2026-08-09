@@ -15,6 +15,7 @@ import { hostOf } from "@/lib/business";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import Icon from "@/components/ui/Icon";
 import { LogoUpload } from "@/components/ui/v2/LogoUpload";
+import { Showcase } from "@/components/Showcase";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -133,7 +134,9 @@ export default function WelcomePage() {
     const clean = url.trim();
     if (!clean) { setErr("Enter your website to begin."); return; }
     setErr(""); setRevealed(0); setData(null); setSecs(0); startRef.current = Date.now();
-    setPhase("working");
+    // Show the pitch immediately; the scan runs in the background so results are
+    // ready by the time they continue into setup.
+    setPhase("showcase");
     try {
       const res = await fetch("/api/audit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: clean }) });
       const json = await res.json();
@@ -146,6 +149,13 @@ export default function WelcomePage() {
       try { const e = await fetch(`/api/entity?host=${encodeURIComponent(h)}`).then((r) => r.json()); if (e.ok) setEntity({ ...e.entity, host: h }); } catch {}
       kickoff(h, json.ai || {});
     } catch { setErr("Something interrupted me. Let’s try again."); setPhase("intro"); }
+  }
+
+  // The pitch's "continue" → run the signature "watch me work" reveal, then the
+  // existing flow (reveal → confirm → connect → …) exactly as before.
+  function continueFromShowcase() {
+    setRevealed(0); setSecs(0); startRef.current = Date.now();
+    setPhase("working");
   }
 
   function kickoff(h, ai) {
@@ -236,6 +246,11 @@ export default function WelcomePage() {
     setPhase("ready");
   }
   function enterApp() { router.push("/today"); }
+
+  // Right after the URL is entered: the cinematic pitch, then continue into setup.
+  if (phase === "showcase") {
+    return <Showcase embedded host={host} onContinue={continueFromShowcase} />;
+  }
 
   return (
     <main className="onb" style={{ display: "flex", flexDirection: "column" }}>

@@ -32,6 +32,7 @@ const NAV = [
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "connections", label: "Connections", icon: Icon.connect },
   { id: "settings", label: "Settings", icon: Icon.settings },
+  { id: "showcase", label: "What Genie can do", icon: Icon.spark, external: true },
 ];
 
 const VERB = {
@@ -125,7 +126,7 @@ export default function OperatorShell({ active = "today", children }) {
           item.section ? (
             <p key={i} className="px-2.5 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
           ) : (
-            <a key={item.id} href={hrefFor(item.id)} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
+            <a key={item.id} href={hrefFor(item.id)} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
               <item.icon size={18} />
               <span>{item.label}</span>
               {(item.countKey ? counts[item.countKey] : item.count) != null && (
@@ -288,7 +289,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", conversations: "/conversations", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning",
-    trust: "/trust", connections: "/connections", settings: "/settings",
+    trust: "/trust", connections: "/connections", settings: "/settings", showcase: "/showcase",
   };
   return map[id] || "/today";
 }
