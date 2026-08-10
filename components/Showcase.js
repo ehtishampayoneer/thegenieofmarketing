@@ -311,7 +311,8 @@ const CSS = `
 .sx-nav-cta{font-size:13.5px;font-weight:600;color:var(--fg);text-decoration:none;padding:9px 16px;border-radius:11px;border:1px solid var(--hair);transition:.2s}
 .sx-nav-btn{background:none;cursor:pointer;font-family:inherit}
 .sx-nav-cta:hover{border-color:rgba(255,200,118,.4);background:rgba(255,200,118,.06)}
-.sx-hero-in{position:relative;z-index:2;max-width:900px;margin:auto;text-align:center;padding:24px 0}
+@media(max-width:430px){.sx-nav{padding:20px 0} .sx-nav-cta{font-size:12px;padding:8px 12px} .sx-logo{font-size:13.5px;gap:7px} .sx-cta-row .sx-btn{width:100%}}
+.sx-hero-in{position:relative;z-index:2;width:100%;max-width:900px;margin:0 auto;text-align:center;padding:24px 0}
 .sx-kicker{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--muted);padding:7px 14px;border-radius:999px;border:1px solid var(--hair);background:rgba(255,255,255,.02)}
 .sx-h1{font-size:clamp(38px,6.4vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:800;margin:22px 0 0;text-wrap:balance}
 .sx-lede{font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:60ch;margin:20px auto 0;line-height:1.55}
