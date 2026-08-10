@@ -46,8 +46,6 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
     return () => io.disconnect();
   }, []);
 
-  const cleanHost = String(host || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-
   return (
     <main className="sx" ref={root}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -64,16 +62,8 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
         <div className="sx-hero-in" data-reveal>
           <p className="sx-kicker"><span className="sx-dot" /> Your AI marketing employee</p>
           <h1 className="sx-h1">Stop paying for ads.<br /><span className="sx-gold">Hire the marketing that brings you customers.</span></h1>
-          <p className="sx-lede">Genie finds your buyers, writes what wins them, publishes it, gets it seen, and shows you the customers it earned — organically, every single day. You just approve.</p>
-          <div className="sx-cta-row">
-            {embedded
-              ? <button type="button" className="sx-btn sx-btn-gold" onClick={onContinue}>{cleanHost ? `See what I found for ${cleanHost} →` : "Continue →"}</button>
-              : <>
-                  <a className="sx-btn sx-btn-gold" href="/verdict">See what AI says about you →</a>
-                  <a className="sx-btn sx-btn-ghost" href="/welcome">Meet your employee</a>
-                </>}
-          </div>
-          {embedded && <p className="sx-hero-hint">Take the tour, or continue whenever you like — I’m already scanning your site.</p>}
+          <p className="sx-lede">Genie finds your buyers, writes what wins them, publishes it, gets it seen, and shows you the customers it earned, organically, every single day. You just approve.</p>
+          {embedded && <p className="sx-hero-hint">Scroll to see what Genie does, or continue to setup whenever you like. I’m already scanning your site.</p>}
           <Ticker />
         </div>
       </header>
@@ -86,19 +76,19 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
             <div className="sx-chart-head">
               <div>
                 <p className="sx-eyebrow">Your organic growth</p>
-                <p className="sx-chart-sub">Traffic, rankings & AI mentions — before and after</p>
+                <p className="sx-chart-sub">Traffic, rankings and AI mentions, before and after</p>
               </div>
               <span className="sx-chip sx-chip-live">▲ compounding</span>
             </div>
             <GrowthChart />
             <div className="sx-legend">
-              <span><i className="sx-sw" style={{ background: "var(--dim)" }} /> Before Genie — flat, invisible</span>
-              <span><i className="sx-sw" style={{ background: "var(--emerald)" }} /> After Genie — climbing, every day</span>
+              <span><i className="sx-sw" style={{ background: "var(--dim)" }} /> Before Genie: flat, invisible</span>
+              <span><i className="sx-sw" style={{ background: "var(--emerald)" }} /> After Genie: climbing, every day</span>
             </div>
           </div>
           <div className="sx-stat-col">
             <StatTile pre="" count="34" suf="%" label="of AI answers now name you" tone="gold" note="Was 0%. Genie writes the pages that win the citation." />
-            <StatTile pre="" count="41" suf="" label="customers Genie earned you" tone="emerald" note="Real people, traced back to the work — not vanity metrics." />
+            <StatTile pre="" count="41" suf="" label="customers Genie earned you" tone="emerald" note="Real people, traced back to the work. Not vanity metrics." />
             <StatTile pre="+" count="18" suf="" label="Google places climbed" tone="gold" note="Winnable searches first, then the big ones." />
           </div>
         </div>
@@ -109,8 +99,8 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
         <SecLabel n="02" t="The war nobody else is fighting" />
         <div className="sx-war" data-reveal>
           <div>
-            <h2 className="sx-h2">When your buyers ask AI what to buy,<br /><span className="sx-gold">do they hear your name — or your rival’s?</span></h2>
-            <p className="sx-p">More people ask ChatGPT and Perplexity for recommendations than ever. Genie is built to win that answer — it asks the real models what they say about you, finds the gaps, and writes the pages that get you cited.</p>
+            <h2 className="sx-h2">When your buyers ask AI what to buy,<br /><span className="sx-gold">do they hear your name, or your rival’s?</span></h2>
+            <p className="sx-p">More people ask ChatGPT and Perplexity for recommendations than ever. Genie is built to win that answer. It asks the real models what they say about you, finds the gaps, and writes the pages that get you cited.</p>
             {!embedded && <a className="sx-link" href="/verdict">Run your free AI Verdict →</a>}
           </div>
           <div className="sx-war-panel">
@@ -125,18 +115,18 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
       {/* ── CONTENT THAT GETS TRACTION ── */}
       <section className="sx-sec">
         <SecLabel n="03" t="Content that actually gets read" />
-        <p className="sx-sec-sub">A glimpse of what Genie ships for you — and the traction it earns. Illustrative of how the product works.</p>
+        <p className="sx-sec-sub">A glimpse of what Genie ships for you, and the traction it earns. Illustrative of how the product works.</p>
         <div className="sx-posts" data-reveal>
           <PostCard brand="Answer page" title="The honest guide to choosing cold brew concentrate" meta="Published to your blog · indexed in 3 hours" a="2,140" al="readers" b="34" bl="AI citations" tone="gold" />
-          <PostCard brand="Reddit" title="Replied in r/coffee — value first, never an ad" meta="Genie drafted it · you tapped post" a="248" al="upvotes" b="61" bl="comments" tone="emerald" />
+          <PostCard brand="Reddit" title="Replied in r/coffee: value first, never an ad" meta="Genie drafted it · you tapped post" a="248" al="upvotes" b="61" bl="comments" tone="emerald" />
           <PostCard brand="X / Twitter" title="A thread on what makes a cold brew smooth" meta="Auto-posted to your account" a="512" al="likes" b="89" bl="reposts" tone="gold" />
-          <PostCard brand="Outreach" title="Personalized pitch to a buying-guide editor" meta="Drafted for your approval — earns the backlink" a="7" al="replies" b="3" bl="links won" tone="emerald" />
+          <PostCard brand="Outreach" title="Personalized pitch to a buying-guide editor" meta="Drafted for your approval. Earns the backlink" a="7" al="replies" b="3" bl="links won" tone="emerald" />
         </div>
       </section>
 
       {/* ── EVERYTHING GENIE DOES ── */}
       <section className="sx-sec">
-        <SecLabel n="04" t="A whole marketing team — in one employee" />
+        <SecLabel n="04" t="A whole marketing team in one employee" />
         <div className="sx-caps" data-reveal>
           {CAPS.map((c, i) => (
             <div className="sx-cap" key={i} style={{ transitionDelay: `${i * 55}ms` }}>
@@ -170,8 +160,8 @@ export function Showcase({ embedded = false, onContinue = () => {}, host = "" })
         <h2 className="sx-close-h">The only marketing that <span className="sx-gold">pays you back.</span></h2>
         <p className="sx-close-p">No ad budget. No agency. Just an employee that works every night and brings you customers. Point it at your website and watch it go.</p>
         {embedded
-          ? <button type="button" className="sx-btn sx-btn-gold sx-btn-lg" onClick={onContinue}>Continue — set me up →</button>
-          : <a className="sx-btn sx-btn-gold sx-btn-lg" href="/welcome">Hire your Genie — free →</a>}
+          ? <button type="button" className="sx-btn sx-btn-gold sx-btn-lg" onClick={onContinue}>Continue to setup →</button>
+          : <a className="sx-btn sx-btn-gold sx-btn-lg" href="/welcome">Hire your Genie, free →</a>}
         <p className="sx-close-sub">Free to start · nothing publishes without your approval</p>
       </section>
     </main>
@@ -183,8 +173,8 @@ function Ticker() {
     "Writing an answer page: “best cold brew subscription”",
     "Found 3 buyers asking on Reddit right now",
     "AI now names you in 2 more buyer answers",
-    "Published to your blog — indexed in hours",
-    "A tagged link just converted — $310",
+    "Published to your blog, indexed in hours",
+    "A tagged link just converted: $310",
   ];
   return (
     <div className="sx-ticker" aria-hidden>
@@ -273,19 +263,19 @@ function Gem({ size = 26 }) {
 const CAPS = [
   { icon: "◎", t: "Understands your business", p: "Scans your site, learns what you sell, and interviews you so every move is on-brand." },
   { icon: "⌕", t: "Finds your buyers", p: "Hunts the exact searches and live conversations where people are ready to buy what you sell." },
-  { icon: "✎", t: "Writes what wins", p: "Buyer-first articles, social posts, and answers — human-toned, never generic filler." },
-  { icon: "▲", t: "Publishes anywhere", p: "Your blog or a hosted page, X, email — and gets it indexed in hours, not weeks." },
+  { icon: "✎", t: "Writes what wins", p: "Buyer-first articles, social posts, and answers. Human-toned, never generic filler." },
+  { icon: "▲", t: "Publishes anywhere", p: "Your blog or a hosted page, X, email. Indexed in hours, not weeks." },
   { icon: "✦", t: "Wins the AI answer", p: "Gets you named when buyers ask ChatGPT, Perplexity and Gemini what to buy." },
-  { icon: "$", t: "Turns readers into customers", p: "Tracks every click to a real sale, so you see the money — not just traffic." },
+  { icon: "$", t: "Turns readers into customers", p: "Tracks every click to a real sale, so you see the money, not just traffic." },
   { icon: "◈", t: "Learns from what works", p: "Doubles down on the topics and channels that actually convert. It gets smarter daily." },
   { icon: "☾", t: "Runs itself, all night", p: "Every night it works; every morning you get a short list to approve. That’s it." },
 ];
 
 const STEPS = [
   { t: "Point it at your website", p: "One link. In seconds it reads your site and shows you what it sees." },
-  { t: "It investigates your business", p: "A quick interview so it markets the real you — not a homepage guess." },
-  { t: "It works every night", p: "Finds buyers, writes, publishes, checks AI, builds authority — on autopilot." },
-  { t: "You approve — customers arrive", p: "Tap to approve the work. Watch the rankings climb and the customers land." },
+  { t: "It investigates your business", p: "A quick interview so it markets the real you, not a homepage guess." },
+  { t: "It works every night", p: "Finds buyers, writes, publishes, checks AI, builds authority, on autopilot." },
+  { t: "You approve, customers arrive", p: "Tap to approve the work. Watch the rankings climb and the customers land." },
 ];
 
 const CSS = `
