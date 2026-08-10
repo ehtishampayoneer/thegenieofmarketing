@@ -290,7 +290,7 @@ const CSS = `
 @keyframes sxpulse{0%{box-shadow:0 0 0 0 rgba(79,224,166,.45)}70%{box-shadow:0 0 0 7px rgba(79,224,166,0)}100%{box-shadow:0 0 0 0 rgba(79,224,166,0)}}
 .sx [data-reveal]{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
 .sx [data-reveal].in{opacity:1;transform:none}
-.sx-hero{position:relative;padding:0 22px 40px;min-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.sx-hero{position:relative;padding:0 22px clamp(44px,7vh,84px);display:flex;flex-direction:column;overflow:hidden}
 .sx-aura{position:absolute;inset:0;pointer-events:none;z-index:0;background:
   radial-gradient(50% 40% at 78% 4%,rgba(255,200,118,.16),transparent 60%),
   radial-gradient(46% 40% at 8% 0%,rgba(84,132,214,.12),transparent 62%),
@@ -302,7 +302,7 @@ const CSS = `
 .sx-nav-btn{background:none;cursor:pointer;font-family:inherit}
 .sx-nav-cta:hover{border-color:rgba(255,200,118,.4);background:rgba(255,200,118,.06)}
 @media(max-width:430px){.sx-nav{padding:20px 0} .sx-nav-cta{font-size:12px;padding:8px 12px} .sx-logo{font-size:13.5px;gap:7px} .sx-cta-row .sx-btn{width:100%}}
-.sx-hero-in{position:relative;z-index:2;width:100%;max-width:900px;margin:0 auto;text-align:center;padding:24px 0}
+.sx-hero-in{position:relative;z-index:2;width:100%;max-width:900px;margin:auto;text-align:center;padding:24px 0}
 .sx-kicker{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--muted);padding:7px 14px;border-radius:999px;border:1px solid var(--hair);background:rgba(255,255,255,.02)}
 .sx-h1{font-size:clamp(38px,6.4vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:800;margin:22px 0 0;text-wrap:balance}
 .sx-lede{font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:60ch;margin:20px auto 0;line-height:1.55}
@@ -319,6 +319,7 @@ const CSS = `
 @keyframes sxscroll{to{transform:translateX(-50%)}}
 .sx-sec{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:clamp(60px,9vw,120px) 22px 0}
 .sx-sec-tight{padding-top:clamp(40px,6vw,80px)}
+.sx-hero + .sx-sec{padding-top:clamp(24px,4vw,52px)}
 .sx-seclabel{display:flex;align-items:center;gap:16px;margin-bottom:34px}
 .sx-seclabel-n{font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.1em}
 .sx-seclabel-t{font-size:clamp(20px,2.6vw,28px);font-weight:750;letter-spacing:-.02em;text-wrap:balance}
