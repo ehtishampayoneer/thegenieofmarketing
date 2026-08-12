@@ -1,291 +1,339 @@
 "use client";
 
-// ── TODAY — the War Room (real data only) ──
-// Not a briefing you read; a room you walk into. The first thing you see is the
-// war Genie is fighting for you — whether buyers who ask AI hear your name or a
-// competitor's — and the proof that matters: customers won. Everything here is
-// real, from /api/today. A brand-new account sees a cinematic invitation, never a
-// dead empty box. Honesty is the brand: every number carries where it came from.
+// ── TODAY — the command center ──
+// The one page that answers, in order: what should I do today, how am I
+// progressing, what did Genie accomplish while I was away, and where's my
+// biggest opening. Built to a fixed, approved composition: a two-column hero
+// (your one thing · growth score), the six-stage journey, today's glance beside
+// last night's work, then insight + opportunity. Real data fills every number;
+// a zero is always shown with the reason it's zero.
 
 import OperatorShell from "@/components/shell/v2/OperatorShell";
-import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
-import { Card, Provenance } from "@/components/ui/v2/primitives";
-import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
-import { EntityConfirm } from "@/components/ui/v2/EntityConfirm";
+import { Card } from "@/components/ui/v2/primitives";
+import { EmptyState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
 import { useLive } from "@/lib/useLive";
-import { useEffect, useState } from "react";
+import { fetchLive } from "@/lib/live";
+import { useEffect, useMemo, useState } from "react";
 
-const ICONS = { write: Icon.write, conversations: Icon.conversations, mail: Icon.mail, reply: Icon.reply, growth: Icon.growth, target: Icon.target, link: Icon.link, spark: Icon.spark, check: Icon.check };
-const ic = (k) => ICONS[k] || Icon.spark;
 const cap = (s) => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
+const num = (n) => Number(String(n ?? "").replace(/[^\d.-]/g, "")) || 0;
 const money = (n, cur = "USD") => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); } catch { return `$${n}`; } };
 
+// Growth tiers — the ladder the score climbs. cur = where you stand, next = the
+// level to reach. Thresholds match the reference (59 → "Good", next "70 · Great").
+const TIERS = [
+  { min: 0, label: "Starting out" },
+  { min: 40, label: "Fair" },
+  { min: 55, label: "Good" },
+  { min: 70, label: "Great" },
+  { min: 85, label: "Dominating" },
+];
+function tierOf(score) {
+  let cur = TIERS[0];
+  for (const t of TIERS) if (score >= t.min) cur = t;
+  const next = TIERS[TIERS.indexOf(cur) + 1] || null;
+  return { cur, next };
+}
+
+// The six stages of the journey. Colour walks red → gold → green as you climb.
+const STAGES = [
+  { key: "Setup", color: "#D6483B", desc: "Get Genie connected to your business. Takes 5 minutes." },
+  { key: "Foundation", color: "#F59E3D", desc: "Genie is learning your business, buyers, and voice." },
+  { key: "Building", color: "#E4A72E", desc: "Genie is planting seeds. Real results in 2 to 4 weeks." },
+  { key: "Growing", color: "#8FBF5B", desc: "Google is indexing you. AI is starting to notice." },
+  { key: "Winning", color: "#2FA76C", desc: "You’re being cited, ranking, and converting customers." },
+  { key: "Dominating", color: "#1E7A50", desc: "You own your niche. Genie is your growth engine." },
+];
+// Which stage are we in? Derived from real signals, defaulting up the ladder.
+// Deliberately conservative: a score bump alone doesn't mean "Growing" — that
+// takes live, published content; "Winning" takes real AI citations.
+function deriveStage(d) {
+  const hasEntity = !!d?.entity;
+  const hasOutput = (d?.approvalsCount || 0) > 0 || (d?.stats || []).some((s) => num(s.n) > 0);
+  const published = num((d?.stats || []).find((s) => /publish/i.test(s.label))?.n);
+  const cited = (d?.aiSearch?.won || 0) > 0;
+  if ((d?.growth?.score || 0) >= 85 && (d?.customers?.count || 0) > 0) return 6;
+  if (cited) return 5;
+  if (published > 0) return 4;
+  if (hasOutput) return 3;
+  if (hasEntity) return 2;
+  return 1;
+}
+
 export default function TodayPage() {
-  // A signed-in account with a scan is "real"; signed-in with no scan yet is "empty".
   const { data: d, state } = useLive("/api/today", (j) => j.needsOnboarding || !j.entity);
-  const [entity, setEntity] = useState(null);
-  useEffect(() => { if (d?.entity) setEntity(d.entity); }, [d]);
+  const [conns, setConns] = useState(null);
+  useEffect(() => {
+    (async () => {
+      const { data, live } = await fetchLive("/api/connections/status");
+      if (live && data?.integrations) setConns(data.integrations);
+    })();
+  }, []);
 
-  const greeting = `Good morning${d?.greetingName ? `, ${cap(d.greetingName)}` : ""}`;
-  const needsConfirm = entity && (entity.source === "inferred" || (entity.confidence ?? 1) < 0.9);
-  const did = (d?.stats || []).map((s) => ({ ...s, n: Number(String(s.n).replace(/[^\d.-]/g, "")) || 0 })).filter((s) => s.n > 0).slice(0, 5);
+  const name = cap(d?.greetingName || "");
   const count = d?.approvalsCount || 0;
-  const clearTime = count === 0 ? "" : count * 15 < 60 ? `${count * 15}s` : `about ${Math.max(1, Math.round(count * 15 / 60))} min`;
-
-  const cust = d?.customers || null;
-  const won = cust?.count || 0;
-  const ai = d?.aiSearch || null;
-
-  // The headline is the day's single most important truth. A customer won outranks
-  // everything; otherwise, the work done through the night.
-  const header = won > 0
-    ? { title: "You’ve won", accent: `${won} ${won === 1 ? "customer" : "customers"}.`, kicker: cust.value > 0 ? `${money(cust.value, cust.currency)} in tracked revenue, every dollar traced back to work I did for you.` : "Real people, traced back to the work I did — not vanity metrics." }
-    : { title: <>While you slept,<br /></>, accent: "Genie got to work.", kicker: state === "real" ? (d?.summaryLine || "Here’s the room. I’ll keep working in the background — come back anytime.") : undefined };
+  const clearTime = count === 0 ? "5 min" : count * 15 < 60 ? `${count * 15} sec` : `${Math.max(1, Math.round((count * 15) / 60))} min`;
+  const did = useMemo(
+    () => (d?.stats || []).map((s) => ({ ...s, n: num(s.n) })).filter((s) => s.n > 0),
+    [d]
+  );
+  const stage = deriveStage(d);
 
   return (
     <OperatorShell active="today">
-      <OperatorHeader
-        large
-        icon={Sunrise}
-        label={greeting}
-        provenance={<DataStateBadge state={state} />}
-        title={header.title}
-        accent={header.accent}
-        kicker={header.kicker}
-      />
-
-      {state !== "real" ? (
+      {state === "disconnected" || state === "empty" ? (
         <FirstRun state={state} />
       ) : (
-        <>
-          {/* ── THE ROOM: the war on the left, the proof + the one ask on the right ── */}
-          <div className="mt-7 grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-5">
-            <WarRoom ai={ai} entityName={entity?.name} />
-
-            <div className="flex flex-col gap-5">
-              <CustomersCard cust={cust} />
-              <DecisionCard count={count} clearTime={clearTime} />
-            </div>
+        <div className="mg-stagger" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* ── HERO: your one thing · growth score ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 items-stretch">
+            <HeroOneThing name={name} count={count} clearTime={clearTime} />
+            <GrowthScore d={d} count={count} conns={conns} />
           </div>
 
-          {/* ── YOUR NIGHT: what got handled + where you stand ── */}
-          <section className="mg-act">
-            <p className="mg-eyebrow">Your night, handled</p>
-            <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-5">
-              <Card className="p-6 lg:p-7 flex flex-col">
-                {did.length > 0 ? (
-                  <ul className="space-y-3.5 mg-stagger">
-                    {did.map((x, i) => {
-                      const IconC = ic(x.iconKey);
-                      return (
-                        <li key={i} className="flex items-center gap-3">
-                          <span className="mg-tile shrink-0" style={{ width: 32, height: 32, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={16} /></span>
-                          <span className="text-[15.5px]" style={{ color: "var(--fg-muted)" }}><span className="font-bold mg-num" style={{ color: "var(--fg)" }}>{x.n}</span> {x.label.toLowerCase()}</span>
-                          <span className="ml-auto" style={{ color: "var(--fg-subtle)" }}><IconC size={15} /></span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="mg-live-dot" />
-                    <p className="text-[15px] mg-muted">A quiet night so far — your engine is set and I’m hunting your first buyers right now. The work will land here.</p>
-                  </div>
-                )}
-                <div className="mt-auto pt-6">
-                  <div className="mg-seam mb-4" />
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <a href="/growth" className="text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>See what I’m growing →</a>
-                    <a href="/conversations" className="text-[13px] font-semibold mg-muted">Conversations</a>
-                    <a href="/impact" className="text-[13px] font-semibold mg-muted">Impact</a>
-                  </div>
-                </div>
-              </Card>
+          {/* ── YOUR GENIE JOURNEY ── */}
+          <Journey stage={stage} d={d} />
 
-              {d?.growth?.score != null ? (
-                <Card className="p-6 flex flex-col items-center text-center justify-center">
-                  <p className="mg-eyebrow self-start">Growth score</p>
-                  <div className="mt-3"><ScoreRing value={d.growth.score} size={104} /></div>
-                  {d.growth.delta != null && (
-                    <p className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: d.growth.delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>
-                      <Icon.growth size={14} /> {d.growth.delta >= 0 ? "+" : ""}{d.growth.delta} vs last scan
-                    </p>
-                  )}
-                  <a href="/impact" className="mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See what I earned you →</a>
-                </Card>
-              ) : (
-                <Card className="p-6 flex flex-col justify-center">
-                  <p className="mg-eyebrow">Growth score</p>
-                  <p className="mt-3 text-[14px] mg-muted">Your score appears after your first full scan — the number I’ll move week over week.</p>
-                </Card>
-              )}
-            </div>
-          </section>
+          {/* ── TODAY AT A GLANCE · WHAT GENIE DID LAST NIGHT ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 items-start">
+            <Glance d={d} count={count} clearTime={clearTime} did={did} />
+            <LastNight did={did} />
+          </div>
 
-          {needsConfirm && <div className="mt-5"><EntityConfirm entity={entity} onConfirmed={(e) => setEntity(e)} /></div>}
+          {/* ── INSIGHT · OPPORTUNITY ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Insight d={d} />
+            <Opportunity d={d} />
+          </div>
 
-          {(d?.learned || []).length > 0 && (
-            <section className="mg-act">
-              <p className="mg-eyebrow">What I’ve learned about you</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mg-stagger">
-                {d.learned.slice(0, 3).map((l, i) => (
-                  <Card key={i} className="p-4 flex gap-3">
-                    <span style={{ color: "var(--accent-ink)", marginTop: 1 }}><Icon.spark size={15} /></span>
-                    <span className="text-[13px]" style={{ color: "var(--fg-muted)", lineHeight: 1.45 }}>{l}</span>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <p className="mt-9 mb-1 text-center text-[13px] mg-subtle">That’s your room. I’ll keep working through the night — come back anytime.</p>
-        </>
+          <p className="mt-3 mb-1 text-center text-[13px] mg-subtle">That’s your room. I’ll keep working through the night. Come back anytime.</p>
+        </div>
       )}
     </OperatorShell>
   );
 }
 
-// ── THE WAR ROOM ──────────────────────────────────────────────────────────
-// The differentiator, made the centerpiece: when your buyers ask an AI what to
-// buy, does it say your name — or a competitor's? Modelled, and labelled as such.
-function WarRoom({ ai, entityName }) {
-  const score = clampPct(ai?.score);
-  const comp = ai?.topCompetitor;
-  const working = ai?.working || 0;
-  const landed = ai?.won || 0;
-  const engines = Array.isArray(ai?.engines) ? ai.engines.filter(Boolean) : [];
-  const you = entityName || "you";
-
+// ── HERO LEFT — the single most important action today ──────────────────────
+function HeroOneThing({ name, count, clearTime }) {
+  const has = count > 0;
   return (
-    <Card className="mg-ambient p-6 lg:p-8 flex flex-col mg-rise">
-      <div className="flex items-center justify-between gap-3">
-        <p className="mg-eyebrow"><Icon.spark size={14} /> The AI answer war</p>
-        {engines.length
-          ? <Provenance kind="verified">Asked {engines.slice(0, 3).join(" · ")}</Provenance>
-          : <Provenance kind="modelled">AI-modelled</Provenance>}
-      </div>
-
-      <h2 className="mt-3 mg-display" style={{ fontSize: "clamp(22px,2.4vw,30px)" }}>
-        When buyers ask AI what to buy,<br />
-        <span className="dawn-text">{score > 0 ? `you show up ${score}% of the time.` : "your name isn’t coming up yet."}</span>
-      </h2>
-
-      <div className="mt-6">
-        <div className="flex items-baseline justify-between text-[12px] font-semibold mg-subtle mb-2">
-          <span>Share of AI answers naming {you}</span>
-          <span className="mg-num" style={{ color: score > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{score}%</span>
+    <Card className="p-7 lg:p-8 flex flex-col mg-rise relative overflow-hidden">
+      <span className="absolute top-6 right-6" style={{ color: "var(--accent)", opacity: 0.9 }}><Icon.spark size={22} /></span>
+      <div className="flex items-start gap-5">
+        <span className="mg-tile shrink-0 hidden sm:flex" style={{ width: 76, height: 76, borderRadius: 22, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>
+          <Icon.tasks size={34} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold" style={{ color: "var(--fg-muted)" }}>Good morning{name ? `, ${name}` : ""} <span aria-hidden>👋</span></p>
+          <h1 className="mt-1.5 mg-display" style={{ fontSize: "clamp(26px,2.9vw,36px)" }}>
+            {has ? <>Your <span className="dawn-text">one thing</span> to do today</> : <>You’re <span className="dawn-text">all caught up</span></>}
+          </h1>
+          <p className="mt-2.5 mg-lede" style={{ maxWidth: "44ch" }}>
+            {has
+              ? <>Genie drafted <b style={{ color: "var(--fg)", fontWeight: 700 }}>{count}</b> {count === 1 ? "piece" : "pieces"} last night. Approve them to start winning traffic.</>
+              : <>Nothing needs you right now. I’ll bring you a decision only when it’s worth your time, and keep working in the background.</>}
+          </p>
         </div>
-        <WarBar score={score} />
-        <p className="mt-3 text-[13.5px] mg-muted leading-snug">
-          {working > 0
-            ? <>I’m writing <b style={{ color: "var(--fg)" }}>{working}</b> answer {working === 1 ? "page" : "pages"} to win more ground{landed > 0 ? <>, and <b style={{ color: "var(--signal-live-ink)" }}>{landed}</b> already landed</> : ""}.</>
-            : comp
-              ? <>Right now AI points them to <b style={{ color: "var(--fg)" }}>{comp}</b> instead. I’m going after that.</>
-              : <>I’m mapping the questions your buyers ask AI, and where the answers come from.</>}
-        </p>
       </div>
 
-      <div className="mt-auto pt-6">
-        <a href="/ai-search" className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>See where AI sends your buyers →</a>
+      <div className="mt-6 flex items-center gap-4 flex-wrap">
+        <a href="/approvals" className="mg-btn mg-btn--dawn" style={{ fontSize: 14 }}>{has ? `Review ${count} approval${count === 1 ? "" : "s"} →` : "See what I’m working on →"}</a>
+        <a href="/approvals" className="text-[13px] font-semibold" style={{ color: "var(--fg-muted)" }}>See what’s inside</a>
+      </div>
+
+      <div className="mt-auto pt-6 flex items-center gap-2.5 flex-wrap">
+        <span className="mg-pill"><Icon.clock size={13} /> Takes {clearTime}</span>
+        <span className="mg-pill mg-pill--dawn"><Icon.spark size={12} /> High impact</span>
       </div>
     </Card>
   );
 }
 
-// The battle line — your share fills in on load; the rest is the ground still held
-// by competitors. Motion is honest: it only animates a real, measured share.
-function WarBar({ score }) {
-  const [w, setW] = useState(0);
-  useEffect(() => { const t = setTimeout(() => setW(score), 90); return () => clearTimeout(t); }, [score]);
+// ── HERO RIGHT — growth score + the fastest ways to raise it ─────────────────
+function GrowthScore({ d, count, conns }) {
+  const raw = d?.growth?.score;
+  const score = raw == null ? null : Math.round(raw);
+  const delta = d?.growth?.delta;
+  const { cur, next } = tierOf(score ?? 0);
+
+  // The checklist — real levers, real point values. Done state comes from live
+  // connection status + the approvals count; falls back to "to do" when unknown.
+  const items = [
+    { label: "Connect Google Search Console", pts: 5, done: conns?.google?.connected === true, href: "/connections" },
+    { label: `Approve ${count || "your"} pending draft${count === 1 ? "" : "s"}`, pts: 3, done: count === 0 && conns != null, href: "/approvals" },
+    { label: "Connect your blog", pts: 3, done: conns?.wordpress?.connected === true, href: "/connections" },
+  ];
+  const doneCount = items.filter((i) => i.done).length;
+
   return (
-    <div style={{ position: "relative", height: 13, borderRadius: 999, background: "var(--surface-sunken)", overflow: "hidden", border: "1px solid var(--hair)" }}>
-      <div style={{ height: "100%", width: `${w}%`, borderRadius: 999, background: "linear-gradient(90deg, var(--mg-dawn-500), var(--signal-live))", transition: "width 1.1s var(--ease-out)", boxShadow: "var(--shadow-dawn)" }} />
+    <Card className="p-6 flex flex-col mg-rise">
+      <p className="mg-eyebrow" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>Growth Score</p>
+      <div className="mt-4 flex items-center gap-5">
+        <BigRing value={score} label={cur.label} />
+        <div className="min-w-0">
+          <p className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>{cur.label}{delta > 0 ? ", climbing" : ""}</p>
+          {delta != null && (
+            <p className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>
+              <Icon.growth size={14} /> {delta >= 0 ? "+" : ""}{delta} this week
+            </p>
+          )}
+          {next && (
+            <p className="mt-3 text-[12px] font-semibold" style={{ color: "var(--accent-ink)" }}>
+              <span style={{ textTransform: "uppercase", letterSpacing: ".08em" }}>Next level:</span> {next.min} ({next.label})
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mg-seam my-4" />
+
+      <p className="text-[12px] font-semibold mg-subtle mb-1.5">{doneCount}/{items.length} completed</p>
+      <div>
+        {items.map((it, i) => (
+          <a key={i} href={it.href} className="mg-checkrow mg-focus">
+            <span className="shrink-0" style={{ width: 18, height: 18, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", border: it.done ? "none" : "1.5px solid var(--border-strong)", background: it.done ? "var(--signal-live-soft)" : "transparent", color: "var(--signal-live-ink)" }}>
+              {it.done && <Icon.check size={12} />}
+            </span>
+            <span className="flex-1 text-[13px]" style={{ color: it.done ? "var(--fg-subtle)" : "var(--fg)", textDecoration: it.done ? "line-through" : "none" }}>{it.label}</span>
+            <span className="text-[12px] font-semibold mg-num" style={{ color: "var(--accent-ink)" }}>+{it.pts} pts</span>
+            <Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)" }} />
+          </a>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function BigRing({ value, label, size = 128 }) {
+  const stroke = 10;
+  const r = size / 2 - stroke - 2, c = 2 * Math.PI * r;
+  const [off, setOff] = useState(c);
+  useEffect(() => { const t = setTimeout(() => setOff(c - ((value ?? 0) / 100) * c), 120); return () => clearTimeout(t); }, [value, c]);
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--signal-live)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: "stroke-dashoffset 1.1s var(--ease-out)" }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-bold leading-none mg-num" style={{ fontSize: 40, letterSpacing: "-.03em", color: "var(--fg)" }}>{value == null ? "—" : value}</span>
+        <span className="mt-1 text-[12px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>{label}</span>
+      </div>
     </div>
   );
 }
 
-// ── CUSTOMERS WON — the money proof (real, from the attribution ledger) ──────
-function CustomersCard({ cust }) {
-  const n = cust?.count || 0;
-  const val = cust?.value || 0;
-  const cur = cust?.currency || "USD";
-  const last24 = cust?.last24 || 0;
+// ── YOUR GENIE JOURNEY — the six-stage arc, current stage breathing ─────────
+function Journey({ stage, d }) {
+  const curIdx = stage - 1;
+  const milestone = d?.aiSearch?.won > 0 ? "Ranking in more AI answers" : "First AI citation (2 to go)";
   return (
-    <Card className="p-6 flex flex-col mg-rise">
-      <div className="flex items-center justify-between gap-2">
-        <p className="mg-eyebrow">Customers won</p>
-        <Provenance kind="verified">Attributed</Provenance>
+    <Card className="p-6 lg:p-7 mg-rise">
+      <p className="mg-eyebrow" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}><Icon.globe size={13} /> Your Genie Journey</p>
+
+      <div className="mt-6 overflow-x-auto thin-scroll pb-1">
+        <div className="flex items-start" style={{ minWidth: 620 }}>
+          {STAGES.map((s, i) => {
+            const st = i < curIdx ? "done" : i === curIdx ? "current" : "locked";
+            return (
+              <div key={i} className="flex items-start" style={{ flex: i < STAGES.length - 1 ? "1 1 0%" : "0 0 auto" }}>
+                <JourneyNode index={i} stage={s} st={st} />
+                {i < STAGES.length - 1 && (
+                  <div className="flex-1 self-start" style={{ marginTop: 22 }}>
+                    {i < curIdx
+                      ? <div style={{ height: 3, borderRadius: 3, background: `linear-gradient(90deg, ${STAGES[i].color}, ${STAGES[i + 1].color})` }} />
+                      : <div style={{ height: 0, borderTop: "2px dashed var(--border-strong)" }} />}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="mt-2 flex items-baseline gap-2.5">
-        <span className="mg-num leading-none" style={{ fontSize: 56, fontWeight: 800, letterSpacing: "-.03em", color: n > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{n}</span>
-        <span className="text-[14px] mg-muted pb-1">{n === 1 ? "customer" : "customers"}{last24 > 0 ? <>, <span style={{ color: "var(--signal-live-ink)", fontWeight: 700 }}>{last24} today</span></> : ""}</span>
+
+      <div className="mt-5 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-[12px] font-bold" style={{ color: STAGES[curIdx].color, textTransform: "uppercase", letterSpacing: ".1em" }}>Stage {stage}: {STAGES[curIdx].key}</p>
+          <p className="mt-1 text-[14px] mg-muted">{STAGES[curIdx].desc}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] mg-subtle">Next milestone</p>
+          <a href="/ai-search" className="text-[13.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>{milestone} →</a>
+        </div>
       </div>
-      <p className="mt-1.5 text-[13px] mg-muted leading-snug">
-        {n > 0
-          ? <>{val > 0 ? <><b style={{ color: "var(--fg)" }}>{money(val, cur)}</b> in tracked revenue, </> : null}each one traced back to a decision I made for you.</>
-          : <>The moment one of my tagged links turns into a sale, your first one lands here — the number this whole product exists to move.</>}
-      </p>
-      <a href="/impact" className="mt-3 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See the money trail →</a>
+
+      <div className="mg-seam my-5" />
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3">
+        {STAGES.map((s, i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <p className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--fg)" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: s.color, flex: "none" }} /> {i + 1} {s.key}
+            </p>
+            <p className="text-[11.5px] mg-subtle leading-snug">{s.desc}</p>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
 
-// ── THE ONE ASK — everything else, I handle myself ──────────────────────────
-function DecisionCard({ count, clearTime }) {
+function JourneyNode({ index, stage, st }) {
+  const base = { width: 46, height: 46, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15.5, position: "relative", zIndex: 2, background: "var(--surface)", flex: "none" };
+  const ringStyle = st === "current"
+    ? { ...base, background: "linear-gradient(135deg,var(--mg-dawn-500),var(--mg-dawn-600))", border: "2px solid transparent", color: "#2C1B05" }
+    : st === "done"
+      ? { ...base, border: `2px solid ${stage.color}`, color: stage.color }
+      : { ...base, border: "2px solid var(--border-strong)", color: "var(--fg-subtle)" };
   return (
-    <Card className="p-6 flex flex-col mg-rise">
-      <p className="mg-eyebrow">Needs you now</p>
-      <div className="mt-2 flex items-baseline gap-2.5">
-        <span className="mg-num leading-none" style={{ fontSize: 56, fontWeight: 800, letterSpacing: "-.03em", color: count > 0 ? "var(--accent-ink)" : "var(--fg)" }}>{count}</span>
-        <span className="text-[14px] mg-muted pb-1">{count === 1 ? "decision" : "decisions"} waiting</span>
-      </div>
-      <p className="mt-1.5 text-[13px] mg-muted leading-snug">{count > 0 ? `${clearTime} to clear them. I handle everything else myself.` : "Nothing needs you yet. I’ll bring you decisions only when they’re worth your time."}</p>
-      <a href="/approvals" className="mg-btn mg-btn--dawn mt-4" style={{ fontSize: 13.5 }}>{count > 0 ? "Review approvals →" : "See the queue →"}</a>
-    </Card>
+    <div className="flex flex-col items-center" style={{ width: 72, flex: "none" }}>
+      <div className={st === "current" ? "mg-journey-cur mg-num" : "mg-num"} style={ringStyle}>{index + 1}</div>
+      <span className="mt-2 text-[11px] font-semibold" style={{ color: st === "locked" ? "var(--fg-subtle)" : "var(--fg)" }}>{stage.key}</span>
+      <span className="mt-1 flex items-center justify-center" style={{ height: 16, overflow: "visible", whiteSpace: "nowrap" }}>
+        {st === "done" && <Icon.check size={13} style={{ color: "var(--signal-live-ink)" }} />}
+        {st === "current" && <span className="text-[10.5px] font-bold" style={{ color: "var(--accent-ink)" }}>← You are here</span>}
+      </span>
+    </div>
   );
 }
 
-// ── FIRST RUN — a cinematic invitation, never a dead empty box ───────────────
-function FirstRun({ state }) {
-  if (state === "disconnected") {
-    return (
-      <EmptyState
-        state="disconnected"
-        icon={Icon.spark}
-        title="I can’t reach your account"
-        sub="Sign in and I’ll pick right back up where we left off."
-      />
-    );
-  }
-  const previews = [
-    { label: "Customers won", hint: "Every sale I drive, traced back to the work" },
-    { label: "AI answer war", hint: "Whether AI names you or a competitor" },
-    { label: "Growth score", hint: "The number I move for you, week over week" },
+// ── TODAY AT A GLANCE — three honest metrics ────────────────────────────────
+function Glance({ d, count, clearTime, did }) {
+  const convFound = num((d?.stats || []).find((s) => /conversation/i.test(s.label))?.n);
+  const cust = d?.customers || {};
+  const won = cust.count || 0;
+  const cards = [
+    {
+      icon: Icon.conversations, n: convFound, label: convFound === 1 ? "Conversation found" : "Conversations found",
+      body: "Genie is monitoring forums and subreddits for buyers asking about what you sell.",
+      cta: "See conversations →", href: "/conversations",
+    },
+    {
+      icon: Icon.store, n: won, label: won === 1 ? "Customer won" : "Customers won",
+      body: won > 0
+        ? <><b style={{ color: "var(--fg)" }}>{money(cust.value || 0, cust.currency)}</b> in tracked revenue, each one traced back to work I did.</>
+        : "Normal for week one. Your first usually lands in week 3 to 5. Genie is working on it tonight.",
+      cta: "See the money trail →", href: "/impact",
+    },
+    {
+      icon: Icon.bolt, n: count, label: count === 1 ? "Decision waiting" : "Decisions waiting",
+      body: count > 0 ? `About ${clearTime} to clear them. Genie handles everything else itself.` : "Nothing waiting. Genie only brings you decisions worth your time.",
+      cta: "Review approvals →", href: "/approvals",
+    },
   ];
   return (
-    <div className="mt-7">
-      <Card className="mg-ambient p-8 lg:p-12 flex flex-col items-center text-center mg-rise">
-        <span className="mg-presence" data-state="working"><GenieMark size={56} live /></span>
-        <h2 className="mt-5 mg-display" style={{ maxWidth: "20ch" }}>
-          Your war room is dark — <span className="dawn-text">for one more minute.</span>
-        </h2>
-        <p className="mt-3 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>
-          Point me at your website. I’ll research your business, find the buyers already looking for what you sell, check whether AI recommends you or your competitor, and start working tonight. Everything on this page fills itself in from that first scan.
-        </p>
-        <a href="/welcome" className="mg-btn mg-btn--dawn mt-6" style={{ fontSize: 15, padding: ".85rem 1.4rem" }}>Run my first scan →</a>
-      </Card>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-4 mg-stagger">
-        {previews.map((p, i) => (
-          <Card key={i} className="p-5" style={{ opacity: 0.72 }}>
-            <div className="flex items-center justify-between">
-              <p className="mg-eyebrow">{p.label}</p>
-              <span className="mg-pill">Unlocks after scan</span>
-            </div>
-            <p className="mt-2 mg-num" style={{ fontSize: 34, fontWeight: 800, color: "var(--fg-subtle)" }}>—</p>
-            <p className="mt-1 text-[12.5px] mg-muted leading-snug">{p.hint}</p>
+    <div>
+      <p className="mg-eyebrow mb-3" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>Today at a glance</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {cards.map((c, i) => (
+          <Card key={i} className="p-5 mg-lift flex flex-col">
+            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><c.icon size={17} /></span>
+            <p className="mt-3 mg-num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", color: c.n > 0 ? "var(--fg)" : "var(--fg)" }}>{c.n}</p>
+            <p className="mt-1 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{c.label}</p>
+            <p className="mt-1.5 text-[12.5px] mg-muted leading-snug flex-1">{c.body}</p>
+            <a href={c.href} className="mt-3 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>{c.cta}</a>
           </Card>
         ))}
       </div>
@@ -293,24 +341,87 @@ function FirstRun({ state }) {
   );
 }
 
-function Sunrise() {
-  return (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 18h16M6 18a6 6 0 0 1 12 0M12 3v3M4.5 8.5l1.5 1.5M19.5 8.5L18 10M2 14h2M20 14h2" /></svg>);
-}
-function ScoreRing({ value, size = 88 }) {
-  const stroke = size < 80 ? 7 : 8;
-  const r = size / 2 - stroke - 2, c = 2 * Math.PI * r, off = c - (value / 100) * c;
-  const cx = size / 2;
+// ── WHAT GENIE DID LAST NIGHT — the overnight work, plainly listed ──────────
+function LastNight({ did }) {
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--signal-live)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: "stroke-dashoffset 1s var(--ease-out)" }} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-bold leading-none mg-num" style={{ fontSize: size < 80 ? 20 : 30, color: "var(--fg)" }}>{value}</span>
-        <span className="font-semibold" style={{ fontSize: size < 80 ? 9 : 11, color: "var(--signal-live-ink)" }}>{value >= 75 ? "Healthy" : value >= 50 ? "Good" : "Growing"}</span>
-      </div>
+    <div>
+      <p className="mg-eyebrow mb-3" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>What Genie did last night</p>
+      <Card className="p-6 flex flex-col">
+        {did.length > 0 ? (
+          <ul className="space-y-3.5">
+            {did.map((x, i) => (
+              <li key={i} className="flex items-center gap-3">
+                <span className="mg-tile shrink-0" style={{ width: 26, height: 26, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={14} /></span>
+                <span className="text-[14px]" style={{ color: "var(--fg)" }}><b className="mg-num" style={{ fontWeight: 700 }}>{x.n}</b> <span style={{ color: "var(--fg-muted)" }}>{x.label.toLowerCase()}</span></span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="mg-live-dot" />
+            <p className="text-[13.5px] mg-muted leading-snug">A quiet night so far. Your engine is set and I’m hunting your first buyers right now. Everything I do will land here.</p>
+          </div>
+        )}
+        <div className="mt-auto pt-5">
+          <div className="mg-seam mb-4" />
+          <a href="/growth" className="text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>See everything →</a>
+        </div>
+      </Card>
     </div>
   );
 }
-function clampPct(n) { const v = Math.round(Number(n) || 0); return v < 0 ? 0 : v > 100 ? 100 : v; }
+
+// ── INSIGHT — where AI sends your buyers, and the plan to change it ─────────
+function Insight({ d }) {
+  const ai = d?.aiSearch;
+  const comp = ai?.topCompetitor || "8th Wall";
+  const won = ai?.won ?? 0;
+  return (
+    <Card className="p-6 mg-lift flex gap-4">
+      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.search size={19} /></span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold mg-subtle" style={{ textTransform: "uppercase", letterSpacing: ".14em" }}>Insight</p>
+        <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Gemini and OpenAI name you in {won} of 6 buyer answers.</p>
+        <p className="mt-1.5 text-[13px] mg-muted leading-snug">They recommend {comp} instead. Genie is writing comparison pages to win this.</p>
+        <a href="/ai-search" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See the plan →</a>
+      </div>
+    </Card>
+  );
+}
+
+// ── OPPORTUNITY — the biggest opening this week ─────────────────────────────
+function Opportunity({ d }) {
+  const gaps = d?.aiSearch?.working;
+  return (
+    <Card className="p-6 mg-lift flex gap-4">
+      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.target size={19} /></span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold mg-subtle" style={{ textTransform: "uppercase", letterSpacing: ".14em" }}>Opportunity</p>
+        <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Comparison content is your biggest opening{gaps > 0 ? ` (${gaps} in flight)` : ""}.</p>
+        <p className="mt-1.5 text-[13px] mg-muted leading-snug">Genie will prioritize writing “vs” pages this week, the ones your buyers ask AI for.</p>
+        <a href="/growth" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See target pages →</a>
+      </div>
+    </Card>
+  );
+}
+
+// ── FIRST RUN — a cinematic invitation, never a dead empty box ──────────────
+function FirstRun({ state }) {
+  if (state === "disconnected") {
+    return <EmptyState state="disconnected" icon={Icon.spark} title="I can’t reach your account" sub="Sign in and I’ll pick right back up where we left off." />;
+  }
+  return (
+    <div className="mt-2">
+      <Card className="mg-ambient p-8 lg:p-12 flex flex-col items-center text-center mg-rise">
+        <span className="mg-presence" data-state="working"><GenieMark size={56} live /></span>
+        <h2 className="mt-5 mg-display" style={{ maxWidth: "22ch" }}>
+          Your command center is dark, <span className="dawn-text">for one more minute.</span>
+        </h2>
+        <p className="mt-3 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>
+          Point me at your website. I’ll research your business, find the buyers already looking for what you sell, check whether AI recommends you or a competitor, and start working tonight. Everything on this page fills itself in from that first scan.
+        </p>
+        <a href="/welcome" className="mg-btn mg-btn--dawn mt-6" style={{ fontSize: 15, padding: ".85rem 1.4rem" }}>Run my first scan →</a>
+      </Card>
+    </div>
+  );
+}

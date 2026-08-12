@@ -1,10 +1,12 @@
 "use client";
 
 // ── OPERATOR SHELL (V2) ──
-// The operating system of an AI marketing employee. Full-bleed, three zones:
+// The operating system of an AI marketing employee. Two zones now:
 //   • Command rail (left)  — where you go
-//   • Work-stream (center) — what Genie accomplished / what you approve
-//   • Live activity (right)— Genie working, right now
+//   • Work-stream (center) — a live-news ticker, then what Genie accomplished
+// The old right-side Live Activity rail is gone; its stream now lives in the
+// horizontal ticker directly under the top bar, so the "always working" feel
+// runs across the top of every page instead of hugging one edge.
 // Day is the default (premium, calm reveal). Night is Mission Control.
 // Live-with-fallback: pulls the real activity feed + entity + counts when signed
 // in; falls back to representative data so the public preview always renders.
@@ -17,41 +19,42 @@ import { fetchLive, relTime } from "@/lib/live";
 import GenieChat from "@/components/shell/v2/GenieChat";
 
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
-// where it's growing you (Growth), and how you stay in control (Control).
+// where it's growing you (the journey), and how you stay in control (settings).
 const NAV = [
   { section: "Your employee" },
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
   { id: "conversations", label: "Conversations", icon: Icon.conversations },
-  { section: "Growth" },
-  { id: "growth", label: "Growth", icon: Icon.growth },
-  { id: "aisearch", label: "AI Search", icon: Icon.spark },
-  { id: "impact", label: "Impact", icon: Icon.bolt },
-  { id: "analytics", label: "Intelligence", icon: Icon.brain },
-  { section: "Control" },
+  { section: "Growth journey" },
+  { id: "growth", label: "Growth Score", icon: Icon.growth },
+  { id: "aisearch", label: "AI Search Presence", icon: Icon.search },
+  { id: "impact", label: "Customer Impact", icon: Icon.bolt },
+  { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
+  { section: "Settings" },
+  { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
-  { id: "connections", label: "Connections", icon: Icon.connect },
   { id: "settings", label: "Settings", icon: Icon.settings },
   { id: "showcase", label: "What Genie can do", icon: Icon.spark, external: true },
 ];
 
-const VERB = {
-  scanning: { icon: Icon.search, tint: "ink" }, discovered: { icon: Icon.spark, tint: "dawn" },
-  writing: { icon: Icon.write, tint: "blue" }, staged: { icon: Icon.tasks, tint: "dawn" },
-  published: { icon: Icon.growth, tint: "emerald" }, replied: { icon: Icon.reply, tint: "blue" },
-  learning: { icon: Icon.brain, tint: "dawn" }, traction: { icon: Icon.growth, tint: "emerald" },
-  keywords: { icon: Icon.target, tint: "dawn" }, working: { icon: Icon.bolt, tint: "ink" },
-};
+// The command bar's rotating prompt — shows the operator what they can ask for.
+const SEARCH_HINTS = [
+  "Try: What content should I publish this week?",
+  "Try: Show me my best performing pages",
+  "Try: Draft a Reddit reply for r/coffee",
+  "Try: Which buyers are asking for me right now?",
+];
 
-function tintOf(name) {
-  switch (name) {
-    case "emerald": return { bg: "var(--signal-live-soft)", fg: "var(--signal-live-ink)" };
-    case "blue": return { bg: "var(--signal-info-soft)", fg: "var(--signal-info)" };
-    case "dawn": return { bg: "var(--accent-quiet)", fg: "var(--accent-ink)" };
-    case "reddit": return { bg: "rgba(255,69,0,.12)", fg: "#F04A1A" };
-    default: return { bg: "var(--surface-sunken)", fg: "var(--fg-muted)" };
-  }
-}
+// When there's no live stream (public preview / a fresh account), the ticker
+// still reads like an employee at work. Representative, and de-dashed on purpose.
+const FALLBACK_TICKER = [
+  "Built your keyword strategy, 5 targets",
+  "6 AI-search gaps found, plans drafted to win them",
+  "Gemini and OpenAI name you in 0 of 6 buyer answers",
+  "Hunting buyer intent across 5 surfaces",
+  "Learned 1 new thing about your buyers from Reddit",
+  "Publishing content to Reddit in 2 min",
+];
 
 export default function OperatorShell({ active = "today", children }) {
   const [theme, setTheme] = useState("day");
@@ -62,6 +65,9 @@ export default function OperatorShell({ active = "today", children }) {
   const [navOpen, setNavOpen] = useState(false); // mobile rail drawer
   const [missingConns, setMissingConns] = useState([]);
   const [connDismissed, setConnDismissed] = useState(false);
+  const [hintIdx, setHintIdx] = useState(0);
+  const [lastSync, setLastSync] = useState(null);
+  const [, setTick] = useState(0); // re-render so "Last updated" stays honest
 
   useEffect(() => {
     const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setChatOpen(true); } };
@@ -69,35 +75,48 @@ export default function OperatorShell({ active = "today", children }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Rotate the command-bar prompt + tick the "last updated" label forward.
+  useEffect(() => {
+    const h = setInterval(() => setHintIdx((i) => (i + 1) % SEARCH_HINTS.length), 4200);
+    const t = setInterval(() => setTick((n) => n + 1), 60000);
+    return () => { clearInterval(h); clearInterval(t); };
+  }, []);
+
+  // Live data. Fetched on mount and — so "Auto-refreshes every 5 min" is true —
+  // on a 5-minute interval. Theme + connect-nudge are read once.
   useEffect(() => {
     try { const t = localStorage.getItem("mg-theme"); if (t === "night" || t === "day") { setTheme(t); applyTheme(t); } } catch {}
-    (async () => {
-      const { data, live } = await fetchLive("/api/activity");
-      if (live && Array.isArray(data?.activity) && data.activity.length) {
-        setActivity(data.activity.map((a) => ({ verb: a.verb, title: a.message, sub: a.detail || "", time: relTime(a.created_at) })));
+    try { if (sessionStorage.getItem("mg-connect-dismissed")) setConnDismissed(true); } catch {}
+
+    async function loadLive() {
+      const [act, today, conns] = await Promise.all([
+        fetchLive("/api/activity"),
+        fetchLive("/api/today"),
+        fetchLive("/api/connections/status"),
+      ]);
+      if (act.live && Array.isArray(act.data?.activity) && act.data.activity.length) {
+        setActivity(act.data.activity.map((a) => ({ verb: a.verb, title: a.message, sub: a.detail || "", time: relTime(a.created_at) })));
       }
-    })();
-    (async () => {
-      const { data, live } = await fetchLive("/api/today");
-      if (live && data) {
+      if (today.live && today.data) {
+        const data = today.data;
         if (data.approvalsCount != null) setCounts((c) => ({ ...c, approvals: data.approvalsCount }));
         if (data.entity || data.greetingName) setUser({ name: data.greetingName || "You", entity: data.entity?.name || "" });
       }
-    })();
-    (async () => {
-      try { if (sessionStorage.getItem("mg-connect-dismissed")) setConnDismissed(true); } catch {}
-      const { data, live } = await fetchLive("/api/connections/status");
-      if (live && data?.integrations) {
-        const I = data.integrations;
+      if (conns.live && conns.data?.integrations) {
+        const I = conns.data.integrations;
         const missing = [];
         // Ask whether the Google ACCOUNT is linked — not whether a Search Console
-        // property has been matched yet (gsc_site fills in later). Judging it by the
-        // latter kept nagging owners to connect something they'd already connected.
+        // property has been matched yet (gsc_site fills in later).
         if (!I.google?.connected) missing.push({ label: "Google", why: "real keywords + send from your Gmail" });
         if (!I.wordpress?.connected) missing.push({ label: "your blog", why: "auto-publish articles" });
         setMissingConns(missing);
       }
-    })();
+      setLastSync(Date.now());
+    }
+
+    loadLive();
+    const iv = setInterval(loadLive, 5 * 60 * 1000);
+    return () => clearInterval(iv);
   }, []);
 
   function dismissConnect() { setConnDismissed(true); try { sessionStorage.setItem("mg-connect-dismissed", "1"); } catch {} }
@@ -109,12 +128,13 @@ export default function OperatorShell({ active = "today", children }) {
 
   // Genie's presence state — driven by REAL data, never decoration. Approvals
   // waiting wins (you have a decision to make); else a live stream = working;
-  // else idle. "thinking" is reserved for a real in-flight job signal we don't
-  // surface yet, so we don't fake it.
+  // else idle.
   const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
+  const working = activity.length > 0;
+  const tickerLines = working ? activity.slice(0, 10).map((a) => a.title).filter(Boolean) : FALLBACK_TICKER;
 
   // The rail's content — rendered once, used in the desktop aside AND the mobile
-  // drawer, so navigation exists on every screen size (phones had none before).
+  // drawer, so navigation exists on every screen size.
   const railInner = (
     <>
       <div className="px-4 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--hair)" }}>
@@ -129,7 +149,7 @@ export default function OperatorShell({ active = "today", children }) {
             <a key={item.id} href={hrefFor(item.id)} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
               <item.icon size={18} />
               <span>{item.label}</span>
-              {(item.countKey ? counts[item.countKey] : item.count) != null && (
+              {(item.countKey ? counts[item.countKey] : item.count) != null && (item.countKey ? counts[item.countKey] : item.count) > 0 && (
                 <span className="mg-rail-count">{item.countKey ? counts[item.countKey] : item.count}</span>
               )}
             </a>
@@ -140,17 +160,22 @@ export default function OperatorShell({ active = "today", children }) {
       <div className="px-3 pb-3">
         <div className="mg-surface-quiet p-3.5">
           <div className="flex items-center gap-2">
-            <span className="mg-live-dot" style={activity.length ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
-            <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{activity.length ? "Genie is working" : "Genie is standing by"}</span>
+            <span className="mg-live-dot" style={working ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
+            <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{working ? "Genie is working" : "Genie is standing by"}</span>
           </div>
           <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
+          {working && (
+            <div className="mt-2.5 h-1 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
+              <div className="h-full rounded-full" style={{ width: "62%", background: "linear-gradient(90deg,var(--mg-dawn-500),var(--signal-live))" }} />
+            </div>
+          )}
         </div>
       </div>
 
       <a href="/settings" className="mx-3 mb-3 flex items-center gap-2.5 p-2 rounded-xl mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
         <span className="mg-tile" style={{ width: 32, height: 32, background: "var(--primary)", color: "var(--on-primary)", fontSize: 12, fontWeight: 700 }}>{(user.name || "Y").charAt(0).toUpperCase()}</span>
         <span className="text-left leading-tight flex-1 min-w-0">
-          <span className="block text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{user.name}</span>
+          <span className="block text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{user.name || "Your account"}</span>
           <span className="block text-[11px] mg-subtle truncate">{user.entity || "Set up your entity"}</span>
         </span>
         <Icon.chevronRight size={15} />
@@ -179,41 +204,65 @@ export default function OperatorShell({ active = "today", children }) {
 
         {/* ── WORK-STREAM ── */}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="mg-chrome sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6" style={{ height: 60 }}>
-            <button onClick={() => setNavOpen(true)} className="md:hidden mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: -6 }} aria-label="Open menu">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
-            </button>
-            <button onClick={() => setChatOpen(true)} className="mg-searchbar mg-focus" style={{ width: 340, maxWidth: "42vw" }}>
-              <Icon.search size={16} />
-              <span className="flex-1 text-left">Ask Genie, or tell it what to do…</span>
-              <span className="flex items-center gap-0.5"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
-            </button>
-            <div className="ml-auto flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2.5">
-                <span className="mg-presence" data-state={genieState}><GenieMark size={30} live /></span>
-                <div className="leading-tight">
-                  <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
-                  {activity.length ? (
-                    <p className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live · working</p>
-                  ) : (
-                    <p className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>Standing by</p>
-                  )}
+          {/* Top bar + live ticker travel together as the sticky chrome. */}
+          <div className="sticky top-0 z-20">
+            <header className="mg-chrome flex items-center gap-3 px-4 sm:px-6" style={{ height: 60 }}>
+              <button onClick={() => setNavOpen(true)} className="md:hidden mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: -6 }} aria-label="Open menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+              </button>
+              <button onClick={() => setChatOpen(true)} className="mg-searchbar mg-focus" style={{ width: 380, maxWidth: "44vw" }}>
+                <Icon.search size={16} />
+                <span key={hintIdx} className="flex-1 text-left truncate mg-rise" style={{ animationDuration: ".4s" }}>{SEARCH_HINTS[hintIdx]}</span>
+                <span className="hidden sm:flex items-center gap-0.5"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
+              </button>
+              <div className="ml-auto flex items-center gap-4">
+                <div className="hidden lg:flex flex-col items-end leading-tight">
+                  <span className="text-[11px] mg-subtle">Last updated {lastSync ? `${relTime(lastSync)} ago` : "just now"}</span>
+                  <span className="text-[10.5px] mg-subtle">Auto-refreshes every 5 min</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2.5">
+                  <span className="mg-presence" data-state={genieState}><GenieMark size={30} live /></span>
+                  <div className="leading-tight">
+                    <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
+                    {working ? (
+                      <p className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live · working</p>
+                    ) : (
+                      <p className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>Standing by</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+                  {[["day", "Day"], ["night", "Night"]].map(([t, l]) => (
+                    <button key={t} onClick={() => pick(t)} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full transition mg-focus"
+                      style={theme === t ? { background: "var(--primary)", color: "var(--on-primary)" } : { color: "var(--fg-muted)" }}>{l}</button>
+                  ))}
                 </div>
               </div>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-                {[["day", "Day"], ["night", "Night"]].map(([t, l]) => (
-                  <button key={t} onClick={() => pick(t)} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full transition mg-focus"
-                    style={theme === t ? { background: "var(--primary)", color: "var(--on-primary)" } : { color: "var(--fg-muted)" }}>{l}</button>
-                ))}
+            </header>
+
+            {/* ── LIVE ACTIVITY TICKER — the news banner of an always-working employee ── */}
+            <div className="mg-ticker" role="marquee" aria-label="Live activity">
+              <div className="mg-ticker-live"><span className="mg-live-dot" /> Live</div>
+              <div className="mg-ticker-vp">
+                <div className="mg-ticker-track">
+                  {[...tickerLines, ...tickerLines].map((line, i) => (
+                    <span className="mg-ticker-item" key={i} aria-hidden={i >= tickerLines.length}>
+                      <Icon.spark size={13} />
+                      <span>{line}</span>
+                      <span className="mg-ticker-sep" />
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </header>
+          </div>
+
           <main className="flex-1 overflow-y-auto thin-scroll">
             {missingConns.length > 0 && !connDismissed && (
               <div className="flex items-center gap-3 px-6 py-2.5" style={{ background: "var(--accent-quiet)", borderBottom: "1px solid var(--border)" }}>
                 <Icon.link size={15} style={{ color: "var(--accent-ink)" }} />
                 <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>
-                  Connect <b>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful — {missingConns.map((m) => m.why).join(", ")}.
+                  Connect <b>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful, {missingConns.map((m) => m.why).join(", ")}.
                 </span>
                 <a href="/connections" className="mg-btn mg-btn--dawn ml-auto shrink-0" style={{ fontSize: 11.5, padding: ".32rem .7rem" }}>Connect</a>
                 <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--fg-subtle)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
@@ -222,66 +271,10 @@ export default function OperatorShell({ active = "today", children }) {
             <div className="px-6 py-6 xl:px-8">{children}</div>
           </main>
         </div>
-
-        {/* ── LIVE ACTIVITY ── */}
-        <aside className="hidden xl:flex flex-col shrink-0" style={{ width: 322, borderLeft: "1px solid var(--hair)", background: "var(--surface)" }}>
-          <div className="px-5 pt-5 pb-3" style={{ borderBottom: "1px solid var(--hair)" }}>
-            <div className="flex items-center gap-2">
-              <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Live Activity</h2>
-              <span className="mg-live-dot" />
-            </div>
-            <p className="mt-0.5 text-[12px] mg-muted">Everything Genie is doing, right now.</p>
-          </div>
-          <div className="flex-1 overflow-y-auto thin-scroll px-3 py-2">
-            {activity.length === 0 && (
-              <div className="px-3 py-8 text-center">
-                <p className="text-[12.5px] mg-muted">No activity yet.</p>
-                <p className="text-[11.5px] mg-subtle mt-1">Your first scan starts the stream — everything I do shows up here, live.</p>
-              </div>
-            )}
-            {activity.map((a, i) => {
-              const v = VERB[a.verb] || VERB.working;
-              const t = tintOf(a.tint || v.tint);
-              const IconC = v.icon;
-              return (
-                <div key={i} className="mg-activity-row mg-rise" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-                  <span className="mg-tile" style={{ width: 34, height: 34, background: t.bg, color: t.fg }}><IconC size={16} /></span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{a.title}</p>
-                    {a.sub && <p className="text-[11.5px] mg-muted truncate leading-tight mt-0.5">{a.sub}</p>}
-                  </div>
-                  <span className="text-[10.5px] mg-subtle shrink-0 mg-num">{a.time}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="p-3.5" style={{ borderTop: "1px solid var(--hair)" }}>
-            <div className="mg-surface-quiet p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle">Genie’s focus right now</p>
-              <div className="mt-2.5 flex items-center gap-3">
-                <Radar />
-                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--fg)" }}>{activity[0]?.title || "Standing by — run your first scan to begin."}</p>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
 
       <GenieChat open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
-  );
-}
-
-function Radar() {
-  return (
-    <svg width="44" height="44" viewBox="0 0 44 44" className="shrink-0" aria-hidden>
-      <circle cx="22" cy="22" r="20" fill="none" stroke="var(--hair)" strokeWidth="1" />
-      <circle cx="22" cy="22" r="13" fill="none" stroke="var(--hair)" strokeWidth="1" />
-      <circle cx="22" cy="22" r="6" fill="none" stroke="var(--hair)" strokeWidth="1" />
-      <circle className="ap-halo" cx="22" cy="22" r="8" fill="var(--accent)" opacity="0.18" />
-      <circle cx="22" cy="22" r="2.4" fill="var(--accent)" />
-      <circle cx="33" cy="15" r="1.8" fill="var(--signal-live)" />
-    </svg>
   );
 }
 
