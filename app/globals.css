@@ -347,6 +347,38 @@ html, body {
 .mg-checkrow { display:flex; align-items:center; gap:.7rem; width:100%; padding:.5rem .35rem; border-radius:10px; text-align:left; cursor:pointer; transition:background var(--dur-2); }
 .mg-checkrow:hover { background:var(--surface-2); }
 
+/* ── APPROVALS — the review station ── */
+/* Content preview — a real, formatted article the operator can read in place. */
+.mg-article { font-size:14px; line-height:1.7; color:var(--fg-muted); }
+.mg-article > * + * { margin-top:.7rem; }
+.mg-article h1 { font-size:21px; font-weight:800; letter-spacing:-.02em; line-height:1.22; color:var(--fg); }
+.mg-article h2 { font-size:16.5px; font-weight:700; color:var(--fg); margin-top:1.15rem; }
+.mg-article h3 { font-size:14.5px; font-weight:700; color:var(--fg); margin-top:.9rem; }
+.mg-article strong { color:var(--fg); font-weight:650; }
+.mg-article a { color:var(--accent-ink); text-decoration:underline; }
+.mg-article ul { padding-left:1.15rem; list-style:disc; }
+.mg-article li { margin-top:.3rem; }
+.mg-article li::marker { color:var(--accent); }
+
+/* A small popover menu — filters + more-actions. */
+.mg-menu { position:absolute; z-index:40; min-width:190px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-3); padding:.35rem; }
+.mg-menu-item { display:flex; align-items:center; gap:.55rem; width:100%; text-align:left; padding:.5rem .6rem; border-radius:8px; font-size:13px; color:var(--fg-muted); cursor:pointer; background:none; border:none; transition:background var(--dur-2), color var(--dur-2); }
+.mg-menu-item:hover { background:var(--surface-2); color:var(--fg); }
+.mg-menu-item[data-active="true"] { color:var(--fg); font-weight:600; }
+/* A filter trigger — quiet until opened. */
+.mg-filter { display:inline-flex; align-items:center; gap:.4rem; height:36px; padding:0 .7rem; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--fg-muted); font-size:12.5px; font-weight:500; cursor:pointer; transition:border-color var(--dur-2), color var(--dur-2); }
+.mg-filter:hover, .mg-filter[data-open="true"] { border-color:var(--border-strong); color:var(--fg); }
+
+/* Queue row — compact, tactile, status dot at the end. */
+.mg-qrow { display:flex; align-items:center; gap:.6rem; width:100%; text-align:left; padding:.5rem .55rem; border-radius:11px; border:1px solid transparent; cursor:pointer; transition:background var(--dur-2), border-color var(--dur-2); }
+.mg-qrow:hover { background:var(--surface-2); }
+.mg-qrow[data-active="true"] { background:var(--surface-2); border-color:var(--border); box-shadow:inset 2px 0 0 var(--accent); }
+
+/* The swap between one approval and the next — a soft settle, never a fanfare. */
+@keyframes mg-approve-in { from { opacity:0; transform:translateY(8px) scale(.995); } to { opacity:1; transform:none; } }
+.mg-approve-in { animation:mg-approve-in .34s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce){ .mg-approve-in{ animation:none; } }
+
 /* ============================================================================
    ONBOARDING — the first-time cinematic experience ("meeting your employee")
    A deliberately single-world dark stage: the night Genie works in. Self-
