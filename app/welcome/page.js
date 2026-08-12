@@ -58,7 +58,6 @@ export default function WelcomePage() {
   const [convo, setConvo] = useState([]);                   // [{ role:'genie'|'owner', content }]
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
-  const [questions, setQuestions] = useState([]);           // Genie's investigation agenda
 
   async function loadConns() {
     try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
@@ -106,10 +105,10 @@ export default function WelcomePage() {
   // The live stream — each line's finished text is computed from REAL data when
   // it lands, so the reveal is genuine, not scripted.
   const lines = useMemo(() => [
-    { work: `Reading ${host}…`, done: () => `Read your site — you’re ${data?.ai?.businessName || host}.` },
-    { work: `Understanding what you actually sell…`, done: () => (data?.ai?.whatTheySell ? cap(data.ai.whatTheySell) : `Got it — I understand what you do.`) },
+    { work: `Reading ${host}…`, done: () => `Read your site. You’re ${data?.ai?.businessName || host}.` },
+    { work: `Understanding what you actually sell…`, done: () => (data?.ai?.whatTheySell ? cap(data.ai.whatTheySell) : `Got it. I understand what you do.`) },
     { work: `Sizing up your competitors…`, done: () => { const c = (data?.ai?.competitors || []).map(nameOf).filter(Boolean).slice(0, 3); return c.length ? `Your real competitors: ${c.join(", ")}.` : `Mapped who you’re up against.`; } },
-    { work: `Scanning Reddit & Quora for buyers…`, done: () => (intent ? (intent.found > 0 ? `Found ${intent.found} ${intent.found === 1 ? "person" : "people"} asking for this right now — I’m drafting your replies.` : `No one’s asking publicly this minute. I’ll keep hunting every night.`) : `Hunting buyers across Reddit, Quora and more.`) },
+    { work: `Scanning Reddit & Quora for buyers…`, done: () => (intent ? (intent.found > 0 ? `Found ${intent.found} ${intent.found === 1 ? "person" : "people"} asking for this right now. I’m drafting your replies.` : `No one’s asking publicly this minute. I’ll keep hunting every night.`) : `Hunting buyers across Reddit, Quora and more.`) },
     { work: `Checking what AI recommends…`, done: () => (aeo ? (aeo.visible > 0 ? `AI already names you in ${aeo.visible} of ${aeo.total} buyer answers. I’ll widen that lead.` : `AI names ${aeo.topCompetitors?.[0]?.name || "rivals"}, not you, in all ${aeo.total} buyer answers. I’ll win those back.`) : `Modelling what ChatGPT and Perplexity tell your buyers.`) },
     { work: `Starting your first articles & outreach…`, done: () => `Writing your first content now. This runs every night.` },
   ], [host, data, aeo, intent]);
@@ -186,16 +185,13 @@ export default function WelcomePage() {
     const ai = data?.ai || {};
     setUnderstanding(ai);
     setPhase("confirm");
-    setConvo([{ role: "genie", content: "Here’s how I read your business. Before I build anything, I want to really understand you — a few quick questions will make everything I do sharper. And correct anything I got wrong." }]);
+    setConvo([{ role: "genie", content: "Here’s how I read your business. Before I build anything, I want to really understand you. A few quick questions will make everything I do sharper, and you can correct anything I got wrong." }]);
     // Fetch Genie's investigation agenda, then open with the first question.
     setChatBusy(true);
     try {
       const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai, action: "questions" }) }).then((x) => x.json());
       const qs = Array.isArray(r?.questions) ? r.questions : [];
-      if (qs.length) {
-        setQuestions(qs);
-        setConvo((c) => [...c, { role: "genie", content: qs[0] }]);
-      }
+      if (qs.length) setConvo((c) => [...c, { role: "genie", content: qs[0] }]);
     } catch {}
     setChatBusy(false);
   }
@@ -214,9 +210,9 @@ export default function WelcomePage() {
         setUnderstanding(r.ai);
         setConvo((c) => [...c, { role: "genie", content: r.reply }]);
       } else {
-        setConvo((c) => [...c, { role: "genie", content: r.message || "I couldn’t quite get that — try rephrasing?" }]);
+        setConvo((c) => [...c, { role: "genie", content: r.message || "I couldn’t quite get that. Try rephrasing?" }]);
       }
-    } catch { setConvo((c) => [...c, { role: "genie", content: "Something interrupted me — say that again?" }]); }
+    } catch { setConvo((c) => [...c, { role: "genie", content: "Something interrupted me. Say that again?" }]); }
     setChatBusy(false);
   }
 
@@ -272,7 +268,7 @@ export default function WelcomePage() {
                 Hire your <span style={{ background: "linear-gradient(96deg,#FFE7BE,var(--onb-dawn) 55%,var(--onb-dawn-deep))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>AI marketing employee.</span>
               </h1>
               <p className="mt-4 text-[16px]" style={{ color: "var(--onb-muted)", maxWidth: 440, margin: "16px auto 0", lineHeight: 1.5 }}>
-                Give me your website. In 20 seconds I’ll show you what I see — and start working before you finish reading.
+                Give me your website. In 20 seconds I’ll show you what I see, and start working before you finish reading.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-2.5" style={{ maxWidth: 460, margin: "32px auto 0" }}>
                 <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()}
@@ -317,7 +313,7 @@ export default function WelcomePage() {
             <div className="onb-rise lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
               <div>
                 <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
-                  <span style={{ fontSize: 15 }}>✦</span> Done — that took {Math.max(secs, 12)} seconds. I did the rest.
+                  <span style={{ fontSize: 15 }}>✦</span> Done. That took {Math.max(secs, 12)} seconds. I did the rest.
                 </p>
                 <h1 className="mt-4 font-extrabold tracking-tight" style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
                   I’ve met {data.ai?.businessName || host}. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s how I’ll grow you.</span>
@@ -339,7 +335,7 @@ export default function WelcomePage() {
 
               {/* what I already started — real kickoff */}
               <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
-                <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working — right now</p>
+                <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working, right now</p>
                 {/* Real findings resolve the spinners. A spinner that never finishes
                     is a lie about work being done — each row flips to what was
                     actually found the moment the engine returns. */}
@@ -348,7 +344,7 @@ export default function WelcomePage() {
                     aeo
                       ? { done: true, t: aeo.visible > 0
                             ? `AI names you in ${aeo.visible} of ${aeo.total} buyer answers`
-                            : `AI recommends ${aeo.topCompetitors?.[0]?.name || "your rivals"} — not you`,
+                            : `AI recommends ${aeo.topCompetitors?.[0]?.name || "your rivals"}, not you`,
                           s: aeo.visible > 0 ? "I’ll widen that lead" : `Invisible in all ${aeo.total} buyer questions. I’m writing the answers that win the citation.` }
                       : { done: false, t: "Checking whether AI recommends you", s: "ChatGPT · Perplexity · AI Overviews" },
                     intent
@@ -377,49 +373,48 @@ export default function WelcomePage() {
 
           {/* STEP 1b — Understanding Check: "did I get you right?" */}
           {phase === "confirm" && (
-            <div className="onb-rise">
+            <div className="onb-rise" style={{ width: "100%", maxWidth: 1040, margin: "0 auto" }}>
               <StepDots step={1} />
-              <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
-                <div className="lg:sticky lg:top-16">
-                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 1 of 4 · Confirm</p>
-                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
-                    Did I get you right?
-                  </h1>
-                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>
-                    Everything I do next — the keywords I target, the content I write, the buyers I reach — is built on this. A moment here means I chase the right customers, not the wrong ones.
-                  </p>
-                  <div className="mt-6" style={{ borderRadius: 18, padding: 22, background: "var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)" }}>
-                    <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".12em", color: "var(--onb-subtle)" }}>Here’s how I read you</p>
-                    <div className="mt-4 flex flex-col gap-3">
-                      <URow label="You are" value={understanding?.businessType} />
-                      <URow label="You sell" value={understanding?.whatTheySell} />
-                      <URow label="Your customers" value={understanding?.targetCustomer} />
-                      {understanding?.idealCustomer && <URow label="Best customer" value={understanding.idealCustomer} />}
-                      <URow label="Your edge" value={understanding?.differentiator || understanding?.summary} />
-                      {understanding?.whyChooseYou && <URow label="Why chosen" value={understanding.whyChooseYou} />}
-                      {understanding?.conversionGoal && <URow label="Main goal" value={understanding.conversionGoal} />}
-                      {understanding?.proof && <URow label="Proof" value={understanding.proof} />}
-                      {understanding?.avoid && <URow label="Never say" value={understanding.avoid} />}
-                    </div>
+              <div className="mt-7">
+                <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 1 of 4 · Confirm</p>
+                <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                  Did I get you right?
+                </h1>
+                <p className="mt-3.5 text-[16px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55, maxWidth: "60ch" }}>
+                  Everything I do next, the keywords I target, the content I write, the buyers I reach, is built on this. A minute here means I chase the right customers, not the wrong ones.
+                </p>
+              </div>
+
+              <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+                {/* LEFT — what Genie found */}
+                <div style={{ borderRadius: 18, border: "1px solid rgba(255,200,118,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                  <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)" }}>
+                    <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
+                    <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", marginTop: 2, letterSpacing: "-.01em" }}>{cap(understanding?.businessName || host || "your business")}</p>
                   </div>
-                  {questions.length > 0 && (
-                    <div className="mt-4" style={{ borderRadius: 16, padding: "16px 18px", background: "var(--onb-panel-2)", border: "1px solid var(--onb-hair)" }}>
-                      <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".12em", color: "var(--onb-subtle)" }}>What I want to understand</p>
-                      <ul className="mt-3 flex flex-col gap-2">
-                        {questions.map((q, i) => (
-                          <li key={i} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.45 }}>
-                            <span style={{ color: "var(--onb-dawn)", marginTop: 1 }}>·</span><span>{q}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <div className="flex-1 flex flex-col gap-3.5" style={{ padding: "18px 20px", overflowY: "auto" }}>
+                    <URow label="You are" value={understanding?.businessType} />
+                    <URow label="You sell" value={understanding?.whatTheySell} />
+                    <URow label="Your customers" value={understanding?.targetCustomer} />
+                    {understanding?.idealCustomer && <URow label="Best customer" value={understanding.idealCustomer} />}
+                    <URow label="Your edge" value={understanding?.differentiator || understanding?.summary} />
+                    {understanding?.whyChooseYou && <URow label="Why chosen" value={understanding.whyChooseYou} />}
+                    {understanding?.conversionGoal && <URow label="Main goal" value={understanding.conversionGoal} />}
+                    {understanding?.proof && <URow label="Proof" value={understanding.proof} />}
+                    {understanding?.avoid && <URow label="Never say" value={understanding.avoid} />}
+                  </div>
                 </div>
 
-                <div className="mt-8 lg:mt-0 flex flex-col" style={{ minHeight: 360 }}>
-                  <div className="flex-1 flex flex-col gap-3">
+                {/* RIGHT — chat with Genie */}
+                <div style={{ borderRadius: 18, border: "1px solid var(--onb-hair)", background: "var(--onb-ink)", display: "flex", flexDirection: "column", minHeight: 440, overflow: "hidden" }}>
+                  <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)", display: "flex", alignItems: "center", gap: 9 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--onb-live)", display: "inline-block", flex: "none" }} />
+                    <p className="text-[13.5px] font-semibold" style={{ color: "var(--onb-fg)" }}>Chat with Genie</p>
+                    <span className="ml-auto text-[12px]" style={{ color: "var(--onb-subtle)" }}>Correct or add anything</span>
+                  </div>
+                  <div className="flex-1 flex flex-col gap-3 thin-scroll" style={{ padding: 18, overflowY: "auto" }}>
                     {convo.map((m, i) => (
-                      <div key={i} className={m.role === "owner" ? "self-end" : "self-start"} style={{ maxWidth: "90%" }}>
+                      <div key={i} className={m.role === "owner" ? "self-end" : "self-start"} style={{ maxWidth: "88%" }}>
                         <div style={{
                           padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
                           background: m.role === "owner" ? "var(--onb-dawn)" : "var(--onb-panel)",
@@ -430,17 +425,18 @@ export default function WelcomePage() {
                     ))}
                     {chatBusy && <div className="self-start" style={{ padding: "6px 14px" }}><span className="onb-spinner" /></div>}
                   </div>
-                  <div className="mt-4 flex gap-2.5">
+                  <div style={{ padding: 14, borderTop: "1px solid var(--onb-hair)", display: "flex", gap: 10 }}>
                     <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendCorrection()}
-                      placeholder="e.g. We’re a store selling furniture & shoes — AR is just how customers preview"
-                      className="onb-input flex-1 px-4 text-[14.5px]" style={{ height: 50 }} aria-label="Correct Genie" />
-                    <button onClick={sendCorrection} disabled={chatBusy || !chatInput.trim()} className="onb-ghost px-4 text-[14px] disabled:opacity-40" style={{ height: 50, flex: "none" }}>Send</button>
+                      placeholder="e.g. We sell furniture and shoes; AR is just how customers preview"
+                      className="onb-input flex-1 px-4 text-[14.5px]" style={{ height: 48 }} aria-label="Correct Genie" />
+                    <button onClick={sendCorrection} disabled={chatBusy || !chatInput.trim()} className="onb-cta px-5 text-[14px] disabled:opacity-40" style={{ height: 48, flex: "none" }}>Send</button>
                   </div>
                 </div>
               </div>
-              <div className="mt-10 flex items-center gap-5 flex-wrap">
+
+              <div className="mt-7 flex items-center gap-5 flex-wrap">
                 <button onClick={confirmUnderstanding} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
-                  {busy ? "Building your plan…" : "Yes, that’s right — build my plan →"}
+                  {busy ? "Building your plan…" : "Yes, that’s right, build my plan →"}
                 </button>
                 <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>I’ll target the right buyers based on this.</span>
               </div>
@@ -463,9 +459,9 @@ export default function WelcomePage() {
                 <div className="mt-8 lg:mt-0 flex flex-col gap-3">
                   <ConnectRow brand="google" label="Google" sub="Real rankings, traffic, and send outreach from your Gmail" href="/api/connect/google/start?from=welcome" cta="Connect" connected={conns?.google?.connected} />
                   <WordPressInline connected={conns?.wordpress?.connected} onConnected={loadConns} />
-                  <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads and open X ready — you tap post" href="/api/connect/x/start?from=welcome" cta="Connect" connected={conns?.x?.connected} />
-                  <ConnectRow brand="linkedin" label="LinkedIn" sub="I draft posts for you — you post them, no login needed" ready />
-                  <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies — you post" ready />
+                  <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads and open X ready, you tap post" href="/api/connect/x/start?from=welcome" cta="Connect" connected={conns?.x?.connected} />
+                  <ConnectRow brand="linkedin" label="LinkedIn" sub="I draft posts for you, you post them, no login needed" ready />
+                  <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies, you post" ready />
                 </div>
               </div>
               <div className="mt-10 flex items-center gap-5 flex-wrap">
@@ -485,7 +481,7 @@ export default function WelcomePage() {
                   <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
                     Who are you?
                   </h1>
-                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>So every email and post I send goes out as you, with your logo. I pre-filled what I could — fix anything.</p>
+                  <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>So every email and post I send goes out as you, with your logo. I pre-filled what I could. Fix anything.</p>
                   <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-subtle)" }}>You can edit all of this later in Settings.</p>
                 </div>
                 <div className="mt-8 lg:mt-0 flex flex-col gap-4">
@@ -526,7 +522,7 @@ export default function WelcomePage() {
                   <div className="flex flex-col gap-3">
                     {[
                       { n: 1, icon: Icon.search, tag: "Discover", t: "Every night, I find high-intent buyers.", s: "I write your content, run outreach, and check where you rank." },
-                      { n: 2, icon: Icon.write, tag: "Deliver", t: "Every morning, you get a short list of ready-to-publish work.", s: "Articles, replies, posts — all waiting for your one-tap approval." },
+                      { n: 2, icon: Icon.write, tag: "Deliver", t: "Every morning, you get a short list of ready-to-publish work.", s: "Articles, replies, posts, all waiting for your one-tap approval." },
                       { n: 3, icon: Icon.check, tag: "Approve", t: "Nothing goes out without you.", s: "I draft, you approve. On social I open the post ready and you tap send, so your accounts stay safe." },
                       { n: 4, icon: Icon.growth, tag: "Optimize", t: "I learn, follow up, and scale what works.", s: "Open Talk to Genie (⌘K) for progress, or to build a full Meta / Google / social campaign plan." },
                     ].map((row, i, arr) => (
@@ -557,7 +553,7 @@ export default function WelcomePage() {
                       </span>
                       <div className="min-w-0">
                         <p className="text-[16.5px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3 }}>You focus on your business.</p>
-                        <p className="mt-1 text-[14px]" style={{ color: "var(--onb-muted)" }}>I’ll handle the marketing — every single day.</p>
+                        <p className="mt-1 text-[14px]" style={{ color: "var(--onb-muted)" }}>I’ll handle the marketing, every single day.</p>
                       </div>
                     </div>
                   </div>
@@ -629,13 +625,13 @@ function WordPressInline({ connected, onConnected }) {
       </div>
       {open && (
         <div className="mt-4 flex flex-col gap-2.5">
-          {[["siteUrl", "Site URL — https://yourblog.com"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
+          {[["siteUrl", "Site URL (https://yourblog.com)"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
             <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
               className="onb-input px-3.5 text-[14px]" style={{ height: 46 }} />
           ))}
           <div className="flex items-center gap-3">
             <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
-            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF8A7E" }}>Couldn’t connect — check your details.</span>}
+            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF8A7E" }}>Couldn’t connect. Check your details.</span>}
           </div>
           <p className="text-[11.5px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
         </div>
@@ -649,7 +645,7 @@ function URow({ label, value }) {
     <div className="flex gap-3">
       <span style={{ flex: "none", width: 108, fontSize: 12.5, color: "var(--onb-subtle)", paddingTop: 1 }}>{label}</span>
       <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, color: "var(--onb-fg)", lineHeight: 1.45 }}>
-        {value ? cap(value) : <span style={{ color: "var(--onb-subtle)" }}>— (tell me)</span>}
+        {value ? cap(value) : <span style={{ color: "var(--onb-subtle)" }}>Tell me in the chat</span>}
       </span>
     </div>
   );
