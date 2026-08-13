@@ -430,7 +430,7 @@ function ApprovalQueue({ view, idx, onPick }) {
   return (
     <div className="xl:sticky xl:top-4">
       <div className="flex items-center justify-between mb-2.5 px-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle">Up next ({upNext.length})</p>
+        <p className="mg-klabel">Up next ({upNext.length})</p>
         <div className="flex items-center gap-1">
           <button onClick={() => onPick(Math.max(0, idx - 1))} className="mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 2 }} aria-label="Previous"><Icon.chevronRight size={15} style={{ transform: "rotate(180deg)" }} /></button>
           <button onClick={() => onPick(Math.min(view.length - 1, idx + 1))} className="mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 2 }} aria-label="Next"><Icon.chevronRight size={15} /></button>

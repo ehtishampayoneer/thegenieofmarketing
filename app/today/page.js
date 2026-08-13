@@ -169,7 +169,7 @@ function GrowthScore({ d, count, conns }) {
 
   return (
     <Card className="p-6 flex flex-col mg-rise">
-      <p className="mg-eyebrow" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>Growth Score</p>
+      <p className="mg-klabel">Growth Score</p>
       <div className="mt-4 flex items-center gap-5">
         <BigRing value={score} label={cur.label} />
         <div className="min-w-0">
@@ -231,7 +231,7 @@ function Journey({ stage, d }) {
   const milestone = d?.aiSearch?.won > 0 ? "Ranking in more AI answers" : "First AI citation (2 to go)";
   return (
     <Card className="p-6 lg:p-7 mg-rise">
-      <p className="mg-eyebrow" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}><Icon.globe size={13} /> Your Genie Journey</p>
+      <p className="mg-klabel">Your Genie Journey</p>
 
       <div className="mt-6 overflow-x-auto thin-scroll pb-1">
         <div className="flex items-start" style={{ minWidth: 620 }}>
@@ -325,7 +325,7 @@ function Glance({ d, count, clearTime, did }) {
   ];
   return (
     <div>
-      <p className="mg-eyebrow mb-3" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>Today at a glance</p>
+      <p className="mg-klabel mb-3">Today at a glance</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <Card key={i} className="p-5 mg-lift flex flex-col">
@@ -345,7 +345,7 @@ function Glance({ d, count, clearTime, did }) {
 function LastNight({ did }) {
   return (
     <div>
-      <p className="mg-eyebrow mb-3" style={{ textTransform: "uppercase", letterSpacing: ".14em", fontSize: 11 }}>What Genie did last night</p>
+      <p className="mg-klabel mb-3">What Genie did last night</p>
       <Card className="p-6 flex flex-col">
         {did.length > 0 ? (
           <ul className="space-y-3.5">
@@ -380,7 +380,7 @@ function Insight({ d }) {
     <Card className="p-6 mg-lift flex gap-4">
       <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.search size={19} /></span>
       <div className="min-w-0">
-        <p className="text-[11px] font-bold mg-subtle" style={{ textTransform: "uppercase", letterSpacing: ".14em" }}>Insight</p>
+        <p className="mg-klabel">Insight</p>
         <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Gemini and OpenAI name you in {won} of 6 buyer answers.</p>
         <p className="mt-1.5 text-[13px] mg-muted leading-snug">They recommend {comp} instead. Genie is writing comparison pages to win this.</p>
         <a href="/ai-search" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See the plan →</a>
@@ -396,7 +396,7 @@ function Opportunity({ d }) {
     <Card className="p-6 mg-lift flex gap-4">
       <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.target size={19} /></span>
       <div className="min-w-0">
-        <p className="text-[11px] font-bold mg-subtle" style={{ textTransform: "uppercase", letterSpacing: ".14em" }}>Opportunity</p>
+        <p className="mg-klabel">Opportunity</p>
         <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Comparison content is your biggest opening{gaps > 0 ? ` (${gaps} in flight)` : ""}.</p>
         <p className="mt-1.5 text-[13px] mg-muted leading-snug">Genie will prioritize writing “vs” pages this week, the ones your buyers ask AI for.</p>
         <a href="/growth" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See target pages →</a>

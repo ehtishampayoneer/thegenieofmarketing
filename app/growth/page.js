@@ -157,7 +157,7 @@ function RankingProgression({ points, tracked, improvedBy, climb, compare }) {
     <Card className="p-6 mg-rise">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">RANKING PROGRESSION</p>
+          <p className="mg-klabel">RANKING PROGRESSION</p>
           <p className="mt-1 text-[13px] mg-muted">Average position across {tracked} tracked {tracked === 1 ? "keyword" : "keywords"}</p>
           {points.length > 1 && (
             <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold" style={{ color: improved ? "var(--signal-live-ink)" : improvedBy < 0 ? "var(--signal-danger)" : "var(--fg-muted)" }}>
@@ -305,7 +305,7 @@ function KeywordTable({ active, series, host, onAdded }) {
   return (
     <Card className="p-0 overflow-hidden mg-rise">
       <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 flex-wrap">
-        <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">KEYWORDS</p>
+        <p className="mg-klabel">KEYWORDS</p>
         <div className="flex items-center gap-2">
           <MiniSelect label="Filter" value={filter} opts={filterOpts} onChange={(v) => { setFilter(v); setPage(0); }} />
           <MiniSelect label="Sort" value={sort} opts={SORT_OPTS} onChange={setSort} prefix="Sort: " />
@@ -434,7 +434,7 @@ function StrategyPhase({ active, inTop20 }) {
   const estDays = active.map((k) => k._status?.target?.days || 30).sort((a, b) => a - b)[0] || 12;
   return (
     <Card className="p-6 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">STRATEGY PHASE</p>
+      <p className="mg-klabel">STRATEGY PHASE</p>
       <div className="mt-4 relative">
         <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
           <div className="h-full rounded-full dawn-fill" style={{ width: `${pct}%`, transition: "width .8s var(--ease-out)" }} />
@@ -471,14 +471,14 @@ function PortfolioHealth({ score, climb, conns, approvals }) {
   return (
     <Card className="p-5 mg-rise">
       <div className="flex items-start justify-between">
-        <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">PORTFOLIO HEALTH</p>
+        <p className="mg-klabel">PORTFOLIO HEALTH</p>
         {climbing && <span className="flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--signal-live-ink)" }} title={`Rankings up ${Math.abs(climb.delta)} spots this period`}><Tri dir="up" /> climbing</span>}
       </div>
       <div className="mt-3 flex justify-center"><HealthRing value={score == null ? null : val} /></div>
       {actions.length > 0 && (
         <>
           <div className="mg-seam my-4" />
-          <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle mb-1.5">IMPROVE YOUR SCORE</p>
+          <p className="mg-klabel mb-2">IMPROVE YOUR SCORE</p>
           <div>
             {actions.map((a, i) => (
               <a key={i} href={a.href} className="mg-checkrow mg-focus">
@@ -520,7 +520,7 @@ function NextMilestone({ active, inTop20 }) {
   const title = inTop20 > 0 ? "First page-one ranking" : "First top 20 ranking";
   return (
     <Card className="p-5 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">NEXT MILESTONE</p>
+      <p className="mg-klabel">NEXT MILESTONE</p>
       <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>{title}</p>
       <p className="mt-1.5 text-[13px] mg-muted">Est. <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{estDays} days</span></p>
     </Card>

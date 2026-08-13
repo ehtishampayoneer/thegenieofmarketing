@@ -194,7 +194,7 @@ function GeniePlan({ count, featured, onStart }) {
   ];
   return (
     <Card className="p-6 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">GENIE’S PLAN</p>
+      <p className="mg-klabel">GENIE’S PLAN</p>
       <p className="mt-2 text-[13.5px] mg-muted" style={{ maxWidth: 640 }}>Genie found {count} question{count === 1 ? "" : "s"} your buyers ask AI. For each one, Genie will write content that gets your brand named in the answer.</p>
       <p className="mt-4 text-[12px] font-semibold" style={{ color: "var(--fg)" }}>Here’s what happens next:</p>
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -222,7 +222,7 @@ function StartHere({ o, onApprove, writing }) {
   const says = (o.competitorsCited || []).slice(0, 2).join(" or ");
   return (
     <Card id="start-here" className="p-6 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">START HERE</p>
+      <p className="mg-klabel">START HERE</p>
       <p className="mt-1 text-[13px] mg-muted">The question with the biggest impact.</p>
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_1fr] gap-5">
@@ -290,7 +290,7 @@ function WhereAILearns({ host }) {
   const shown = [...targets].sort((a, b) => Number(a.mentioned) - Number(b.mentioned)).slice(0, 5);
   return (
     <Card className="p-6 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">WHERE AI LEARNS ABOUT YOUR CATEGORY</p>
+      <p className="mg-klabel">WHERE AI LEARNS ABOUT YOUR CATEGORY</p>
       <p className="mt-2 text-[13.5px] mg-muted" style={{ maxWidth: 640 }}>When AI recommends products like yours, it reads these websites to decide what to suggest. Being listed on them helps you get mentioned.</p>
       {shown.length > 0 ? (
         <div className="mt-4 flex flex-col">
@@ -338,7 +338,7 @@ function AdvancedMetrics({ open, setOpen, d }) {
 function ProgressCard({ health, delta }) {
   return (
     <Card className="p-5 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">YOUR PROGRESS</p>
+      <p className="mg-klabel">YOUR PROGRESS</p>
       <p className="mt-3 text-[12.5px] mg-muted">Health score</p>
       <div className="mt-2 flex justify-center"><Ring value={health == null ? null : Math.round(health)} /></div>
       {delta != null && (
@@ -370,7 +370,7 @@ function Ring({ value, size = 132 }) {
 function MilestoneCard({ estDays }) {
   return (
     <Card className="p-5 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">NEXT MILESTONE</p>
+      <p className="mg-klabel">NEXT MILESTONE</p>
       <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>First AI citation</p>
       <p className="mt-1.5 text-[13px] mg-muted">Est. <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{estDays} days</span></p>
     </Card>
@@ -379,7 +379,7 @@ function MilestoneCard({ estDays }) {
 function SpeedUpCard({ approvals }) {
   return (
     <Card className="p-5 mg-rise">
-      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">HOW TO SPEED THIS UP</p>
+      <p className="mg-klabel">HOW TO SPEED THIS UP</p>
       <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Approve pending drafts ({approvals})</p>
       <p className="mt-1 text-[12.5px] mg-muted">This helps Genie publish faster.</p>
       <a href="/approvals" className="mg-btn mg-btn--dawn w-full mt-3" style={{ fontSize: 13 }}>See pending drafts →</a>
