@@ -332,8 +332,8 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
                 <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
                 <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
-                  <span style={{ fontWeight: 700, color: item.imageSource === "site" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageSource === "site" ? "Your image" : "Free stock"}</span>
-                  {item.imageCredit && <span>· {item.imageCredit}</span>}
+                  <span style={{ fontWeight: 700, color: item.imageSource === "site" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageBranded ? "Designed card" : item.imageSource === "site" ? "Your image" : "Free stock"}</span>
+                  <span>· {item.imageBranded ? `built from ${item.imageSource === "site" ? "your photo" : "a free stock photo"}` : item.imageCredit}</span>
                 </figcaption>
               </figure>
             )}

@@ -130,14 +130,32 @@ export async function POST(request) {
       // own site first (the authentic, competitive option), then free stock matched
       // to the topic. This means the post ships with a visual AND the Approvals
       // preview shows exactly what publishes. Best-effort — text-only if none found.
-      let heroPick = null;
+      let heroPick = null, socialImage = null;
       try {
         heroPick = await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
         if (heroPick && data.article) {
-          data.article.heroImage = data.article.heroImage || heroPick.url;
+          data.article.heroImage = data.article.heroImage || heroPick.url; // article hero = the raw photo
           data.article.heroImageAlt = data.article.heroImageAlt || heroPick.alt;
           data.article.imageSource = heroPick.source;
           data.article.imageCredit = heroPick.credit;
+        }
+        // Social posts get a DESIGNED branded card: the photo + a hook + the
+        // business's name/handle/colour, composed by /api/card (Satori).
+        if (heroPick) {
+          const appOrigin = (() => { try { return new URL(request.url).origin; } catch { return process.env.NEXT_PUBLIC_APP_URL || ""; } })();
+          const bizName = ai.businessName || String(host || "").replace(/^www\./, "").replace(/\..*$/, "");
+          const handle = "@" + String(bizName || "brand").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 20);
+          const headline = data.cardHeadline || data.article?.title || primaryKw || "";
+          if (appOrigin) {
+            const u = new URL("/api/card", appOrigin);
+            u.searchParams.set("img", heroPick.url);
+            u.searchParams.set("title", headline);
+            u.searchParams.set("name", bizName || "");
+            u.searchParams.set("handle", handle);
+            if (ai.brandColor) u.searchParams.set("brand", ai.brandColor);
+            u.searchParams.set("ratio", "square");
+            socialImage = u.href;
+          }
         }
       } catch {}
 
@@ -167,7 +185,7 @@ export async function POST(request) {
           scan_id: scanId || null,
           type: "social_post",
           title: `${platform} post`,
-          payload: { platform, text, targetKeyword: primaryKw, image: heroPick?.url || null, imageAlt: heroPick?.alt || null, imageSource: heroPick?.source || null, imageCredit: heroPick?.credit || null },
+          payload: { platform, text, targetKeyword: primaryKw, image: socialImage || heroPick?.url || null, imageRaw: heroPick?.url || null, imageAlt: heroPick?.alt || null, imageSource: heroPick?.source || null, imageCredit: heroPick?.credit || null, branded: !!socialImage },
           target: { platform: platform.toLowerCase(), host: host || null },
           priority: socialPriority,
           status: "proposed",
@@ -283,6 +301,7 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
 {
   "articlePriority": "high | quick_win | strategic | low",
   "socialPriority": "high | quick_win | strategic | low",
+  "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",

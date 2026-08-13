@@ -64,6 +64,7 @@ function normalizeAction(a) {
     imageAlt: p.heroImageAlt || p.imageAlt || null,
     imageSource: p.imageSource || null,
     imageCredit: p.imageCredit || null,
+    imageBranded: !!p.branded,
     draft, why: p.rationale || null, target_url,
     keyword: p.targetKeyword || null,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
