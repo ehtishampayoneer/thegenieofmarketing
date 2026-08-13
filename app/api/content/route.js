@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
+import { pickPostImage } from "@/lib/media";
 import { deDash } from "@/lib/markdown";
 
 export const runtime = "nodejs";
@@ -125,6 +126,21 @@ export async function POST(request) {
       const primaryKw = pick?.keyword || data.article?.targetKeyword || null;
       if (data.article && pick) { data.article.targetKeyword = pick.keyword; data.article.relatedKeywords = pick.related; }
 
+      // ── ON-BRAND IMAGERY ── Attach a REAL image at draft time, from the business's
+      // own site first (the authentic, competitive option), then free stock matched
+      // to the topic. This means the post ships with a visual AND the Approvals
+      // preview shows exactly what publishes. Best-effort — text-only if none found.
+      let heroPick = null;
+      try {
+        heroPick = await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
+        if (heroPick && data.article) {
+          data.article.heroImage = data.article.heroImage || heroPick.url;
+          data.article.heroImageAlt = data.article.heroImageAlt || heroPick.alt;
+          data.article.imageSource = heroPick.source;
+          data.article.imageCredit = heroPick.credit;
+        }
+      } catch {}
+
       const rows = [];
       // Validate AI priorities; reject unknowns → 'medium'.
       const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
@@ -151,7 +167,7 @@ export async function POST(request) {
           scan_id: scanId || null,
           type: "social_post",
           title: `${platform} post`,
-          payload: { platform, text, targetKeyword: primaryKw },
+          payload: { platform, text, targetKeyword: primaryKw, image: heroPick?.url || null, imageAlt: heroPick?.alt || null, imageSource: heroPick?.source || null, imageCredit: heroPick?.credit || null },
           target: { platform: platform.toLowerCase(), host: host || null },
           priority: socialPriority,
           status: "proposed",

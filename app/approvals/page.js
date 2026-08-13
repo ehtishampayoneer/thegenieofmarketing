@@ -280,6 +280,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <span className="mg-subtle">|</span>
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
         <Pill tone={im.pill}>{im.label} impact</Pill>
+        {item.image && <Pill tone="neutral"><Icon.eye size={11} /> Image</Pill>}
         <div className="ml-auto flex items-center gap-1">
           <button onClick={onToggleSave} className="mg-focus p-1.5 rounded-lg" style={{ color: saved ? "var(--accent-ink)" : "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer" }} aria-label="Save" title="Save for later">
             <Bookmark filled={saved} />
@@ -327,6 +328,15 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             <span className="text-[11.5px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
           </div>
           <div className="thin-scroll" style={{ maxHeight: 360, overflowY: "auto", padding: "18px 20px", background: "var(--surface)" }}>
+            {item.image && (
+              <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
+                <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
+                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
+                  <span style={{ fontWeight: 700, color: item.imageSource === "site" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageSource === "site" ? "Your image" : "Free stock"}</span>
+                  {item.imageCredit && <span>· {item.imageCredit}</span>}
+                </figcaption>
+              </figure>
+            )}
             {editing ? (
               <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus className="mg-field mg-focus" style={{ minHeight: 300, lineHeight: 1.68, fontSize: 14 }} />
             ) : item.draft ? (
