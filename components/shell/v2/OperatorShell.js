@@ -68,8 +68,6 @@ export default function OperatorShell({ active = "today", children }) {
   const [hintIdx, setHintIdx] = useState(0);
   const [lastSync, setLastSync] = useState(null);
   const [, setTick] = useState(0); // re-render so "Last updated" stays honest
-  const [reduced, setReduced] = useState(false); // honours prefers-reduced-motion
-  const [tickCursor, setTickCursor] = useState(0); // reduced-motion ticker rotation
 
   useEffect(() => {
     const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setChatOpen(true); } };
@@ -82,17 +80,6 @@ export default function OperatorShell({ active = "today", children }) {
     const h = setInterval(() => setHintIdx((i) => (i + 1) % SEARCH_HINTS.length), 4200);
     const t = setInterval(() => setTick((n) => n + 1), 60000);
     return () => { clearInterval(h); clearInterval(t); };
-  }, []);
-
-  // Respect reduced-motion. When it's on, the ticker can't scroll (that's the
-  // motion the setting exists to stop), so we cross-fade through items instead —
-  // still alive, never a frozen banner that reads as broken.
-  useEffect(() => {
-    const m = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReduced(m.matches);
-    apply();
-    m.addEventListener?.("change", apply);
-    return () => m.removeEventListener?.("change", apply);
   }, []);
 
   // Live data. Fetched on mount and — so "Auto-refreshes every 5 min" is true —
@@ -145,13 +132,6 @@ export default function OperatorShell({ active = "today", children }) {
   const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
   const working = activity.length > 0;
   const tickerLines = working ? activity.slice(0, 10).map((a) => a.title).filter(Boolean) : FALLBACK_TICKER;
-
-  // Reduced-motion only: advance the visible headline on a gentle timer.
-  useEffect(() => {
-    if (!reduced || tickerLines.length < 2) return;
-    const iv = setInterval(() => setTickCursor((c) => (c + 1) % tickerLines.length), 3800);
-    return () => clearInterval(iv);
-  }, [reduced, tickerLines.length]);
 
   // The rail's content — rendered once, used in the desktop aside AND the mobile
   // drawer, so navigation exists on every screen size.
@@ -260,27 +240,21 @@ export default function OperatorShell({ active = "today", children }) {
               </div>
             </header>
 
-            {/* ── LIVE ACTIVITY TICKER — the news banner of an always-working employee ──
-                Scrolls for everyone; reduce-motion users get a fading headline rotator. */}
+            {/* ── LIVE ACTIVITY TICKER — a news bar that scrolls right to left,
+                seamlessly (the items are laid out twice and the track animates to
+                -50%), pausing on hover. */}
             <div className="mg-ticker" role="marquee" aria-label="Live activity">
               <div className="mg-ticker-live"><span className="mg-live-dot" /> Live</div>
               <div className="mg-ticker-vp">
-                {reduced ? (
-                  <span key={tickCursor} className="mg-ticker-item mg-ticker-fade">
-                    <Icon.spark size={13} />
-                    <span>{tickerLines[tickCursor % tickerLines.length]}</span>
-                  </span>
-                ) : (
-                  <div className="mg-ticker-track">
-                    {[...tickerLines, ...tickerLines].map((line, i) => (
-                      <span className="mg-ticker-item" key={i} aria-hidden={i >= tickerLines.length}>
-                        <Icon.spark size={13} />
-                        <span>{line}</span>
-                        <span className="mg-ticker-sep" />
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="mg-ticker-track">
+                  {[...tickerLines, ...tickerLines].map((line, i) => (
+                    <span className="mg-ticker-item" key={i} aria-hidden={i >= tickerLines.length}>
+                      <Icon.spark size={13} />
+                      <span>{line}</span>
+                      <span className="mg-ticker-sep" />
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
