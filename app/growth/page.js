@@ -1,607 +1,576 @@
 "use client";
 
-// ── GROWTH — where Genie is growing you ──
-// One surface for the whole growth engine: the OPPORTUNITIES Genie found and
-// staged (one tap posts them), and the KEYWORD STRATEGY it derived and manages
-// (winners rise, dead ones retire). Replaces the V1 /growth command center and
-// absorbs Keywords + Campaigns + Growth Map into a single Operator surface.
-// Reads /api/today (for the host), then /api/placements + /api/keywords.
+// ── GROWTH — the organic-growth command center ──
+// One question, answered with data: "is my organic growth working, and where is
+// Genie focused next?" A ranking-progression chart, four glance metrics, the
+// keyword performance table, and the strategy phase — with a sticky portfolio
+// health rail. Real data throughout: rankings + nightly history from Search
+// Console, difficulty/volume from the keyword brain. No storytelling, no queue.
+// (Rankings plot with the BEST position at the top, so improvement reads as a
+// rising line — the SEO-correct orientation, not worst-at-top.)
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
-import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
-import { BrandIcon } from "@/components/ui/BrandIcon";
-import { Card, Pill, SectionLabel, SectionHead } from "@/components/ui/v2/primitives";
-import { DataStateBadge } from "@/components/ui/v2/DataState";
+import { Card } from "@/components/ui/v2/primitives";
+import { EmptyState } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 import { climbFrom } from "@/lib/keyword-health";
-import { campaignStatus } from "@/lib/keyword-plan";
+import { campaignStatus, difficultyTier } from "@/lib/keyword-plan";
 
-const HEALTH = {
-  strong:  { label: "Strong",  bar: "var(--signal-live)" },
-  growing: { label: "Growing", bar: "var(--signal-info)" },
-  new:     { label: "New",     bar: "var(--fg-subtle)"   },
-  weak:    { label: "Weak",    bar: "var(--signal-warn)"  },
-  retired: { label: "Retired", bar: "var(--border-strong)" },
-};
+const RANGE_OPTS = [{ id: 7, label: "Last 7 days" }, { id: 30, label: "Last 30 days" }, { id: 90, label: "Last 90 days" }, { id: 9999, label: "All time" }];
+const COMPARE_OPTS = [{ id: "prev", label: "Previous period" }, { id: "start", label: "Start of tracking" }];
+const SORT_OPTS = [{ id: "position", label: "Position" }, { id: "change", label: "Change" }, { id: "volume", label: "Volume" }, { id: "difficulty", label: "Difficulty" }];
+const PAGE_SIZE = 8;
 
-export default function GrowthPage() {
-  return <Suspense fallback={null}><Growth /></Suspense>;
-}
+const fmtNum = (n) => { n = Number(n) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M"; if (n >= 1000) return n.toLocaleString(); return String(Math.round(n)); };
+function estVolume(k) { const real = Number(k.volume); if (real > 0) return real; const p = k.traffic_potential ?? 0; if (p >= 85) return 22000; if (p >= 70) return 8000; if (p >= 55) return 2500; if (p >= 45) return 900; if (p >= 35) return 350; return 120; }
+const STATUS_TEXT = { achieved: "Ranking", climbing: "Climbing", stalled: "Stalled", indexing: "Indexing", working: "Drafting", not_started: "Queued" };
+function statusTone(state) { return state === "achieved" || state === "climbing" ? "var(--signal-live-ink)" : state === "stalled" ? "var(--signal-warn)" : state === "indexing" ? "var(--signal-info)" : "var(--fg-subtle)"; }
+const posOf = (k) => (k._status?.current != null ? k._status.current : (Number(k.gsc_position) > 0 ? Number(k.gsc_position) : null));
+
+export default function GrowthPage() { return <Suspense fallback={null}><Growth /></Suspense>; }
 
 function Growth() {
-  const [d, setD] = useState({ blocks: [], totalTaps: 0, totalAuto: 0, results: null, keywords: { graded: [] } });
+  const [d, setD] = useState({ keywords: { graded: [] }, climb: null, series: {} });
   const [state, setState] = useState("loading");
   const [host, setHost] = useState("");
+  const [conns, setConns] = useState(null);
+  const [approvals, setApprovals] = useState(0);
   const [busy, setBusy] = useState("");
-  const [step, setStep] = useState("");       // narrated progress during long AI work
+  const [step, setStep] = useState("");
   const [deriveErr, setDeriveErr] = useState("");
+  const [range, setRange] = useState(30);
+  const [compare, setCompare] = useState("prev");
 
   async function loadFor(h) {
-    // The rank-climb series has been recorded nightly all along (keyword_history)
-    // and had no UI — the single most motivating thing Genie can show.
-    const [p, k, s] = await Promise.all([
-      fetch(`/api/placements?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+    const [k, s] = await Promise.all([
       fetch(`/api/keywords?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       fetch(`/api/keywords/sync?host=${encodeURIComponent(h)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
     ]);
     const next = {
-      blocks: p?.ok ? (p.blocks || []) : [],
-      totalTaps: p?.ok ? (p.totalTaps || 0) : 0,
-      totalAuto: p?.ok ? (p.totalAuto || 0) : 0,
-      results: p?.ok ? (p.results || null) : null,
       keywords: k?.ok ? { portfolioScore: k.portfolioScore, graded: k.graded || [], counts: k.counts } : { graded: [] },
       climb: s?.ok ? climbFrom(s.series) : null,
       series: s?.ok ? (s.series || {}) : {},
     };
     setD(next);
-    setState(next.blocks.length || next.keywords.graded.length ? "real" : "empty");
+    setState(next.keywords.graded.length ? "real" : "empty");
   }
 
   useEffect(() => {
     (async () => {
-      const { data, live } = await fetchLive("/api/today");
-      const h = live && data?.entity?.host;
-      if (!h) { setState(live ? "empty" : "disconnected"); return; }
+      const [today, connsRes] = await Promise.all([fetchLive("/api/today"), fetchLive("/api/connections/status")]);
+      if (connsRes.live) setConns(connsRes.data?.integrations || null);
+      if (today.live) setApprovals(today.data?.approvalsCount || 0);
+      const h = today.live && today.data?.entity?.host;
+      if (!h) { setState(today.live ? "empty" : "disconnected"); return; }
       setHost(h);
       await loadFor(h);
     })();
   }, []);
 
-  async function act(item, action) {
-    setD((prev) => ({
-      ...prev,
-      blocks: prev.blocks.map((b) => ({ ...b, items: b.items.filter((x) => x.id !== item.id) })).filter((b) => b.items.length),
-      totalTaps: (action === "posted" || action === "skipped") ? Math.max(0, prev.totalTaps - (item.owned ? 0 : 1)) : prev.totalTaps,
-    }));
-    try { await fetch("/api/placements", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, action }) }); } catch {}
-  }
-
   async function derive({ rebuild = false } = {}) {
     if (!host) return;
-    if (rebuild && !confirm("Rebuild the keyword strategy from scratch? Genie will replace the keywords it picked with a fresh set (any you added by hand are kept).")) return;
-    setBusy("derive");
-    setDeriveErr("");
-    // This call routinely takes 20-40s (real Google Autocomplete + an LLM). A frozen
-    // button for that long reads as broken, so narrate the actual steps.
-    const steps = ["Reading what you sell…", "Pulling real Google searches…", "Choosing the terms buyers type…", "Scoring demand vs. winnability…", "Ordering your plan…"];
-    let i = 0;
-    setStep(steps[0]);
+    if (rebuild && !confirm("Rebuild the keyword strategy from scratch? Genie replaces the keywords it picked with a fresh set (any you added by hand are kept).")) return;
+    setBusy("derive"); setDeriveErr("");
+    const steps = ["Reading what you sell…", "Pulling real Google searches…", "Choosing the terms buyers type…", "Scoring demand vs winnability…", "Ordering your plan…"];
+    let i = 0; setStep(steps[0]);
     const tick = setInterval(() => { i = Math.min(i + 1, steps.length - 1); setStep(steps[i]); }, 4500);
     try {
       const r = await fetch("/api/keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, rebuild }) }).then((x) => x.json());
       if (r.ok) setD((prev) => ({ ...prev, keywords: { portfolioScore: r.portfolioScore, graded: r.graded || [], counts: r.counts } }));
-      // Don't fail silently — say what went wrong and that it's retryable.
       else setDeriveErr(r.message || r.error || "I couldn’t build the strategy just then. Try again.");
-    } catch {
-      setDeriveErr("Something interrupted me. Check your connection and try again.");
-    }
-    clearInterval(tick);
-    setStep("");
-    setBusy("");
+    } catch { setDeriveErr("Something interrupted me. Check your connection and try again."); }
+    clearInterval(tick); setStep(""); setBusy("");
   }
 
+  // ── derived, real ──
   const kw = d.keywords || { graded: [] };
-  const graded = kw.graded || [];
-  const series = d.series || {};
-  // Attach each keyword's live campaign status (vs its target) from real rank history.
-  const active = graded.filter((k) => k.health !== "retired").map((k) => ({ ...k, _status: campaignStatus(k, series[k.keyword] || []) }));
-  const retired = graded.filter((k) => k.health === "retired");
-  const taps = d.totalTaps || 0;
-  const allTaps = (d.blocks || []).flatMap((b) => (b.items || []).map((it) => ({ ...it, platform: b.platform, owned: b.owned })));
-  const heroTap = allTaps[0] || null;
-  const restTaps = allTaps.slice(1);
-  const waves = buildWaves(active);
-  const totalEst = active.reduce((s, k) => s + estVolume(k), 0);
-  const winning = d.results?.winning || 0;
+  const active = useMemo(
+    () => (kw.graded || []).filter((k) => k.health !== "retired").map((k) => ({ ...k, _status: campaignStatus(k, d.series[k.keyword] || []) })),
+    [kw.graded, d.series]
+  );
+  const climb = d.climb;
+  const windowPoints = useMemo(() => (climb?.points || []).slice(-Math.max(2, range === 9999 ? 9999 : range)), [climb, range]);
+  const tracked = active.length;
+  const avgPosition = climb ? climb.last : (() => { const ps = active.map(posOf).filter((x) => x != null); return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null; })();
+  const improvedBy = windowPoints.length > 1 ? Math.round((windowPoints[0].position - windowPoints[windowPoints.length - 1].position) * 10) / 10 : (climb?.delta || 0);
+  const inTop20 = active.filter((k) => { const p = posOf(k); return p != null && p <= 20; }).length;
+  const aiCitations = active.filter((k) => k.ai_cited).length;
+  const portfolioScore = kw.portfolioScore ?? null;
 
   return (
     <OperatorShell active="growth">
-      <OperatorHeader
-        icon={Icon.growth}
-        label="Growth"
-        provenance={<DataStateBadge state={state} />}
-        title="Where Genie is"
-        accent="growing you."
-      />
+      {/* ── HEADER ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Growth</h1>
+          <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
+        </div>
+        <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
+          <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}
+        </button>
+      </div>
 
-      {/* The operation, in one honest sentence — Genie's current mission. */}
-      {state === "real" && (active.length > 0 || taps > 0) && (
-        <p className="mg-voice mt-3">
-          I’ve built you a strategy of <b>{active.length} {active.length === 1 ? "search" : "searches"}</b>
-          {taps > 0 ? <> and staged <b>{taps}</b> {taps === 1 ? "opening" : "openings"} to ship</> : null}
-          {winning > 0 ? <>, with <b>{winning}</b> already compounding</> : null}. Here’s the operation, live.
-        </p>
-      )}
+      {state === "disconnected" ? (
+        <div className="mt-8"><EmptyState state="disconnected" icon={Icon.growth} title="I can’t reach your growth data" sub="Sign in and I’ll show your rankings and strategy." /></div>
+      ) : state === "empty" || (state === "real" && active.length === 0) ? (
+        <BuildStrategy host={host} busy={busy} step={step} err={deriveErr} onBuild={() => derive()} />
+      ) : state === "loading" ? (
+        <div className="mt-8 mg-surface p-10 text-center text-[13px] mg-subtle">Loading your growth data…</div>
+      ) : (
+        <>
+          {/* controls */}
+          <div className="mt-5 flex items-center gap-4 flex-wrap">
+            <LabeledSelect label="Time range" value={range} opts={RANGE_OPTS} onChange={setRange} />
+            <LabeledSelect label="Compare to" value={compare} opts={COMPARE_OPTS} onChange={setCompare} />
+          </div>
 
-      {/* ── ACT 01 — THE STRATEGY: what Genie is pursuing ── */}
-      <section className="mg-act">
-        <SectionHead index="01" title="What I’m pursuing" note={graded.length ? "The searches I’m ranking you for — winners rise, dead ends retire." : undefined}
-          action={graded.length ? (
-            <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive"} className="text-[12.5px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)" }}>
-              {busy === "derive" ? (step || "Rebuilding…") : "↻ Rebuild strategy"}
-            </button>
-          ) : undefined}
-        />
+          {deriveErr && <p className="mt-3 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
 
-        {graded.length === 0 ? (
-          <Card className="p-9 text-center" style={{ borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" }}>
-            <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={20} /></span>
-            <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>Let Genie build your keyword strategy</p>
-            <p className="mt-1 text-[13.5px] mg-muted max-w-md mx-auto">It reads your product and derives the exact searches to rank you for — no input needed. Then it weaves them through everything it writes.</p>
-            <button onClick={() => derive()} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-4 inline-flex disabled:opacity-50" style={{ fontSize: 13 }}>
-              {busy === "derive" ? (step || "Genie is analyzing…") : host ? "Build my keyword strategy →" : "Run your first scan →"}
-            </button>
-            {busy === "derive" && <p className="mt-2 text-[12px] mg-subtle">This takes up to a minute — I’m using real Google data, not guessing.</p>}
-            {deriveErr && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
-          </Card>
-        ) : (
-          <>
-            {deriveErr && <p className="text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
-            <div className="mg-statstrip">
-              <StatCell value={active.length} label="Keywords found" />
-              <StatCell value={waves[0].items.length} label="Easy wins — attacking first" accent />
-              <StatCell value={fmtNum(totalEst)} label="Est. searches in reach /mo" accent />
-              <StatCell value={kw.portfolioScore ?? "—"} label="Portfolio health" accent />
+          <div className="mt-4 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5 items-start">
+            {/* ── MAIN ── */}
+            <div className="min-w-0 flex flex-col gap-5">
+              <RankingProgression points={windowPoints} tracked={tracked} improvedBy={improvedBy} climb={climb} compare={compare} />
+              <MetricsRow tracked={tracked} avgPosition={avgPosition} improvedBy={improvedBy} inTop20={inTop20} aiCitations={aiCitations} points={windowPoints} />
+              <KeywordTable active={active} series={d.series} host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />
+              <StrategyPhase active={active} inTop20={inTop20} />
             </div>
 
-            {/* Proof the plan is working, before the plan itself. Recorded nightly
-                from Search Console and never shown until now. */}
-            {d.climb && <ClimbChart climb={d.climb} />}
-
-            <p className="text-[13.5px] mg-muted" style={{ maxWidth: 700 }}>
-              I don’t chase everything at once. I win the easy, high-intent searches first to build your authority — then use that momentum to take the bigger, harder terms. Here’s the plan:
-            </p>
-
-            <div className="flex flex-col gap-3">
-              {waves.map((w) => <WaveCard key={w.key} wave={w} />)}
+            {/* ── RIGHT RAIL ── */}
+            <div className="xl:sticky xl:top-4 flex flex-col gap-4">
+              <PortfolioHealth score={portfolioScore} climb={climb} conns={conns} approvals={approvals} />
+              <NextMilestone active={active} inTop20={inTop20} />
             </div>
-
-            <p className="text-[12px] mg-subtle">Traffic and difficulty are Genie’s estimates, chosen for a mix of demand, winnability, and buyer value. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google</a> for your real search volumes and rankings.</p>
-
-            {host && <AddKeyword host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />}
-
-            {retired.length > 0 && (
-              <details>
-                <summary className="cursor-pointer text-[12.5px] mg-subtle mg-focus">Retired keywords ({retired.length}) — Genie stopped using these</summary>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {retired.map((k) => <span key={k.id || k.keyword} className="text-[11.5px] mg-subtle line-through mg-surface-quiet px-2 py-0.5 rounded-full">{k.keyword}</span>)}
-                </div>
-              </details>
-            )}
-          </>
-        )}
-      </section>
-
-      {/* ── ACT 02 — SHIPPING NOW: what's going out ── */}
-      <section className="mg-act">
-        <SectionHead
-          index="02"
-          title="Shipping now"
-          note={taps > 0 ? undefined : "Fresh openings land here each morning."}
-          action={<>{taps > 0 && <Pill tone="dawn">{taps} ready</Pill>}{restTaps.length > 0 && <a href="/conversations" className="text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>See running →</a>}</>}
-        />
-
-        {heroTap ? (
-          <>
-            <HeroTap item={heroTap} onAct={act} />
-            {restTaps.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {restTaps.map((it) => <CompactTap key={it.id} item={it} onAct={act} />)}
-              </div>
-            )}
-          </>
-        ) : (
-          <Card className="p-8 text-center">
-            <span className="mg-tile mx-auto" style={{ width: 42, height: 42, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={19} /></span>
-            <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No openings staged right now</p>
-            <p className="mt-1 text-[13px] mg-muted max-w-md mx-auto">Genie scans continuously and stages new conversations overnight. Check back tomorrow morning, or see what's already running.</p>
-            <a href="/conversations" className="mg-btn mg-btn--quiet mt-4 inline-flex" style={{ fontSize: 12.5 }}>See running conversations →</a>
-          </Card>
-        )}
-      </section>
-
-      {/* ── ACT 03 — MOMENTUM: what's compounding over time ── */}
-      {d.results && d.results.total > 0 && (
-        <section className="mg-act">
-          <SectionHead index="03" title="What’s compounding" note="Every post tracked — winners doubled down, duds binned." />
-          <ResultsStrip results={d.results} />
-        </section>
+          </div>
+        </>
       )}
     </OperatorShell>
   );
 }
 
-function StatCell({ value, label, accent }) {
+// ── RANKING PROGRESSION (hero) ──────────────────────────────────────────────
+function RankingProgression({ points, tracked, improvedBy, climb, compare }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const improved = improvedBy > 0;
   return (
-    <div className="mg-statcell">
-      <p className="mg-stat-num" style={accent ? { color: "var(--accent-ink)" } : undefined}>{value}</p>
-      <p className="mg-stat-label">{label}</p>
-    </div>
-  );
-}
-
-const brandOf = (p) => (p === "guest" ? "wordpress" : p);
-
-// The one opportunity worth acting on now — featured, with Genie's reasoning.
-function HeroTap({ item, onAct }) {
-  const [copied, setCopied] = useState(false);
-  function primary() {
-    if (item.owned) { onAct(item, "posted"); return; }
-    try { navigator.clipboard.writeText(item.draft || ""); } catch {}
-    setCopied(true); setTimeout(() => setCopied(false), 2500);
-    if (item.target_url) window.open(item.target_url, "_blank");
-    onAct(item, "posted");
-  }
-  return (
-    <Card className="mg-ambient mt-3 p-6">
-      <div className="flex items-center gap-2 flex-wrap">
-        <BrandIcon brand={brandOf(item.platform)} size={17} />
-        <span className="text-[12.5px] font-semibold capitalize" style={{ color: "var(--fg-muted)" }}>{item.platform}</span>
-        <Pill tone="dawn">Start here</Pill>
-        {item.keyword && <span className="text-[12px]" style={{ color: "var(--accent-ink)" }}>{item.keyword}</span>}
+    <Card className="p-6 mg-rise">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">RANKING PROGRESSION</p>
+          <p className="mt-1 text-[13px] mg-muted">Average position across {tracked} tracked {tracked === 1 ? "keyword" : "keywords"}</p>
+          {points.length > 1 && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold" style={{ color: improved ? "var(--signal-live-ink)" : improvedBy < 0 ? "var(--signal-danger)" : "var(--fg-muted)" }}>
+              <Tri dir={improved ? "up" : improvedBy < 0 ? "down" : "flat"} /> {improved ? `Improved by ${Math.abs(improvedBy)} positions` : improvedBy < 0 ? `Down ${Math.abs(improvedBy)} positions` : "Holding steady"}
+            </p>
+          )}
+        </div>
+        <button onClick={() => setShowDetails((v) => !v)} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12 }}>Details</button>
       </div>
-      <h3 className="mt-3 text-[19px] font-bold leading-snug" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</h3>
-      {item.meta?.reason && <p className="mt-1.5 text-[13.5px] mg-muted max-w-2xl">{item.meta.reason}</p>}
-      {item.draft && (
-        <div className="mt-3.5 mg-surface-quiet p-3.5 text-[13px] whitespace-pre-wrap max-h-36 overflow-y-auto thin-scroll" style={{ color: "var(--fg-muted)" }}>{item.draft}</div>
-      )}
-      <div className="mt-4 flex items-center gap-2">
-        <button onClick={primary} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>
-          {item.owned ? "Approve & publish" : copied ? "Copied — paste & post" : "Copy & open thread"}
-        </button>
-        <button onClick={() => onAct(item, "snoozed")} className="text-[12.5px] mg-subtle mg-focus px-2">Later</button>
-        <button onClick={() => onAct(item, "skipped")} className="text-[12.5px] mg-subtle mg-focus px-2">Skip</button>
-      </div>
-    </Card>
-  );
-}
 
-// Everything else — a tight, scannable queue, not a wall of equal cards.
-function CompactTap({ item, onAct }) {
-  function primary() {
-    if (item.owned) { onAct(item, "posted"); return; }
-    try { navigator.clipboard.writeText(item.draft || ""); } catch {}
-    if (item.target_url) window.open(item.target_url, "_blank");
-    onAct(item, "posted");
-  }
-  return (
-    <div className="mg-surface-quiet p-3.5 flex items-center gap-3">
-      <BrandIcon brand={brandOf(item.platform)} size={16} />
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{item.target_title || item.target_url}</p>
-        <p className="text-[11px] mg-subtle truncate mt-0.5">{item.keyword ? `${item.keyword} · ` : ""}{item.meta?.reason || item.platform}</p>
-      </div>
-      <button onClick={primary} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".4rem .7rem" }}>{item.owned ? "Publish" : "Copy"}</button>
-    </div>
-  );
-}
-
-function ResultsStrip({ results }) {
-  const { total, winning, flat, dud, pending, top } = results;
-  return (
-    <Card className="p-5">
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-        <MiniStat value={total} label="Posted" />
-        <MiniStat value={winning} label="Winning" tint="var(--signal-live-ink)" />
-        <MiniStat value={flat} label="Flat" />
-        <MiniStat value={dud} label="Binned" tint="var(--signal-warn)" />
-        <MiniStat value={pending} label="Fresh" tint="var(--accent-ink)" />
-      </div>
-      {top?.length > 0 && (
-        <div className="mt-4">
-          <SectionLabel className="mb-2">Top performers</SectionLabel>
-          <div className="space-y-2">
-            {top.map((t, i) => (
-              <a key={i} href={t.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 mg-surface-quiet px-3 py-2.5 mg-focus">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold truncate" style={{ color: "var(--fg)" }}>{t.title}</p>
-                  {t.keyword && <p className="text-[11px]" style={{ color: "var(--accent-ink)" }}>{t.keyword}</p>}
-                </div>
-                {t.engagement && (
-                  <div className="text-right text-[11px] mg-subtle mg-num shrink-0">
-                    {t.engagement.upvotes != null && <span style={{ color: "var(--signal-live-ink)" }}>▲ {t.engagement.upvotes}</span>}
-                    {t.engagement.comments != null && <span className="ml-2">{t.engagement.comments} replies</span>}
-                  </div>
-                )}
-              </a>
-            ))}
-          </div>
+      {points.length > 1 ? (
+        <>
+          <RankChart points={points} />
+          {showDetails && (
+            <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+              <Detail v={points[0].position.toFixed(1)} l="Start of period" />
+              <Detail v={points[points.length - 1].position.toFixed(1)} l="Now" />
+              <Detail v={climb?.clicks ? fmtNum(climb.clicks) : "—"} l="Clicks in window" />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="mt-4 rounded-xl px-5 py-10 text-center" style={{ border: "1px dashed var(--border-strong)" }}>
+          <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>Your ranking line starts as soon as positions come in.</p>
+          <p className="mt-1 text-[12.5px] mg-muted max-w-sm mx-auto">I record your average Google position every night. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google Search Console</a> for live rankings.</p>
         </div>
       )}
     </Card>
   );
 }
+function Detail({ v, l }) { return (<div className="mg-surface-quiet py-2.5"><p className="mg-num text-[18px] font-bold" style={{ color: "var(--fg)" }}>{v}</p><p className="text-[11px] mg-subtle mt-0.5">{l}</p></div>); }
 
-function MiniStat({ value, label, tint }) {
+// The chart. Best position sits at the TOP, so genuine improvement rises.
+function RankChart({ points }) {
+  const [hover, setHover] = useState(null);
+  const W = 720, H = 240, padL = 34, padR = 12, padT = 14, padB = 26;
+  const vals = points.map((p) => p.position);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const span0 = Math.max(1, hi - lo); lo = Math.max(1, lo - span0 * 0.25); hi = hi + span0 * 0.25;
+  const span = Math.max(1, hi - lo);
+  const x = (i) => padL + (i * (W - padL - padR)) / (points.length - 1);
+  const y = (pos) => padT + ((pos - lo) / span) * (H - padT - padB); // smaller pos → higher
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.position).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${H - padB} L${x(0).toFixed(1)},${H - padB} Z`;
+  const ticks = 4;
+  const yTicks = Array.from({ length: ticks + 1 }, (_, i) => Math.round(lo + (span * i) / ticks));
+  const xIdx = [0, Math.floor((points.length - 1) / 2), points.length - 1].filter((v, i, a) => a.indexOf(v) === i);
+  const fx = (dt) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dt || ""); return m ? `${+m[2]}/${+m[3]}` : dt; };
+  function onMove(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    let idx = Math.round(((px - padL) / (W - padL - padR)) * (points.length - 1));
+    idx = Math.max(0, Math.min(points.length - 1, idx));
+    setHover(idx);
+  }
   return (
-    <div className="mg-surface-quiet p-3 text-center">
-      <p className="text-[22px] font-bold leading-none mg-num" style={{ color: tint || "var(--fg)" }}>{value}</p>
-      <p className="mt-1 text-[11px] mg-subtle">{label}</p>
+    <div className="mt-4 relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full mg-draw" style={{ height: 260, overflow: "visible" }} onMouseMove={onMove} onMouseLeave={() => setHover(null)} role="img" aria-label="Average Google ranking position over time">
+        <defs><linearGradient id="rankFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity="0.22" /><stop offset="100%" stopColor="var(--accent)" stopOpacity="0" /></linearGradient></defs>
+        {yTicks.map((t, i) => { const yy = y(t); return (<g key={i}><line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke="var(--hair)" strokeWidth="1" /><text x={padL - 8} y={yy + 3} textAnchor="end" fontSize="10" fill="var(--fg-subtle)">{t}</text></g>); })}
+        <path d={area} fill="url(#rankFill)" />
+        <path className="mg-draw-line" d={line} fill="none" stroke="var(--accent-ink)" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
+        {xIdx.map((i) => <text key={i} x={x(i)} y={H - 6} textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"} fontSize="10" fill="var(--fg-subtle)">{fx(points[i].date)}</text>)}
+        {hover != null && (<g><line x1={x(hover)} y1={padT} x2={x(hover)} y2={H - padB} stroke="var(--accent)" strokeWidth="1" strokeDasharray="3 3" /><circle cx={x(hover)} cy={y(points[hover].position)} r="4" fill="var(--accent-ink)" stroke="var(--surface)" strokeWidth="2" /></g>)}
+        <circle cx={x(points.length - 1)} cy={y(points[points.length - 1].position)} r="3.5" fill="var(--accent-ink)" />
+      </svg>
+      {hover != null && (
+        <div className="absolute pointer-events-none mg-surface px-3 py-2" style={{ left: `${(x(hover) / W) * 100}%`, top: 0, transform: "translateX(-50%)", boxShadow: "var(--shadow-3)", borderColor: "var(--border-strong)", whiteSpace: "nowrap" }}>
+          <p className="text-[10.5px] mg-subtle">{points[hover].date}</p>
+          <p className="text-[12.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>Avg position {points[hover].position.toFixed(1)}</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── GENIE'S KEYWORD GAME PLAN ──
-// Turns the flat keyword list into a sequenced strategy the user can trust:
-// win the easy, high-intent terms first (fast ranking → authority), then medium,
-// then the hard high-traffic head terms. Waves are by difficulty band so the
-// story ("start winnable, climb to the big traffic") is honest and legible.
-
-// Rough monthly-search estimate: real Google volume if we have it, else derived
-// from Genie's relative potential. Clearly an estimate until GSC/Ads is connected.
-function estVolume(k) {
-  const real = Number(k.volume);
-  if (real > 0) return real;
-  const p = k.traffic_potential ?? 0;
-  if (p >= 85) return 22000;
-  if (p >= 70) return 8000;
-  if (p >= 55) return 2500;
-  if (p >= 45) return 900;
-  if (p >= 35) return 350;
-  return 120;
-}
-
-function fmtNum(n) {
-  n = Number(n) || 0;
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k";
-  return String(Math.round(n));
-}
-
-function buildWaves(active) {
-  const withEst = active
-    .map((k) => ({ ...k, _vol: estVolume(k), _comp: k.competition ?? 50 }))
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  return [
-    { key: "w1", n: 1, title: "Quick wins", when: "Weeks 1–4", tone: "live", band: "Easy",
-      why: "Low-competition, high-intent searches I can rank you for fast — this builds the authority that unlocks everything after.",
-      items: withEst.filter((k) => k._comp < 40) },
-    { key: "w2", n: 2, title: "Build momentum", when: "Month 2", tone: "warn", band: "Medium",
-      why: "Medium-competition terms. The trust earned in Wave 1 makes these winnable now.",
-      items: withEst.filter((k) => k._comp >= 40 && k._comp <= 65) },
-    { key: "w3", n: 3, title: "Go for the big traffic", when: "Month 3+", tone: "danger", band: "Hard",
-      why: "The high-demand head terms. We attack these once you've proven relevance — that's how you win the hard ones.",
-      items: withEst.filter((k) => k._comp > 65) },
+// ── FOUR GLANCE METRICS ─────────────────────────────────────────────────────
+function MetricsRow({ tracked, avgPosition, improvedBy, inTop20, aiCitations, points }) {
+  const posSeries = points.map((p) => p.position);
+  const cells = [
+    { label: "Keywords tracked", value: tracked, change: null, spark: null },
+    { label: "Avg. position", value: avgPosition != null ? Math.round(avgPosition) : "—", change: improvedBy, spark: posSeries, invert: true },
+    { label: "In top 20", value: inTop20, change: inTop20 > 0 ? inTop20 : null, spark: null },
+    { label: "AI citations", value: aiCitations, change: null, spark: null },
   ];
+  return (
+    <Card className="p-0 overflow-hidden mg-rise">
+      <div className="grid grid-cols-2 md:grid-cols-4">
+        {cells.map((c, i) => (
+          <div key={i} className="p-5" style={{ borderLeft: i % 4 === 0 ? "none" : "1px solid var(--hair)", borderTop: i >= 2 ? "1px solid var(--hair)" : "none" }}>
+            <p className="text-[12px] mg-subtle">{c.label}</p>
+            <div className="mt-1.5 flex items-end justify-between gap-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="mg-num" style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1, color: "var(--fg)" }}>{c.value}</span>
+                {c.change != null && c.change !== 0 && (
+                  <span className="flex items-center gap-0.5 text-[12px] font-semibold" style={{ color: c.change > 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}><Tri dir={c.change > 0 ? "up" : "down"} />{Math.abs(c.change)}</span>
+                )}
+                {c.change === null && <span className="text-[12px] mg-subtle">—</span>}
+              </div>
+              <Spark data={c.spark} invert={c.invert} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function Spark({ data, invert }) {
+  const w = 66, h = 22;
+  if (!data || data.length < 2) return <svg width={w} height={h} aria-hidden><line x1="0" y1={h - 4} x2={w} y2={h - 4} stroke="var(--border-strong)" strokeWidth="1.5" strokeLinecap="round" /></svg>;
+  let lo = Math.min(...data), hi = Math.max(...data); const span = Math.max(0.5, hi - lo);
+  const yy = (v) => { const t = (v - lo) / span; return 3 + (invert ? t : 1 - t) * (h - 6); };
+  const step = w / (data.length - 1);
+  const dPath = data.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${yy(v).toFixed(1)}`).join(" ");
+  const rising = invert ? data[data.length - 1] <= data[0] : data[data.length - 1] >= data[0];
+  return <svg width={w} height={h} aria-hidden><path d={dPath} fill="none" stroke={rising ? "var(--signal-live)" : "var(--fg-subtle)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function WaveCard({ wave }) {
-  const [open, setOpen] = useState(false);
-  const col = diffColor(wave.tone), bg = diffBg(wave.tone);
-  const vol = wave.items.reduce((s, k) => s + (k._vol || 0), 0);
-  const covered = wave.items.filter((k) => (k.coverage || 0) > 0 || (k.usage?.length || 0) > 0).length;
-  const shown = open ? wave.items : wave.items.slice(0, 4);
+// ── KEYWORD TABLE ───────────────────────────────────────────────────────────
+function KeywordTable({ active, series, host, onAdded }) {
+  const [sort, setSort] = useState("position");
+  const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(0);
+  const [openId, setOpenId] = useState(null);
+  const [adding, setAdding] = useState(false);
+
+  const filterOpts = [{ id: "all", label: "All statuses" }, { id: "ranking", label: "Ranking" }, { id: "indexing", label: "Indexing" }, { id: "queued", label: "Queued" }];
+  const filtered = active.filter((k) => {
+    if (filter === "all") return true;
+    const s = k._status?.state;
+    if (filter === "ranking") return s === "achieved" || s === "climbing";
+    if (filter === "indexing") return s === "indexing" || s === "working" || s === "stalled";
+    return s === "not_started";
+  });
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === "position") { const pa = posOf(a) ?? 999, pb = posOf(b) ?? 999; return pa - pb; }
+    if (sort === "change") return (b._status?.trend || 0) - (a._status?.trend || 0);
+    if (sort === "volume") return estVolume(b) - estVolume(a);
+    return (b.competition ?? 0) - (a.competition ?? 0);
+  });
+  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageRows = sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  useEffect(() => { setPage((p) => Math.min(p, pages - 1)); }, [pages]);
+
   return (
-    <Card className="p-5" style={{ borderLeft: `3px solid ${col}` }}>
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="flex items-center justify-center font-bold mg-num" style={{ width: 26, height: 26, borderRadius: 999, fontSize: 13, color: col, background: bg }}>{wave.n}</span>
-        <p className="text-[15.5px] font-bold" style={{ color: "var(--fg)" }}>{wave.title}</p>
-        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ color: col, background: bg }}>{wave.when}</span>
-        <span className="ml-auto text-[12px] mg-subtle mg-num">{wave.items.length} keyword{wave.items.length === 1 ? "" : "s"}{covered > 0 ? ` · ${covered} with content` : ""}{vol > 0 ? ` · ~${fmtNum(vol)}/mo est.` : ""}</span>
+    <Card className="p-0 overflow-hidden mg-rise">
+      <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 flex-wrap">
+        <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">KEYWORDS</p>
+        <div className="flex items-center gap-2">
+          <MiniSelect label="Filter" value={filter} opts={filterOpts} onChange={(v) => { setFilter(v); setPage(0); }} />
+          <MiniSelect label="Sort" value={sort} opts={SORT_OPTS} onChange={setSort} prefix="Sort: " />
+        </div>
       </div>
-      <p className="mt-2 text-[13px] mg-muted" style={{ maxWidth: 640 }}>{wave.why}</p>
-      {wave.items.length === 0 ? (
-        <p className="mt-3 text-[12.5px] mg-subtle">None yet — I’ll add {wave.band.toLowerCase()} targets here as your authority grows.</p>
-      ) : (
-        <>
-          <div className="mt-3.5 grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {shown.map((k) => <KeywordRow key={k.id || k.keyword} k={k} />)}
+      <div className="overflow-x-auto thin-scroll">
+        <table className="w-full" style={{ minWidth: 640, borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderTop: "1px solid var(--hair)", borderBottom: "1px solid var(--hair)" }}>
+              {["Keyword", "Position", "Change", "Volume / mo", "Difficulty", "Status", ""].map((h, i) => (
+                <th key={i} className="text-left px-4 py-2 text-[11px] font-semibold mg-subtle" style={{ textAlign: i >= 1 && i <= 4 ? "right" : "left", whiteSpace: "nowrap" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((k) => {
+              const p = posOf(k); const trend = k._status?.trend || 0; const st = k._status?.state || "not_started";
+              const vol = estVolume(k); const realVol = Number(k.volume) > 0;
+              const open = openId === (k.id || k.keyword);
+              return (
+                <FragmentRow key={k.id || k.keyword} k={k} p={p} trend={trend} st={st} vol={vol} realVol={realVol} open={open} onToggle={() => setOpenId(open ? null : (k.id || k.keyword))} />
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between gap-3 px-5 py-3 flex-wrap" style={{ borderTop: "1px solid var(--hair)" }}>
+        {adding ? (
+          <AddKeyword host={host} onAdded={(j) => { setAdding(false); onAdded(j); }} onCancel={() => setAdding(false)} />
+        ) : (
+          <button onClick={() => setAdding(true)} className="mg-btn" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}><Icon.plus size={14} /> Add keyword</button>
+        )}
+        <div className="flex items-center gap-3">
+          <span className="text-[12px] mg-subtle mg-num">Showing {sorted.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min(sorted.length, (page + 1) * PAGE_SIZE)} of {sorted.length}</span>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="mg-focus disabled:opacity-30" style={{ background: "none", border: "none", cursor: "pointer", padding: 3, color: "var(--fg-subtle)" }}><Icon.chevronRight size={15} style={{ transform: "rotate(180deg)" }} /></button>
+            <button onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} disabled={page >= pages - 1} className="mg-focus disabled:opacity-30" style={{ background: "none", border: "none", cursor: "pointer", padding: 3, color: "var(--fg-subtle)" }}><Icon.chevronRight size={15} /></button>
           </div>
-          {wave.items.length > 4 && (
-            <button onClick={() => setOpen((v) => !v)} className="mt-3 text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>
-              {open ? "Show less" : `Show all ${wave.items.length} →`}
-            </button>
-          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function FragmentRow({ k, p, trend, st, vol, realVol, open, onToggle }) {
+  return (
+    <>
+      <tr onClick={onToggle} className="mg-krow" style={{ borderBottom: "1px solid var(--hair)", cursor: "pointer" }}>
+        <td className="px-4 py-3 text-[13.5px] font-semibold" style={{ color: "var(--fg)", maxWidth: 260 }}>{k.keyword}{k.source === "aeo" && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full align-middle" style={{ color: "var(--accent-ink)", background: "var(--accent-quiet)" }}>AI</span>}</td>
+        <td className="px-4 py-3 text-right mg-num text-[13.5px]" style={{ color: p != null ? "var(--fg)" : "var(--fg-subtle)" }}>{p != null ? Math.round(p) : "—"}</td>
+        <td className="px-4 py-3 text-right text-[13px]">{trend > 0 ? <span style={{ color: "var(--signal-live-ink)", fontWeight: 600 }}>▲ {Math.abs(trend)}</span> : trend < 0 ? <span style={{ color: "var(--signal-danger)", fontWeight: 600 }}>▼ {Math.abs(trend)}</span> : <span className="mg-subtle">—</span>}</td>
+        <td className="px-4 py-3 text-right mg-num text-[13px]" style={{ color: "var(--fg-muted)" }} title={realVol ? "Real Google volume" : "Genie estimate"}>{fmtNum(vol)}{!realVol && <span className="mg-subtle" style={{ fontSize: 10 }}> *</span>}</td>
+        <td className="px-4 py-3 text-right mg-num text-[13px]" style={{ color: "var(--fg-muted)" }}>{k.competition != null ? Math.round(k.competition) : "—"}</td>
+        <td className="px-4 py-3 text-[12.5px] font-semibold" style={{ color: statusTone(st) }}>{STATUS_TEXT[st] || "Queued"}</td>
+        <td className="px-3 py-3 text-right"><Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }} /></td>
+      </tr>
+      {open && (
+        <tr style={{ borderBottom: "1px solid var(--hair)", background: "var(--surface-2)" }}>
+          <td colSpan={7} className="px-4 py-3.5">
+            <KeywordDetail k={k} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function KeywordDetail({ k }) {
+  const s = k._status || {}; const tier = s.tier || difficultyTier(k);
+  const facts = [
+    ["Difficulty tier", tier ? tier[0].toUpperCase() + tier.slice(1) : "—"],
+    ["Coverage", `${k.coverage || 0} ${k.coverage === 1 ? "piece" : "pieces"}`],
+    ["Target", s.target ? `Top ${s.target.position} in ~${s.target.days}d` : "—"],
+    ["AI citation", k.ai_cited ? "Cited ✓" : "Not yet"],
+  ];
+  const move = moveFor(s.state);
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {facts.map(([l, v], i) => (<div key={i}><p className="text-[11px] mg-subtle">{l}</p><p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{v}</p></div>))}
+      </div>
+      <div className="flex items-start gap-2 pt-1">
+        <Icon.spark size={14} style={{ color: "var(--accent-ink)", marginTop: 2, flexShrink: 0 }} />
+        <p className="text-[12.5px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Genie’s next move:</span> {move}</p>
+      </div>
+    </div>
+  );
+}
+function moveFor(state) {
+  return {
+    achieved: "Won. Refresh it periodically and defend the position.",
+    climbing: "Climbing. Keep internal links flowing and don’t touch what’s working.",
+    stalled: "Stuck despite content. Building authority: a supporting cluster and getting listed on the pages Google already trusts.",
+    indexing: "Published. Waiting for Google to index and place it, usually days to weeks.",
+    working: "Early. Adding a supporting piece and internal links to build topical strength.",
+    not_started: "Queued. Writing the answer page that targets this next.",
+  }[state] || "Feeding it content and links.";
+}
+
+function AddKeyword({ host, onAdded, onCancel }) {
+  const [val, setVal] = useState(""); const [busy, setBusy] = useState(false);
+  async function add() {
+    if (!val.trim()) return; setBusy(true);
+    try { const j = await fetch("/api/keywords", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keyword: val.trim() }) }).then((r) => r.json()); if (j.ok) { setVal(""); onAdded?.(j); } } catch {}
+    setBusy(false);
+  }
+  return (
+    <div className="flex items-center gap-2 flex-1" style={{ minWidth: 260 }}>
+      <input value={val} autoFocus onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") onCancel?.(); }} placeholder="Enter a keyword you want Genie to track…" className="flex-1 px-3 py-2 rounded-lg text-[13px] mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }} />
+      <button onClick={add} disabled={busy || !val.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }}>{busy ? "Adding…" : "Add"}</button>
+      <button onClick={onCancel} className="mg-btn mg-btn--quiet" style={{ fontSize: 12.5 }}>Cancel</button>
+    </div>
+  );
+}
+
+// ── STRATEGY PHASE ──────────────────────────────────────────────────────────
+function StrategyPhase({ active, inTop20 }) {
+  const climbing = active.filter((k) => ["climbing", "achieved"].includes(k._status?.state)).length;
+  const covered = active.filter((k) => (k.coverage || 0) > 0 || k._status?.state !== "not_started").length;
+  const pct = Math.max(8, Math.min(96, Math.round((100 * (covered * 0.5 + climbing * 0.3 + inTop20 * 0.2)) / Math.max(1, active.length))));
+  const phases = [
+    { key: "Foundation", sub: "Complete", done: true },
+    { key: "Build", sub: "Weeks 5–12", current: true },
+    { key: "Dominate", sub: "Month 3+" },
+  ];
+  const estDays = active.map((k) => k._status?.target?.days || 30).sort((a, b) => a - b)[0] || 12;
+  return (
+    <Card className="p-6 mg-rise">
+      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">STRATEGY PHASE</p>
+      <div className="mt-4 relative">
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
+          <div className="h-full rounded-full dawn-fill" style={{ width: `${pct}%`, transition: "width .8s var(--ease-out)" }} />
+        </div>
+        <span className="absolute -top-5 text-[12px] font-bold mg-num" style={{ left: `${pct}%`, transform: "translateX(-50%)", color: "var(--accent-ink)" }}>{pct}%</span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        {phases.map((ph, i) => (
+          <div key={i} className="flex flex-col" style={{ alignItems: i === 0 ? "flex-start" : i === 1 ? "center" : "flex-end" }}>
+            <p className="text-[13px] font-bold" style={{ color: ph.current ? "var(--accent-ink)" : ph.done ? "var(--fg)" : "var(--fg-subtle)" }}>{ph.key}{ph.current ? " (current)" : ""}</p>
+            <p className="text-[11.5px] mg-subtle">{ph.sub}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mg-seam my-4" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[13px] mg-muted">You’re <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{pct}%</span> through the Build phase.</p>
+        <p className="text-[13px] mg-muted">Next milestone: First keyword in top 20 <span className="font-semibold" style={{ color: "var(--accent-ink)" }}>(est. {estDays} days)</span></p>
+      </div>
+    </Card>
+  );
+}
+
+// ── RIGHT RAIL ──────────────────────────────────────────────────────────────
+function PortfolioHealth({ score, climb, conns, approvals }) {
+  const val = score == null ? 0 : Math.round(score);
+  const climbing = climb && climb.delta > 0;
+  const actions = [
+    { label: "Connect Google Search Console", pts: 10, done: conns?.google?.connected === true, href: "/connections" },
+    { label: `Approve ${approvals || ""} pending drafts`.replace("  ", " "), pts: 6, done: approvals === 0 && conns != null, href: "/approvals" },
+    { label: "Connect blog", pts: 3, done: conns?.wordpress?.connected === true, href: "/connections" },
+  ].filter((a) => !a.done);
+  const primary = actions[0];
+  return (
+    <Card className="p-5 mg-rise">
+      <div className="flex items-start justify-between">
+        <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">PORTFOLIO HEALTH</p>
+        {climbing && <span className="flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--signal-live-ink)" }} title={`Rankings up ${Math.abs(climb.delta)} spots this period`}><Tri dir="up" /> climbing</span>}
+      </div>
+      <div className="mt-3 flex justify-center"><HealthRing value={score == null ? null : val} /></div>
+      {actions.length > 0 && (
+        <>
+          <div className="mg-seam my-4" />
+          <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle mb-1.5">IMPROVE YOUR SCORE</p>
+          <div>
+            {actions.map((a, i) => (
+              <a key={i} href={a.href} className="mg-checkrow mg-focus">
+                <span className="flex-1 text-[13px]" style={{ color: "var(--fg)" }}>{a.label}</span>
+                <span className="text-[12px] font-bold mg-num" style={{ color: "var(--accent-ink)" }}>+{a.pts}</span>
+                <Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)" }} />
+              </a>
+            ))}
+          </div>
+          {primary && <a href={primary.href} className="mg-btn mg-btn--dawn w-full mt-3" style={{ fontSize: 13 }}>Take action →</a>}
         </>
       )}
     </Card>
   );
 }
-
-function KeywordRow({ k }) {
-  const m = HEALTH[k.health] || HEALTH.new;
-  const sv = k._status ? statusView(k._status) : null;
-  const comp = k.competition ?? 50;
-  const diff = comp < 40 ? { label: "Easy", tone: "live" } : comp < 65 ? { label: "Medium", tone: "warn" } : { label: "Hard", tone: "danger" };
-  const pot = k.traffic_potential ?? 0;
-  const trafficEst = pot >= 60 ? "High traffic" : pot >= 40 ? "Medium traffic" : "Low traffic";
-  const hasVol = Number(k.volume) > 0;
-  const hist = Array.isArray(k.volume_history) ? k.volume_history : [];
-  const real = (k.gsc_impressions || 0) > 0;
+function HealthRing({ value, size = 156 }) {
+  const stroke = 12, r = size / 2 - stroke - 6, c = 2 * Math.PI * r, cx = size / 2;
+  const [off, setOff] = useState(c);
+  useEffect(() => { const t = setTimeout(() => setOff(c - ((value ?? 0) / 100) * c), 120); return () => clearTimeout(t); }, [value, c]);
+  const markers = [30, 50, 70, 90];
   return (
-    <div className="mg-surface-quiet p-3.5">
-      <div className="flex items-center gap-2">
-        <p className="text-[13.5px] font-semibold flex-1 truncate" style={{ color: "var(--fg)" }}>{k.keyword}</p>
-        {hasVol && hist.length > 1 && <VolSpark points={hist} />}
-        {k.source === "aeo" && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ color: "var(--accent-ink)", background: "var(--accent-quiet)" }} title="A question buyers ask AI assistants — Genie is writing a citable answer">AI search</span>}
-        <span className="text-[10.5px] font-medium px-1.5 py-0.5 rounded-full" style={{ color: diffColor(diff.tone), background: diffBg(diff.tone) }}>{diff.label}</span>
-        <span className="text-[13.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>{k.score}</span>
-      </div>
-      <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
-        <div className="h-full rounded-full" style={{ width: `${Math.max(3, k.score)}%`, background: m.bar, transition: "width .8s var(--ease-out)" }} />
-      </div>
-      <div className="mt-1.5 flex items-center gap-2 text-[11px] mg-subtle flex-wrap">
-        {hasVol ? (
-          <span className="font-semibold mg-num" style={{ color: "var(--fg-muted)" }}>~{Number(k.volume).toLocaleString()}/mo <span className="mg-subtle" style={{ fontWeight: 400 }}>· Google</span></span>
-        ) : (
-          <span className="font-medium" style={{ color: "var(--fg-muted)" }}>{trafficEst} <span style={{ opacity: .6 }}>· est.</span></span>
-        )}
-        <span>·</span>
-        <span>Coverage {k.coverage || 0}×</span>
-        {real && <span style={{ color: "var(--signal-live-ink)" }}>· ↑ {k.gsc_clicks || 0} real clicks · rank {k.gsc_position ? Math.round(k.gsc_position) : "—"}</span>}
-        {k.ai_checked_at && (
-          <span style={{ color: k.ai_cited ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>
-            · AI {k.ai_cited ? "cites you ✓" : "not yet"}
-          </span>
-        )}
-      </div>
-      {sv && (
-        <div className="mt-1.5 flex items-center gap-2 text-[11px] flex-wrap">
-          <span className="font-semibold px-1.5 py-0.5 rounded-full" style={{ color: toneColor(sv.tone), background: toneBg(sv.tone) }}>{sv.label}</span>
-          <span className="mg-subtle">{sv.note}</span>
-        </div>
-      )}
-      {k.usage?.length > 0 && (
-        <details className="mt-2 pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-          <summary className="cursor-pointer text-[11px] font-semibold mg-focus" style={{ color: "var(--signal-live-ink)" }}>
-            Genie used this in {k.usage.length} {k.usage.length === 1 ? "place" : "places"} →
-          </summary>
-          <div className="mt-1.5 flex flex-col gap-1">
-            {k.usage.map((u, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px]">
-                <span className="px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "var(--surface-sunken)", color: "var(--fg-muted)", fontSize: 10 }}>{channelLabel(u.channel)}</span>
-                {u.url
-                  ? <a href={u.url} target="_blank" rel="noreferrer" className="truncate flex-1 mg-focus" style={{ color: "var(--accent-ink)" }}>{u.title || channelLabel(u.channel)}</a>
-                  : <span className="truncate flex-1" style={{ color: "var(--fg-muted)" }}>{u.title || channelLabel(u.channel)}</span>}
-                <span className="mg-subtle shrink-0" style={{ fontSize: 10 }}>{u.status}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
-  );
-}
-
-function channelLabel(c) {
-  return { article: "Article", answer: "Answer page", social: "Social", reply: "Reply", email: "Email" }[c] || "Content";
-}
-
-// 12-month search-volume sparkline (real Google data).
-function VolSpark({ points }) {
-  const vals = points.map((p) => Number(p.v) || 0);
-  if (vals.length < 2) return null;
-  const w = 54, h = 16, max = Math.max(...vals, 1), step = w / (vals.length - 1);
-  const d = vals.map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`).join(" ");
-  const rising = vals[vals.length - 1] >= vals[0];
-  return (
-    <svg width={w} height={h} className="shrink-0" aria-hidden>
-      <path d={d} fill="none" stroke={rising ? "var(--signal-live)" : "var(--fg-subtle)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function AddKeyword({ host, onAdded }) {
-  const [val, setVal] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function add() {
-    if (!val.trim()) return;
-    setBusy(true);
-    try {
-      const j = await fetch("/api/keywords", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, keyword: val.trim() }) }).then((r) => r.json());
-      if (j.ok) { setVal(""); onAdded?.(j); }
-    } catch {}
-    setBusy(false);
-  }
-  return (
-    <div className="mt-4 flex items-center gap-2">
-      <input
-        value={val} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-        placeholder="Add your own keyword — Genie weaves it into the rotation"
-        className="flex-1 px-3 py-2 rounded-lg text-[13px] mg-focus"
-        style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }}
-      />
-      <button onClick={add} disabled={busy || !val.trim()} className="mg-btn mg-btn--quiet disabled:opacity-50" style={{ fontSize: 12.5 }}>
-        {busy ? "Adding…" : "Add"}
-      </button>
-    </div>
-  );
-}
-
-// The climb. Position is INVERTED on the y-axis (rank 3 sits above rank 40), so a
-// genuine improvement reads as a rising line instead of a falling one.
-function ClimbChart({ climb }) {
-  const { points, first, last, delta, clicks } = climb;
-  const w = 640, h = 120, pad = 8;
-  const vals = points.map((p) => p.position);
-  const min = Math.min(...vals), max = Math.max(...vals);
-  const span = Math.max(0.5, max - min);
-  const step = (w - pad * 2) / (points.length - 1);
-  const y = (v) => pad + ((v - min) / span) * (h - pad * 2);
-  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${(pad + i * step).toFixed(1)},${y(p.position).toFixed(1)}`).join(" ");
-  const area = `${line} L${(pad + (points.length - 1) * step).toFixed(1)},${h} L${pad},${h} Z`;
-  const climbed = delta > 0;
-  return (
-    <Card className="p-5 mt-3">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <p className="mg-eyebrow" style={{ margin: 0 }}>Your climb on Google</p>
-        <span className="text-[12px] mg-subtle">real Search Console data · {points.length} days</span>
-      </div>
-      <div className="mt-3 flex items-end gap-5 flex-wrap">
-        <div>
-          <p className="mg-num leading-none" style={{ fontSize: 34, fontWeight: 800, color: "var(--fg)" }}>{last.toFixed(1)}</p>
-          <p className="text-[11.5px] mg-subtle mt-1">average position today</p>
-        </div>
-        <div>
-          <p className="text-[15px] font-bold mg-num" style={{ color: climbed ? "var(--signal-live-ink)" : delta < 0 ? "var(--signal-warn)" : "var(--fg-muted)" }}>
-            {climbed ? "▲" : delta < 0 ? "▼" : "—"} {Math.abs(delta)}
-          </p>
-          <p className="text-[11.5px] mg-subtle mt-0.5">{climbed ? "places gained" : delta < 0 ? "places lost" : "holding"} since {points[0].date}</p>
-        </div>
-        {clicks > 0 && (
-          <div>
-            <p className="text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>{clicks.toLocaleString()}</p>
-            <p className="text-[11.5px] mg-subtle mt-0.5">clicks in this window</p>
-          </div>
-        )}
-      </div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 w-full" style={{ height: 120, overflow: "visible" }} role="img" aria-label={`Average Google position moved from ${first.toFixed(1)} to ${last.toFixed(1)}`}>
-        <defs>
-          <linearGradient id="climbFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.26" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#climbFill)" />
-        <path d={line} fill="none" stroke="var(--accent-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={pad + (points.length - 1) * step} cy={y(last)} r="3.5" fill="var(--accent-ink)" />
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="url(#healthGrad)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: "stroke-dashoffset 1.1s var(--ease-out)" }} />
+        <defs><linearGradient id="healthGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="var(--mg-dawn-500)" /><stop offset="100%" stopColor="var(--mg-dawn-600)" /></linearGradient></defs>
       </svg>
-      <p className="mt-1 text-[11.5px] mg-subtle">Higher on the chart means a better position (rank 3 sits above rank 40).</p>
+      {markers.map((m) => { const ang = (m / 100) * 2 * Math.PI - Math.PI / 2; const rr = r + stroke / 2 + 8; const mx = cx + rr * Math.cos(ang), my = cx + rr * Math.sin(ang); return (<span key={m} className="absolute mg-num" style={{ left: mx, top: my, transform: "translate(-50%,-50%)", fontSize: 9, color: "var(--fg-subtle)" }}>{m}</span>); })}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="mg-num" style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value == null ? "—" : value}</span>
+        <span className="text-[12px] mg-subtle mg-num">/100</span>
+      </div>
+    </div>
+  );
+}
+
+function NextMilestone({ active, inTop20 }) {
+  const estDays = active.map((k) => k._status?.target?.days || 30).sort((a, b) => a - b)[0] || 12;
+  const title = inTop20 > 0 ? "First page-one ranking" : "First top 20 ranking";
+  return (
+    <Card className="p-5 mg-rise">
+      <p className="text-[11px] font-bold tracking-[0.12em] mg-subtle">NEXT MILESTONE</p>
+      <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>{title}</p>
+      <p className="mt-1.5 text-[13px] mg-muted">Est. <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{estDays} days</span></p>
     </Card>
   );
 }
 
-function diffColor(tone) {
-  return tone === "live" ? "var(--signal-live-ink)" : tone === "warn" ? "var(--signal-warn)" : "var(--signal-danger)";
-}
-function diffBg(tone) {
-  return tone === "live" ? "var(--signal-live-soft)" : tone === "warn" ? "var(--signal-warn-soft)" : "var(--signal-danger-soft)";
+// ── EMPTY / FIRST RUN ───────────────────────────────────────────────────────
+function BuildStrategy({ host, busy, step, err, onBuild }) {
+  return (
+    <div className="mt-8">
+      <Card className="mg-ambient p-10 lg:p-12 text-center mg-rise">
+        <span className="mg-tile mx-auto" style={{ width: 48, height: 48, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={22} /></span>
+        <h2 className="mt-4 mg-display" style={{ fontSize: 22 }}>Let Genie build your keyword strategy</h2>
+        <p className="mt-2 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>It reads your product and derives the exact searches to rank you for, from real Google data. Then it tracks every position here, night after night.</p>
+        <button onClick={onBuild} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-50" style={{ fontSize: 14, padding: ".8rem 1.3rem" }}>
+          {busy === "derive" ? (step || "Genie is analyzing…") : host ? "Build my keyword strategy →" : "Run your first scan →"}
+        </button>
+        {busy === "derive" && <p className="mt-2 text-[12px] mg-subtle">This takes up to a minute. I’m using real Google data, not guessing.</p>}
+        {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+      </Card>
+    </div>
+  );
 }
 
-// Turn a keyword's campaign status into a plain-language progress chip: where it
-// stands vs its target, and what Genie is doing about it.
-function statusView(st) {
-  const t = st.target || { position: 10, days: 30 };
-  switch (st.state) {
-    case "achieved": return { label: `On page 1 · rank ${Math.round(st.current)}`, tone: "live", note: "Won — defending it" };
-    case "climbing": return { label: `Climbing +${st.trend}`, tone: "live", note: `Goal: top ${t.position} in ~${t.days}d` };
-    case "stalled":  return { label: "Stalled", tone: "warn", note: "Needs authority — Genie is writing support + get listed on trusted lists" };
-    case "indexing": return { label: "Indexing", tone: "info", note: "Published — waiting for Google to place it" };
-    case "working":  return { label: "Building", tone: "info", note: `Goal: top ${t.position} in ~${t.days}d` };
-    default:         return { label: "Not written yet", tone: "muted", note: `Queued · ${t.label || "planned"}` };
-  }
+// ── SMALL PARTS ─────────────────────────────────────────────────────────────
+function Tri({ dir }) {
+  if (dir === "down") return <span style={{ fontSize: 9 }}>▼</span>;
+  if (dir === "flat") return <span style={{ fontSize: 9 }}>—</span>;
+  return <span style={{ fontSize: 9 }}>▲</span>;
 }
-function toneColor(t) { return t === "live" ? "var(--signal-live-ink)" : t === "warn" ? "var(--signal-warn)" : t === "info" ? "var(--signal-info)" : "var(--fg-subtle)"; }
-function toneBg(t) { return t === "live" ? "var(--signal-live-soft)" : t === "warn" ? "var(--signal-warn-soft)" : t === "info" ? "var(--signal-info-soft)" : "var(--surface-sunken)"; }
+function LabeledSelect({ label, value, opts, onChange }) {
+  return (
+    <label className="flex items-center gap-2 text-[13px]">
+      <span className="mg-subtle">{label}:</span>
+      <span className="relative inline-flex">
+        <select value={value} onChange={(e) => onChange(RANGE_OPTS.some((o) => String(o.id) === e.target.value) ? Number(e.target.value) : e.target.value)} className="mg-filter appearance-none pr-7" style={{ cursor: "pointer" }}>
+          {opts.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+        <Icon.chevronRight size={13} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%) rotate(90deg)", color: "var(--fg-subtle)", pointerEvents: "none" }} />
+      </span>
+    </label>
+  );
+}
+function MiniSelect({ label, value, opts, onChange, prefix = "" }) {
+  return (
+    <span className="relative inline-flex">
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className="mg-filter appearance-none pr-7" style={{ cursor: "pointer" }}>
+        {opts.map((o) => <option key={o.id} value={o.id}>{prefix}{o.label}</option>)}
+      </select>
+      <Icon.chevronRight size={13} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%) rotate(90deg)", color: "var(--fg-subtle)", pointerEvents: "none" }} />
+    </span>
+  );
+}

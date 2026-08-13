@@ -384,6 +384,13 @@ html, body {
 .mg-approve-in { animation:mg-approve-in .34s var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce){ .mg-approve-in{ animation:none; } }
 
+/* ── GROWTH — the ranking chart draws itself in; keyword rows lift on hover ── */
+.mg-krow { transition:background var(--dur-2); }
+.mg-krow:hover { background:var(--surface-2); }
+.mg-draw-line { stroke-dasharray:2000; stroke-dashoffset:2000; animation:mg-draw-line 1.4s var(--ease-out) forwards; }
+@keyframes mg-draw-line { to { stroke-dashoffset:0; } }
+@media (prefers-reduced-motion: reduce){ .mg-draw-line{ animation:none; stroke-dashoffset:0; } }
+
 /* ============================================================================
    ONBOARDING — the first-time cinematic experience ("meeting your employee")
    A deliberately single-world dark stage: the night Genie works in. Self-
