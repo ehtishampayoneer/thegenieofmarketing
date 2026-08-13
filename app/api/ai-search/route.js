@@ -166,7 +166,7 @@ export async function GET(request) {
     }
   } catch {}
 
-  let decisions = [], score = null, competitors = [], engines = [];
+  let decisions = [], score = null, competitors = [], engines = [], topCompetitors = [], total = null, visible = null;
   try {
     let q = supabase.from("decisions").select("choice, rationale, confidence, meta, created_at").eq("user_id", user.id).eq("kind", "aeo_gap").order("created_at", { ascending: false }).limit(12);
     if (host) q = q.eq("host", host);
@@ -177,12 +177,15 @@ export async function GET(request) {
     if (host) q = q.eq("host", host);
     const { data } = await q;
     const m = data?.[0]?.meta;
-    if (m) { score = m.score ?? null; competitors = (m.topCompetitors || []).map((c) => c.name); engines = m.engines || []; }
+    if (m) { score = m.score ?? null; topCompetitors = m.topCompetitors || []; competitors = topCompetitors.map((c) => c.name); engines = m.engines || []; }
   } catch {}
 
   const opportunities = decisions.map((d) => {
     const rec = d.meta?.recommendation || {};
     return {
+      question: d.choice,
+      competitorsCited: d.meta?.competitorsCited || [],
+      stage: d.meta?.stage || "comparing",
       discovered: `When buyers ask AI “${d.choice}”, you’re not cited`,
       badges: [{ label: String(d.meta?.stage || "comparing").replace(/_/g, " "), tone: "dawn" }, { label: "Not cited", tone: "danger" }],
       why: d.rationale || "AI recommends competitors instead at the moment of decision.",
@@ -207,8 +210,10 @@ export async function GET(request) {
       newlyCited = [...latest].filter((q) => !prev.has(q)).slice(0, 5);
     }
   } catch {}
+  const _last = history[history.length - 1];
+  if (_last) { total = _last.total || total; visible = _last.visible || visible; }
 
-  return json({ ok: true, live: true, score, competitors, engines, history, newlyCited, opportunities });
+  return json({ ok: true, live: true, score, competitors, topCompetitors, total, visible, engines, history, newlyCited, opportunities });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
