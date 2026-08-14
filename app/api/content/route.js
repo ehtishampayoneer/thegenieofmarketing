@@ -10,6 +10,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 import { pickPostImage } from "@/lib/media";
+import { classifyEntity } from "@/lib/entity";
 import { deDash } from "@/lib/markdown";
 
 export const runtime = "nodejs";
@@ -190,6 +191,10 @@ export async function POST(request) {
       const validate = (p) => (VALID.has(p) ? p : "medium");
       const articlePriority = validate(data.articlePriority);
       const socialPriority = validate(data.socialPriority);
+      // Google Business Profile posts only matter for local businesses (map pack /
+      // "near me"). Gate on the entity's local importance so we don't spam online-only
+      // businesses with a channel they don't have.
+      const isLocal = ((classifyEntity(ai)?.dims?.localImportance) || 0) >= 0.6;
 
       if (data.article) {
         rows.push({
@@ -228,6 +233,11 @@ export async function POST(request) {
         user_id: userId, scan_id: scanId || null, type: "social_post", title: "Instagram carousel",
         payload: { platform: "instagram", carousel: true, text: carouselData.caption, targetKeyword: primaryKw, images: carouselData.images, image: carouselData.images[0], imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: true },
         target: { platform: "instagram", host: host || null }, priority: socialPriority, status: "proposed",
+      });
+      if (isLocal && data.gbpPost) rows.push({
+        user_id: userId, scan_id: scanId || null, type: "social_post", title: "Google Business post",
+        payload: { platform: "gbp", text: deDash(data.gbpPost), targetKeyword: primaryKw, image: socialImage || heroPick?.url || null, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: !!socialImage, dest: (ai.businessUrl || ai.url || (host ? `https://${host}` : "")) },
+        target: { platform: "gbp", host: host || null }, priority: socialPriority, status: "proposed",
       });
 
       if (rows.length) {
@@ -338,6 +348,7 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
   "socialPriority": "high | quick_win | strategic | low",
   "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
   "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
+  "gbpPost": "a short Google Business Profile update (2 to 3 sentences, friendly and community-rooted, ending with a soft call to action like 'Book now' or 'Stop by'). Only useful for local businesses.",
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",

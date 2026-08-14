@@ -44,6 +44,7 @@ function normalizeAction(a) {
   const platform = String(p.platform || a.target?.channel || p.channel || "").toLowerCase();
   const isX = /\b(x|twitter)\b/.test(platform);
   const isPin = platform === "pinterest";
+  const isGbp = platform === "gbp";
   const o = toOutcome(a);
   const draft = p.body || p.text || (Array.isArray(p.draft) ? p.draft.join("\n\n") : p.draft) || "";
   // ── REPUTATION SAFETY ──
@@ -59,7 +60,9 @@ function normalizeAction(a) {
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(String(draft).slice(0, 270))}`
     : isPin
       ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(p.dest || "")}&media=${encodeURIComponent(p.image || "")}&description=${encodeURIComponent(String(p.text || "").slice(0, 480))}`
-      : (p.url || null);
+      : isGbp
+        ? "https://business.google.com/posts"
+        : (p.url || null);
   return {
     id: a.id, source: "action", kind: a.type, platform, owned, executable,
     brand: brandFor(a.type, p, platform),
@@ -108,6 +111,8 @@ function brandFor(type, p, platform) {
   if (type === "article" || type === "seo_fix" || type === "distribution") return "blog";
   if (type === "outreach_email") return "mail";
   if (type === "ad_campaign") return "ads";
+  if (platform === "gbp" || platform.includes("business")) return "google";
+  if (platform.includes("pinterest")) return "pinterest";
   if (platform.includes("linkedin")) return "linkedin";
   if (platform.includes("quora")) return "quora";
   if (platform.includes("reddit")) return "reddit";
