@@ -72,6 +72,33 @@ export async function POST(_request, { params }) {
     return json({ ok: false, blocked: true, error: "Genie held this back to protect your brand: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
   }
 
+  // ── REFRESH branch — re-optimized content republished IN PLACE (same URL) ──
+  // Keeps the page's ranking equity instead of forking a duplicate. Targets the
+  // hosted Genie Page it came from; re-pings indexing so the update is picked up.
+  if (isArticle && p.refresh && p.refreshPageId) {
+    const now = new Date().toISOString();
+    await supabase.from("actions").update({ status: "executing", updated_at: now }).eq("id", action.id);
+    try {
+      const html = markdownToHtml(p.body || "");
+      const { updateHostedPage } = await import("@/lib/pages");
+      const page = await updateHostedPage(supabase, {
+        pageId: p.refreshPageId, userId: user.id,
+        title: p.title, bodyHtml: html, metaDescription: p.metaDescription || "",
+        heroImage: p.heroImage, heroAlt: p.heroImageAlt || null,
+        faq: Array.isArray(p.faq) ? p.faq : null,
+      });
+      const result = { url: page.url, pageId: page.id, publishedAt: now, channel: "genie_pages", refreshed: true };
+      await supabase.from("actions").update({ status: "done", result, executed_at: now, updated_at: now }).eq("id", action.id);
+      try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
+      try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
+      return json({ ok: true, result, refreshed: true });
+    } catch (e) {
+      const reason = String(e?.message || "Refresh failed").slice(0, 300);
+      await supabase.from("actions").update({ status: "failed", result: { error: reason }, updated_at: now }).eq("id", action.id);
+      return json({ ok: false, error: "Refresh failed: " + reason }, 502);
+    }
+  }
+
   // ── X / Twitter branch: real auto-post to the user's own account ──
   if (isX) {
     const { postToX } = await import("@/lib/x");

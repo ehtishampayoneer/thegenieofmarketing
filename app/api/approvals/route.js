@@ -72,6 +72,7 @@ function normalizeAction(a) {
     imageCredit: p.imageCredit || null,
     imageBranded: !!p.branded,
     cardHeadline: p.cardHeadline || null,
+    isRefresh: !!p.refresh,
     draft, why: p.rationale || null, target_url,
     keyword: p.targetKeyword || null,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],

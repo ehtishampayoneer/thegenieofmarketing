@@ -339,6 +339,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <span className="mg-subtle">|</span>
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
         <Pill tone={im.pill}>{im.label} impact</Pill>
+        {item.isRefresh && <Pill tone="info">Refresh</Pill>}
         {item.image && <Pill tone="neutral"><Icon.eye size={11} /> Image</Pill>}
         <div className="ml-auto flex items-center gap-1">
           <button onClick={onToggleSave} className="mg-focus p-1.5 rounded-lg" style={{ color: saved ? "var(--accent-ink)" : "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer" }} aria-label="Save" title="Save for later">

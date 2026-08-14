@@ -35,6 +35,10 @@ export async function POST(request) {
 
   try {
     const metrics = await runEntityPipeline(admin, appUrl, { userId, host });
+    // Content-refresh loop: if a published page has gone stale (>30 days untouched),
+    // stage one improved version for approval. Best-effort, self-limiting (skips if a
+    // refresh is already queued), never blocks the run.
+    try { const { refreshStalePage } = await import("@/lib/refresh"); await refreshStalePage(admin, { userId, host, minStaleDays: 30 }); } catch {}
     await recordEvent(admin, { userId, host, type: "system.entity.run", actor: "system", data: metrics });
     await recordEvent(admin, { userId, host, type: "system.entity.done", actor: "system", dedupeKey: `entity-done:${userId}:${host}:${day}`, data: { day } });
     logger.info("entity.done", { userId, host, ...metrics });

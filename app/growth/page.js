@@ -40,8 +40,19 @@ function Growth() {
   const [busy, setBusy] = useState("");
   const [step, setStep] = useState("");
   const [deriveErr, setDeriveErr] = useState("");
+  const [refreshMsg, setRefreshMsg] = useState("");
   const [range, setRange] = useState(30);
   const [compare, setCompare] = useState("prev");
+
+  async function refreshPage() {
+    if (busy) return;
+    setBusy("refresh"); setRefreshMsg("");
+    try {
+      const j = await fetch("/api/content/refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) }).then((r) => r.json());
+      setRefreshMsg(j?.ok ? "On it. I’m re-optimizing your stalest page. It’ll appear in Approvals in about 30 seconds." : (j?.message || "Nothing to refresh right now."));
+    } catch { setRefreshMsg("Couldn’t start that just now. Try again in a moment."); }
+    setBusy("");
+  }
 
   async function loadFor(h) {
     const [k, s] = await Promise.all([
@@ -107,10 +118,16 @@ function Growth() {
           <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Growth</h1>
           <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
         </div>
-        <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
-          <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={refreshPage} disabled={busy === "refresh" || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Re-optimize your stalest published page and republish it in place">
+            <Icon.history size={14} /> {busy === "refresh" ? "Refreshing…" : "Refresh a page"}
+          </button>
+          <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
+            <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}
+          </button>
+        </div>
       </div>
+      {refreshMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{refreshMsg}</p>}
 
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.growth} title="I can’t reach your growth data" sub="Sign in and I’ll show your rankings and strategy." /></div>
