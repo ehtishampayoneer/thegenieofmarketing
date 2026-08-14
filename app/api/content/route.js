@@ -130,7 +130,7 @@ export async function POST(request) {
       // own site first (the authentic, competitive option), then free stock matched
       // to the topic. This means the post ships with a visual AND the Approvals
       // preview shows exactly what publishes. Best-effort — text-only if none found.
-      let heroPick = null, socialImage = null, pinData = null;
+      let heroPick = null, socialImage = null, pinData = null, carouselData = null;
       try {
         heroPick = await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
         if (heroPick && data.article) {
@@ -169,6 +169,17 @@ export async function POST(request) {
             const pinDesc = `${data.article?.metaDescription || headline}${camelKw ? ` #${camelKw}` : ""}`.slice(0, 480);
             const bizUrl = ai.businessUrl || ai.url || (host ? `https://${host}` : "");
             pinData = { image: pin.href, title: data.article?.title || headline, desc: pinDesc, dest: bizUrl };
+
+            // Instagram/LinkedIn CAROUSEL — a photo cover + text slides teaching the
+            // key points. The highest-engagement social format, same card composer.
+            const slides = Array.isArray(data.carousel) ? data.carousel.filter((s) => s && s.heading).slice(0, 4) : [];
+            if (slides.length >= 2) {
+              const mk = (extra) => { const c = new URL("/api/card", appOrigin); c.searchParams.set("name", bizName || ""); c.searchParams.set("handle", handle); if (ai.brandColor) c.searchParams.set("brand", ai.brandColor); c.searchParams.set("ratio", "square"); for (const [k, v] of Object.entries(extra)) if (v != null && v !== "") c.searchParams.set(k, String(v)); return c.href; };
+              const total = slides.length + 1;
+              const cover = mk({ img: heroPick.url, title: data.cardHeadline || data.article?.title || headline });
+              const slideUrls = slides.map((s, i) => mk({ title: s.heading, body: s.text || "", index: i + 2, total }));
+              carouselData = { images: [cover, ...slideUrls], caption: `${data.article?.metaDescription || headline}` };
+            }
           }
         }
       } catch {}
@@ -212,6 +223,11 @@ export async function POST(request) {
         user_id: userId, scan_id: scanId || null, type: "social_post", title: "Pinterest pin",
         payload: { platform: "pinterest", text: pinData.desc, pinTitle: pinData.title, targetKeyword: primaryKw, image: pinData.image, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, imageCredit: heroPick?.credit || null, branded: true, dest: pinData.dest },
         target: { platform: "pinterest", host: host || null }, priority: socialPriority, status: "proposed",
+      });
+      if (carouselData) rows.push({
+        user_id: userId, scan_id: scanId || null, type: "social_post", title: "Instagram carousel",
+        payload: { platform: "instagram", carousel: true, text: carouselData.caption, targetKeyword: primaryKw, images: carouselData.images, image: carouselData.images[0], imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: true },
+        target: { platform: "instagram", host: host || null }, priority: socialPriority, status: "proposed",
       });
 
       if (rows.length) {
@@ -321,6 +337,7 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
   "articlePriority": "high | quick_win | strategic | low",
   "socialPriority": "high | quick_win | strategic | low",
   "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
+  "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",

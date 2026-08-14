@@ -44,6 +44,7 @@ function impactMeta(impact) {
 function typeLabel(it) {
   if (!it) return "";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `${it.platform ? plat(it.platform) : "Community"} reply`.toUpperCase();
+  if (it.isCarousel) return `${plat(it.platform || "Instagram")} carousel`.toUpperCase();
   if (it.platform === "pinterest") return "PINTEREST PIN";
   return ({ article: "BLOG ARTICLE", social_post: "SOCIAL POST", outreach_email: "EMAIL", seo_fix: "SEO FIX", ad_campaign: "AD CAMPAIGN", distribution: "DISTRIBUTION" })[it.kind] || String(it.kind || "recommendation").replace(/_/g, " ").toUpperCase();
 }
@@ -340,7 +341,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
         <Pill tone={im.pill}>{im.label} impact</Pill>
         {item.isRefresh && <Pill tone="info">Refresh</Pill>}
-        {item.image && <Pill tone="neutral"><Icon.eye size={11} /> Image</Pill>}
+        {item.isCarousel ? <Pill tone="live">{(item.images?.length || 0)} slides</Pill> : item.image && <Pill tone="neutral"><Icon.eye size={11} /> Image</Pill>}
         <div className="ml-auto flex items-center gap-1">
           <button onClick={onToggleSave} className="mg-focus p-1.5 rounded-lg" style={{ color: saved ? "var(--accent-ink)" : "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer" }} aria-label="Save" title="Save for later">
             <Bookmark filled={saved} />
@@ -388,7 +389,19 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             <span className="text-[11.5px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
           </div>
           <div className="thin-scroll" style={{ maxHeight: 360, overflowY: "auto", padding: "18px 20px", background: "var(--surface)" }}>
-            {item.image && !editing && (
+            {!editing && item.images && item.images.length > 1 ? (
+              <figure style={{ margin: "0 0 14px" }}>
+                <div className="thin-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6 }}>
+                  {item.images.map((src, i) => (
+                    <img key={i} src={src} alt="" loading="lazy" style={{ height: 220, width: 220, objectFit: "cover", borderRadius: 12, border: "1px solid var(--hair)", flex: "none", background: "var(--surface-2)" }} />
+                  ))}
+                </div>
+                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 2px" }}>
+                  <span style={{ fontWeight: 700, color: "var(--signal-live-ink)" }}>Carousel</span>
+                  <span>· {item.images.length} slides · swipe to preview · upload all when you post</span>
+                </figcaption>
+              </figure>
+            ) : item.image && !editing && (
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
                 <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
                 <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
@@ -554,6 +567,7 @@ function ApprovalQueue({ view, idx, onPick }) {
 }
 function queueTitle(it) {
   if (it.kind === "article") return "Publish a blog article";
+  if (it.isCarousel) return `${plat(it.platform || "Instagram")} carousel`;
   if (it.platform === "pinterest") return "Pin to Pinterest";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `Reply on ${plat(it.platform || "community")}`;
   if (it.kind === "outreach_email") return "Send an outreach email";

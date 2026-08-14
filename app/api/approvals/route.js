@@ -66,6 +66,8 @@ function normalizeAction(a) {
     title: o.title || a.title || labelFor(a.type),
     outcome: o.value || "",
     image: p.heroImage || p.image || null,
+    images: Array.isArray(p.images) ? p.images : null,
+    isCarousel: !!p.carousel,
     imageRaw: p.imageRaw || null,
     imageAlt: p.heroImageAlt || p.imageAlt || null,
     imageSource: p.imageSource || null,
