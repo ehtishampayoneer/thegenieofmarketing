@@ -91,6 +91,7 @@ export async function POST(_request, { params }) {
       await supabase.from("actions").update({ status: "done", result, executed_at: now, updated_at: now }).eq("id", action.id);
       try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
       try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
+      try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
       return json({ ok: true, result, refreshed: true });
     } catch (e) {
       const reason = String(e?.message || "Refresh failed").slice(0, 300);
@@ -176,6 +177,8 @@ export async function POST(_request, { params }) {
       // Instant-index it (free) so Bing/Yandex — and the engines AI search reads —
       // pick it up in hours, not weeks. No-op if INDEXNOW_KEY isn't set.
       try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
+      // Nudge Google to crawl it now (via the owner's Google connection + indexing scope).
+      try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
       return json({ ok: true, result, hosted: true });
     } catch (e) {
       const reason = String(e?.message || "Hosted publish failed").slice(0, 300);
@@ -240,6 +243,12 @@ export async function POST(_request, { params }) {
       action_id: action.id, user_id: user.id, event: "executed", meta: result,
     });
   } catch {}
+
+  // Nudge fast (re)crawl of the published post on the owner's own domain.
+  if (result.url) {
+    try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(result.url); } catch {}
+    try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, result.url); } catch {}
+  }
 
   return json({ ok: true, result });
 }
