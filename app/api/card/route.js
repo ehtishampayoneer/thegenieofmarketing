@@ -14,20 +14,29 @@ export const dynamic = "force-dynamic";
 const HEX = /^#?[0-9a-fA-F]{6}$/;
 const clampHex = (c, d) => (c && HEX.test(c) ? (c[0] === "#" ? c : "#" + c) : d);
 
-// Fetch the photo and inline it as a data URI, but only for formats Satori renders
-// reliably (jpeg/png). webp/avif/failed → null, and we fall back to a brand panel.
+// Fetch a jpeg/png as a data URI (Satori renders those reliably). Returns null for
+// any other content-type WITHOUT downloading the body.
+async function toDataUri(u) {
+  const r = await fetch(u, { headers: { "User-Agent": "GenieCard/1.0" }, signal: AbortSignal.timeout(7000) });
+  const ct = (r.headers.get("content-type") || "").toLowerCase().split(";")[0];
+  if (!r.ok || !/image\/(jpeg|jpg|png)/.test(ct)) return null;
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  if (bytes.length > 6_000_000) return null;
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return `data:${ct};base64,${btoa(bin)}`;
+}
+
+// Inline the photo. jpeg/png go straight in; anything else (webp, avif, gif) is
+// converted to jpeg for free via the weserv image proxy, so ANY product photo can
+// go in a card. Total failure → null, and the card falls back to a brand panel.
 async function inlinePhoto(url) {
   if (!url) return null;
   if (url.startsWith("data:image/")) return url;
   try {
-    const r = await fetch(url, { headers: { "User-Agent": "GenieCard/1.0" }, signal: AbortSignal.timeout(6000) });
-    const ct = (r.headers.get("content-type") || "").toLowerCase();
-    if (!r.ok || !/image\/(jpeg|jpg|png)/.test(ct)) return null;
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    if (bytes.length > 5_000_000) return null;
-    let bin = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-    return `data:${ct.split(";")[0]};base64,${btoa(bin)}`;
+    const direct = await toDataUri(url);
+    if (direct) return direct;
+    return await toDataUri(`https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=jpg&w=1400&q=82`);
   } catch { return null; }
 }
 
