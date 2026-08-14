@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublishedPage, pageUrl } from "@/lib/pages";
 import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
+import SubscribeBox from "@/components/p/SubscribeBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,6 +80,7 @@ export default async function ArticlePage({ params }) {
         {page.meta_description ? <p className="gp-lede">{page.meta_description}</p> : null}
         {page.hero_image ? <img className="gp-hero" src={page.hero_image} alt={page.hero_alt || page.title} /> : null}
         <div className="gp-body" dangerouslySetInnerHTML={{ __html: page.body_html }} />
+        <SubscribeBox handle={page.handle} slug={page.slug} business={author} topic={page.target_keyword || null} />
         {bizUrl ? (
           <aside className="gp-cta">
             <p className="gp-cta-k">From {author}</p>
