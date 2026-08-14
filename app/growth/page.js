@@ -148,7 +148,7 @@ function Growth() {
           <div className="mt-4 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5 items-start">
             {/* ── MAIN ── */}
             <div className="min-w-0 flex flex-col gap-5">
-              <RankingProgression points={windowPoints} tracked={tracked} improvedBy={improvedBy} climb={climb} compare={compare} />
+              <RankingProgression points={windowPoints} tracked={tracked} improvedBy={improvedBy} climb={climb} compare={compare} conns={conns} />
               <MetricsRow tracked={tracked} avgPosition={avgPosition} improvedBy={improvedBy} inTop20={inTop20} aiCitations={aiCitations} points={windowPoints} />
               <KeywordTable active={active} series={d.series} host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />
               <StrategyPhase active={active} inTop20={inTop20} />
@@ -167,9 +167,10 @@ function Growth() {
 }
 
 // ── RANKING PROGRESSION (hero) ──────────────────────────────────────────────
-function RankingProgression({ points, tracked, improvedBy, climb, compare }) {
+function RankingProgression({ points, tracked, improvedBy, climb, compare, conns }) {
   const [showDetails, setShowDetails] = useState(false);
   const improved = improvedBy > 0;
+  const googleOn = conns?.google?.connected === true;
   return (
     <Card className="p-6 mg-rise">
       <div className="flex items-start justify-between gap-3">
@@ -199,7 +200,11 @@ function RankingProgression({ points, tracked, improvedBy, climb, compare }) {
       ) : (
         <div className="mt-4 rounded-xl px-5 py-10 text-center" style={{ border: "1px dashed var(--border-strong)" }}>
           <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>Your ranking line starts as soon as positions come in.</p>
-          <p className="mt-1 text-[12.5px] mg-muted max-w-sm mx-auto">I record your average Google position every night. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google Search Console</a> for live rankings.</p>
+          {googleOn ? (
+            <p className="mt-1 text-[12.5px] mg-muted max-w-md mx-auto">Google is connected ✓. I record your average position every night — the line fills in once your pages are indexed and Search Console starts reporting for your site (usually a few days after your first article goes live). <a href="/approvals" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Publish your first page</a> to start the clock.</p>
+          ) : (
+            <p className="mt-1 text-[12.5px] mg-muted max-w-sm mx-auto">I record your average Google position every night. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google Search Console</a> for live rankings.</p>
+          )}
         </div>
       )}
     </Card>

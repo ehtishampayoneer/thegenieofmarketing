@@ -247,7 +247,8 @@ export default function ApprovalsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [current, editing, editDraft, view.length, idx, openMenu, confirmBulk, working]);
 
-  const empty = state !== "disconnected" && view.length === 0;
+  const loading = state === "loading";
+  const empty = !loading && state !== "disconnected" && view.length === 0;
 
   return (
     <OperatorShell active="approvals">
@@ -256,7 +257,7 @@ export default function ApprovalsPage() {
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.tasks size={14} /> Approvals <span className="mg-subtle">›</span> {state === "real" ? <Provenance kind="live">Live data</Provenance> : <Provenance kind="sample">Preview</Provenance>}</p>
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>
-            {view.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
+            {loading ? <>Opening your <span className="dawn-text">queue…</span></> : view.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
           </h1>
         </div>
         {state === "real" && items.length > 0 && (
@@ -272,6 +273,11 @@ export default function ApprovalsPage() {
 
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.tasks} title="I can’t reach your queue" sub="Sign in and I’ll show you everything I’ve drafted." /></div>
+      ) : loading ? (
+        <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
+          <div className="mg-surface p-6" style={{ minHeight: 320 }}><div className="mg-skel" style={{ height: 18, width: "40%" }} /><div className="mg-skel mt-4" style={{ height: 240 }} /></div>
+          <div className="mg-surface p-6" style={{ minHeight: 160 }}><div className="mg-skel" style={{ height: 16, width: "60%" }} /><div className="mg-skel mt-3" style={{ height: 90 }} /></div>
+        </div>
       ) : empty ? (
         <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); }} />
       ) : (

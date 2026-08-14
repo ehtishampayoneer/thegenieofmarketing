@@ -259,6 +259,11 @@ html, body {
 @keyframes ap-breathe { 0%,100% { transform:scale(1); opacity:.92; } 50% { transform:scale(1.05); opacity:1; } }
 @keyframes ap-pulse { 0%,100% { opacity:.78; } 50% { opacity:1; } }
 
+/* ---- Loading skeleton (prevents the empty-state "flash" before data arrives) ---- */
+@keyframes mg-shimmer { 0% { background-position:-160% 0; } 100% { background-position:160% 0; } }
+.mg-skel { border-radius:10px; background:linear-gradient(90deg,var(--surface-sunken) 25%,var(--hair) 37%,var(--surface-sunken) 63%); background-size:200% 100%; animation:mg-shimmer 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mg-skel { animation:none; } }
+
 /* ---- V2 motion utilities ---- */
 @keyframes mg-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 .mg-rise { animation:mg-rise .5s var(--ease-out) both; }

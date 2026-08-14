@@ -116,6 +116,8 @@ export default function AiSearchPage() {
 
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.spark} title="I can’t reach AI search" sub="Sign in and I’ll show whether AI recommends you." /></div>
+      ) : state === "loading" ? (
+        <div className="mt-6 mg-surface p-6" style={{ minHeight: 300 }}><div className="mg-skel" style={{ height: 18, width: "45%" }} /><div className="mg-skel mt-4" style={{ height: 120 }} /><div className="mg-skel mt-4" style={{ height: 90 }} /></div>
       ) : state !== "real" ? (
         <FirstCheck checking={checking} step={checkStep} onCheck={recheck} host={today?.entity?.host} />
       ) : (

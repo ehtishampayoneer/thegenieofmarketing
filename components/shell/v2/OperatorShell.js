@@ -36,7 +36,7 @@ const NAV = [
   { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "settings", label: "Settings", icon: Icon.settings },
-  { id: "showcase", label: "What Genie can do", icon: Icon.spark, external: true },
+  { id: "capabilities", label: "What Genie can do", icon: Icon.spark },
 ];
 
 // The command bar's rotating prompt — shows the operator what they can ask for.
@@ -286,7 +286,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", conversations: "/conversations", prospects: "/prospects", inbox: "/inbox", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning",
-    trust: "/trust", connections: "/connections", settings: "/settings", showcase: "/showcase",
+    trust: "/trust", connections: "/connections", settings: "/settings", capabilities: "/capabilities",
   };
   return map[id] || "/today";
 }
