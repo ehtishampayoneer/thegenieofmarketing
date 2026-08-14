@@ -239,6 +239,17 @@ export async function POST(request) {
         payload: { platform: "gbp", text: deDash(data.gbpPost), targetKeyword: primaryKw, image: socialImage || heroPick?.url || null, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: !!socialImage, dest: (ai.businessUrl || ai.url || (host ? `https://${host}` : "")) },
         target: { platform: "gbp", host: host || null }, priority: socialPriority, status: "proposed",
       });
+      // Review request — a reusable "ask a happy customer for a Google review" template
+      // (local only). Don't stack: only add one if none is already waiting in Approvals.
+      if (isLocal && data.reviewRequest) {
+        let hasPending = false;
+        try { const { data: ex } = await supabase.from("actions").select("id").eq("user_id", userId).eq("status", "proposed").contains("payload", { platform: "review_request" }).limit(1); hasPending = !!ex?.length; } catch {}
+        if (!hasPending) rows.push({
+          user_id: userId, scan_id: scanId || null, type: "social_post", title: "Review request",
+          payload: { platform: "review_request", text: deDash(data.reviewRequest), targetKeyword: primaryKw },
+          target: { platform: "review_request", host: host || null }, priority: "quick_win", status: "proposed",
+        });
+      }
 
       if (rows.length) {
         const { data: inserted } = await supabase.from("actions").insert(rows).select("id, type");
@@ -349,6 +360,7 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
   "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
   "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
   "gbpPost": "a short Google Business Profile update (2 to 3 sentences, friendly and community-rooted, ending with a soft call to action like 'Book now' or 'Stop by'). Only useful for local businesses.",
+  "reviewRequest": "a warm, short message the owner can send to a happy customer asking them to leave a Google review (2 to 3 sentences, grateful and low-pressure, no link — the owner adds theirs). Only useful for local businesses.",
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",

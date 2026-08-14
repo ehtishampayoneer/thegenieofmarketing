@@ -46,11 +46,12 @@ function typeLabel(it) {
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `${it.platform ? plat(it.platform) : "Community"} reply`.toUpperCase();
   if (it.isCarousel) return `${plat(it.platform || "Instagram")} carousel`.toUpperCase();
   if (it.platform === "gbp") return "GOOGLE BUSINESS POST";
+  if (it.platform === "review_request") return "REVIEW REQUEST";
   if (it.platform === "pinterest") return "PINTEREST PIN";
   return ({ article: "BLOG ARTICLE", social_post: "SOCIAL POST", outreach_email: "EMAIL", seo_fix: "SEO FIX", ad_campaign: "AD CAMPAIGN", distribution: "DISTRIBUTION" })[it.kind] || String(it.kind || "recommendation").replace(/_/g, " ").toUpperCase();
 }
 function cap(s) { return String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1); }
-const PLATFORM_NAME = { x: "X", twitter: "X", linkedin: "LinkedIn", reddit: "Reddit", instagram: "Instagram", facebook: "Facebook", medium: "Medium", quora: "Quora", tiktok: "TikTok", youtube: "YouTube", pinterest: "Pinterest", gbp: "Google Business" };
+const PLATFORM_NAME = { x: "X", twitter: "X", linkedin: "LinkedIn", reddit: "Reddit", instagram: "Instagram", facebook: "Facebook", medium: "Medium", quora: "Quora", tiktok: "TikTok", youtube: "YouTube", pinterest: "Pinterest", gbp: "Google Business", review_request: "Google review" };
 function plat(p) { return PLATFORM_NAME[String(p || "").toLowerCase()] || cap(p); }
 function matchesType(it, f) {
   if (f === "all") return true;
@@ -570,6 +571,7 @@ function queueTitle(it) {
   if (it.kind === "article") return "Publish a blog article";
   if (it.isCarousel) return `${plat(it.platform || "Instagram")} carousel`;
   if (it.platform === "gbp") return "Post to Google Business";
+  if (it.platform === "review_request") return "Ask for a review";
   if (it.platform === "pinterest") return "Pin to Pinterest";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `Reply on ${plat(it.platform || "community")}`;
   if (it.kind === "outreach_email") return "Send an outreach email";
