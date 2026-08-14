@@ -51,7 +51,11 @@ export default async function ArticlePage({ params }) {
 
   const faq = Array.isArray(page.faq) ? page.faq.filter((f) => f && f.q && f.a) : [];
   const orgId = bizClean ? `${bizClean}#org` : undefined;
+  const handleUrl = url.replace(/\/[^/]+$/, ""); // .../p/<handle>
+  const words = String(page.body_html || "").replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
   const org = { "@type": "Organization", ...(orgId ? { "@id": orgId } : {}), name: author, url: bizClean || undefined };
+  // Hero as a proper ImageObject (Google prefers it over a bare URL for rich results).
+  const heroObj = page.hero_image ? { "@type": "ImageObject", url: page.hero_image, ...(page.hero_alt ? { caption: page.hero_alt } : {}) } : undefined;
   const blog = {
     "@type": "BlogPosting",
     headline: page.title,
@@ -61,14 +65,25 @@ export default async function ArticlePage({ params }) {
     author: orgId ? { "@id": orgId } : org,
     publisher: orgId ? { "@id": orgId } : org,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    image: page.hero_image || undefined,
+    inLanguage: "en",
+    ...(words ? { wordCount: words } : {}),
+    ...(page.target_keyword ? { articleSection: page.target_keyword, keywords: page.target_keyword } : {}),
+    ...(heroObj ? { image: heroObj } : {}),
   };
   const faqNode = faq.length
     ? { "@type": "FAQPage", mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) }
     : null;
-  // A @graph carries the business entity + the article + its FAQ together — the
-  // structured signals Google's rich results and AI answer engines read most.
-  const jsonLd = { "@context": "https://schema.org", "@graph": [org, blog, faqNode].filter(Boolean) };
+  // Breadcrumb → the business hub, then this article (breadcrumb rich results).
+  const breadcrumb = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: author, item: handleUrl },
+      { "@type": "ListItem", position: 2, name: page.title, item: url },
+    ],
+  };
+  // A @graph carries the business, the article, its FAQ and breadcrumb together —
+  // the structured signals Google's rich results and AI answer engines read most.
+  const jsonLd = { "@context": "https://schema.org", "@graph": [org, blog, faqNode, breadcrumb].filter(Boolean) };
 
   return (
     <main className="gp">
