@@ -46,12 +46,13 @@ export async function GET(request) {
   const name = (searchParams.get("name") || "Your brand").slice(0, 32);
   const handle = (searchParams.get("handle") || "").slice(0, 32);
   const brand = clampHex(searchParams.get("brand"), "#F5A623");
-  const wide = searchParams.get("ratio") === "wide";
-  const W = wide ? 1200 : 1080;
-  const H = wide ? 630 : 1080;
-  const photoH = Math.round(H * (wide ? 0.56 : 0.6));
+  const ratio = searchParams.get("ratio"); // "wide" | "tall" (2:3 pin) | square (default)
+  const wide = ratio === "wide", tall = ratio === "tall";
+  const W = wide ? 1200 : tall ? 1000 : 1080;
+  const H = wide ? 630 : tall ? 1500 : 1080;
+  const photoH = Math.round(H * (wide ? 0.56 : tall ? 0.66 : 0.6));
   const pad = wide ? 44 : 56;
-  const headlineSize = wide ? 46 : 58;
+  const headlineSize = wide ? 46 : tall ? 62 : 58;
 
   const photo = await inlinePhoto(searchParams.get("img"));
   const initial = (name.trim()[0] || "•").toUpperCase();

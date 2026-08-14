@@ -43,6 +43,7 @@ function normalizeAction(a) {
   const p = a.payload || {};
   const platform = String(p.platform || a.target?.channel || p.channel || "").toLowerCase();
   const isX = /\b(x|twitter)\b/.test(platform);
+  const isPin = platform === "pinterest";
   const o = toOutcome(a);
   const draft = p.body || p.text || (Array.isArray(p.draft) ? p.draft.join("\n\n") : p.draft) || "";
   // ── REPUTATION SAFETY ──
@@ -52,9 +53,13 @@ function normalizeAction(a) {
   // social is what gets accounts flagged/suspended — we never do it by default.
   const owned = a.type === "article";
   const executable = a.type === "article";
+  // Pinterest's pin-create URL prefills the image (media), destination link and
+  // description — the owner just picks a board and saves. No auto-post, no OAuth.
   const target_url = isX
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(String(draft).slice(0, 270))}`
-    : (p.url || null);
+    : isPin
+      ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(p.dest || "")}&media=${encodeURIComponent(p.image || "")}&description=${encodeURIComponent(String(p.text || "").slice(0, 480))}`
+      : (p.url || null);
   return {
     id: a.id, source: "action", kind: a.type, platform, owned, executable,
     brand: brandFor(a.type, p, platform),

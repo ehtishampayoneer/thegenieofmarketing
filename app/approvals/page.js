@@ -44,10 +44,11 @@ function impactMeta(impact) {
 function typeLabel(it) {
   if (!it) return "";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `${it.platform ? plat(it.platform) : "Community"} reply`.toUpperCase();
+  if (it.platform === "pinterest") return "PINTEREST PIN";
   return ({ article: "BLOG ARTICLE", social_post: "SOCIAL POST", outreach_email: "EMAIL", seo_fix: "SEO FIX", ad_campaign: "AD CAMPAIGN", distribution: "DISTRIBUTION" })[it.kind] || String(it.kind || "recommendation").replace(/_/g, " ").toUpperCase();
 }
 function cap(s) { return String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1); }
-const PLATFORM_NAME = { x: "X", twitter: "X", linkedin: "LinkedIn", reddit: "Reddit", instagram: "Instagram", facebook: "Facebook", medium: "Medium", quora: "Quora", tiktok: "TikTok", youtube: "YouTube" };
+const PLATFORM_NAME = { x: "X", twitter: "X", linkedin: "LinkedIn", reddit: "Reddit", instagram: "Instagram", facebook: "Facebook", medium: "Medium", quora: "Quora", tiktok: "TikTok", youtube: "YouTube", pinterest: "Pinterest" };
 function plat(p) { return PLATFORM_NAME[String(p || "").toLowerCase()] || cap(p); }
 function matchesType(it, f) {
   if (f === "all") return true;
@@ -442,7 +443,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
           </>
         ) : (
           <>
-            <button className="mg-btn mg-btn--dawn" onClick={onApprove} disabled={working}>{working ? "Publishing…" : item.owned ? "Approve & publish" : "Copy & open"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></button>
+            <button className="mg-btn mg-btn--dawn" onClick={onApprove} disabled={working}>{working ? "Publishing…" : item.owned ? "Approve & publish" : item.platform === "pinterest" ? "Save to Pinterest" : "Copy & open"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></button>
             <button className="mg-btn mg-btn--ghost" onClick={onEdit}>Edit <span className="mg-kbd" style={{ marginLeft: 4 }}>E</span></button>
             <button className="mg-btn mg-btn--quiet" onClick={onSkip}>Skip <span className="mg-kbd" style={{ marginLeft: 4 }}>S</span></button>
             <div className="ml-auto flex items-center gap-2">
@@ -552,6 +553,7 @@ function ApprovalQueue({ view, idx, onPick }) {
 }
 function queueTitle(it) {
   if (it.kind === "article") return "Publish a blog article";
+  if (it.platform === "pinterest") return "Pin to Pinterest";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `Reply on ${plat(it.platform || "community")}`;
   if (it.kind === "outreach_email") return "Send an outreach email";
   if (it.platform) return `Post to ${plat(it.platform)}`;

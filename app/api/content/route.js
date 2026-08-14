@@ -130,7 +130,7 @@ export async function POST(request) {
       // own site first (the authentic, competitive option), then free stock matched
       // to the topic. This means the post ships with a visual AND the Approvals
       // preview shows exactly what publishes. Best-effort — text-only if none found.
-      let heroPick = null, socialImage = null;
+      let heroPick = null, socialImage = null, pinData = null;
       try {
         heroPick = await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
         if (heroPick && data.article) {
@@ -155,6 +155,20 @@ export async function POST(request) {
             if (ai.brandColor) u.searchParams.set("brand", ai.brandColor);
             u.searchParams.set("ratio", "square");
             socialImage = u.href;
+
+            // Pinterest pin: a vertical (2:3) branded card + keyword-rich title and
+            // description, linking back to the business. Evergreen visual-search reach.
+            const pin = new URL("/api/card", appOrigin);
+            pin.searchParams.set("img", heroPick.url);
+            pin.searchParams.set("title", headline);
+            pin.searchParams.set("name", bizName || "");
+            pin.searchParams.set("handle", handle);
+            if (ai.brandColor) pin.searchParams.set("brand", ai.brandColor);
+            pin.searchParams.set("ratio", "tall");
+            const camelKw = String(primaryKw || "").replace(/[^a-z0-9]+/gi, "");
+            const pinDesc = `${data.article?.metaDescription || headline}${camelKw ? ` #${camelKw}` : ""}`.slice(0, 480);
+            const bizUrl = ai.businessUrl || ai.url || (host ? `https://${host}` : "");
+            pinData = { image: pin.href, title: data.article?.title || headline, desc: pinDesc, dest: bizUrl };
           }
         }
       } catch {}
@@ -194,6 +208,11 @@ export async function POST(request) {
       if (social.linkedin) pushSocial("LinkedIn", social.linkedin);
       (social.instagram || []).forEach((t) => pushSocial("Instagram", t));
       (social.facebook || []).forEach((t) => pushSocial("Facebook", t));
+      if (pinData) rows.push({
+        user_id: userId, scan_id: scanId || null, type: "social_post", title: "Pinterest pin",
+        payload: { platform: "pinterest", text: pinData.desc, pinTitle: pinData.title, targetKeyword: primaryKw, image: pinData.image, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, imageCredit: heroPick?.credit || null, branded: true, dest: pinData.dest },
+        target: { platform: "pinterest", host: host || null }, priority: socialPriority, status: "proposed",
+      });
 
       if (rows.length) {
         const { data: inserted } = await supabase.from("actions").insert(rows).select("id, type");
