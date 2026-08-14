@@ -21,7 +21,7 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
-  const { id, source, act, draft } = body || {};
+  const { id, source, act, draft, image, imageRaw, hook, imageSource, imageCredit, branded } = body || {};
   if (!id || !source || !act) return json({ ok: false, error: "id, source and act are required." }, 400);
 
   try {
@@ -49,11 +49,18 @@ export async function POST(request) {
       return json({ ok: true });
     }
 
-    // source === "action"
+    // source === "action" — persist edited text AND (new) the image + hook, so what
+    // the owner tweaked in the approval editor is exactly what gets published.
     if (act === "edit") {
-      const { data: a } = await supabase.from("actions").select("payload").eq("id", id).eq("user_id", user.id).maybeSingle();
+      const { data: a } = await supabase.from("actions").select("type, payload").eq("id", id).eq("user_id", user.id).maybeSingle();
       const payload = { ...(a?.payload || {}) };
-      if (payload.body != null || payload.text == null) payload.body = draft; else payload.text = draft;
+      if (typeof draft === "string") { if (a?.type === "article" || payload.body != null || payload.text == null) payload.body = draft; else payload.text = draft; }
+      if (image !== undefined) { if (a?.type === "article") payload.heroImage = image || null; else payload.image = image || null; }
+      if (imageRaw !== undefined) payload.imageRaw = imageRaw || null;
+      if (typeof hook === "string") payload.cardHeadline = hook;
+      if (imageSource !== undefined) payload.imageSource = imageSource || null;
+      if (imageCredit !== undefined) payload.imageCredit = imageCredit || null;
+      if (branded !== undefined) payload.branded = !!branded;
       await supabase.from("actions").update({ payload }).eq("id", id).eq("user_id", user.id);
       return json({ ok: true });
     }

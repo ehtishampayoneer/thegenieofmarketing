@@ -58,6 +58,11 @@ function matchesType(it, f) {
 }
 function matchesImpact(it, f) { return f === "all" || impactMeta(it.impact).tier === f; }
 
+// Helpers for editing a branded card's overlay hook + underlying photo in place.
+function isCardUrl(u) { try { return new URL(u, location.origin).pathname.endsWith("/api/card"); } catch { return false; } }
+function cardTitleOf(u) { try { const x = new URL(u, location.origin); return x.pathname.endsWith("/api/card") ? (x.searchParams.get("title") || "") : ""; } catch { return ""; } }
+function rebuildCard(u, { title, img }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) x.searchParams.set("img", img); return x.href; } catch { return u; } }
+
 export default function ApprovalsPage() {
   const { data: feed, state } = useLive("/api/approvals", (j) => !(j.items?.length));
   const [items, setItems] = useState([]);
@@ -74,6 +79,16 @@ export default function ApprovalsPage() {
   const [expandReason, setExpandReason] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [saved, setSaved] = useState(() => new Set());
+  // ── editing image + text ──
+  const [editHook, setEditHook] = useState("");
+  const [editImage, setEditImage] = useState(null);
+  const [editImageRaw, setEditImageRaw] = useState(null);
+  const [editBranded, setEditBranded] = useState(false);
+  const [editSource, setEditSource] = useState(null);
+  const [editCredit, setEditCredit] = useState(null);
+  const [swapOpen, setSwapOpen] = useState(false);
+  const [swapOpts, setSwapOpts] = useState([]);
+  const [swapLoading, setSwapLoading] = useState(false);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 5000); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { if (Array.isArray(feed?.items)) { setItems(feed.items); setIdx(0); } }, [feed]);
@@ -168,6 +183,48 @@ export default function ApprovalsPage() {
 
   function toggleSave(id) { setSaved((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
 
+  // ── EDIT IMAGE + TEXT ──
+  function startEdit(cur) {
+    if (!cur) return;
+    setEditDraft(cur.draft || "");
+    setEditImage(cur.image || null);
+    setEditImageRaw(cur.imageBranded ? (cur.imageRaw || null) : (cur.image || null));
+    setEditBranded(!!cur.imageBranded);
+    setEditSource(cur.imageSource || null);
+    setEditCredit(cur.imageCredit || null);
+    setEditHook(cur.imageBranded ? (cardTitleOf(cur.image) || cur.cardHeadline || "") : "");
+    setSwapOpen(false); setSwapOpts([]);
+    setEditing(true);
+  }
+  function onSetHook(v) { setEditHook(v); setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { title: v }) : img); }
+  async function openSwap(topic) {
+    const next = !swapOpen; setSwapOpen(next);
+    if (next && swapOpts.length === 0) {
+      setSwapLoading(true);
+      try {
+        const j = await fetch(`/api/media/options?topic=${encodeURIComponent(topic || "")}`, { cache: "no-store" }).then((r) => r.json());
+        if (j?.ok) setSwapOpts([...(j.site || []).map((o) => ({ ...o, source: "site" })), ...(j.stock || []).map((o) => ({ ...o, source: "stock" }))]);
+      } catch {}
+      setSwapLoading(false);
+    }
+  }
+  function pickSwap(o) {
+    setEditImageRaw(o.url);
+    setEditSource(o.source);
+    setEditCredit(o.source === "stock" ? (o.credit || "Pexels") : null);
+    setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { img: o.url, title: editHook }) : o.url);
+    setSwapOpen(false);
+  }
+  async function persistEdits(cur) {
+    try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cur.id, source: cur.source, act: "edit", draft: editDraft, image: editImage, imageRaw: editImageRaw, hook: editHook, imageSource: editSource, imageCredit: editCredit, branded: editBranded }) }); } catch {}
+    setItems((prev) => prev.map((it) => it.id === cur.id ? { ...it, draft: editDraft, image: editImage, imageRaw: editImageRaw, imageSource: editSource, imageCredit: editCredit, imageBranded: editBranded, cardHeadline: editHook } : it));
+  }
+  async function saveEdit(cur, approveAfter) {
+    await persistEdits(cur);
+    if (approveAfter) approveCurrent();
+    else { setEditing(false); setToast("Saved."); }
+  }
+
   // Keyboard: the operator's hands never leave the keys.
   useEffect(() => {
     function onKey(e) {
@@ -177,7 +234,7 @@ export default function ApprovalsPage() {
       if (!current) return;
       const k = e.key.toLowerCase();
       if (k === "a") { e.preventDefault(); approveCurrent(); }
-      else if (k === "e") { e.preventDefault(); setEditDraft(current.draft); setEditing(true); }
+      else if (k === "e") { e.preventDefault(); startEdit(current); }
       else if (k === "s") { e.preventDefault(); skipCurrent(); }
       else if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, view.length - 1));
       else if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
@@ -229,8 +286,9 @@ export default function ApprovalsPage() {
               key={current.id}
               item={current}
               editing={editing} editDraft={editDraft} setEditDraft={setEditDraft}
-              onEdit={() => { setEditDraft(current.draft); setEditing(true); }} onCancelEdit={() => setEditing(false)}
+              onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); }}
               onApprove={approveCurrent} onSkip={skipCurrent} working={working}
+              edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
               expandReason={expandReason} setExpandReason={setExpandReason}
               saved={saved.has(current.id)} onToggleSave={() => toggleSave(current.id)}
               openMore={openMenu === "more"} onToggleMore={() => setOpenMenu(openMenu === "more" ? null : "more")}
@@ -264,7 +322,7 @@ export default function ApprovalsPage() {
 }
 
 // ── THE CURRENT APPROVAL — the dominant card ────────────────────────────────
-function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext }) {
+function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext, edit }) {
   const im = impactMeta(item.impact);
   const words = approxWords(item.draft);
   const isArticle = item.kind === "article";
@@ -328,7 +386,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             <span className="text-[11.5px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
           </div>
           <div className="thin-scroll" style={{ maxHeight: 360, overflowY: "auto", padding: "18px 20px", background: "var(--surface)" }}>
-            {item.image && (
+            {item.image && !editing && (
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
                 <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
                 <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
@@ -338,7 +396,33 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               </figure>
             )}
             {editing ? (
-              <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus className="mg-field mg-focus" style={{ minHeight: 300, lineHeight: 1.68, fontSize: 14 }} />
+              <div className="flex flex-col gap-3">
+                {edit.image && (
+                  <div>
+                    <img src={edit.image} alt="" style={{ display: "block", width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, border: "1px solid var(--hair)", background: "var(--surface-2)" }} />
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <button type="button" onClick={edit.openSwap} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}><Icon.eye size={13} /> Swap photo</button>
+                      {edit.branded && (
+                        <input value={edit.hook} onChange={(e) => edit.setHook(e.target.value)} placeholder="Hook shown on the image" className="mg-field mg-focus" style={{ flex: 1, minWidth: 170, fontSize: 13 }} />
+                      )}
+                    </div>
+                    {edit.swapOpen && (
+                      <div className="mt-2">
+                        {edit.swapLoading ? <p className="text-[12px] mg-subtle px-1 py-2">Finding photos…</p> : edit.swapOpts.length ? (
+                          <div className="grid grid-cols-4 gap-2">
+                            {edit.swapOpts.slice(0, 12).map((o, i) => (
+                              <button key={i} type="button" onClick={() => edit.pickSwap(o)} className="mg-focus" title={o.source === "stock" ? "Free stock" : "Your image"} style={{ padding: 0, border: "1px solid var(--hair)", borderRadius: 8, overflow: "hidden", cursor: "pointer", background: "var(--surface-2)" }}>
+                                <img src={o.url} alt="" loading="lazy" style={{ display: "block", width: "100%", height: 54, objectFit: "cover" }} />
+                              </button>
+                            ))}
+                          </div>
+                        ) : <p className="text-[12px] mg-subtle px-1 py-2">No other photos found. Add a Pexels key for stock options.</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus className="mg-field mg-focus" style={{ minHeight: edit.image ? 150 : 280, lineHeight: 1.68, fontSize: 14 }} />
+              </div>
             ) : item.draft ? (
               <div className="mg-article" dangerouslySetInnerHTML={{ __html: markdownToHtml(deDash(item.draft)) }} />
             ) : (
@@ -352,8 +436,9 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
       <div className="flex items-center gap-2.5 px-6 py-4 mt-5 flex-wrap" style={{ borderTop: "1px solid var(--hair)", background: "var(--surface-2)" }}>
         {editing ? (
           <>
-            <button className="mg-btn mg-btn--dawn" onClick={onApprove}>Save & approve</button>
-            <button className="mg-btn mg-btn--ghost" onClick={onCancelEdit}>Cancel <span className="mg-kbd" style={{ marginLeft: 4 }}>Esc</span></button>
+            <button className="mg-btn mg-btn--dawn" onClick={edit.saveApprove} disabled={working}>Save & approve</button>
+            <button className="mg-btn mg-btn--ghost" onClick={edit.save}>Save</button>
+            <button className="mg-btn mg-btn--quiet" onClick={onCancelEdit}>Cancel <span className="mg-kbd" style={{ marginLeft: 4 }}>Esc</span></button>
           </>
         ) : (
           <>
