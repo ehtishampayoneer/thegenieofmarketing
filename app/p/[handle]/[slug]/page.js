@@ -39,6 +39,21 @@ export async function generateMetadata({ params }) {
   };
 }
 
+// Only treat a page as a HowTo when the title clearly says so AND the body has real
+// step sections. Steps come from the H2 headings (FAQ section excluded).
+function howToSteps(title, html) {
+  if (!/^\s*how (to|do|can|does)\b|^\s*(steps|ways|guide) to\b/i.test(String(title || ""))) return null;
+  const steps = [];
+  const re = /<h2[^>]*>([\s\S]*?)<\/h2>([\s\S]*?)(?=<h2|$)/gi;
+  let m;
+  while ((m = re.exec(String(html || ""))) && steps.length < 12) {
+    const name = m[1].replace(/<[^>]+>/g, "").trim();
+    const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 320);
+    if (name && !/faq|frequently asked|conclusion/i.test(name)) steps.push({ name, text });
+  }
+  return steps.length >= 2 ? steps : null;
+}
+
 export default async function ArticlePage({ params }) {
   const page = await load(params.handle, params.slug);
   if (!page) notFound();
@@ -81,9 +96,17 @@ export default async function ArticlePage({ params }) {
       { "@type": "ListItem", position: 2, name: page.title, item: url },
     ],
   };
-  // A @graph carries the business, the article, its FAQ and breadcrumb together —
-  // the structured signals Google's rich results and AI answer engines read most.
-  const jsonLd = { "@context": "https://schema.org", "@graph": [org, blog, faqNode, breadcrumb].filter(Boolean) };
+  // HowTo — derived, only when the article genuinely is a how-to (title heuristic +
+  // real H2 steps). Google retired HowTo rich results, so this is for AI answer
+  // engines + non-Google search that still read it; safe because it never mislabels
+  // a non-how-to (and no rich result means no penalty surface).
+  const steps = howToSteps(page.title, page.body_html);
+  const howToNode = steps
+    ? { "@type": "HowTo", name: page.title, ...(page.meta_description ? { description: page.meta_description } : {}), ...(heroObj ? { image: heroObj } : {}), step: steps.map((s, i) => ({ "@type": "HowToStep", position: i + 1, name: s.name, text: s.text || s.name, url: `${url}#step-${i + 1}` })) }
+    : null;
+  // A @graph carries the business, the article, its FAQ, breadcrumb (and HowTo where
+  // it applies) together — the structured signals Google and AI answer engines read.
+  const jsonLd = { "@context": "https://schema.org", "@graph": [org, blog, faqNode, breadcrumb, howToNode].filter(Boolean) };
 
   return (
     <main className="gp">
