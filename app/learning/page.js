@@ -10,7 +10,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Verified, Estimated } from "@/components/ui/v2/primitives";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
-import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { DataStateBadge, EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { useLive } from "@/lib/useLive";
 import { relTime } from "@/lib/live";
 
@@ -28,6 +28,8 @@ export default function LearningPage() {
 
       {state === "disconnected" ? (
         <EmptyState state="disconnected" icon={Icon.brain} />
+      ) : state === "loading" ? (
+        <LoadingState />
       ) : state !== "real" ? (
         <Card className="mt-6 p-12 text-center">
           <div className="inline-flex mb-3" style={{ color: "var(--accent-ink)" }}><Icon.brain size={38} /></div>

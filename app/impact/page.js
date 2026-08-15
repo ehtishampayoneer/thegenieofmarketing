@@ -11,7 +11,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
-import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { DataStateBadge, EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { relTime } from "@/lib/live";
 import { useLive } from "@/lib/useLive";
 
@@ -33,7 +33,9 @@ export default function ImpactPage() {
 
       {state === "disconnected" ? (
         <EmptyState state="disconnected" icon={Icon.bolt} />
-      ) : !d ? null : !hasRevenue ? (
+      ) : state === "loading" || !d ? (
+        <LoadingState />
+      ) : !hasRevenue ? (
         <ConnectRevenue ingest={d.ingest} empty />
       ) : (
         <>

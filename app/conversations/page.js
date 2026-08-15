@@ -13,7 +13,7 @@ import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { BrandIcon } from "@/components/ui/BrandIcon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
-import { DataStateBadge, EmptyState } from "@/components/ui/v2/DataState";
+import { DataStateBadge, EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { useLive } from "@/lib/useLive";
 
 const PLATFORM = {
@@ -46,7 +46,9 @@ export default function ConversationsPage() {
         accent="talking to your market."
       />
 
-      {state !== "real" ? (
+      {state === "loading" ? (
+        <LoadingState />
+      ) : state !== "real" ? (
         <EmptyState
           state={state === "disconnected" ? "disconnected" : "empty"}
           icon={Icon.conversations}

@@ -16,6 +16,24 @@ export function DataStateBadge({ state }) {
   }
 }
 
+// Loading skeleton — shown WHILE data is being fetched, so a page never flashes
+// its "empty / run your first scan" CTA before the real data arrives (that flash
+// read as two different pages loading in a row). Generic shimmer that fits any
+// layout; pages with a bespoke layout can pass their own via children.
+export function LoadingState({ rows = 3, children }) {
+  if (children) return <div className="mt-6">{children}</div>;
+  return (
+    <div className="mg-surface mg-rise" style={{ padding: 24, marginTop: 20 }} aria-busy="true" aria-label="Loading">
+      <div className="mg-skel" style={{ height: 18, width: "38%" }} />
+      <div className="mt-5 flex flex-col gap-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="mg-skel" style={{ height: 64, opacity: 1 - i * 0.14 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Honest empty state. `disconnected` variant nudges to sign in / run first scan.
 export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, sub, action }) {
   const disconnected = state === "disconnected";

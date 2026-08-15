@@ -11,7 +11,7 @@
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
-import { EmptyState } from "@/components/ui/v2/DataState";
+import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
 import { useLive } from "@/lib/useLive";
 import { fetchLive } from "@/lib/live";
@@ -83,7 +83,9 @@ export default function TodayPage() {
 
   return (
     <OperatorShell active="today">
-      {state === "disconnected" || state === "empty" ? (
+      {state === "loading" ? (
+        <LoadingState rows={4} />
+      ) : state === "disconnected" || state === "empty" ? (
         <FirstRun state={state} />
       ) : (
         <div className="mg-stagger" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
