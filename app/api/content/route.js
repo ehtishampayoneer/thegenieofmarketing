@@ -6,6 +6,7 @@
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
@@ -252,7 +253,13 @@ export async function POST(request) {
       }
 
       if (rows.length) {
-        const { data: inserted } = await supabase.from("actions").insert(rows).select("id, type");
+        // Persist with the service role (same as the nightly pipeline) so a strict
+        // RLS insert policy can never silently drop a user-approved draft — the very
+        // bug where "Approve this plan" reported success but nothing reached Approvals.
+        // Still strictly this user's rows (every row carries user_id: userId).
+        const admin = createAdminClient();
+        const { data: inserted, error: insErr } = await admin.from("actions").insert(rows).select("id, type");
+        if (insErr) throw insErr; // surface via saved:0 + honest message below
         actionIds = (inserted || []).map((r) => r.id);
 
         // ── RECORD THE CHAIN ── link the produced pieces back to the keyword they
@@ -270,7 +277,9 @@ export async function POST(request) {
     // saving is best-effort; never block returning the content
   }
 
-  return json({ ok: true, content: data, actionIds, meta: { engine: provider } });
+  // saved = how many drafts actually landed in Approvals. The UI reads this instead
+  // of assuming success, so a failed insert is reported honestly, not masked.
+  return json({ ok: true, saved: actionIds.length, content: data, actionIds, meta: { engine: provider } });
 }
 
 function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [] }) {

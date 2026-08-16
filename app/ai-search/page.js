@@ -69,12 +69,21 @@ export default function AiSearchPage() {
   async function writeGap(o, key) {
     if (writing) return;
     setWriting(String(key));
-    setMsg("Genie is writing this. It’ll appear in Approvals in about 30 seconds.");
+    setMsg("Genie is writing this…");
     try {
       const r = await fetch("/api/content", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic: o.recommendation || o.question || o.discovered }) }).then((x) => x.json());
-      setMsg(r?.ok ? "Done. It’s waiting for your approval in Approvals." : "Couldn’t start that one. Try again in a moment.");
-    } catch { setMsg("Couldn’t start that one. Try again in a moment."); }
-    setWriting("");
+      // Trust the saved count, not just ok — a draft only "exists" if it was queued.
+      if (r?.ok && (r.saved > 0 || (r.actionIds || []).length > 0)) {
+        setMsg("Done — opening your Approvals so you can review it…");
+        setTimeout(() => { window.location.href = "/approvals"; }, 1100);
+      } else if (r?.ok) {
+        setMsg("I wrote it but couldn’t queue it for approval. Run your first scan on Today if you just reset, then try again.");
+        setWriting("");
+      } else {
+        setMsg(r?.message || "Couldn’t start that one. Try again in a moment.");
+        setWriting("");
+      }
+    } catch { setMsg("Couldn’t start that one. Try again in a moment."); setWriting(""); }
   }
 
   // ── derived ──

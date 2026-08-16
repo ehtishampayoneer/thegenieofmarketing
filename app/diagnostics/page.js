@@ -24,8 +24,15 @@ export default function DiagnosticsPage() {
     setResetting(true); setResetMsg("");
     try {
       const r = await fetch("/api/diagnostics/reset", { method: "POST" }).then((x) => x.json());
-      setResetMsg(r.ok ? "Reset complete. Reloading…" : "Reset failed.");
-      if (r.ok) setTimeout(() => (window.location.href = "/welcome"), 1200);
+      if (r.ok && r.hadErrors) {
+        const failed = Object.entries(r.deleted || {}).filter(([, v]) => String(v).startsWith("error")).map(([k]) => k);
+        setResetMsg(`Reset finished but some tables didn’t clear: ${failed.join(", ") || "unknown"}. That data may still show — report this.`);
+      } else if (r.ok) {
+        setResetMsg("Reset complete. Everything is wiped. Reloading…");
+        setTimeout(() => (window.location.href = "/welcome"), 1200);
+      } else {
+        setResetMsg("Reset failed.");
+      }
     } catch { setResetMsg("Reset failed."); }
     setResetting(false);
   }

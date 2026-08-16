@@ -14,8 +14,12 @@ export const dynamic = "force-dynamic";
 
 // Every user-scoped table. `profiles` is intentionally excluded (only its
 // onboarding flag is reset, below) so the login itself survives.
+// Child/reference tables first (keyword_usage, citation_targets, published_pages,
+// action_outcomes) so any foreign keys to keywords/actions/scans don't block a
+// delete. Keep this in sync with every user-scoped table in the app.
 const TABLES = [
-  "action_outcomes", "actions", "activity", "cadence_plans", "chat_messages",
+  "keyword_usage", "citation_targets", "published_pages", "action_outcomes",
+  "actions", "activity", "cadence_plans", "chat_messages",
   "connections", "decisions", "directory_contacts", "entities", "events",
   "growth_memory", "keyword_history", "keywords", "links", "notifications",
   "outreach_log", "placements", "safety_settings", "scans", "suppressions",
