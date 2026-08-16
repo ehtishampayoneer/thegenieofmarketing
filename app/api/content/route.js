@@ -117,6 +117,8 @@ export async function POST(request) {
     data.social.instagram = cleanArr(data.social.instagram);
     data.social.facebook = cleanArr(data.social.facebook);
     data.social.linkedin = deDash(data.social.linkedin);
+    data.social.reddit = deDash(data.social.reddit);
+    data.social.quora = deDash(data.social.quora);
   }
 
   // Persist everything Genie generated as PROPOSED actions (the autopilot spine).
@@ -223,6 +225,8 @@ export async function POST(request) {
         });
       (social.twitter || []).forEach((t) => pushSocial("Twitter/X", t));
       if (social.linkedin) pushSocial("LinkedIn", social.linkedin);
+      if (social.reddit) pushSocial("Reddit", social.reddit);
+      if (social.quora) pushSocial("Quora", social.quora);
       (social.instagram || []).forEach((t) => pushSocial("Instagram", t));
       (social.facebook || []).forEach((t) => pushSocial("Facebook", t));
       if (pinData) rows.push({
@@ -386,7 +390,9 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     "twitter": ["3 different tweet-length posts promoting the article, each with 1-2 relevant hashtags"],
     "linkedin": "1 professional LinkedIn post version",
     "instagram": ["2 visual-first Instagram captions with hashtags"],
-    "facebook": ["2 community-friendly Facebook posts"]
+    "facebook": ["2 community-friendly Facebook posts"],
+    "reddit": "1 genuinely helpful, value-first Reddit self-post a knowledgeable human would write — no marketing voice, no 'check out', mention the product ONLY if it truly helps. Start with a suggested subreddit in brackets, e.g. [r/subreddit], then the post.",
+    "quora": "1 long-form, genuinely useful Quora answer to a real question buyers ask in this space — value first, product mentioned only where it truly helps, never as a pitch."
   }
 }
 Make it genuinely specific to this business — real value, not generic advice.`;

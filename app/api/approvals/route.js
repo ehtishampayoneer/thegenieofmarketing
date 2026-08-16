@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const { data: actions } = await supabase
       .from("actions").select("id, type, title, priority, payload, target, status")
-      .eq("user_id", user.id).eq("status", "proposed").limit(50);
+      .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").limit(50);
     for (const a of actions || []) items.push(normalizeAction(a));
   } catch {}
 
@@ -46,6 +46,8 @@ function normalizeAction(a) {
   const isPin = platform === "pinterest";
   const isGbp = platform === "gbp";
   const isReview = platform === "review_request";
+  const isReddit = platform === "reddit";
+  const isQuora = platform === "quora";
   const o = toOutcome(a);
   const draft = p.body || p.text || (Array.isArray(p.draft) ? p.draft.join("\n\n") : p.draft) || "";
   // ── REPUTATION SAFETY ──
@@ -65,7 +67,11 @@ function normalizeAction(a) {
         ? "https://business.google.com/posts"
         : isReview
           ? "https://business.google.com/reviews"
-          : (p.url || null);
+          : isReddit
+            ? `https://www.reddit.com/submit?title=${encodeURIComponent(String(p.targetKeyword || String(draft).replace(/^\[r\/[^\]]+\]\s*/i, "").split("\n")[0] || "").slice(0, 290))}&text=${encodeURIComponent(String(draft).replace(/^\[r\/[^\]]+\]\s*/i, "").slice(0, 1200))}`
+            : isQuora
+              ? "https://www.quora.com/"
+              : (p.url || null);
   return {
     id: a.id, source: "action", kind: a.type, platform, owned, executable,
     brand: brandFor(a.type, p, platform),

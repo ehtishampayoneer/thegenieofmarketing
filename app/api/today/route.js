@@ -101,7 +101,7 @@ export async function GET() {
   try {
     const { data: actions } = await supabase
       .from("actions").select("id, type, title, priority, payload, target")
-      .eq("user_id", user.id).eq("status", "proposed").limit(20);
+      .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").limit(20);
     const list = actions || [];
     out.approvalsCount = list.length;
     if (list.length) out.approvals = list.slice(0, 3).map(approvalView);
