@@ -92,6 +92,13 @@ export default function ProspectsPage() {
               ? "Their sites blocked the crawl. Try again, or a slightly different niche."
               : "Genie’s search is momentarily busy (or rate-limited). Give it a few seconds and try again, or try a broader niche like “home decor brands”."}
           </p>
+          {debug?.diag && (
+            <p className="mt-3 text-[11px] mg-num" style={{ color: "var(--fg-subtle)", fontFamily: "monospace" }}>
+              diagnostic — {debug.diag.ai === "failed"
+                ? `AI unavailable: ${debug.diag.error}`
+                : `AI ok via ${debug.diag.provider}, returned ${debug.diag.got} (keys: ${(debug.diag.keys || []).join(",") || "none"})`} · companies={debug.companies ?? 0}
+            </p>
+          )}
         </Card>
       )}
 

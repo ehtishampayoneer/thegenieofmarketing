@@ -7,6 +7,7 @@
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { discoverProspects } from "@/lib/prospects";
+import { callAI } from "@/lib/ai-router";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,22 @@ export async function POST(request) {
   const ctx = { supabase, userId, host, tag: "prospects" };
   const { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
 
-  return json({ ok: true, niche, prospects, count: prospects.length, debug });
+  // If we got nothing, run ONE tiny AI probe so the real reason is visible instead of
+  // guessed: is the model reachable (and just returning an odd shape), or is it
+  // failing/quota-limited? Surfaces in the UI so the cause is unambiguous.
+  let diag = null;
+  if (!prospects.length) {
+    try {
+      const r = await callAI({ json: true, maxTokens: 150, temperature: 0.2, system: "Return JSON only.", prompt: 'List 3 real home decor brands. Return {"companies":[{"name":"x","domain":"x.com"}]}' });
+      const j = r?.json;
+      const n = Array.isArray(j?.companies) ? j.companies.length : Array.isArray(j) ? j.length : 0;
+      diag = { ai: "ok", provider: r?.provider || "?", got: n, keys: Object.keys(j || {}).slice(0, 5) };
+    } catch (e) {
+      diag = { ai: "failed", error: String(e?.message || e).slice(0, 160) };
+    }
+  }
+
+  return json({ ok: true, niche, prospects, count: prospects.length, debug: { ...(debug || {}), diag } });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
