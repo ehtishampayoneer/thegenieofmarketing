@@ -31,8 +31,11 @@ export async function POST(request) {
     return json({ ok: true, removed: true });
   }
 
+  // Only flag the payload — leave `status` untouched to avoid any status CHECK
+  // constraint (media rows are excluded from Approvals by TYPE regardless of status).
   const payload = { ...(row.payload || {}), applied: true, appliedAt: new Date().toISOString() };
-  await admin.from("actions").update({ payload, status: "done" }).eq("id", id).eq("user_id", userId);
+  const { error } = await admin.from("actions").update({ payload }).eq("id", id).eq("user_id", userId);
+  if (error) return json({ ok: false, error: error.message }, 500);
   return json({ ok: true, applied: true });
 }
 

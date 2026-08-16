@@ -140,6 +140,7 @@ export default function FeaturedPage() {
             <p className="mt-3 text-[11px]" style={{ color: "var(--fg-subtle)", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 660, marginLeft: "auto", marginRight: "auto", textAlign: "left" }}>
               {`diagnostic — primary: search=${debug.search ?? 0} ai=${debug.ai ?? 0}${debug.err ? ` err=${debug.err}` : ""}`}
               {(debug.diag?.probes || []).map((p, k) => `\n${p.label}: ${p.err ? "ERR " + p.err : `${p.provider} parsed=${p.parsed} kept=${p.mapped}`}`).join("")}
+              {debug.insertErr ? `\ninsert error: ${debug.insertErr}` : ""}
             </p>
           )}
         </Card>

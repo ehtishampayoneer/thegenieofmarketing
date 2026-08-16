@@ -72,14 +72,18 @@ export async function POST(request) {
     // Persist the new ones (service role, like the content engine — never blocked by RLS).
     let inserted = [];
     if (fresh.length) {
+      // NOTE: the actions table has NO top-level `host` column — host lives inside
+      // `target` (same as every other actions insert). Adding it here was rejecting
+      // the whole batch silently, so nothing saved and the page showed 0.
       const rows = fresh.map((o) => ({
-        user_id: userId, host: host || null, type: MEDIA_TYPE,
+        user_id: userId, type: MEDIA_TYPE,
         title: `${PLAYS[play]?.label || "Featured"}: ${o.company}`.slice(0, 200),
         target: { play, host: host || null, domain: o.domain },
         priority: "strategic", status: "proposed",
         payload: { play, niche, domain: o.domain, company: o.company, url: o.url, summary: o.summary, whyFit: o.whyFit, contact: o.contact, subject: o.pitch.subject, body: o.pitch.body, applied: false, appliedAt: null },
       }));
-      const { data: ins } = await admin.from("actions").insert(rows).select("id, payload, created_at");
+      const { data: ins, error: insErr } = await admin.from("actions").insert(rows).select("id, payload, created_at");
+      if (insErr) debug = { ...debug, insertErr: insErr.message };
       inserted = ins || [];
     }
 
