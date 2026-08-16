@@ -8,7 +8,7 @@
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hostOf } from "@/lib/business";
-import { discoverMedia, PLAYS } from "@/lib/earned-media";
+import { discoverMedia, diagnoseMedia, buildFromSites, PLAYS } from "@/lib/earned-media";
 import { actionToOpp, MEDIA_TYPE, REAPPLY_DAYS } from "@/lib/media-store";
 
 export const runtime = "nodejs";
@@ -53,8 +53,14 @@ export async function POST(request) {
     else if (new Date(p.appliedAt || a.created_at).getTime() > cutoff) blocked.add(p.domain);
   }
 
-  // Discover, then keep only genuinely NEW domains.
-  const { opportunities, debug } = await discoverMedia({ play, niche, business, limit: 8 });
+  // Discover. If the site-finding call came up empty (provider timing), recover the
+  // same way Find clients does: re-run it and build from whatever it names.
+  let { opportunities, debug } = await discoverMedia({ play, niche, business, limit: 8 });
+  let diag = null;
+  if (!opportunities.length) {
+    diag = await diagnoseMedia(play, niche);
+    if (diag.sites?.length) { opportunities = await buildFromSites(diag.sites, play, business, 8); debug = { ...(debug || {}), recovered: opportunities.length }; }
+  }
   const fresh = opportunities.filter((o) => o.domain && !blocked.has(o.domain));
 
   // Persist the new ones (service role, like the content engine — never blocked by RLS).
@@ -73,7 +79,7 @@ export async function POST(request) {
 
   // Return the FULL current list for this play (existing + new), newest first.
   const all = [...inserted, ...mine].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  return json({ ok: true, play, niche, opportunities: all.map(actionToOpp), newCount: fresh.length, debug });
+  return json({ ok: true, play, niche, opportunities: all.map(actionToOpp), newCount: fresh.length, debug: { ...(debug || {}), diag } });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

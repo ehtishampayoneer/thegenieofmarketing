@@ -136,6 +136,11 @@ export default function FeaturedPage() {
           <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.megaphone size={20} /></span>
           <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No sites here yet for “{current.label}”</p>
           <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">{debug && debug.sites > 0 ? "Found sites but couldn’t reach them — try again or a slightly different niche." : "Enter your niche above and press Find sites. Genie finds real places that could feature you."}</p>
+          {debug?.diag && (
+            <p className="mt-3 text-[11px]" style={{ color: "var(--fg-subtle)", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+              {debug.diag.ai === "failed" ? `diagnostic — AI FAILED: ${debug.diag.error}` : `diagnostic — AI ${debug.diag.ai} · parsed=${debug.diag.parsed} · mapped=${debug.diag.mapped ?? 0} · sites=${debug.sites ?? 0}`}
+            </p>
+          )}
         </Card>
       )}
 
