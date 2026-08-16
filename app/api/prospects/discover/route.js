@@ -6,7 +6,7 @@
 
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
-import { discoverProspects, diagnoseCandidates } from "@/lib/prospects";
+import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies } from "@/lib/prospects";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,12 +34,20 @@ export async function POST(request) {
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };
-  const { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
+  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
 
-  // If we got nothing, run the REAL candidate call once and surface exactly what came
-  // back (provider, shape, parsed count, raw sample, or the error) so the cause is
-  // unambiguous instead of guessed.
-  const diag = prospects.length ? null : await diagnoseCandidates(niche);
+  // RECOVERY: if the main path came up empty (a transient provider hiccup), run the
+  // candidate call once more — it reliably names companies at this calmer moment —
+  // and build prospects straight from them. This is why the diagnostic always saw
+  // companies while discovery showed 0; now we actually use them.
+  let diag = null;
+  if (!prospects.length) {
+    diag = await diagnoseCandidates(niche);
+    if (diag.companies?.length) {
+      prospects = await buildProspectsFromCompanies(diag.companies, userBusiness, 8);
+      debug = { ...(debug || {}), recovered: prospects.length };
+    }
+  }
 
   return json({ ok: true, niche, prospects, count: prospects.length, debug: { ...(debug || {}), diag } });
 }
