@@ -53,33 +53,42 @@ export async function POST(request) {
     else if (new Date(p.appliedAt || a.created_at).getTime() > cutoff) blocked.add(p.domain);
   }
 
-  // Discover. If the site-finding call came up empty (provider timing), recover the
-  // same way Find clients does: re-run it and build from whatever it names.
-  let { opportunities, debug } = await discoverMedia({ play, niche, business, limit: 8 });
-  let diag = null;
-  if (!opportunities.length) {
-    diag = await diagnoseMedia(play, niche);
-    if (diag.sites?.length) { opportunities = await buildFromSites(diag.sites, play, business, 8); debug = { ...(debug || {}), recovered: opportunities.length }; }
-  }
-  const fresh = opportunities.filter((o) => o.domain && !blocked.has(o.domain));
+  // Discover with two sources. If still empty, recover once (re-run + diagnose), then
+  // build from whatever it found. Wrapped so any unexpected error surfaces the
+  // diagnostic instead of a blank 500.
+  let debug = {};
+  try {
+    let out = await discoverMedia({ play, niche, business, limit: 8 });
+    let opportunities = out.opportunities; debug = out.debug || {};
+    let diag = null;
+    if (!opportunities.length) {
+      diag = await diagnoseMedia(play, niche);
+      if (diag.sites?.length) { opportunities = await buildFromSites(diag.sites, play, business, 8); }
+    }
+    debug = { ...debug, diag };
 
-  // Persist the new ones (service role, like the content engine — never blocked by RLS).
-  let inserted = [];
-  if (fresh.length) {
-    const rows = fresh.map((o) => ({
-      user_id: userId, host: host || null, type: MEDIA_TYPE,
-      title: `${PLAYS[play]?.label || "Featured"}: ${o.company}`.slice(0, 200),
-      target: { play, host: host || null, domain: o.domain },
-      priority: "strategic", status: "proposed",
-      payload: { play, niche, domain: o.domain, company: o.company, url: o.url, summary: o.summary, whyFit: o.whyFit, contact: o.contact, subject: o.pitch.subject, body: o.pitch.body, applied: false, appliedAt: null },
-    }));
-    const { data: ins } = await admin.from("actions").insert(rows).select("id, payload, created_at");
-    inserted = ins || [];
-  }
+    const fresh = opportunities.filter((o) => o.domain && !blocked.has(o.domain));
 
-  // Return the FULL current list for this play (existing + new), newest first.
-  const all = [...inserted, ...mine].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  return json({ ok: true, play, niche, opportunities: all.map(actionToOpp), newCount: fresh.length, debug: { ...(debug || {}), diag } });
+    // Persist the new ones (service role, like the content engine — never blocked by RLS).
+    let inserted = [];
+    if (fresh.length) {
+      const rows = fresh.map((o) => ({
+        user_id: userId, host: host || null, type: MEDIA_TYPE,
+        title: `${PLAYS[play]?.label || "Featured"}: ${o.company}`.slice(0, 200),
+        target: { play, host: host || null, domain: o.domain },
+        priority: "strategic", status: "proposed",
+        payload: { play, niche, domain: o.domain, company: o.company, url: o.url, summary: o.summary, whyFit: o.whyFit, contact: o.contact, subject: o.pitch.subject, body: o.pitch.body, applied: false, appliedAt: null },
+      }));
+      const { data: ins } = await admin.from("actions").insert(rows).select("id, payload, created_at");
+      inserted = ins || [];
+    }
+
+    const all = [...inserted, ...mine].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return json({ ok: true, play, niche, opportunities: all.map(actionToOpp), newCount: fresh.length, debug });
+  } catch (e) {
+    // Never blank-500: return what we already had + the error so the UI shows it.
+    return json({ ok: true, play, niche, opportunities: mine.map(actionToOpp), newCount: 0, debug: { ...debug, err: String(e?.message || e).slice(0, 160) } });
+  }
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

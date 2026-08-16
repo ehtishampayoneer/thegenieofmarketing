@@ -135,10 +135,11 @@ export default function FeaturedPage() {
         <Card className="mt-5 p-9 text-center mg-ambient">
           <span className="mg-tile mx-auto" style={{ width: 44, height: 44, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.megaphone size={20} /></span>
           <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>No sites here yet for “{current.label}”</p>
-          <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">{debug && debug.sites > 0 ? "Found sites but couldn’t reach them — try again or a slightly different niche." : "Enter your niche above and press Find sites. Genie finds real places that could feature you."}</p>
-          {debug?.diag && (
-            <p className="mt-3 text-[11px]" style={{ color: "var(--fg-subtle)", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-              {debug.diag.ai === "failed" ? `diagnostic — AI FAILED: ${debug.diag.error}` : `diagnostic — AI ${debug.diag.ai} · parsed=${debug.diag.parsed} · mapped=${debug.diag.mapped ?? 0} · sites=${debug.sites ?? 0}`}
+          <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">{debug && debug.sites > 0 ? "Found sites but couldn’t reach them — try again or a slightly different niche." : "Enter your niche above and press Find sites. Genie searches for real places that could feature you."}</p>
+          {debug && (
+            <p className="mt-3 text-[11px]" style={{ color: "var(--fg-subtle)", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word", maxWidth: 660, marginLeft: "auto", marginRight: "auto", textAlign: "left" }}>
+              {`diagnostic — primary: search=${debug.search ?? 0} ai=${debug.ai ?? 0}${debug.err ? ` err=${debug.err}` : ""}`}
+              {(debug.diag?.probes || []).map((p, k) => `\n${p.label}: ${p.err ? "ERR " + p.err : `${p.provider} parsed=${p.parsed} kept=${p.mapped}`}`).join("")}
             </p>
           )}
         </Card>
