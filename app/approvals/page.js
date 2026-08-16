@@ -219,6 +219,19 @@ export default function ApprovalsPage() {
     setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { img: o.url, title: editHook }) : o.url);
     setSwapOpen(false);
   }
+  // Upload the user's OWN photo → store it → use it exactly like a swapped image.
+  async function uploadImage(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { setToast("Please choose an image file."); return; }
+    setSwapLoading(true); setSwapOpen(true);
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const j = await fetch("/api/upload/image", { method: "POST", body: fd }).then((r) => r.json());
+      if (j?.ok && j.url) { pickSwap({ url: j.url, source: "upload" }); setToast("Your image is in. Save to keep it."); }
+      else setToast(j?.error || "Couldn’t upload that image.");
+    } catch { setToast("Couldn’t upload that image."); }
+    setSwapLoading(false);
+  }
   async function persistEdits(cur) {
     try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cur.id, source: cur.source, act: "edit", draft: editDraft, image: editImage, imageRaw: editImageRaw, hook: editHook, imageSource: editSource, imageCredit: editCredit, branded: editBranded }) }); } catch {}
     setItems((prev) => prev.map((it) => it.id === cur.id ? { ...it, draft: editDraft, image: editImage, imageRaw: editImageRaw, imageSource: editSource, imageCredit: editCredit, imageBranded: editBranded, cardHeadline: editHook } : it));
@@ -298,7 +311,7 @@ export default function ApprovalsPage() {
               editing={editing} editDraft={editDraft} setEditDraft={setEditDraft}
               onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); }}
               onApprove={approveCurrent} onSkip={skipCurrent} working={working}
-              edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
+              edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, upload: uploadImage, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
               expandReason={expandReason} setExpandReason={setExpandReason}
               saved={saved.has(current.id)} onToggleSave={() => toggleSave(current.id)}
               openMore={openMenu === "more"} onToggleMore={() => setOpenMenu(openMenu === "more" ? null : "more")}
@@ -413,7 +426,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
                 <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
                 <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
-                  <span style={{ fontWeight: 700, color: item.imageSource === "site" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageBranded ? "Designed card" : item.imageSource === "site" ? "Your image" : "Free stock"}</span>
+                  <span style={{ fontWeight: 700, color: (item.imageSource === "site" || item.imageSource === "upload") ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageBranded ? "Designed card" : item.imageSource === "upload" ? "Your upload" : item.imageSource === "site" ? "Your image" : "Free stock"}</span>
                   <span>· {item.imageBranded ? `built from ${item.imageSource === "site" ? "your photo" : "a free stock photo"}` : item.imageCredit}</span>
                 </figcaption>
               </figure>
@@ -425,6 +438,10 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                     <img src={edit.image} alt="" style={{ display: "block", width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, border: "1px solid var(--hair)", background: "var(--surface-2)" }} />
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <button type="button" onClick={edit.openSwap} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}><Icon.eye size={13} /> Swap photo</button>
+                      <label className="mg-btn mg-btn--quiet" style={{ fontSize: 12, cursor: "pointer" }}>
+                        <Icon.plus size={13} /> Upload yours
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; edit.upload?.(f); }} />
+                      </label>
                       {edit.branded && (
                         <input value={edit.hook} onChange={(e) => edit.setHook(e.target.value)} placeholder="Hook shown on the image" className="mg-field mg-focus" style={{ flex: 1, minWidth: 170, fontSize: 13 }} />
                       )}

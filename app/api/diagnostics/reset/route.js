@@ -39,11 +39,22 @@ export async function POST() {
   const deleted = {};
   let hadErrors = false;
   for (const t of TABLES) {
+    let ok = false, note = "";
+    // Service role first (bypasses RLS).
     try {
       const { error } = await admin.from(t).delete().eq("user_id", uid);
-      if (error) { hadErrors = true; deleted[t] = `error: ${error.message}`; }
-      else deleted[t] = "cleared";
-    } catch (e) { hadErrors = true; deleted[t] = `error: ${e.message || "failed"}`; }
+      if (!error) ok = true; else note = `admin: ${error.message}`;
+    } catch (e) { note = `admin: ${e.message || "failed"}`; }
+    // Fallback: the user's own session — RLS lets a user delete their own rows, so if
+    // the service role is misconfigured for a table this still clears it.
+    if (!ok) {
+      try {
+        const { error } = await supabase.from(t).delete().eq("user_id", uid);
+        if (!error) ok = true; else note += ` | user: ${error.message}`;
+      } catch (e) { note += ` | user: ${e.message || "failed"}`; }
+    }
+    if (ok) deleted[t] = "cleared";
+    else { hadErrors = true; deleted[t] = `error: ${note}`; }
   }
 
   // Clear the business info too (but keep the row so the login survives), and

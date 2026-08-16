@@ -34,9 +34,9 @@ export async function POST(request) {
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };
-  const prospects = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
+  const { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
 
-  return json({ ok: true, niche, prospects, count: prospects.length });
+  return json({ ok: true, niche, prospects, count: prospects.length, debug });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

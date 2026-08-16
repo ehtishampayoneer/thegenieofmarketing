@@ -18,15 +18,16 @@ export default function ProspectsPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [rows, setRows] = useState(null); // null = not run yet
+  const [debug, setDebug] = useState(null);
   const [toast, setToast] = useState("");
 
   async function find() {
     const q = niche.trim();
     if (!q || busy) return;
-    setBusy(true); setErr(""); setRows(null);
+    setBusy(true); setErr(""); setRows(null); setDebug(null);
     try {
       const j = await fetch("/api/prospects/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche: q }) }).then((r) => r.json());
-      if (j?.ok) setRows((j.prospects || []).map((p) => ({ ...p, subject: p.pitch?.subject || "", body: p.pitch?.body || "", state: "idle" })));
+      if (j?.ok) { setRows((j.prospects || []).map((p) => ({ ...p, subject: p.pitch?.subject || "", body: p.pitch?.body || "", state: "idle" }))); setDebug(j.debug || null); }
       else setErr(j?.error || "Couldn't run that search. Try again.");
     } catch { setErr("Something interrupted the search. Try again."); }
     setBusy(false);
@@ -85,8 +86,12 @@ export default function ProspectsPage() {
 
       {rows !== null && !busy && rows.length === 0 && (
         <Card className="mt-5 p-8 text-center">
-          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>No reachable companies found for that.</p>
-          <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">Try a more specific or more common niche (e.g. add a product or region). Genie only keeps companies with a real, deliverable contact — it never guesses addresses.</p>
+          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>{debug && debug.companies > 0 ? "Found companies, but couldn’t reach their sites." : "Couldn’t pull companies just now."}</p>
+          <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">
+            {debug && debug.companies > 0
+              ? "Their sites blocked the crawl. Try again, or a slightly different niche."
+              : "Genie’s search is momentarily busy (or rate-limited). Give it a few seconds and try again, or try a broader niche like “home decor brands”."}
+          </p>
         </Card>
       )}
 
