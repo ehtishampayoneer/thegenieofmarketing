@@ -34,7 +34,7 @@ export async function POST(request) {
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };
-  const prospects = await discoverProspects({ niche, userBusiness, limit: 5, ctx });
+  const prospects = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
 
   return json({ ok: true, niche, prospects, count: prospects.length });
 }
