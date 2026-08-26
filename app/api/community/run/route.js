@@ -6,6 +6,7 @@
 
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
+import { testRedditAuth } from "@/lib/search";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,17 +39,24 @@ export async function POST(request) {
     } catch { return {}; }
   };
 
-  const [reddit, quora] = await Promise.all([
+  // Run all three hunters in parallel: the buyer-intent radar (Hacker News, Software
+  // Recommendations, GitHub, Reddit) plus the Reddit + Quora reply radars.
+  const [intent, reddit, quora, redditAuth] = await Promise.all([
+    callRadar("/api/radar/intent"),
     callRadar("/api/radar/reddit"),
     callRadar("/api/radar/quora"),
+    testRedditAuth().catch(() => ({ ok: false, reason: "error" })),
   ]);
 
-  const staged = (reddit?.staged || 0) + (quora?.staged || 0);
+  const staged = (intent?.staged || 0) + (reddit?.staged || 0) + (quora?.staged || 0);
+  const buyersFound = intent?.found || 0;
   return json({
     ok: true,
     staged,
-    reddit: { staged: reddit?.staged || 0, message: reddit?.message || null, needsKeywords: !!reddit?.needsKeywords },
+    buyersFound,
+    reddit: { staged: reddit?.staged || 0, message: reddit?.message || null, needsKeywords: !!reddit?.needsKeywords, auth: redditAuth?.ok ? "connected" : (redditAuth?.reason || "not_connected") },
     quora: { staged: quora?.staged || 0, message: quora?.message || null },
+    intent: { found: buyersFound, staged: intent?.staged || 0, topIntent: intent?.summary?.topIntent ?? null },
   });
 }
 

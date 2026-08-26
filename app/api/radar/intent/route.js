@@ -8,6 +8,7 @@
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch, redditSearch } from "@/lib/search";
+import { hnSearch, stackExchangeSearch, githubSearch } from "@/lib/intent-sources";
 import { getBrief, recordDecision } from "@/lib/growth-memory";
 import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities } from "@/lib/intent";
 import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
@@ -146,9 +147,14 @@ export async function POST(request) {
 
 async function runOne(source, q, ctx) {
   try {
-    const results = source.key === "reddit"
-      ? await redditSearch(q.query, { limit: 4, ctx })
-      : await webSearch(q.query, { site: source.site || "", limit: 4, ctx });
+    let results;
+    switch (source.key) {
+      case "reddit": results = await redditSearch(q.query, { limit: 5, ctx }); break;
+      case "hackernews": results = await hnSearch(q.query, { limit: 5 }); break;
+      case "stackexchange": results = await stackExchangeSearch(q.query, { site: "softwarerecs", limit: 5 }); break;
+      case "github": results = await githubSearch(q.query, { limit: 5 }); break;
+      default: results = await webSearch(q.query, { site: source.site || "", limit: 4, ctx });
+    }
     return (results || []).map((r) => ({ ...r, platform: source.platform, source: source.key, query: q.query, stageHint: q.stage }));
   } catch { return []; }
 }

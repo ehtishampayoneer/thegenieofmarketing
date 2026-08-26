@@ -40,14 +40,18 @@ export default function ConversationsPage() {
 
   async function findNow() {
     if (scanning) return;
-    setScanning(true); setScanMsg("Genie is scanning Reddit and Quora for live openings… this can take up to a minute.");
+    setScanning(true); setScanMsg("Genie is hunting buyers across Hacker News, Software Recommendations, GitHub, Reddit and Quora… up to a minute.");
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => r.json());
       if (j?.ok) {
-        if (j.staged > 0) { setScanMsg(`Found ${j.staged} new opening${j.staged === 1 ? "" : "s"}. They're waiting in Approvals. Refreshing…`); setTimeout(() => window.location.reload(), 1400); }
-        else setScanMsg(`No fresh openings that genuinely fit right now (Genie won't stage spam). ${j.reddit?.needsKeywords ? "Build your keyword strategy first on Growth." : "Reddit is strongest once your API key is approved."}`);
-      } else setScanMsg(j?.error || "Couldn't scan just now. Try again in a moment.");
-    } catch { setScanMsg("Couldn't scan just now. Try again in a moment."); }
+        const reddit = j.reddit?.auth === "connected" ? "Reddit API connected ✓" : j.reddit?.auth === "no_creds" ? "Reddit key not added yet" : "Reddit key still pending/failed";
+        const bits = [];
+        if (j.buyersFound) bits.push(`${j.buyersFound} buyer${j.buyersFound === 1 ? "" : "s"} researching now`);
+        if (j.staged) bits.push(`${j.staged} ready to engage in Approvals`);
+        if (j.buyersFound > 0 || j.staged > 0) { setScanMsg(`${bits.join(" · ")} · ${reddit}. Refreshing…`); setTimeout(() => window.location.reload(), 1600); }
+        else setScanMsg(`No fresh high-intent buyers that genuinely fit this run (Genie won't stage spam). ${j.reddit?.needsKeywords ? "Build your keyword strategy first on Growth. " : ""}(${reddit})`);
+      } else setScanMsg(j?.error || "Couldn't hunt just now. Try again in a moment.");
+    } catch { setScanMsg("Couldn't hunt just now. Try again in a moment."); }
     setScanning(false);
   }
 
@@ -59,7 +63,7 @@ export default function ConversationsPage() {
         provenance={<DataStateBadge state={state} />}
         title="Genie is out there"
         accent="talking to your market."
-        action={<button onClick={findNow} disabled={scanning} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 12.5 }}><Icon.search size={14} /> {scanning ? "Scanning…" : "Find conversations now"}</button>}
+        action={<button onClick={findNow} disabled={scanning} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 12.5 }}><Icon.target size={14} /> {scanning ? "Hunting…" : "Find buyers now"}</button>}
       />
       {scanMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{scanMsg}</p>}
 
