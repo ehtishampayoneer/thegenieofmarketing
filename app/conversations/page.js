@@ -44,7 +44,7 @@ export default function ConversationsPage() {
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => r.json());
       if (j?.ok) {
-        const reddit = j.reddit?.auth === "connected" ? "Reddit API connected ✓" : j.reddit?.auth === "no_creds" ? "Reddit key not added yet" : "Reddit key still pending/failed";
+        const reddit = j.reddit?.via === "api" ? "Reddit API ✓" : j.reddit?.via === "rss" ? "Reddit via RSS token ✓" : "Reddit via Google index ✓";
         const bits = [];
         if (j.buyersFound) bits.push(`${j.buyersFound} buyer${j.buyersFound === 1 ? "" : "s"} researching now`);
         if (j.staged) bits.push(`${j.staged} ready to engage in Approvals`);

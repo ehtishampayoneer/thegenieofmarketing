@@ -54,7 +54,7 @@ export async function POST(request) {
     ok: true,
     staged,
     buyersFound,
-    reddit: { staged: reddit?.staged || 0, message: reddit?.message || null, needsKeywords: !!reddit?.needsKeywords, auth: redditAuth?.ok ? "connected" : (redditAuth?.reason || "not_connected") },
+    reddit: { staged: reddit?.staged || 0, message: reddit?.message || null, needsKeywords: !!reddit?.needsKeywords, auth: redditAuth?.ok ? "connected" : "not_connected", via: redditAuth?.via || null },
     quora: { staged: quora?.staged || 0, message: quora?.message || null },
     intent: { found: buyersFound, staged: intent?.staged || 0, topIntent: intent?.summary?.topIntent ?? null },
   });

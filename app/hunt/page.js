@@ -58,7 +58,7 @@ export default function HuntPage() {
     setHunting(true); setMsg("Genie is hunting buyers across Hacker News, Software Recs, GitHub, Reddit and Quora… up to a minute.");
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => r.json());
-      const reddit = j?.reddit?.auth === "connected" ? "Reddit ✓" : j?.reddit?.auth === "no_creds" ? "Reddit key not added" : "Reddit pending";
+      const reddit = j?.reddit?.via === "api" ? "Reddit API ✓" : j?.reddit?.via === "rss" ? "Reddit via RSS ✓" : "Reddit via Google index ✓";
       if (j?.ok) { setMsg(`${j.buyersFound || 0} buyers found · ${reddit}.`); await load(); }
       else setMsg(j?.error || "Couldn't hunt just now. Try again in a moment.");
     } catch { setMsg("Couldn't hunt just now. Try again in a moment."); }
