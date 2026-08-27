@@ -43,6 +43,7 @@ export const Icon = {
   fire: (p) => <Svg {...p}><path d="M12 3c1 3-1 4-1 6a3 3 0 0 0 6 0c0-1-.5-2-1-3 2 1 4 3.5 4 7a8 8 0 0 1-16 0c0-3 2-5 4-6 0 2 1 3 2 3" /></Svg>,
   globe: (p) => <Svg {...p}><circle cx="12" cy="12" r="8" /><path d="M4 12h16M12 4c2.5 2.5 2.5 13 0 16M12 4c-2.5 2.5-2.5 13 0 16" /></Svg>,
   info: (p) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" /></Svg>,
+  flag: (p) => <Svg {...p}><path d="M5 21V4" /><path d="M5 4h11l-2 3 2 3H5" /></Svg>,
 };
 
 export default Icon;

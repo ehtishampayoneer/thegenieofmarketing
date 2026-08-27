@@ -68,6 +68,7 @@ const GROUPS = [
       { icon: "crosshair", t: "Buyer Hunt", p: "Scans Hacker News, Software Recs, GitHub, Reddit and Quora for people asking to buy right now, scores each 0–100, and drafts the reply. Name your rivals to poach their unhappy users.", href: "/hunt", status: ["live", "Active"] },
       { icon: "coins", t: "Revenue Recovery", p: "Upload your old leads & customers; Genie writes a specific win-back for each and you send from your Gmail. Warm contacts convert in days.", href: "/recover", status: ["live", "Fast money"] },
       { icon: "board", t: "Deal Pipeline", p: "One board across every channel: reached → replied (each reply classified for you) → won, with the real revenue closed.", href: "/pipeline", status: ["live", "Active"] },
+      { icon: "flag", t: "Proof Sprint", p: "A guided 30-day test that proves whether Genie makes you money: commit to one customer type + one offer, and it tracks the 7 numbers that matter (contacts, replies, meetings, revenue, revenue-per-100) and gives a plain verdict — scale, tweak, or fix the offer.", href: "/sprint", status: ["live", "Active"] },
     ],
   },
   {
