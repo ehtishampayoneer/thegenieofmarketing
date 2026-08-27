@@ -8,6 +8,7 @@
 // Renders nothing on pages that don't have a guide.
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Icon from "@/components/ui/Icon";
 import { PAGE_GUIDES } from "@/lib/page-guides";
 
@@ -42,11 +43,12 @@ export default function PageGuide({ active }) {
         <span className="hidden sm:inline" style={{ maxWidth: 130 }}>How this works</span>
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
+          className="mg"
           role="dialog" aria-modal="true" aria-label={`How ${guide.name} works`}
           onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-          style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(3,6,12,.55)", backdropFilter: "blur(3px)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 2147483000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(3,6,12,.62)", backdropFilter: "blur(4px)" }}
         >
           <div className="mg-rise" style={{ width: "100%", maxWidth: 580, maxHeight: "88vh", overflowY: "auto", background: "var(--surface)", border: "1px solid var(--border-strong)", borderRadius: 20, boxShadow: "var(--shadow-3)" }}>
             {/* header */}
@@ -56,7 +58,7 @@ export default function PageGuide({ active }) {
                 <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".13em", textTransform: "uppercase", color: "var(--accent-ink)" }}>How this page works</p>
                 <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--fg)", margin: "2px 0 0", lineHeight: 1.15 }}>{guide.name}</h2>
               </div>
-              <button ref={closeRef} onClick={() => setOpen(false)} className="mg-focus" aria-label="Close" style={{ flexShrink: 0, background: "none", border: "none", color: "var(--fg-subtle)", cursor: "pointer", padding: 4, borderRadius: 8 }}><Icon.x size={19} /></button>
+              <button ref={closeRef} onClick={() => setOpen(false)} className="mg-focus" aria-label="Close" style={{ flexShrink: 0, background: "var(--surface-sunken)", border: "1px solid var(--hair)", color: "var(--fg-muted)", cursor: "pointer", width: 30, height: 30, borderRadius: 999, display: "grid", placeItems: "center" }}><Icon.x size={17} /></button>
             </div>
             <p style={{ padding: "10px 22px 0", fontSize: 13.5, color: "var(--fg-muted)", lineHeight: 1.5, maxWidth: "56ch" }}>{guide.what}</p>
 
@@ -108,7 +110,8 @@ export default function PageGuide({ active }) {
               <button onClick={() => setOpen(false)} className="mg-btn mg-btn--dawn mg-focus" style={{ fontSize: 13 }}>Got it</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
