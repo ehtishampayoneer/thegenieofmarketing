@@ -40,6 +40,7 @@ const GROUPS = [
     items: [
       { icon: "growth", t: "Auto-publishes to your blog", p: "Approved articles go live on your own site (or a hosted Genie page) automatically. Connect WordPress to publish to your blog.", href: "/connections", status: ["info", "Connect blog"] },
       { icon: "search", t: "Fast Google indexing", p: "Pings the Google Indexing API + IndexNow on publish so new pages get crawled in hours, not weeks.", href: "/connections", status: ["live", "Active"] },
+      { icon: "link", t: "Internal-link acceleration", p: "Each new page auto-gets links from 2–3 of your older, already-indexed pages — a whitehat trick that gets it found in days and passes it ranking strength.", href: "/growth", status: ["live", "Automatic"] },
       { icon: "check", t: "Google Business posts", p: "For local businesses, drafts Google Business Profile posts and review requests to win the map pack.", href: "/approvals", status: ["live", "For local"] },
     ],
   },
@@ -52,6 +53,7 @@ const GROUPS = [
       { icon: "history", t: "Content-refresh loop", p: "Re-optimizes your decaying winners in place — same URL — so rankings you earned don't quietly slip.", href: "/growth", status: ["live", "Active"] },
       { icon: "growth", t: "Real keyword volumes", p: "Exact monthly search volumes via the Google Ads API. Until the API token is approved, volumes show as smart estimates.", href: "/growth", status: ["pending", "Awaiting approval"] },
       { icon: "brain", t: "llms.txt + AI-crawler access", p: "Auto-built AI content index at /llms.txt, and a robots.txt that explicitly welcomes GPTBot, PerplexityBot and ClaudeBot — so AI cites you.", href: "/growth", status: ["live", "Active"] },
+      { icon: "write", t: "Clean markdown for AI", p: "Every published page also has a clean, plain-markdown twin (no menus or clutter) that AI engines read far more reliably — making your business easier to quote in AI answers.", href: "/growth", status: ["live", "Automatic"] },
       { icon: "check", t: "Google Preferred Sources", p: "Auto-adds Google's official Preferred Sources button to every published page (and your own site), boosting Top Stories + AI Overviews.", href: "/growth", status: ["live", "Active"] },
     ],
   },

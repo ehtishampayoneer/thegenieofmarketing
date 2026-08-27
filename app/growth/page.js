@@ -156,6 +156,12 @@ function Growth() {
               : <>Genie is tracking <b>{tracked}</b> {tracked === 1 ? "keyword" : "keywords"}. Your live Google positions show here once Search Console reports for your site — usually a few days after your first page is indexed. Tap <b>Refresh rankings</b> to pull the latest.</>}
           </p>
 
+          {/* how Genie speeds up indexing — the always-on internal-link acceleration */}
+          <p className="mt-2 text-[12px] mg-subtle flex items-start gap-1.5" style={{ maxWidth: "72ch" }}>
+            <Icon.link size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+            <span>Every time Genie publishes a new page it links <b>2–3 of your older, related pages</b> to it — a whitehat trick that gets fresh pages found in <b>days, not weeks</b>, and passes them ranking strength. Runs automatically after each publish; watch for it in the live activity bar up top.</span>
+          </p>
+
           {/* controls */}
           <div className="mt-4 flex items-center gap-4 flex-wrap">
             <LabeledSelect label="Time range" value={range} opts={RANGE_OPTS} onChange={setRange} />

@@ -191,7 +191,19 @@ export async function POST(_request, { params }) {
           try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(l.url); } catch {}
           try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, l.url); } catch {}
         }
-        if (accel.linked.length) result.accelerated = accel.linked.length;
+        if (accel.linked.length) {
+          result.accelerated = accel.linked.length;
+          const n = accel.linked.length;
+          try {
+            const { logActivity } = await import("@/lib/activity");
+            await logActivity(supabase, user.id, {
+              host, verb: "published", icon: "🔗",
+              message: `Linked ${n} older ${n === 1 ? "page" : "pages"} to “${p.title || action.title}” to speed up its indexing`,
+              detail: "Internal-link acceleration — Google recrawls trusted pages fast, so the new page gets found in days, not weeks.",
+              meta: { accelerated: n, newUrl: result.url },
+            });
+          } catch {}
+        }
       } catch {}
       return json({ ok: true, result, hosted: true });
     } catch (e) {
