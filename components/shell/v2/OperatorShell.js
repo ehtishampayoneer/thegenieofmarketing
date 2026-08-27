@@ -17,6 +17,7 @@ import { GenieMark, GenieLockup } from "@/components/brand/GenieMark";
 import { Kbd } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
 import GenieChat from "@/components/shell/v2/GenieChat";
+import PageGuide from "@/components/shell/v2/PageGuide";
 
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
 // where it's growing you (the journey), and how you stay in control (settings).
@@ -222,6 +223,7 @@ export default function OperatorShell({ active = "today", children }) {
                 <span key={hintIdx} className="flex-1 text-left truncate mg-rise" style={{ animationDuration: ".4s" }}>{SEARCH_HINTS[hintIdx]}</span>
                 <span className="hidden sm:flex items-center gap-0.5"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
               </button>
+              <PageGuide active={active} />
               <div className="ml-auto flex items-center gap-4">
                 <div className="hidden lg:flex flex-col items-end leading-tight">
                   <span className="text-[11px] mg-subtle">Last updated {lastSync ? `${relTime(lastSync)} ago` : "just now"}</span>
