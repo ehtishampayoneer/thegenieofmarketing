@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const { data: actions } = await supabase
       .from("actions").select("id, type, title, priority, payload, target, status")
-      .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").limit(50);
+      .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").limit(50);
     for (const a of actions || []) items.push(normalizeAction(a));
   } catch {}
 

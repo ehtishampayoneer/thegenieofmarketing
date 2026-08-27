@@ -191,6 +191,7 @@ function Growth() {
               <MetricsRow tracked={tracked} avgPosition={avgPosition} improvedBy={improvedBy} inTop20={inTop20} aiCitations={aiCitations} points={windowPoints} />
               <KeywordTable active={active} series={d.series} host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />
               <PagePerformance host={host} />
+              <LocalServices host={host} />
               <StrategyPhase active={active} inTop20={inTop20} />
             </div>
 
@@ -303,6 +304,73 @@ function PagePerformance({ host }) {
         ))}
         {!engaged.length && <p className="px-2 py-3 text-[12px] mg-subtle">No clicks or leads yet — they’ll show here as readers reach your published pages. Keep publishing and sharing.</p>}
       </div>
+    </Card>
+  );
+}
+
+// ── LOCAL SERVICE OPTIMIZER ── Only shows for local businesses. Genie writes
+// city-tagged Google Business Profile service names + ~300-char descriptions that win
+// "near me" searches; the owner pastes them into their GBP (the service API is gated).
+function LocalServices({ host }) {
+  const [d, setD] = useState(null);
+  const [city, setCity] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [copied, setCopied] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const j = await fetch(`/api/local${host ? `?host=${encodeURIComponent(host)}` : ""}`, { cache: "no-store" }).then((r) => r.json());
+        if (alive) { setD(j?.ok ? j : { local: false }); if (j?.city) setCity(j.city); }
+      } catch { if (alive) setD({ local: false }); }
+    })();
+    return () => { alive = false; };
+  }, [host]);
+
+  if (!d || !d.local) return null; // hidden for online-first businesses
+
+  async function generate() {
+    if (busy || !city.trim()) return;
+    setBusy(true); setMsg("");
+    try {
+      const j = await fetch("/api/local", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host, city }) }).then((r) => r.json());
+      if (j?.ok) { setD((prev) => ({ ...prev, services: j.services, city: j.city })); setMsg(j.message || ""); }
+      else setMsg(j?.message || "Couldn’t build the list.");
+    } catch { setMsg("Couldn’t build the list. Try again."); }
+    setBusy(false);
+  }
+  function copy(text, what) { try { navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(""), 1500); } catch {} }
+
+  const services = d.services || [];
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2">
+        <Icon.target size={16} />
+        <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Local service optimizer</h2>
+      </div>
+      <p className="mt-1 text-[12.5px] mg-muted" style={{ maxWidth: "64ch" }}>Google ranks local businesses on relevance + proximity. Tagging each service with your city (&ldquo;Roman Shades {city || "Your City"}&rdquo;) wins more &ldquo;near me&rdquo; searches. Genie writes them; you paste into your Google Business Profile.</p>
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Your city (e.g. Austin)" style={{ fontSize: 13, padding: ".5rem .7rem", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--surface)", color: "var(--fg)", minWidth: 180 }} />
+        <button onClick={generate} disabled={busy || !city.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }}>{busy ? "Optimizing…" : services.length ? "Regenerate" : "Optimize services"}</button>
+      </div>
+      {msg && <p className="mt-2 text-[12px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+      {services.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2.5">
+          {services.map((s, i) => (
+            <div key={i} className="mg-surface-quiet p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-semibold flex-1 min-w-0" style={{ color: "var(--fg)" }}>{s.cityTagged}</span>
+                <button onClick={() => copy(s.cityTagged, `n${i}`)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11 }}>{copied === `n${i}` ? "Copied" : "Copy name"}</button>
+              </div>
+              <p className="mt-1 text-[12px] mg-muted">{s.description} <span className="mg-subtle">({s.description.length}/300)</span></p>
+              <button onClick={() => copy(s.description, `d${i}`)} className="mt-1.5 text-[11px] mg-focus" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-ink)", fontWeight: 600 }}>{copied === `d${i}` ? "Copied ✓" : "Copy description"}</button>
+            </div>
+          ))}
+          <p className="text-[11px] mg-subtle">Paste each into Google Business Profile → Edit services. Only use cities you actually serve.</p>
+        </div>
+      )}
     </Card>
   );
 }

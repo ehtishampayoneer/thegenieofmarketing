@@ -43,6 +43,7 @@ const GROUPS = [
       { icon: "search", t: "Fast Google indexing", p: "Pings the Google Indexing API + IndexNow on publish so new pages get crawled in hours, not weeks.", href: "/connections", status: ["live", "Active"] },
       { icon: "link", t: "Internal-link acceleration", p: "Each new page auto-gets links from 2–3 of your older, already-indexed pages — a whitehat trick that gets it found in days and passes it ranking strength.", href: "/growth", status: ["live", "Automatic"] },
       { icon: "check", t: "Google Business posts", p: "For local businesses, drafts Google Business Profile posts and review requests to win the map pack.", href: "/approvals", status: ["live", "For local"] },
+      { icon: "target", t: "Local service optimizer", p: "For local businesses: writes city-tagged Google Business service names (‘Roman Shades Austin’) + ~300-char descriptions that win ‘near me’ searches. You paste them into your profile.", href: "/growth", status: ["live", "For local"] },
     ],
   },
   {
@@ -77,7 +78,7 @@ const GROUPS = [
       { icon: "megaphone", t: "Get featured (earned media)", p: "Finds roundups, guest-post sites, press and directories that could feature you + drafts the outreach; results persist per category.", href: "/featured", status: ["live", "Active"] },
       { icon: "conversations", t: "Partnership co-seller", p: "Finds complementary, non-competing businesses and drafts a win-win partnership pitch — warm referrals close ~10× cold.", href: "/featured", status: ["live", "Active"] },
       { icon: "mail", t: "Sends outreach + Inbox", p: "Compliant, capped email sent from your own Gmail; every reply threads back into an Inbox with a notification.", href: "/inbox", status: ["info", "Connect Gmail"] },
-      { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — real backlinks + brand presence for Google and AI.", href: "/foundation", status: ["draft", "You create"] },
+      { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — real backlinks + brand presence for Google and AI. Now includes a Chrome Web Store listing (Genie hands you a simple, legit extension + the steps).", href: "/foundation", status: ["draft", "You create"] },
     ],
   },
   {

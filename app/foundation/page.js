@@ -16,6 +16,7 @@ export default function FoundationPage() {
   const [done, setDone] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
+  const [openGuide, setOpenGuide] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,10 +88,34 @@ export default function FoundationPage() {
                         {s.conditional && <Pill tone="info">if software</Pill>}
                       </div>
                       <p className="mt-1 text-[12px] mg-muted leading-snug">{s.why}</p>
-                      <div className="mt-2.5 flex items-center gap-3">
+                      <div className="mt-2.5 flex items-center gap-3 flex-wrap">
                         <a href={s.url} target="_blank" rel="noopener noreferrer" className="mg-btn mg-btn--dawn" style={{ fontSize: 12 }}>Open &amp; create →</a>
+                        {s.guide && <button onClick={() => setOpenGuide(openGuide === s.id ? "" : s.id)} className="text-[12px] mg-focus" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-ink)", fontWeight: 600 }}>{openGuide === s.id ? "Hide guide" : "Setup guide + code"}</button>}
                         {isDone ? <span className="text-[12px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>Done ✓</span> : <button onClick={() => toggle(s.id)} className="text-[12px] mg-subtle mg-focus" style={{ background: "none", border: "none", cursor: "pointer" }}>Mark done</button>}
                       </div>
+                      {s.guide && openGuide === s.id && (
+                        <div className="mt-3">
+                          <ol className="flex flex-col gap-1.5">
+                            {s.guide.map((step, i) => (
+                              <li key={i} className="flex gap-2 text-[12px] mg-muted"><span className="mg-num shrink-0 font-semibold" style={{ color: "var(--accent-ink)" }}>{i + 1}.</span><span>{step}</span></li>
+                            ))}
+                          </ol>
+                          {s.snippet && (
+                            <div className="mt-3 flex flex-col gap-2">
+                              <p className="text-[11px] mg-subtle">Genie made you a simple, legit extension — paste these three files:</p>
+                              {Object.entries(s.snippet).map(([fname, code]) => (
+                                <div key={fname}>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[11px] font-bold" style={{ color: "var(--fg)", fontFamily: "var(--font-mono, monospace)" }}>{fname}</span>
+                                    <button onClick={() => copy(code, fname)} className="mg-btn mg-btn--quiet" style={{ fontSize: 10.5, padding: ".2rem .5rem" }}>Copy</button>
+                                  </div>
+                                  <pre className="mt-1 text-[10.5px] leading-snug" style={{ background: "var(--surface-sunken)", padding: "8px 10px", borderRadius: 8, maxHeight: 150, overflow: "auto", fontFamily: "var(--font-mono, monospace)", color: "var(--fg)" }}>{code}</pre>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
