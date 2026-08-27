@@ -41,6 +41,7 @@ export default function HuntPage() {
   const [msg, setMsg] = useState("");
   const [filter, setFilter] = useState("all"); // all | ready_to_buy | comparing
   const [openId, setOpenId] = useState(null);
+  const [rivals, setRivals] = useState("");
   const [toast, setToast] = useState("");
 
   const load = useCallback(async () => {
@@ -57,7 +58,7 @@ export default function HuntPage() {
     if (hunting) return;
     setHunting(true); setMsg("Genie is hunting buyers across Hacker News, Software Recs, GitHub, Reddit and Quora… up to a minute.");
     try {
-      const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).then((r) => r.json());
+      const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rivals }) }).then((r) => r.json());
       const reddit = j?.reddit?.via === "api" ? "Reddit API ✓" : j?.reddit?.via === "rss" ? "Reddit via RSS ✓" : "Reddit via Google index ✓";
       if (j?.ok) { setMsg(`${j.buyersFound || 0} buyers found · ${reddit}.`); await load(); }
       else setMsg(j?.error || "Couldn't hunt just now. Try again in a moment.");
@@ -93,6 +94,12 @@ export default function HuntPage() {
         </button>
       </div>
       {msg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+
+      {/* competitor-poaching mode */}
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <input value={rivals} onChange={(e) => setRivals(e.target.value)} placeholder="Poach from rivals — name competitors, comma-separated (optional)" className="mg-field mg-focus" style={{ flex: 1, minWidth: 280, maxWidth: 520, fontSize: 13 }} />
+        <span className="text-[11.5px] mg-subtle">Genie hunts people asking for an alternative to them.</span>
+      </div>
 
       {/* stat strip */}
       <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">

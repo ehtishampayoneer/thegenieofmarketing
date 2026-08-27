@@ -31,6 +31,7 @@ const GROUPS = [
       { icon: "spark", t: "Designs branded post images", p: "Pulls images from your own product pages first, free stock as fallback, and composes an on-brand card for each post.", href: "/approvals", status: ["live", "Active"] },
       { icon: "conversations", t: "Social posts & carousels", p: "Instagram/LinkedIn carousels and single posts — the highest-engagement social formats — drafted ready to post.", href: "/approvals", status: ["live", "Active"] },
       { icon: "bolt", t: "Pinterest pins", p: "Tall 2:3 pins with your image, link and description, ready to save to a board in one tap.", href: "/approvals", status: ["live", "Active"] },
+      { icon: "conversations", t: "Reddit posts & Quora answers", p: "Drafts value-first Reddit self-posts and Quora answers in your voice; Reddit opens the submit page prefilled and you post.", href: "/approvals", status: ["draft", "You post"] },
     ],
   },
   {
@@ -50,15 +51,28 @@ const GROUPS = [
       { icon: "spark", t: "Rich structured data", p: "Adds Article, Breadcrumb, HowTo and Product/Review schema so search engines and AI understand your pages.", href: "/growth", status: ["live", "Active"] },
       { icon: "history", t: "Content-refresh loop", p: "Re-optimizes your decaying winners in place — same URL — so rankings you earned don't quietly slip.", href: "/growth", status: ["live", "Active"] },
       { icon: "growth", t: "Real keyword volumes", p: "Exact monthly search volumes via the Google Ads API. Until the API token is approved, volumes show as smart estimates.", href: "/growth", status: ["pending", "Awaiting approval"] },
+      { icon: "brain", t: "llms.txt + AI-crawler access", p: "Auto-built AI content index at /llms.txt, and a robots.txt that explicitly welcomes GPTBot, PerplexityBot and ClaudeBot — so AI cites you.", href: "/growth", status: ["live", "Active"] },
+      { icon: "check", t: "Google Preferred Sources", p: "Auto-adds Google's official Preferred Sources button to every published page (and your own site), boosting Top Stories + AI Overviews.", href: "/growth", status: ["live", "Active"] },
     ],
   },
   {
-    label: "FINDS & WINS CLIENTS",
-    sub: "Outbound, done for you — find the right person, pitch them, track the reply.",
+    label: "HUNTS BUYERS & CLOSES DEALS",
+    sub: "The money layer — catch people ready to buy, win them, and see the revenue.",
     items: [
-      { icon: "target", t: "Find clients", p: "Name a niche; Genie finds real companies, the decision-maker at each, their contact, and a pitch written for them.", href: "/prospects", status: ["info", "Search access setup"] },
-      { icon: "mail", t: "Sends outreach for you", p: "Every email is CAN-SPAM compliant (unsubscribe + address), capped and rate-limited, sent from your own Gmail.", href: "/prospects", status: ["live", "Built-in"] },
-      { icon: "inbox", t: "Inbox with threaded replies", p: "Everyone Genie emailed, threaded with their reply pulled from your Gmail, with a notification when someone answers.", href: "/inbox", status: ["info", "Grant Gmail read"] },
+      { icon: "crosshair", t: "Buyer Hunt", p: "Scans Hacker News, Software Recs, GitHub, Reddit and Quora for people asking to buy right now, scores each 0–100, and drafts the reply. Name your rivals to poach their unhappy users.", href: "/hunt", status: ["live", "Active"] },
+      { icon: "coins", t: "Revenue Recovery", p: "Upload your old leads & customers; Genie writes a specific win-back for each and you send from your Gmail. Warm contacts convert in days.", href: "/recover", status: ["live", "Fast money"] },
+      { icon: "board", t: "Deal Pipeline", p: "One board across every channel: reached → replied (each reply classified for you) → won, with the real revenue closed.", href: "/pipeline", status: ["live", "Active"] },
+    ],
+  },
+  {
+    label: "FINDS CLIENTS & EARNS COVERAGE",
+    sub: "Outbound + earned media — find the right person, pitch them, get others to feature you.",
+    items: [
+      { icon: "target", t: "Find clients", p: "Name a niche; Genie finds real companies, the decision-maker at each, a verified contact, and a pitch written for them.", href: "/prospects", status: ["live", "Active"] },
+      { icon: "megaphone", t: "Get featured (earned media)", p: "Finds roundups, guest-post sites, press and directories that could feature you + drafts the outreach; results persist per category.", href: "/featured", status: ["live", "Active"] },
+      { icon: "conversations", t: "Partnership co-seller", p: "Finds complementary, non-competing businesses and drafts a win-win partnership pitch — warm referrals close ~10× cold.", href: "/featured", status: ["live", "Active"] },
+      { icon: "mail", t: "Sends outreach + Inbox", p: "Compliant, capped email sent from your own Gmail; every reply threads back into an Inbox with a notification.", href: "/inbox", status: ["info", "Connect Gmail"] },
+      { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — real backlinks + brand presence for Google and AI.", href: "/foundation", status: ["draft", "You create"] },
     ],
   },
   {
@@ -80,7 +94,7 @@ const GROUPS = [
   },
 ];
 
-const TONE = { live: "live", info: "info", pending: "neutral" };
+const TONE = { live: "live", info: "info", pending: "neutral", draft: "neutral" };
 
 export default function CapabilitiesPage() {
   const [counts, setCounts] = useState({ live: 0, total: 0 });

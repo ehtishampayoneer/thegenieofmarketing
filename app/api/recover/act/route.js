@@ -7,6 +7,7 @@
 
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordEvent } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,12 @@ export async function POST(request) {
 
   const { error } = await admin.from("actions").update({ payload: p }).eq("id", id).eq("user_id", userId);
   if (error) return json({ ok: false, error: error.message }, 500);
+
+  // Mirror won/lost into the shared deal-outcome ledger so the unified Deal Pipeline
+  // reflects Revenue Recovery closes too (one source of truth for revenue).
+  if (["won", "lost", "reopen"].includes(act) && p.email) {
+    try { await recordEvent(admin, { userId, type: "deal.outcome", actor: "user", subject: String(p.email).toLowerCase(), data: { email: String(p.email).toLowerCase(), outcome: act === "reopen" ? null : act, value: act === "won" ? String(p.dealValue || "") : null } }); } catch {}
+  }
   return json({ ok: true });
 }
 

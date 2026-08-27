@@ -27,12 +27,13 @@ export async function POST(request) {
 
   const appUrl = process.env.APP_URL || (() => { try { return new URL(request.url).origin; } catch { return "https://thegenieofmarketing.vercel.app"; } })();
   const cron = process.env.CRON_SECRET || "";
-  const callRadar = async (path) => {
+  const rivals = String(body?.rivals || "").slice(0, 200);
+  const callRadar = async (path, extra = {}) => {
     try {
       const r = await fetch(`${appUrl}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-genie-cron": cron },
-        body: JSON.stringify({ host, ai, _uid: userId }),
+        body: JSON.stringify({ host, ai, _uid: userId, ...extra }),
         signal: AbortSignal.timeout(160000),
       });
       return await r.json().catch(() => ({}));
@@ -40,9 +41,10 @@ export async function POST(request) {
   };
 
   // Run all three hunters in parallel: the buyer-intent radar (Hacker News, Software
-  // Recommendations, GitHub, Reddit) plus the Reddit + Quora reply radars.
+  // Recommendations, GitHub, Reddit; + competitor-poaching when rivals are named) plus
+  // the Reddit + Quora reply radars.
   const [intent, reddit, quora, redditAuth] = await Promise.all([
-    callRadar("/api/radar/intent"),
+    callRadar("/api/radar/intent", rivals ? { rivals } : {}),
     callRadar("/api/radar/reddit"),
     callRadar("/api/radar/quora"),
     testRedditAuth().catch(() => ({ ok: false, reason: "error" })),

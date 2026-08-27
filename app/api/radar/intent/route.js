@@ -25,8 +25,16 @@ export async function POST(request) {
   const { supabase, userId } = await resolveRadarUser(request, body);
   if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
 
-  const { host, ai = {} } = body || {};
+  const { host, ai = {}, rivals } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
+
+  // Competitor-poaching mode: rivals the user names are merged into the competitor set,
+  // so the hunt generates "{rival} alternative / too expensive" queries and scores
+  // anyone comparing/complaining about them as a hot buyer.
+  if (rivals) {
+    const named = String(rivals).split(/[,\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 6).map((name) => ({ name }));
+    if (named.length) ai.competitors = [...(Array.isArray(ai.competitors) ? ai.competitors : []), ...named];
+  }
 
   // 1) Who are we growing? Pull entity + everything Genie has learned about it.
   const { entity, brief } = await getBrief(supabase, userId, host, ai);
