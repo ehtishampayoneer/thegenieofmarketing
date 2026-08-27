@@ -42,6 +42,7 @@ function Growth() {
   const [deriveErr, setDeriveErr] = useState("");
   const [refreshMsg, setRefreshMsg] = useState("");
   const [ranksBusy, setRanksBusy] = useState(false);
+  const [hubBusy, setHubBusy] = useState(false);
   const [range, setRange] = useState(30);
   const [compare, setCompare] = useState("prev");
 
@@ -61,6 +62,16 @@ function Growth() {
     try { await loadFor(host); setRefreshMsg("Rankings refreshed from your latest Google Search Console data."); }
     catch { setRefreshMsg("Couldn’t refresh rankings just now. Try again in a moment."); }
     setRanksBusy(false);
+  }
+
+  async function buildHub() {
+    if (!host || hubBusy) return;
+    setHubBusy(true); setRefreshMsg("");
+    try {
+      const j = await fetch("/api/pillars", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) }).then((r) => r.json());
+      setRefreshMsg(j?.message || (j?.ok ? "Topic hub built — review it in Approvals." : "Couldn’t build a hub right now."));
+    } catch { setRefreshMsg("Couldn’t build a hub just now. Try again in a moment."); }
+    setHubBusy(false);
   }
 
   async function loadFor(h) {
@@ -133,6 +144,9 @@ function Growth() {
           </button>
           <button onClick={refreshPage} disabled={busy === "refresh" || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Re-optimize your stalest published page and republish it in place">
             <Icon.history size={14} /> {busy === "refresh" ? "Refreshing…" : "Refresh a page"}
+          </button>
+          <button onClick={buildHub} disabled={hubBusy || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Assemble a pillar hub page that links your related articles together — builds topical authority">
+            <Icon.link size={14} /> {hubBusy ? "Building…" : "Build topic hub"}
           </button>
           <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
             <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}

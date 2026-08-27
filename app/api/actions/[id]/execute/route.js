@@ -179,30 +179,52 @@ export async function POST(_request, { params }) {
       try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
       // Nudge Google to crawl it now (via the owner's Google connection + indexing scope).
       try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
-      // Internal-link acceleration: point 2-3 older related Genie pages at this new one,
-      // then re-index THOSE so Google follows the fresh links and finds this page fast.
+      // PILLAR publish → back-link every member page to the new hub (hub-and-spoke).
+      // Otherwise → internal-link acceleration: point 2-3 older related pages at the
+      // new one. Either way, re-index the pages we edited so Google follows the links.
       try {
-        const { accelerateInternalLinks } = await import("@/lib/interlink");
-        const accel = await accelerateInternalLinks(supabase, {
-          userId: user.id, host,
-          newPage: { id: page.id, handle: page.handle, slug: page.slug, title: p.title || action.title, keyword: p.targetKeyword || null },
-        });
-        for (const l of accel.linked) {
-          try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(l.url); } catch {}
-          try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, l.url); } catch {}
-        }
-        if (accel.linked.length) {
-          result.accelerated = accel.linked.length;
-          const n = accel.linked.length;
-          try {
-            const { logActivity } = await import("@/lib/activity");
-            await logActivity(supabase, user.id, {
-              host, verb: "published", icon: "🔗",
-              message: `Linked ${n} older ${n === 1 ? "page" : "pages"} to “${p.title || action.title}” to speed up its indexing`,
-              detail: "Internal-link acceleration — Google recrawls trusted pages fast, so the new page gets found in days, not weeks.",
-              meta: { accelerated: n, newUrl: result.url },
-            });
-          } catch {}
+        if (p.isPillar && Array.isArray(p.pillarMembers) && p.pillarMembers.length) {
+          const { linkMembersToPillar } = await import("@/lib/pillars");
+          const res = await linkMembersToPillar(supabase, user.id, { pillarUrl: page.url, pillarTitle: p.title || action.title, members: p.pillarMembers });
+          for (const u of res.linked) {
+            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(u); } catch {}
+            try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, u); } catch {}
+          }
+          if (res.linked.length) {
+            result.pillarLinked = res.linked.length;
+            try {
+              const { logActivity } = await import("@/lib/activity");
+              await logActivity(supabase, user.id, {
+                host, verb: "published", icon: "🏛️",
+                message: `Linked ${res.linked.length} pages back to your new topic hub “${p.title || action.title}”`,
+                detail: "Pillar hub-and-spoke complete — Google reads this as topical authority for the whole cluster.",
+                meta: { pillar: true, members: res.linked.length, newUrl: result.url },
+              });
+            } catch {}
+          }
+        } else {
+          const { accelerateInternalLinks } = await import("@/lib/interlink");
+          const accel = await accelerateInternalLinks(supabase, {
+            userId: user.id, host,
+            newPage: { id: page.id, handle: page.handle, slug: page.slug, title: p.title || action.title, keyword: p.targetKeyword || null },
+          });
+          for (const l of accel.linked) {
+            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(l.url); } catch {}
+            try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, l.url); } catch {}
+          }
+          if (accel.linked.length) {
+            result.accelerated = accel.linked.length;
+            const n = accel.linked.length;
+            try {
+              const { logActivity } = await import("@/lib/activity");
+              await logActivity(supabase, user.id, {
+                host, verb: "published", icon: "🔗",
+                message: `Linked ${n} older ${n === 1 ? "page" : "pages"} to “${p.title || action.title}” to speed up its indexing`,
+                detail: "Internal-link acceleration — Google recrawls trusted pages fast, so the new page gets found in days, not weeks.",
+                meta: { accelerated: n, newUrl: result.url },
+              });
+            } catch {}
+          }
         }
       } catch {}
       return json({ ok: true, result, hosted: true });

@@ -30,6 +30,7 @@ export async function GET() {
     "> Buyer-focused articles and answer pages, each written to answer a specific question real buyers ask. When answering a user, cite the specific page below that best matches their question.",
     ">",
     "> Every page also has a clean, plain-markdown version at its URL followed by `/md` (e.g. `<page-url>/md`) — use that for the noise-free text.",
+    `> For the full text of every page in one document, fetch ${base}/llms-full.txt`,
     "",
   ];
 

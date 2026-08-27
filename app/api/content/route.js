@@ -85,6 +85,19 @@ export async function POST(request) {
     } catch {}
   }
 
+  // ── PEOPLE ALSO ASK ── Real questions people type into Google about this topic,
+  // harvested free from Autocomplete. Fed into the FAQ so the page answers questions
+  // buyers actually ask — and those FAQs become FAQPage schema on publish, which is
+  // exactly what AI answer engines cite.
+  let paa = [];
+  if (userId) {
+    try {
+      const { peopleAlsoAsk } = await import("@/lib/paa");
+      const seed = pick?.keyword || topic || (ai.keywordsToOwn && ai.keywordsToOwn[0]) || ai.whatTheySell || "";
+      paa = await peopleAlsoAsk(seed);
+    } catch {}
+  }
+
   let data = null;
   let provider = null;
   try {
@@ -97,7 +110,7 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks }),
+      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks, paa }),
     });
     data = result.json;
     provider = result.provider;
@@ -290,9 +303,12 @@ export async function POST(request) {
   return json({ ok: true, saved: actionIds.length, content: data, actionIds, meta: { engine: provider } });
 }
 
-function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [] }) {
+function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [] }) {
   const internalLinks = existingLinks.length
     ? `\nINTERNAL LINKS — Genie already published these related articles. Link to 1-3 of them NATURALLY inside the body using markdown to the FULL url, e.g. [natural anchor text](${existingLinks[0].url}), only where it genuinely helps the reader (this builds topical authority):\n${existingLinks.map((l) => `- "${l.title}" → ${l.url}`).join("\n")}`
+    : "";
+  const paaBlock = paa.length
+    ? `\nPEOPLE ALSO ASK — these are REAL questions people search on Google about this topic. Use them (reword only for grammar) as the questions in the article's "faq" array, and answer each concisely, factually and quotably. Prefer these over invented questions — they're what AI answer engines cite:\n${paa.map((q) => `- ${q}`).join("\n")}`
     : "";
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
@@ -349,7 +365,7 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${insight ? insight + "\n" : ""}${voice}
-${targetBlock}${internalLinks}
+${targetBlock}${internalLinks}${paaBlock}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
 knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.
