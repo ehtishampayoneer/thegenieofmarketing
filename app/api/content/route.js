@@ -383,6 +383,18 @@ WRITE LIKE A SHARP HUMAN, NOT AN AI. This is critical:
 - Vary sentence length. Use short punchy sentences. Sound like a real person who knows this niche talking to a friend, not a press release.
 - Be specific and concrete (real scenarios, numbers, examples), never generic filler.
 
+INFORMATION GAIN — THIS IS WHAT MAKES AI CITE YOU AND KEEPS GOOGLE FROM BURYING YOU IN 2026.
+Generic, rehashed AI content that only repeats what every other page already says is now actively
+DEMOTED. To win, this article must ADD something the web does not already have. Include at least
+TWO of the following, drawn from THIS specific business's real expertise and the details above:
+- A specific method, process, or framework this business actually uses — name the concrete steps.
+- Real numbers, ranges, timelines or results from their experience (e.g. "most installs take 2-4 hours", "we've done this 400+ times", "expect to pay $X-$Y").
+- A concrete mini example or scenario a real customer faced, and exactly how it was solved.
+- An original comparison table, checklist, or decision framework the reader can't easily find elsewhere.
+- A contrarian or expert take that corrects a common misconception in this niche.
+Never pad with obvious, encyclopedic background an AI already knows. When you lack a hard fact, get
+MORE specific and actionable, not more generic. Original + specific + genuinely useful = cited and ranked. Generic = invisible.
+
 Also assign a PRIORITY to the article and to the social posts. Use EXACTLY one of these literal values:
 - "high" = high impact AND the user should act soon
 - "quick_win" = easy + fast + still meaningful impact

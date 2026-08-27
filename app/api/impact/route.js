@@ -52,7 +52,7 @@ export async function GET(request) {
     ingest: {
       token: makeIngestToken(user.id),
       base: (process.env.APP_URL || "").replace(/\/$/, ""),
-      providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, label: p.label })),
+      providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, label: p.label, steps: p.steps || [] })),
     },
   });
 }

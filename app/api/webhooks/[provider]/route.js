@@ -9,6 +9,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PROVIDERS, verifyIngestToken } from "@/lib/commerce";
 import { recordConversion } from "@/lib/attribution";
+import { recordEvent } from "@/lib/events";
 import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
@@ -30,13 +31,25 @@ export async function POST(request, { params }) {
   const secret = process.env[adapter.secretEnv];
   if (secret && !adapter.verify(raw, headers, secret)) return json({ ok: false, error: "bad_signature" }, 401);
 
+  const admin = createAdminClient();
+
+  // Receipt: log EVERY validly-tokened hit (test pings included), so the setup UI can
+  // confirm "we received your webhook" before a real sale ever happens. Hourly-deduped
+  // so a busy store doesn't flood the ledger.
+  try {
+    const hour = new Date().toISOString().slice(0, 13);
+    await recordEvent(admin, {
+      userId, type: "webhook.received", actor: "system", subject: params.provider,
+      data: { provider: params.provider }, dedupeKey: `whr:${userId}:${params.provider}:${hour}`,
+    });
+  } catch {}
+
   let payload;
   try { payload = JSON.parse(raw); } catch { return json({ ok: true, ignored: "unparseable" }); }
 
   const norm = adapter.parse(payload, headers);
   if (!norm) return json({ ok: true, ignored: "not_a_purchase" }); // ignore non-purchase events cleanly
 
-  const admin = createAdminClient();
   // Which entity? Prefer the decision we tagged (ref), else the user's primary scan.
   let host = null;
   try {

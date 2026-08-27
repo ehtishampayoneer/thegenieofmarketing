@@ -44,7 +44,7 @@ export default function ImpactPage() {
             <Card className="mg-ambient p-6 flex flex-col justify-center">
               <p className="mg-eyebrow">Revenue Genie influenced</p>
               <p className="mt-3 mg-display-lg mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
-              <p className="mt-2.5 text-[13px] mg-muted max-w-sm">{live ? "Traced from the action to the sale. Real money, not activity." : "Representative sample — connect revenue to see your own."}</p>
+              <p className="mt-2.5 text-[13px] mg-muted max-w-sm">{d.live ? "Traced from the action to the sale. Real money, not activity." : "Representative sample — connect revenue to see your own."}</p>
             </Card>
             <Card className="p-5 flex flex-col justify-center gap-3.5">
               <ImpactStat label="Customers won" sub="last 500 events" value={d.conversions} />
@@ -101,29 +101,67 @@ export default function ImpactPage() {
   );
 }
 
-// Provider-agnostic setup: one webhook URL per provider, from the ingest token.
+// Provider-agnostic GUIDED setup: a private webhook URL per provider, the exact steps
+// to wire it up, and a live status that confirms we received the webhook — so the user
+// knows it works before a real sale, not after.
 function ConnectRevenue({ ingest, empty }) {
   const [copied, setCopied] = useState("");
+  const [open, setOpen] = useState("");
+  const [status, setStatus] = useState(null);
+  const [checking, setChecking] = useState(false);
   const providers = ingest?.providers || [];
   function urlFor(id) { return `${ingest?.base || ""}/api/webhooks/${id}?k=${ingest?.token || ""}`; }
   async function copy(id) { try { await navigator.clipboard.writeText(urlFor(id)); setCopied(id); setTimeout(() => setCopied(""), 1800); } catch {} }
+  async function check() {
+    setChecking(true);
+    try { const j = await fetch("/api/revenue/status", { cache: "no-store" }).then((r) => r.json()); if (j?.ok) setStatus(j); } catch {}
+    setChecking(false);
+  }
+  useEffect(() => { check(); }, []);
+
+  const connected = !!status?.connected;
   return (
     <Card className="p-6" style={empty ? { marginTop: 24, borderColor: "var(--accent)", boxShadow: "var(--shadow-dawn)" } : {}}>
       <div className="flex items-center gap-2">
         <Icon.link size={16} />
         <h3 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>{empty ? "Connect your revenue so Genie can prove what it earns you" : "Connect your revenue"}</h3>
       </div>
-      <p className="mt-1.5 text-[13px] mg-muted max-w-2xl">Point any payment provider’s webhook at your private URL below. Genie records each sale, traces it to the action that drove it, and learns from real money. Works with any provider — pick yours.</p>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <p className="mt-1.5 text-[13px] mg-muted max-w-2xl">Point your payment provider’s webhook at your private URL below, follow the 3 steps, then send a test event. Genie records each sale, traces it to the page that drove it, and learns from real money.</p>
+
+      {/* LIVE STATUS — confirms the wiring before a real sale */}
+      <div className="mt-4 flex items-center gap-2.5 flex-wrap rounded-xl px-3.5 py-2.5" style={{ background: connected ? "var(--signal-live-soft)" : "var(--surface-sunken)", border: `1px solid ${connected ? "var(--signal-live-ink)" : "var(--hair)"}` }}>
+        <span className="mg-live-dot" style={connected ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
+        <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>
+          {connected
+            ? <>Connected{status.provider ? ` · ${status.provider}` : ""} ✓ — received an event {status.lastEventAt ? relTime(status.lastEventAt) : "just now"}. {status.hasSales ? "Sales are flowing in." : "Waiting for your first sale."}</>
+            : <>Not connected yet — add the webhook, then send a test event.</>}
+        </span>
+        <button onClick={check} disabled={checking} className="mg-btn mg-btn--quiet shrink-0 ml-auto disabled:opacity-50" style={{ fontSize: 11.5, padding: ".3rem .6rem" }}>{checking ? "Checking…" : "Recheck"}</button>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2.5">
         {providers.map((p) => (
-          <div key={p.id} className="mg-surface-quiet p-3 flex items-center gap-2.5">
-            <span className="text-[13px] font-semibold w-28 shrink-0" style={{ color: "var(--fg)" }}>{p.label}</span>
-            <code className="flex-1 min-w-0 text-[11px] mg-subtle truncate" style={{ fontFamily: "var(--font-mono)" }}>{urlFor(p.id)}</code>
-            <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{copied === p.id ? "Copied" : "Copy"}</button>
+          <div key={p.id} className="mg-surface-quiet p-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[13px] font-semibold w-28 shrink-0" style={{ color: "var(--fg)" }}>{p.label}</span>
+              <code className="flex-1 min-w-0 text-[11px] mg-subtle truncate" style={{ fontFamily: "var(--font-mono)" }}>{urlFor(p.id)}</code>
+              <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{copied === p.id ? "Copied" : "Copy"}</button>
+              {p.steps?.length ? <button onClick={() => setOpen(open === p.id ? "" : p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{open === p.id ? "Hide" : "Steps"}</button> : null}
+            </div>
+            {open === p.id && p.steps?.length ? (
+              <ol className="mt-2.5 ml-1 flex flex-col gap-1.5">
+                {p.steps.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-[12px] mg-muted">
+                    <span className="mg-num shrink-0 font-semibold" style={{ color: "var(--accent-ink)" }}>{i + 1}.</span>
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] mg-subtle">Provider-agnostic by design — Stripe, Shopify, Paddle, Lemon Squeezy, and more are each a thin adapter. Your URL is private to your account.</p>
+      <p className="mt-3 text-[11px] mg-subtle">Your URL is private to your account. Any provider works — Stripe, Shopify, Paddle, Lemon Squeezy, and more.</p>
     </Card>
   );
 }
