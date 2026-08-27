@@ -40,7 +40,7 @@ const GROUPS = [
     sub: "Only your own site auto-publishes. Social is draft-and-you-post, so your accounts stay safe.",
     items: [
       { icon: "growth", t: "Auto-publishes to your blog", p: "Approved articles go live on your own site (or a hosted Genie page) automatically. Connect WordPress to publish to your blog.", href: "/connections", status: ["info", "Connect blog"] },
-      { icon: "search", t: "Fast Google indexing", p: "Pings the Google Indexing API + IndexNow on publish so new pages get crawled in hours, not weeks.", href: "/connections", status: ["live", "Active"] },
+      { icon: "search", t: "Fast indexing", p: "On publish, instantly pings IndexNow (Bing & Yandex — which ChatGPT Search and Perplexity read) and requests a Google crawl, so pages get discovered in hours instead of waiting for a slow first crawl. (Google indexing is requested, never guaranteed.)", href: "/connections", status: ["live", "Active"] },
       { icon: "link", t: "Internal-link acceleration", p: "Each new page auto-gets links from 2–3 of your older, already-indexed pages — a whitehat trick that gets it found in days and passes it ranking strength.", href: "/growth", status: ["live", "Automatic"] },
       { icon: "check", t: "Google Business posts", p: "For local businesses, drafts Google Business Profile posts and review requests to win the map pack.", href: "/approvals", status: ["live", "For local"] },
       { icon: "target", t: "Local service optimizer", p: "For local businesses: writes city-tagged Google Business service names (‘Roman Shades Austin’) + ~300-char descriptions that win ‘near me’ searches. You paste them into your profile.", href: "/growth", status: ["live", "For local"] },
@@ -50,11 +50,11 @@ const GROUPS = [
     label: "WINS SEARCH & AI ANSWERS",
     sub: "Getting found on Google — and named when buyers ask AI what to buy.",
     items: [
-      { icon: "search", t: "AI Search visibility", p: "Asks ChatGPT, Perplexity, Gemini and Claude your buyers' questions, finds where a rival is named instead of you, and writes the page to win the citation.", href: "/ai-search", status: ["live", "Active"] },
+      { icon: "search", t: "AI Search visibility", p: "Asks ChatGPT, Perplexity, Gemini and Claude your buyers' questions, finds where a rival is named instead of you, and writes a better, more source-worthy answer page to improve your odds of being the one AI cites.", href: "/ai-search", status: ["live", "Active"] },
       { icon: "spark", t: "Rich structured data", p: "Adds Article, Breadcrumb, HowTo and Product/Review schema so search engines and AI understand your pages.", href: "/growth", status: ["live", "Active"] },
       { icon: "history", t: "Content-refresh loop", p: "Re-optimizes your decaying winners in place — same URL — so rankings you earned don't quietly slip.", href: "/growth", status: ["live", "Active"] },
-      { icon: "growth", t: "Real keyword volumes", p: "Exact monthly search volumes via the Google Ads API. Until the API token is approved, volumes show as smart estimates.", href: "/growth", status: ["pending", "Awaiting approval"] },
-      { icon: "brain", t: "llms.txt + AI-crawler access", p: "Auto-built AI content index at /llms.txt (plus /llms-full.txt with the full text of every page), and a robots.txt that explicitly welcomes GPTBot, PerplexityBot and ClaudeBot.", href: "/growth", status: ["live", "Active"] },
+      { icon: "growth", t: "Real keyword volumes", p: "Real search-volume ranges from the Google Ads API (the same data advertisers use). Until the API token is approved, volumes show as smart estimates.", href: "/growth", status: ["pending", "Awaiting approval"] },
+      { icon: "brain", t: "llms.txt + AI-crawler access", p: "Auto-built AI content index at /llms.txt (plus /llms-full.txt with every page's full text), and a robots.txt that explicitly welcomes GPTBot, PerplexityBot and ClaudeBot. Note: Google has said it doesn't use llms.txt, so this is for AI assistants that do — not a Google ranking lever.", href: "/growth", status: ["live", "Active"] },
       { icon: "write", t: "Clean markdown for AI", p: "Every published page also has a clean, plain-markdown twin (no menus or clutter) that AI engines read far more reliably — making your business easier to quote in AI answers.", href: "/growth", status: ["live", "Automatic"] },
       { icon: "target", t: "Topic hubs (pillar pages)", p: "When you have several related articles, Genie assembles an authoritative hub page linking them all together (and links each back) — the hub-and-spoke structure Google reads as topical authority.", href: "/growth", status: ["live", "Active"] },
       { icon: "conversations", t: "Answers real ‘People Also Ask’", p: "Harvests the actual questions people type into Google about your topic (free) and answers them in each article’s FAQ with schema — exactly what AI answer engines quote.", href: "/approvals", status: ["live", "Automatic"] },
@@ -78,7 +78,7 @@ const GROUPS = [
       { icon: "megaphone", t: "Get featured (earned media)", p: "Finds roundups, guest-post sites, press and directories that could feature you + drafts the outreach; results persist per category.", href: "/featured", status: ["live", "Active"] },
       { icon: "conversations", t: "Partnership co-seller", p: "Finds complementary, non-competing businesses and drafts a win-win partnership pitch — warm referrals close ~10× cold.", href: "/featured", status: ["live", "Active"] },
       { icon: "mail", t: "Sends outreach + Inbox", p: "Compliant, capped email sent from your own Gmail; every reply threads back into an Inbox with a notification.", href: "/inbox", status: ["info", "Connect Gmail"] },
-      { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — real backlinks + brand presence for Google and AI. Now includes a Chrome Web Store listing (Genie hands you a simple, legit extension + the steps).", href: "/foundation", status: ["draft", "You create"] },
+      { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — a consistent brand entity across the web that Google and AI use to recognize you. Most of these links are nofollow, so treat them as brand + discovery, not a ranking hack. Includes a Chrome Web Store listing (Genie hands you a simple, legit extension + the steps).", href: "/foundation", status: ["draft", "You create"] },
     ],
   },
   {
