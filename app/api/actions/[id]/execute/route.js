@@ -179,6 +179,20 @@ export async function POST(_request, { params }) {
       try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
       // Nudge Google to crawl it now (via the owner's Google connection + indexing scope).
       try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
+      // Internal-link acceleration: point 2-3 older related Genie pages at this new one,
+      // then re-index THOSE so Google follows the fresh links and finds this page fast.
+      try {
+        const { accelerateInternalLinks } = await import("@/lib/interlink");
+        const accel = await accelerateInternalLinks(supabase, {
+          userId: user.id, host,
+          newPage: { id: page.id, handle: page.handle, slug: page.slug, title: p.title || action.title, keyword: p.targetKeyword || null },
+        });
+        for (const l of accel.linked) {
+          try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(l.url); } catch {}
+          try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, l.url); } catch {}
+        }
+        if (accel.linked.length) result.accelerated = accel.linked.length;
+      } catch {}
       return json({ ok: true, result, hosted: true });
     } catch (e) {
       const reason = String(e?.message || "Hosted publish failed").slice(0, 300);

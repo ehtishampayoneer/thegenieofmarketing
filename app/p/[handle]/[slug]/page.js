@@ -28,7 +28,9 @@ export async function generateMetadata({ params }) {
   return {
     title: page.title,
     description: page.meta_description || undefined,
-    alternates: { canonical: url },
+    // Advertise the clean markdown mirror so AI crawlers can grab the noise-free
+    // version (rel="alternate" type="text/markdown").
+    alternates: { canonical: url, types: { "text/markdown": `${url}/md` } },
     openGraph: {
       title: page.title, description: page.meta_description || "", url, type: "article",
       publishedTime: page.published_at, siteName: page.business_name || page.host,

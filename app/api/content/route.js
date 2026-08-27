@@ -69,13 +69,17 @@ export async function POST(request) {
     try {
       const seed = String(pick?.keyword || topic || "").toLowerCase();
       const words = new Set(seed.split(/[^a-z0-9]+/).filter((w) => w.length > 3));
+      // Only link to pages that are actually LIVE (have a real published URL in
+      // result.url). Using the absolute URL means the link renders and resolves —
+      // a relative slug wouldn't linkify and could 404.
       const { data: arts } = await supabase.from("actions")
-        .select("payload").eq("user_id", userId).eq("type", "article")
-        .order("created_at", { ascending: false }).limit(30);
+        .select("payload, result").eq("user_id", userId).eq("type", "article")
+        .order("created_at", { ascending: false }).limit(40);
       existingLinks = (arts || [])
-        .map((a) => a.payload).filter((p) => p && p.slug && p.title)
-        .map((p) => ({ title: p.title, slug: String(p.slug).replace(/^\/+/, ""), overlap: `${p.title} ${p.targetKeyword || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => words.has(w)).length }))
-        .filter((p) => p.overlap > 0)
+        .map((a) => ({ p: a.payload, url: a.result?.url }))
+        .filter((x) => x.p && x.p.title && x.url)
+        .map((x) => ({ title: x.p.title, url: x.url, overlap: `${x.p.title} ${x.p.targetKeyword || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => words.has(w)).length }))
+        .filter((x) => x.overlap > 0)
         .sort((a, b) => b.overlap - a.overlap)
         .slice(0, 3);
     } catch {}
@@ -288,7 +292,7 @@ export async function POST(request) {
 
 function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [] }) {
   const internalLinks = existingLinks.length
-    ? `\nINTERNAL LINKS — Genie already published these related articles on THIS site. Link to 1-3 of them NATURALLY inside the body using markdown to their slug, e.g. [natural anchor text](/${"slug"}), only where it genuinely helps the reader (this builds topical authority):\n${existingLinks.map((l) => `- "${l.title}" → /${l.slug}`).join("\n")}`
+    ? `\nINTERNAL LINKS — Genie already published these related articles. Link to 1-3 of them NATURALLY inside the body using markdown to the FULL url, e.g. [natural anchor text](${existingLinks[0].url}), only where it genuinely helps the reader (this builds topical authority):\n${existingLinks.map((l) => `- "${l.title}" → ${l.url}`).join("\n")}`
     : "";
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
