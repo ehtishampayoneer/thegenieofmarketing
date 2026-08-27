@@ -12,7 +12,7 @@ import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 import { pickPostImage } from "@/lib/media";
 import { classifyEntity } from "@/lib/entity";
-import { deDash } from "@/lib/markdown";
+import { deDash, cleanText } from "@/lib/markdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -135,23 +135,30 @@ export async function POST(request) {
 
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
 
-  // Guarantee the em-dash "AI tell" is gone, whatever the model actually did.
+  // Strip the "AI tells": em-dashes everywhere, and stray markdown symbols (#, **, -
+  // bullets) from any text that is shown/posted AS-IS. The article BODY keeps its
+  // markdown (it becomes proper HTML headings/lists on publish), so it only gets
+  // de-dashed; everything plain-text (title, meta, FAQ, CTA, and all social) is fully
+  // cleaned so nothing reads as machine-written.
   if (data.article) {
-    data.article.body = deDash(data.article.body); data.article.title = deDash(data.article.title); data.article.metaDescription = deDash(data.article.metaDescription);
-    if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: deDash(String(f.q)), a: deDash(String(f.a)) }));
+    data.article.body = deDash(data.article.body);
+    data.article.title = cleanText(data.article.title);
+    data.article.metaDescription = cleanText(data.article.metaDescription);
+    if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: cleanText(String(f.q)), a: cleanText(String(f.a)) }));
     if (data.article.cta && typeof data.article.cta === "object") {
       const c = data.article.cta;
-      data.article.cta = { headline: deDash(String(c.headline || "")), subtext: deDash(String(c.subtext || "")), buttonText: deDash(String(c.buttonText || "")) };
+      data.article.cta = { headline: cleanText(String(c.headline || "")), subtext: cleanText(String(c.subtext || "")), buttonText: cleanText(String(c.buttonText || "")) };
     }
   }
+  if (data.cardHeadline) data.cardHeadline = cleanText(data.cardHeadline);
   if (data.social) {
-    const cleanArr = (a) => (Array.isArray(a) ? a.map(deDash) : a);
+    const cleanArr = (a) => (Array.isArray(a) ? a.map(cleanText) : a);
     data.social.twitter = cleanArr(data.social.twitter);
     data.social.instagram = cleanArr(data.social.instagram);
     data.social.facebook = cleanArr(data.social.facebook);
-    data.social.linkedin = deDash(data.social.linkedin);
-    data.social.reddit = deDash(data.social.reddit);
-    data.social.quora = deDash(data.social.quora);
+    data.social.linkedin = cleanText(data.social.linkedin);
+    data.social.reddit = cleanText(data.social.reddit);
+    data.social.quora = cleanText(data.social.quora);
   }
 
   // Persist everything Genie generated as PROPOSED actions (the autopilot spine).
@@ -274,7 +281,7 @@ export async function POST(request) {
       });
       if (isLocal && data.gbpPost) rows.push({
         user_id: userId, scan_id: scanId || null, type: "social_post", title: "Google Business post",
-        payload: { platform: "gbp", text: deDash(data.gbpPost), targetKeyword: primaryKw, image: socialImage || heroPick?.url || null, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: !!socialImage, dest: (ai.businessUrl || ai.url || (host ? `https://${host}` : "")) },
+        payload: { platform: "gbp", text: cleanText(data.gbpPost), targetKeyword: primaryKw, image: socialImage || heroPick?.url || null, imageRaw: heroPick?.url || null, imageSource: heroPick?.source || null, branded: !!socialImage, dest: (ai.businessUrl || ai.url || (host ? `https://${host}` : "")) },
         target: { platform: "gbp", host: host || null }, priority: socialPriority, status: "proposed",
       });
       // Review request — a reusable "ask a happy customer for a Google review" template
@@ -284,7 +291,7 @@ export async function POST(request) {
         try { const { data: ex } = await supabase.from("actions").select("id").eq("user_id", userId).eq("status", "proposed").contains("payload", { platform: "review_request" }).limit(1); hasPending = !!ex?.length; } catch {}
         if (!hasPending) rows.push({
           user_id: userId, scan_id: scanId || null, type: "social_post", title: "Review request",
-          payload: { platform: "review_request", text: deDash(data.reviewRequest), targetKeyword: primaryKw },
+          payload: { platform: "review_request", text: cleanText(data.reviewRequest), targetKeyword: primaryKw },
           target: { platform: "review_request", host: host || null }, priority: "quick_win", status: "proposed",
         });
       }

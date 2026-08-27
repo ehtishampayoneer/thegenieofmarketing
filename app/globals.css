@@ -166,6 +166,13 @@ html, body {
 /* Numbers/labels that must stay compact opt out with .mg-keepsize on the element. */
 .mg .mg-keepsize { font-size:revert; line-height:revert; }
 
+/* ── FIT: nothing overflows the content column (desktop or mobile) ── Wide media and
+   code blocks stay inside their column; long unbroken strings (URLs) wrap instead of
+   pushing the page sideways. Paired with overflow-x-hidden on <main>. */
+.mg img, .mg video { max-width:100%; height:auto; }
+.mg pre { max-width:100%; overflow-x:auto; }
+.mg { overflow-wrap:break-word; }
+
 /* Atmosphere — dawn light spilling into the field behind a header. The single
    strongest "premium" cue: light comes from somewhere. Static (reduced-motion safe). */
 .mg-ambient { position:relative; isolation:isolate; }

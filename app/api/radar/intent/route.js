@@ -6,6 +6,7 @@
 // Goal: qualified buyers, not traffic.
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
+import { cleanText } from "@/lib/markdown";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch, redditSearch } from "@/lib/search";
 import { hnSearch, stackExchangeSearch, githubSearch } from "@/lib/intent-sources";
@@ -114,14 +115,17 @@ export async function POST(request) {
     const stage = it.stage || c.intent.stage;
     const meta = { buyer_intent: true, intent_score: intent, journey_stage: stage, signals: c.intent.signals, source: c.source, reason: it.rationale || null, competitorMention: c.intent.competitorMention, query: c.query };
 
-    opportunities.push({ title: c.title, url: c.url, platform: c.platform, stage, intent, action, rationale: it.rationale || null, draft: it.draft || null });
+    // Clean the reply of markdown symbols/em-dashes — it gets posted to a real thread
+    // as-is, so it must read as a human wrote it.
+    const draft = it.draft ? cleanText(String(it.draft)) : null;
+    opportunities.push({ title: c.title, url: c.url, platform: c.platform, stage, intent, action, rationale: it.rationale || null, draft });
 
     // Reachable actions become tap-ready placements (flow into Today/Approvals).
-    if (["reply", "answer", "post"].includes(action) && it.draft) {
+    if (["reply", "answer", "post"].includes(action) && draft) {
       rows.push({
         user_id: userId, host, platform: c.platform, owned: reach.owned, keyword: c.query,
         target_url: c.url, target_title: `${c.platform} · ${c.title}`.slice(0, 200),
-        kind: action, draft: it.draft, status: "ready", cooldown_days: cooldownFor(c.platform), meta,
+        kind: action, draft, status: "ready", cooldown_days: cooldownFor(c.platform), meta,
       });
     }
     decisions.push({ userId, host, kind: "buyer_intent_pick", choice: c.title, rationale: it.rationale || `${stage} · intent ${intent}`, confidence: intent / 100, meta: { platform: c.platform, url: c.url, stage, source: c.source } });

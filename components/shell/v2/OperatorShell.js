@@ -269,7 +269,7 @@ export default function OperatorShell({ active = "today", children }) {
             </div>
           </div>
 
-          <main className="flex-1 overflow-y-auto thin-scroll">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden thin-scroll">
             {missingConns.length > 0 && !connDismissed && (
               <div className="flex items-center gap-3 px-6 py-2.5" style={{ background: "var(--accent-quiet)", borderBottom: "1px solid var(--border)" }}>
                 <Icon.link size={15} style={{ color: "var(--accent-ink)" }} />
@@ -280,7 +280,7 @@ export default function OperatorShell({ active = "today", children }) {
                 <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--fg-subtle)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
               </div>
             )}
-            <div className="px-6 py-6 xl:px-8">{children}</div>
+            <div className="px-4 sm:px-6 py-4 sm:py-5 xl:px-8 min-w-0" style={{ overflowWrap: "break-word", maxWidth: "100%" }}>{children}</div>
           </main>
         </div>
       </div>
