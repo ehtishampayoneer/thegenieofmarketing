@@ -191,6 +191,14 @@ export async function POST(_request, { params }) {
   // ── WORDPRESS — the owner's own domain ──
   const auth = "Basic " + Buffer.from(`${wp.meta.username}:${wp.access_token}`).toString("base64");
 
+  // Auto-append the Google Preferred Sources button (domain-level q=) so every article
+  // Genie publishes to the owner's OWN site helps readers make them a preferred Google
+  // source — more Top Stories + AI-Overview visibility, with zero manual setup. Plain
+  // <a> so WordPress won't strip it.
+  const wpHost = (() => { try { return new URL(wp.meta.siteUrl).hostname.replace(/^www\./, ""); } catch { return null; } })();
+  const bodyHtml = heroImage ? `<figure><img src="${heroImage}" alt="${escapeAttr(p.heroImageAlt || p.title || "")}" /></figure>\n${html}` : html;
+  const content = wpHost ? `${bodyHtml}\n${preferredSourceBadge(wpHost)}` : bodyHtml;
+
   let published;
   try {
     const res = await fetch(`${wp.meta.siteUrl}/wp-json/wp/v2/posts`, {
@@ -198,7 +206,7 @@ export async function POST(_request, { params }) {
       headers: { Authorization: auth, "Content-Type": "application/json" },
       body: JSON.stringify({
         title: p.title || action.title || "Untitled",
-        content: heroImage ? `<figure><img src="${heroImage}" alt="${escapeAttr(p.heroImageAlt || p.title || "")}" /></figure>\n${html}` : html,
+        content,
         status: "publish",
         excerpt: p.metaDescription || "",
         slug: p.slug || undefined,
@@ -267,6 +275,12 @@ async function businessNameFor(supabase, userId, host) {
 
 function escapeAttr(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Google Preferred Sources button as plain HTML (survives WordPress sanitization).
+function preferredSourceBadge(host) {
+  const q = encodeURIComponent(host);
+  return `<p style="text-align:center;margin:30px 0"><a href="https://www.google.com/preferences/source?q=${q}" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;border:1px solid #dadce0;border-radius:999px;background:#fff;color:#3c4043;font-weight:600;font-size:14px;text-decoration:none">★ Add us to your Google preferred sources</a></p>`;
 }
 
 function json(obj, status = 200) {
