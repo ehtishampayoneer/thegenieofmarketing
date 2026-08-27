@@ -38,16 +38,16 @@ export default function SubscribeBox({ handle, slug, business, topic }) {
 
   return (
     <form className="gp-sub" onSubmit={submit}>
-      <p className="gp-sub-k">{business ? `From ${business}` : "Stay in the loop"}</p>
-      <p className="gp-sub-t">Get more like this{topic ? ` on ${topic}` : ""}.</p>
-      <p className="gp-sub-s">Practical tips straight to your inbox. No spam, unsubscribe anytime.</p>
+      <p className="gp-sub-k">{business ? `From ${business}` : "Free insider tips"}</p>
+      <p className="gp-sub-t">Want more{topic ? ` ${topic}` : ""} tips like this?</p>
+      <p className="gp-sub-s">Join the list for practical, no-fluff advice you can use. Free, and unsubscribe anytime.</p>
       <div className="gp-sub-row">
         <input
           type="email" required placeholder="you@email.com" value={email} aria-label="Email address"
           onChange={(e) => { setEmail(e.target.value); if (state === "error") setState("idle"); }}
           className="gp-sub-in"
         />
-        <button type="submit" className="gp-sub-b" disabled={state === "loading"}>{state === "loading" ? "Joining…" : "Join free"}</button>
+        <button type="submit" className="gp-sub-b" disabled={state === "loading"}>{state === "loading" ? "Joining…" : "Send me tips"}</button>
       </div>
       {state === "error" && <p className="gp-sub-err">Please enter a valid email and try again.</p>}
     </form>

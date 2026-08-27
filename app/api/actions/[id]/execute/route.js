@@ -157,17 +157,23 @@ export async function POST(_request, { params }) {
     try {
       const host = action.target?.host || null;
       const { publishHostedPage } = await import("@/lib/pages");
+      const { conversionCtaHtml } = await import("@/lib/cta");
+      const bizName = await businessNameFor(supabase, user.id, host);
+      // Tag the CTA back to this action so a resulting sale traces to the keyword
+      // (utm_content = action id → keyword_usage → the Learning Loop's money signal).
+      const bizTagged = host ? taggedLink(`https://${host}`, { channel: "genie_pages", campaign: "genie", ref: action.id }) : null;
+      // Bake the buyer-stage-matched conversion CTA into the body (skipped for pillar
+      // hubs — those drive readers deeper into the cluster, not to a sale).
+      const ctaHtml = p.isPillar ? "" : conversionCtaHtml({ cta: p.cta, url: bizTagged, businessName: bizName || host, keyword: p.targetKeyword });
       const page = await publishHostedPage(supabase, {
         userId: user.id, host, actionId: action.id,
         title: p.title || action.title || "Untitled",
-        bodyHtml: html,
+        bodyHtml: html + ctaHtml,
         metaDescription: p.metaDescription || "",
         heroImage, heroAlt: p.heroImageAlt || null,
         targetKeyword: p.targetKeyword || null,
-        businessName: await businessNameFor(supabase, user.id, host),
-        // Tag the CTA back to this action so a resulting sale traces to the keyword
-        // (utm_content = action id → keyword_usage → the Learning Loop's money signal).
-        businessUrl: host ? taggedLink(`https://${host}`, { channel: "genie_pages", campaign: "genie", ref: action.id }) : null,
+        businessName: bizName,
+        businessUrl: bizTagged,
         slug: p.slug || null,
         faq: Array.isArray(p.faq) ? p.faq : null,
       });
@@ -245,7 +251,13 @@ export async function POST(_request, { params }) {
   // <a> so WordPress won't strip it.
   const wpHost = (() => { try { return new URL(wp.meta.siteUrl).hostname.replace(/^www\./, ""); } catch { return null; } })();
   const bodyHtml = heroImage ? `<figure><img src="${heroImage}" alt="${escapeAttr(p.heroImageAlt || p.title || "")}" /></figure>\n${html}` : html;
-  const content = wpHost ? `${bodyHtml}\n${preferredSourceBadge(wpHost)}` : bodyHtml;
+  // Buyer-stage-matched conversion CTA (skipped for pillar hubs), linking to the
+  // business site with attribution so a resulting sale traces back to this page.
+  const wpBizHost = action.target?.host || wpHost;
+  const { conversionCtaHtml: ctaHtmlFn } = await import("@/lib/cta");
+  const wpCtaUrl = wpBizHost ? taggedLink(`https://${wpBizHost}`, { channel: "wordpress", campaign: "genie", ref: action.id }) : null;
+  const wpCta = p.isPillar ? "" : ctaHtmlFn({ cta: p.cta, url: wpCtaUrl, businessName: wpBizHost, keyword: p.targetKeyword });
+  const content = `${bodyHtml}${wpCta ? `\n${wpCta}` : ""}${wpHost ? `\n${preferredSourceBadge(wpHost)}` : ""}`;
 
   let published;
   try {

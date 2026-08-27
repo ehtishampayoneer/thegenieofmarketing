@@ -127,6 +127,10 @@ export async function POST(request) {
   if (data.article) {
     data.article.body = deDash(data.article.body); data.article.title = deDash(data.article.title); data.article.metaDescription = deDash(data.article.metaDescription);
     if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: deDash(String(f.q)), a: deDash(String(f.a)) }));
+    if (data.article.cta && typeof data.article.cta === "object") {
+      const c = data.article.cta;
+      data.article.cta = { headline: deDash(String(c.headline || "")), subtext: deDash(String(c.subtext || "")), buttonText: deDash(String(c.buttonText || "")) };
+    }
   }
   if (data.social) {
     const cleanArr = (a) => (Array.isArray(a) ? a.map(deDash) : a);
@@ -404,7 +408,12 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     "wordCount": approximate integer,
     "imagePrompt": "a vivid, specific prompt to generate a photorealistic hero image for this article (describe the scene, style, and mood — no text in the image)",
     "heroImageAlt": "descriptive alt text for the hero image",
-    "faq": [{ "q": "a real question a buyer asks about this topic", "a": "a concise, quotable 1-3 sentence answer" }]
+    "faq": [{ "q": "a real question a buyer asks about this topic", "a": "a concise, quotable 1-3 sentence answer" }],
+    "cta": {
+      "headline": "a specific, benefit-driven call-to-action headline matched to where THIS reader is in their journey and to the business's goal${ai.conversionGoal ? ` (the action to drive: ${ai.conversionGoal})` : ""} — max ~9 words, no generic 'contact us'",
+      "subtext": "one short sentence that makes them want to act NOW (a concrete benefit or gentle urgency), under 18 words",
+      "buttonText": "a 2-4 word button label that fits the stage, e.g. 'Get a free quote', 'Shop the collection', 'Book a call', 'Start free' — action verb first"
+    }
   },
   "social": {
     "twitter": ["3 different tweet-length posts promoting the article, each with 1-2 relevant hashtags"],

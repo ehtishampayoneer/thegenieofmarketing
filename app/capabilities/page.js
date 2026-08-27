@@ -83,6 +83,7 @@ const GROUPS = [
     label: "CAPTURES & MEASURES",
     sub: "Turns readers into leads, and proves the work in real numbers.",
     items: [
+      { icon: "bolt", t: "Smart conversion CTA", p: "Every article ends with a specific, buyer-stage-matched call-to-action Genie writes for that page (a comparison gets ‘Get a quote’, a buy page gets ‘Shop now’) — turning readers into clicks to your money page, all UTM-tagged so sales trace back.", href: "/approvals", status: ["live", "Automatic"] },
       { icon: "mail", t: "Email capture & lead magnet", p: "Published pages carry an opt-in so readers become leads you can follow up — not just anonymous traffic.", href: "/growth", status: ["live", "Active"] },
       { icon: "bolt", t: "Revenue attribution", p: "Point your payment provider's webhook at Genie and it traces clicks all the way to real sales.", href: "/connections", status: ["info", "Connect revenue"] },
       { icon: "growth", t: "Growth Score & impact", p: "One honest score for your organic growth, plus what Genie did each night and the customers it earned.", href: "/growth", status: ["live", "Active"] },
