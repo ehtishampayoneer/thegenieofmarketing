@@ -28,7 +28,7 @@ const GROUPS = [
     sub: "A writer, a designer and a social team in one — nothing generic.",
     items: [
       { icon: "write", t: "Writes articles that win buyers", p: "Buyer-first answer pages and guides, human-toned, targeted at the terms your customers type.", href: "/approvals", status: ["live", "Active"] },
-      { icon: "brain", t: "Original, citable content", p: "Every article is pushed to add real ‘information gain’ — a specific process, real numbers, a mini case, an original framework — not generic AI rehash. That’s what Google ranks and AI cites in 2026, and it dodges the new penalty on templated AI content.", href: "/approvals", status: ["live", "Automatic"] },
+      { icon: "brain", t: "Original, citable content", p: "Every article is pushed to add real ‘information gain’ — not generic AI rehash. For genuine originality it weaves in YOUR first-party facts (your data, process, proof, expert take) — add them once in Settings and every article gets markedly more citable. That’s what Google ranks and AI cites in 2026.", href: "/settings", status: ["live", "Automatic"] },
       { icon: "spark", t: "Designs branded post images", p: "Pulls images from your own product pages first, free stock as fallback, and composes an on-brand card for each post.", href: "/approvals", status: ["live", "Active"] },
       { icon: "conversations", t: "Social posts & carousels", p: "Instagram/LinkedIn carousels and single posts — the highest-engagement social formats — drafted ready to post.", href: "/approvals", status: ["live", "Active"] },
       { icon: "bolt", t: "Pinterest pins", p: "Tall 2:3 pins with your image, link and description, ready to save to a board in one tap.", href: "/approvals", status: ["live", "Active"] },
@@ -78,6 +78,7 @@ const GROUPS = [
       { icon: "megaphone", t: "Get featured (earned media)", p: "Finds roundups, guest-post sites, press and directories that could feature you + drafts the outreach; results persist per category.", href: "/featured", status: ["live", "Active"] },
       { icon: "conversations", t: "Partnership co-seller", p: "Finds complementary, non-competing businesses and drafts a win-win partnership pitch — warm referrals close ~10× cold.", href: "/featured", status: ["live", "Active"] },
       { icon: "mail", t: "Sends outreach + Inbox", p: "Compliant, capped email sent from your own Gmail; every reply threads back into an Inbox with a notification.", href: "/inbox", status: ["info", "Connect Gmail"] },
+      { icon: "check", t: "Deliverability preflight", p: "Before outreach goes out, Genie checks your sending domain's SPF, DKIM and DMARC, scores your inbox-readiness, gives you the exact records to fix, and sets safe volume — so your email lands instead of dying in spam.", href: "/connections", status: ["live", "Active"] },
       { icon: "link", t: "Foundation links", p: "A tracked checklist of high-authority free profiles with Genie-written bios — a consistent brand entity across the web that Google and AI use to recognize you. Most of these links are nofollow, so treat them as brand + discovery, not a ranking hack. Includes a Chrome Web Store listing (Genie hands you a simple, legit extension + the steps).", href: "/foundation", status: ["draft", "You create"] },
     ],
   },

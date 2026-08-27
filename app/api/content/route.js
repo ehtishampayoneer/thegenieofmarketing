@@ -85,6 +85,18 @@ export async function POST(request) {
     } catch {}
   }
 
+  // ── FIRST-PARTY FACTS ── The business's own data/process/proof/expert take, captured
+  // once, so Information Gain is GENUINE (real, non-Googleable value) rather than merely
+  // "more specific". This is what makes content actually worth citing.
+  let firstParty = null;
+  if (userId && host) {
+    try {
+      const { data: fp } = await supabase.from("growth_memory").select("meta").eq("user_id", userId).eq("host", host).eq("mkey", "first_party").limit(1).maybeSingle();
+      const m = fp?.meta || {};
+      if (m.data || m.process || m.proof || m.take) firstParty = m;
+    } catch {}
+  }
+
   // ── PEOPLE ALSO ASK ── Real questions people type into Google about this topic,
   // harvested free from Autocomplete. Fed into the FAQ so the page answers questions
   // buyers actually ask — and those FAQs become FAQPage schema on publish, which is
@@ -110,7 +122,7 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks, paa }),
+      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty }),
     });
     data = result.json;
     provider = result.provider;
@@ -307,7 +319,10 @@ export async function POST(request) {
   return json({ ok: true, saved: actionIds.length, content: data, actionIds, meta: { engine: provider } });
 }
 
-function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [] }) {
+function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null }) {
+  const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
+    ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
+    : "";
   const internalLinks = existingLinks.length
     ? `\nINTERNAL LINKS — Genie already published these related articles. Link to 1-3 of them NATURALLY inside the body using markdown to the FULL url, e.g. [natural anchor text](${existingLinks[0].url}), only where it genuinely helps the reader (this builds topical authority):\n${existingLinks.map((l) => `- "${l.title}" → ${l.url}`).join("\n")}`
     : "";
@@ -369,7 +384,7 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${insight ? insight + "\n" : ""}${voice}
-${targetBlock}${internalLinks}${paaBlock}
+${targetBlock}${internalLinks}${paaBlock}${fp}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
 knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.

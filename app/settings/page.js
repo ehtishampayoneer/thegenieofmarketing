@@ -120,6 +120,9 @@ export default function SettingsPage() {
             <button onClick={signOut} className="mg-btn mg-btn--ghost ml-auto" style={{ fontSize: 13 }}>Sign out</button>
           </div>
 
+          {/* First-party facts — the real Information Gain input */}
+          <FirstPartyFacts />
+
           {/* Danger zone — start this project completely over */}
           <Card className="lg:col-span-2 p-5" style={{ borderColor: "var(--signal-danger-soft)" }}>
             <h2 className="text-[15px] font-bold" style={{ color: "var(--signal-danger)" }}>Start over</h2>
@@ -133,6 +136,59 @@ export default function SettingsPage() {
         </div>
       )}
     </OperatorShell>
+  );
+}
+
+// First-party facts: the real, non-Googleable details that make Genie's content
+// genuinely original (Information Gain) instead of just "not obviously AI". Saved to
+// /api/expertise; the content engine weaves them into every article.
+const FP_FIELDS = [
+  { k: "data", label: "Your own data & numbers", ph: "Real stats only you know — e.g. \"we've installed 400+ units\", \"jobs average 3 days\", \"clients save ~20%\"." },
+  { k: "process", label: "Your signature process / method", ph: "The specific steps or approach you follow that competitors don't — name them." },
+  { k: "proof", label: "Proof / a real mini case study", ph: "A concrete result — e.g. \"a café in Austin went from 200 to 1,400 monthly orders in 6 weeks after…\"." },
+  { k: "take", label: "Your expert / contrarian take", ph: "A belief you hold that corrects a common myth in your field — the kind of thing only an insider says." },
+];
+function FirstPartyFacts() {
+  const [f, setF] = useState({ data: "", process: "", proof: "", take: "" });
+  const [state, setState] = useState("loading");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try { const r = await fetch("/api/expertise", { cache: "no-store" }).then((x) => x.json()); if (r?.ok) setF((p) => ({ ...p, ...(r.facts || {}) })); } catch {}
+      setState("ready");
+    })();
+  }, []);
+  const upd = (k) => (e) => { setF((p) => ({ ...p, [k]: e.target.value })); setSaved(false); };
+  async function save() {
+    setSaving(true);
+    try { const r = await fetch("/api/expertise", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ facts: f }) }).then((x) => x.json()); setSaved(!!r?.ok); } catch {}
+    setSaving(false);
+  }
+  const filled = FP_FIELDS.filter((x) => (f[x.k] || "").trim()).length;
+  return (
+    <Card className="lg:col-span-2 p-5" style={{ borderColor: "var(--accent)" }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Icon.spark size={16} style={{ color: "var(--accent-ink)" }} />
+        <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Make your content genuinely original</h2>
+        <span className="text-[11px] mg-subtle mg-num">{filled}/4</span>
+      </div>
+      <p className="text-[12.5px] mg-muted mt-0.5" style={{ maxWidth: 620 }}>
+        Google now buries generic AI content and rewards <b style={{ color: "var(--fg)" }}>real, first-hand value</b>. These are the things an AI can't invent — your data, your process, your proof, your expert opinion. Give Genie even one or two, and every article it writes gets markedly more citable. Optional, but this is the single biggest quality lever you control.
+      </p>
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {FP_FIELDS.map((x) => (
+          <label key={x.k} className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium mg-muted">{x.label}</span>
+            <textarea value={f[x.k] || ""} onChange={upd(x.k)} placeholder={x.ph} rows={3} className="px-3 py-2 rounded-lg text-[13px] mg-focus resize-none" style={FIELD} />
+          </label>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={save} disabled={saving || state !== "ready"} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13 }}>{saving ? "Saving…" : "Save my facts"}</button>
+        {saved && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved · Genie will use these</span>}
+      </div>
+    </Card>
   );
 }
 

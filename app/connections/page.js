@@ -128,9 +128,10 @@ export default function ConnectionsPage() {
       </Group>
 
       {/* Reach */}
-      <Group title="Reach buyers" sub="So Genie can run outreach — compliantly.">
+      <Group title="Reach buyers" sub="So Genie can run outreach — compliantly, and actually land in the inbox.">
         <Row icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" connectedLabel="Built-in · ready" sub={I.email.connected ? "Built in — every email is CAN-SPAM compliant (unsubscribe + address). Nothing to connect." : "Email sending is configured for you at the platform level"}
           connected={I.email.connected} action={null} />
+        <DeliverabilityCheck />
       </Group>
 
       <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie stays useful even with nothing connected — but each connection makes its results more real and more automated.</p>
@@ -217,6 +218,71 @@ var el=document.currentScript;if(el&&el.getAttribute("data-genie-convert")!==nul
         <pre className="mg-surface-quiet p-2.5 overflow-x-auto text-[10.5px] mg-subtle" style={{ fontFamily: "var(--font-mono)", lineHeight: 1.5, maxHeight: 150 }}>{pixel}</pre>
       </div>
     </div>
+  );
+}
+
+// Email deliverability preflight — checks the sending domain's SPF/DKIM/DMARC so
+// outreach actually reaches the inbox instead of silently dying in spam.
+function DeliverabilityCheck() {
+  const [d, setD] = useState(null);
+  const [busy, setBusy] = useState(false);
+  async function load() {
+    setBusy(true);
+    try { const j = await fetch("/api/deliverability", { cache: "no-store" }).then((r) => r.json()); setD(j?.ok ? j : { error: true }); } catch { setD({ error: true }); }
+    setBusy(false);
+  }
+  useEffect(() => { load(); }, []);
+  if (!d) return null;
+
+  const TONE = { ok: "var(--signal-live-ink)", warn: "var(--signal-warn)", fail: "var(--signal-danger)" };
+  const DOT = { ok: "var(--signal-live)", warn: "var(--signal-warn)", fail: "var(--signal-danger)" };
+  const r = d.report;
+  const scoreColor = r ? (r.score >= 85 ? "var(--signal-live-ink)" : r.score >= 60 ? "var(--signal-warn)" : "var(--signal-danger)") : "var(--fg-muted)";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="mg-tile" style={tile}><Icon.check size={17} /></span>
+        <div className="flex-1 min-w-[160px]">
+          <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>Email deliverability</p>
+          <p className="text-[12px] mg-muted mt-0.5">
+            {!d.connected ? "Connect Google above, then Genie checks whether your outreach will actually land in the inbox."
+              : d.unknown || d.error ? (d.message || "Couldn't check right now.")
+              : r ? <>Sending as <b>{d.sendingAs}</b> — {r.provider === "personal_gmail" ? "personal Gmail" : `domain ${r.domain}`}.</>
+              : "Checking…"}
+          </p>
+        </div>
+        {r && <span className="mg-num text-[20px] font-bold shrink-0" style={{ color: scoreColor }}>{r.score}<span className="text-[12px] mg-subtle">/100</span></span>}
+        <button onClick={load} disabled={busy} className="mg-btn mg-btn--quiet shrink-0 disabled:opacity-50" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{busy ? "Checking…" : "Recheck"}</button>
+      </div>
+
+      {r && (
+        <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
+          <div className="flex items-center gap-2 flex-wrap mb-2.5">
+            <span className="text-[12px] font-semibold" style={{ color: scoreColor }}>{r.grade}</span>
+            <span className="text-[11.5px] mg-subtle">· Suggested start: ~{r.volume.start}/day, ramp {r.volume.ramp}. {r.volume.note}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {r.checks.map((c) => (
+              <div key={c.id} className="flex items-start gap-2 text-[12px]">
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: DOT[c.status], marginTop: 5, flexShrink: 0 }} />
+                <span><b style={{ color: TONE[c.status] }}>{c.label}.</b> <span className="mg-muted">{c.note}</span></span>
+              </div>
+            ))}
+          </div>
+          {r.fixes?.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide mg-subtle mb-1.5">How to fix</p>
+              <ul className="space-y-1.5">
+                {r.fixes.map((f, i) => (
+                  <li key={i} className="text-[12px] mg-muted flex gap-2"><span style={{ color: "var(--accent-ink)" }}>→</span><span style={{ fontFamily: /TXT|v=|include:|_domainkey|DMARC/.test(f) ? "var(--font-mono, monospace)" : undefined, fontSize: /TXT|v=|include:/.test(f) ? 11 : 12 }}>{f}</span></li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 
