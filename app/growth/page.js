@@ -41,6 +41,7 @@ function Growth() {
   const [step, setStep] = useState("");
   const [deriveErr, setDeriveErr] = useState("");
   const [refreshMsg, setRefreshMsg] = useState("");
+  const [ranksBusy, setRanksBusy] = useState(false);
   const [range, setRange] = useState(30);
   const [compare, setCompare] = useState("prev");
 
@@ -52,6 +53,14 @@ function Growth() {
       setRefreshMsg(j?.ok ? "On it. I’m re-optimizing your stalest page. It’ll appear in Approvals in about 30 seconds." : (j?.message || "Nothing to refresh right now."));
     } catch { setRefreshMsg("Couldn’t start that just now. Try again in a moment."); }
     setBusy("");
+  }
+
+  async function refreshRankings() {
+    if (!host || ranksBusy) return;
+    setRanksBusy(true); setRefreshMsg("");
+    try { await loadFor(host); setRefreshMsg("Rankings refreshed from your latest Google Search Console data."); }
+    catch { setRefreshMsg("Couldn’t refresh rankings just now. Try again in a moment."); }
+    setRanksBusy(false);
   }
 
   async function loadFor(h) {
@@ -119,6 +128,9 @@ function Growth() {
           <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={refreshRankings} disabled={ranksBusy || !host} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }} title="Pull your latest Google positions from Search Console">
+            <Icon.growth size={14} /> {ranksBusy ? "Refreshing…" : "Refresh rankings"}
+          </button>
           <button onClick={refreshPage} disabled={busy === "refresh" || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Re-optimize your stalest published page and republish it in place">
             <Icon.history size={14} /> {busy === "refresh" ? "Refreshing…" : "Refresh a page"}
           </button>
@@ -137,8 +149,15 @@ function Growth() {
         <div className="mt-8 mg-surface p-10 text-center text-[13px] mg-subtle">Loading your growth data…</div>
       ) : (
         <>
+          {/* plain-language Google standing */}
+          <p className="mt-4 text-[13.5px]" style={{ color: "var(--fg)", maxWidth: "72ch" }}>
+            {avgPosition != null
+              ? <>Right now you rank <b style={{ color: "var(--accent-ink)" }}>#{Math.round(avgPosition)}</b> on average across <b>{tracked}</b> tracked {tracked === 1 ? "keyword" : "keywords"}{inTop20 > 0 ? <> · <b>{inTop20}</b> already in the top 20</> : null}{improvedBy > 0 ? <> · <span style={{ color: "var(--signal-live-ink)", fontWeight: 600 }}>up {improvedBy} spots this period</span></> : null}. Your climbers are in the table below (status <b>Climbing</b>/<b>Ranking</b>).</>
+              : <>Genie is tracking <b>{tracked}</b> {tracked === 1 ? "keyword" : "keywords"}. Your live Google positions show here once Search Console reports for your site — usually a few days after your first page is indexed. Tap <b>Refresh rankings</b> to pull the latest.</>}
+          </p>
+
           {/* controls */}
-          <div className="mt-5 flex items-center gap-4 flex-wrap">
+          <div className="mt-4 flex items-center gap-4 flex-wrap">
             <LabeledSelect label="Time range" value={range} opts={RANGE_OPTS} onChange={setRange} />
             <LabeledSelect label="Compare to" value={compare} opts={COMPARE_OPTS} onChange={setCompare} />
           </div>

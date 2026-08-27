@@ -34,6 +34,7 @@ const NAV = [
   { id: "aisearch", label: "AI Search Presence", icon: Icon.search },
   { id: "impact", label: "Customer Impact", icon: Icon.bolt },
   { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
+  { id: "foundation", label: "Foundation links", icon: Icon.link },
   { section: "Settings" },
   { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
@@ -287,7 +288,7 @@ export default function OperatorShell({ active = "today", children }) {
 function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", hunt: "/hunt", conversations: "/conversations", prospects: "/prospects", featured: "/featured", inbox: "/inbox", impact: "/impact",
-    growth: "/growth", aisearch: "/ai-search", analytics: "/learning",
+    growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation",
     trust: "/trust", connections: "/connections", settings: "/settings", capabilities: "/capabilities",
   };
   return map[id] || "/today";
