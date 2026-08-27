@@ -190,6 +190,7 @@ function Growth() {
               <RankingProgression points={windowPoints} tracked={tracked} improvedBy={improvedBy} climb={climb} compare={compare} conns={conns} />
               <MetricsRow tracked={tracked} avgPosition={avgPosition} improvedBy={improvedBy} inTop20={inTop20} aiCitations={aiCitations} points={windowPoints} />
               <KeywordTable active={active} series={d.series} host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />
+              <PagePerformance host={host} />
               <StrategyPhase active={active} inTop20={inTop20} />
             </div>
 
@@ -250,6 +251,61 @@ function RankingProgression({ points, tracked, improvedBy, climb, compare, conns
   );
 }
 function Detail({ v, l }) { return (<div className="mg-surface-quiet py-2.5"><p className="mg-num text-[18px] font-bold" style={{ color: "var(--fg)" }}>{v}</p><p className="text-[11px] mg-subtle mt-0.5">{l}</p></div>); }
+
+// ── PER-PAGE RESULTS ── The honest "the machine is working" readout: real clicks to
+// the business site (via the CTA, counted through /go) and leads captured, per page.
+// First-party, so it shows from day one without any analytics connection. Stays quiet
+// until there's data, so it never adds an empty-flash to the page.
+function PagePerformance({ host }) {
+  const [d, setD] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const j = await fetch(`/api/pages/performance${host ? `?host=${encodeURIComponent(host)}` : ""}`, { cache: "no-store" }).then((r) => r.json());
+        if (alive) setD(j?.ok ? j : { pages: [], totals: { clicks: 0, leads: 0 } });
+      } catch { if (alive) setD({ pages: [], totals: { clicks: 0, leads: 0 } }); }
+    })();
+    return () => { alive = false; };
+  }, [host]);
+
+  if (!d) return null;
+  const pages = d.pages || [];
+  if (!pages.length) return null; // nothing published yet — the rest of Growth covers that
+  const t = d.totals || { clicks: 0, leads: 0 };
+  const engaged = pages.filter((p) => p.clicks || p.leads);
+  const rows = (engaged.length ? engaged : pages).slice(0, 8);
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>What your pages are earning</h2>
+          <p className="mt-0.5 text-[12.5px] mg-muted">Real clicks to your site and leads captured — first-party, no analytics needed.</p>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="text-right"><p className="mg-num text-[20px] font-bold leading-none" style={{ color: "var(--accent-ink)" }}>{t.clicks}</p><p className="text-[11px] mg-subtle mt-1">clicks to site</p></div>
+          <div className="text-right"><p className="mg-num text-[20px] font-bold leading-none" style={{ color: "var(--signal-live-ink)" }}>{t.leads}</p><p className="text-[11px] mg-subtle mt-1">leads</p></div>
+        </div>
+      </div>
+      <div className="px-3 pb-3">
+        {rows.map((p, i) => (
+          <div key={i} className="flex items-center gap-3 px-2 py-2.5" style={{ borderTop: "1px solid var(--hair)" }}>
+            <div className="flex-1 min-w-0">
+              <a href={p.url} target="_blank" rel="noopener" className="text-[13px] font-semibold truncate block mg-focus" style={{ color: "var(--fg)", textDecoration: "none" }}>{p.title}</a>
+              {p.keyword && <p className="text-[11px] mg-subtle truncate mt-0.5">{p.keyword}</p>}
+            </div>
+            <div className="flex items-center gap-4 shrink-0 mg-num text-[12.5px]">
+              <span title="Clicks to your site" style={{ color: p.clicks ? "var(--fg)" : "var(--fg-subtle)" }}>{p.clicks} <span className="mg-subtle text-[11px]">clicks</span></span>
+              <span title="Leads captured" style={{ color: p.leads ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>{p.leads} <span className="mg-subtle text-[11px]">leads</span></span>
+            </div>
+          </div>
+        ))}
+        {!engaged.length && <p className="px-2 py-3 text-[12px] mg-subtle">No clicks or leads yet — they’ll show here as readers reach your published pages. Keep publishing and sharing.</p>}
+      </div>
+    </Card>
+  );
+}
 
 // The chart. Best position sits at the TOP, so genuine improvement rises.
 function RankChart({ points }) {

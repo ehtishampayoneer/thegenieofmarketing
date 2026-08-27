@@ -156,15 +156,18 @@ export async function POST(_request, { params }) {
   if (!hasWP) {
     try {
       const host = action.target?.host || null;
-      const { publishHostedPage } = await import("@/lib/pages");
+      const { publishHostedPage, appBase } = await import("@/lib/pages");
       const { conversionCtaHtml } = await import("@/lib/cta");
       const bizName = await businessNameFor(supabase, user.id, host);
       // Tag the CTA back to this action so a resulting sale traces to the keyword
       // (utm_content = action id → keyword_usage → the Learning Loop's money signal).
       const bizTagged = host ? taggedLink(`https://${host}`, { channel: "genie_pages", campaign: "genie", ref: action.id }) : null;
+      // The CTA button routes through /go so the click is COUNTED (then it redirects to
+      // the tagged business site). Falls back to the direct tagged link if host is null.
+      const ctaHref = host ? `${appBase()}/go?a=${action.id}` : bizTagged;
       // Bake the buyer-stage-matched conversion CTA into the body (skipped for pillar
       // hubs — those drive readers deeper into the cluster, not to a sale).
-      const ctaHtml = p.isPillar ? "" : conversionCtaHtml({ cta: p.cta, url: bizTagged, businessName: bizName || host, keyword: p.targetKeyword });
+      const ctaHtml = p.isPillar ? "" : conversionCtaHtml({ cta: p.cta, url: ctaHref, businessName: bizName || host, keyword: p.targetKeyword });
       const page = await publishHostedPage(supabase, {
         userId: user.id, host, actionId: action.id,
         title: p.title || action.title || "Untitled",
