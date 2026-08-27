@@ -92,7 +92,7 @@ export default function RecoverPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.bolt size={14} /> Revenue Recovery</p>
-          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>The money you already <span className="dawn-text">paid to earn.</span></h1>
+          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>The money you already <span className="dawn-text">paid to earn.</span></h1>
           <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Upload your old leads, quotes and past customers. Genie sorts them by how likely they are to buy now, writes a specific win-back for each, and you send from your own email. Warm contacts convert in days — replies land in your Inbox and the money shows up here.</p>
         </div>
         {contacts && contacts.length > 0 && <button onClick={() => setShowImport((v) => !v)} className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}><Icon.plus size={14} /> Import more</button>}

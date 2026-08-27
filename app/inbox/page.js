@@ -45,7 +45,7 @@ export default function InboxPage() {
     <OperatorShell active="inbox">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Inbox</h1>
+          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Inbox</h1>
           <p className="mt-1.5 text-[14px] mg-muted">Everyone Genie emailed for you, threaded with their reply. {threads.length > 0 && <span><b style={{ color: "var(--fg)" }}>{threads.length}</b> sent · <b style={{ color: "var(--signal-live-ink)" }}>{replied}</b> replied</span>}</p>
         </div>
         <button onClick={checkReplies} disabled={syncing} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }}>

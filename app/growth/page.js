@@ -135,7 +135,7 @@ function Growth() {
       {/* ── HEADER ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Growth</h1>
+          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Growth</h1>
           <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -718,7 +718,7 @@ function BuildStrategy({ host, busy, step, err, onBuild }) {
     <div className="mt-8">
       <Card className="mg-ambient p-10 lg:p-12 text-center mg-rise">
         <span className="mg-tile mx-auto" style={{ width: 48, height: 48, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.target size={22} /></span>
-        <h2 className="mt-4 mg-display" style={{ fontSize: 22 }}>Let Genie build your keyword strategy</h2>
+        <h2 className="mt-4 mg-display" style={{ fontSize: 27 }}>Let Genie build your keyword strategy</h2>
         <p className="mt-2 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>It reads your product and derives the exact searches to rank you for, from real Google data. Then it tracks every position here, night after night.</p>
         <button onClick={onBuild} disabled={!host || busy === "derive"} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-50" style={{ fontSize: 14, padding: ".8rem 1.3rem" }}>
           {busy === "derive" ? (step || "Genie is analyzing…") : host ? "Build my keyword strategy →" : "Run your first scan →"}

@@ -86,7 +86,7 @@ export default function HuntPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.crosshair size={14} /> Buyer Hunt</p>
-          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>People ready to <span className="dawn-text">buy — right now.</span></h1>
+          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>People ready to <span className="dawn-text">buy — right now.</span></h1>
           <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "60ch" }}>Genie hunts the whole internet for people researching, comparing and deciding in your space, ranks them by buying intent, and drafts the perfect helpful reply. You engage in one tap.</p>
         </div>
         <button onClick={huntNow} disabled={hunting} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>

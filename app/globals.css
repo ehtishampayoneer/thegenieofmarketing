@@ -123,23 +123,48 @@ html, body {
 
 /* One editorial type system — used on every operator screen so nothing is
    hand-sized inline. Confident display, quiet everything-else. */
-.mg-eyebrow { display:inline-flex; align-items:center; gap:.45rem; font-size:12px; font-weight:600; letter-spacing:.005em; color:var(--fg-subtle); }
+.mg-eyebrow { display:inline-flex; align-items:center; gap:.45rem; font-size:13px; font-weight:650; letter-spacing:.01em; color:var(--fg-subtle); }
 /* Section label — one consistent header for every card/section across the app. A
    small dawn tick anchors it so sections read as deliberate, scannable units.
    .mg-klabel sits on its own line; add mg-klabel + a wrapping row for actions. */
-.mg-klabel { position:relative; display:inline-flex; align-items:center; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; line-height:1.1; color:var(--fg-muted); }
+.mg-klabel { position:relative; display:inline-flex; align-items:center; font-size:12px; font-weight:750; letter-spacing:.11em; text-transform:uppercase; line-height:1.1; color:var(--fg-muted); }
 /* The dawn tick hangs into the left margin so the label TEXT stays flush with the
    title/description beneath it (labels ride at least 16px of card padding). */
 .mg-klabel::before { content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:3px; height:12px; border-radius:2px; background:var(--accent); }
 .mg-klabel--plain::before { display:none; }
-.mg-display { font-size:clamp(27px,3vw,37px); line-height:1.05; letter-spacing:-.023em; font-weight:800; color:var(--fg); text-wrap:balance; }
-.mg-display-lg { font-size:clamp(32px,4.2vw,50px); line-height:1.0; letter-spacing:-.03em; font-weight:800; color:var(--fg); text-wrap:balance; }
-.mg-title { font-size:16px; line-height:1.2; letter-spacing:-.012em; font-weight:700; color:var(--fg); }
-.mg-lede { font-size:14.5px; line-height:1.5; color:var(--fg-muted); max-width:60ch; }
+.mg-display { font-size:clamp(31px,3.4vw,44px); line-height:1.04; letter-spacing:-.024em; font-weight:820; color:var(--fg); text-wrap:balance; }
+.mg-display-lg { font-size:clamp(35px,4.6vw,56px); line-height:1.0; letter-spacing:-.03em; font-weight:820; color:var(--fg); text-wrap:balance; }
+.mg-title { font-size:18px; line-height:1.22; letter-spacing:-.012em; font-weight:730; color:var(--fg); }
+.mg-lede { font-size:16px; line-height:1.55; color:var(--fg-muted); max-width:62ch; }
 
 /* Genie's voice — a first-person line; key facts lift to full-strength ink. */
 .mg-voice { font-size:15px; line-height:1.55; color:var(--fg-muted); max-width:62ch; }
 .mg-voice b, .mg-voice strong { color:var(--fg); font-weight:650; }
+
+/* ── READABILITY STEP-UP ──────────────────────────────────────────────────────
+   Body copy across the operator app was hand-sized small inline (text-[12px]…).
+   Rather than touch every file, lift every common size one comfortable notch, in
+   one place. Scoped to .mg (the operator shell) so onboarding/marketing are
+   untouched; the descendant selector (0,2,0) beats Tailwind's utility (0,1,0), so
+   these win regardless of source order. Result: the same design, a clear notch
+   more readable, everywhere at once. */
+.mg .text-\[10px\]   { font-size:11px;   }
+.mg .text-\[10\.5px\]{ font-size:11.5px; }
+.mg .text-\[11px\]   { font-size:12px;   }
+.mg .text-\[11\.5px\]{ font-size:12.5px; }
+.mg .text-\[12px\]   { font-size:13px;   }
+.mg .text-\[12\.5px\]{ font-size:13.5px; }
+.mg .text-\[13px\]   { font-size:14px;   }
+.mg .text-\[13\.5px\]{ font-size:14.5px; }
+.mg .text-\[14px\]   { font-size:15px;   }
+.mg .text-\[14\.5px\]{ font-size:15.5px; }
+.mg .text-\[15px\]   { font-size:16px;   }
+.mg .text-\[15\.5px\]{ font-size:16.5px; }
+.mg .text-\[16px\]   { font-size:17.5px; }
+.mg .text-\[17px\]   { font-size:18.5px; }
+.mg .text-\[18px\]   { font-size:19.5px; }
+/* Numbers/labels that must stay compact opt out with .mg-keepsize on the element. */
+.mg .mg-keepsize { font-size:revert; line-height:revert; }
 
 /* Atmosphere — dawn light spilling into the field behind a header. The single
    strongest "premium" cue: light comes from somewhere. Static (reduced-motion safe). */
@@ -156,7 +181,7 @@ html, body {
 
 /* Stat — a number that reads as a stated fact, not a widget in a box. */
 .mg-stat-num { font-size:clamp(24px,2.2vw,30px); font-weight:750; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:var(--fg); }
-.mg-stat-label { font-size:12px; color:var(--fg-muted); margin-top:.35rem; }
+.mg-stat-label { font-size:13px; color:var(--fg-muted); margin-top:.35rem; }
 
 /* Hairline column rule — for glance-able stat strips (density without boxes). */
 .mg-rule-l { border-left:1px solid var(--hair); }
@@ -285,7 +310,7 @@ html, body {
    Hover: a barely-there surface. Active: full-strength text + a dawn spine at
    the rail's left edge + the faintest neutral pill. Colour lives in the spine,
    not a loud background wash. */
-.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.5rem .7rem; border-radius:9px; font-size:13.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
+.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:9px; font-size:14.5px; font-weight:530; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
 .mg-rail-item svg { color:var(--fg-subtle); transition:color var(--dur-2); }
 .mg-rail-item:hover { background:color-mix(in srgb, var(--surface-2) 60%, transparent); color:var(--fg); }
 .mg-rail-item:hover svg { color:var(--fg-muted); }
@@ -294,12 +319,12 @@ html, body {
 /* The spine — a short lit dawn bar flush to the rail's left edge. */
 .mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:18px; border-radius:0 3px 3px 0; background:var(--accent); }
 [data-theme="night"] .mg-rail-item[data-active="true"]::before { box-shadow:0 0 10px rgba(255,200,118,.55); }
-.mg-rail-count { margin-left:auto; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
+.mg-rail-count { margin-left:auto; font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
 .mg-rail-item[data-active="true"] .mg-rail-count { color:var(--accent-ink); }
 .mg-activity-row { display:flex; gap:.65rem; padding:.55rem .5rem; border-radius:10px; transition:background var(--dur-2); }
 .mg-activity-row:hover { background:var(--surface-2); }
 .mg-tile { border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.mg-searchbar { display:flex; align-items:center; gap:.55rem; height:38px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:13.5px; transition:border-color var(--dur-2); cursor:text; }
+.mg-searchbar { display:flex; align-items:center; gap:.55rem; height:40px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:14px; transition:border-color var(--dur-2); cursor:text; }
 .mg-searchbar:hover { border-color:var(--border-strong); }
 /* Genie's presence — a dawn aura behind the operator mark whose STATE is driven
    by real data (see OperatorShell): idle when nothing's happening, working when
@@ -341,7 +366,7 @@ html, body {
 .mg-ticker-vp { position:relative; flex:1; min-width:0; overflow:hidden; -webkit-mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); }
 .mg-ticker-track { display:flex; align-items:center; height:100%; width:max-content; animation:mg-ticker-scroll 46s linear infinite; will-change:transform; }
 .mg-ticker-vp:hover .mg-ticker-track { animation-play-state:paused; }
-.mg-ticker-item { display:inline-flex; align-items:center; gap:.5rem; padding:0 19px; font-size:12.5px; white-space:nowrap; color:var(--fg-muted); }
+.mg-ticker-item { display:inline-flex; align-items:center; gap:.5rem; padding:0 19px; font-size:13px; white-space:nowrap; color:var(--fg-muted); }
 .mg-ticker-item b { color:var(--fg); font-weight:600; }
 .mg-ticker-item svg { color:var(--accent-ink); flex:none; opacity:.9; }
 .mg-ticker-sep { width:3px; height:3px; border-radius:50%; background:var(--border-strong); flex:none; }

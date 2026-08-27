@@ -43,7 +43,7 @@ export default function FoundationPage() {
     <OperatorShell active="foundation">
       <div className="max-w-[1000px]">
         <p className="mg-eyebrow"><Icon.link size={14} /> Foundation links</p>
-        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>Plant your brand <span className="dawn-text">everywhere it counts.</span></h1>
+        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>Plant your brand <span className="dawn-text">everywhere it counts.</span></h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>Each of these is a free, high-authority profile — a real backlink and a place Google and AI answer engines pick up your brand. Genie wrote your bios below; open each site, create the account, paste the bio, and mark it done. Your progress is saved.</p>
 
         {/* progress */}

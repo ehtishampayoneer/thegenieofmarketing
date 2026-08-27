@@ -77,7 +77,7 @@ export default function LoginPage() {
         <div className="w-full" style={{ maxWidth: 400 }}>
           <div className="text-center">
             <p className="mg-eyebrow" style={{ justifyContent: "center" }}>{mode === "signin" ? "Welcome back" : "Get started"}</p>
-            <h1 className="mg-display mt-2" style={{ fontSize: "clamp(26px,3.4vw,34px)" }}>
+            <h1 className="mg-display mt-2" style={{ fontSize: "clamp(29px,3.6vw,40px)" }}>
               {mode === "signin" ? "Sign in to Genie." : "Create your account."}
             </h1>
             <p className="mg-lede mt-2" style={{ marginInline: "auto" }}>

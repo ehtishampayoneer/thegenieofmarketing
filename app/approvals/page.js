@@ -269,7 +269,7 @@ export default function ApprovalsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.tasks size={14} /> Approvals <span className="mg-subtle">›</span> {state === "real" ? <Provenance kind="live">Live data</Provenance> : <Provenance kind="sample">Preview</Provenance>}</p>
-          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>
+          <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>
             {loading ? <>Opening your <span className="dawn-text">queue…</span></> : view.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
           </h1>
         </div>

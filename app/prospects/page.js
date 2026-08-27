@@ -56,7 +56,7 @@ export default function ProspectsPage() {
   return (
     <OperatorShell active="prospects">
       <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Find clients</h1>
+        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Find clients</h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Name who you want to sell to. Genie finds real companies, the right person at each, their contact, and a pitch written for them. You review and send, from your own email, capped and compliant.</p>
       </div>
 

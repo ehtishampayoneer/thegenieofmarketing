@@ -129,7 +129,7 @@ function HeroOneThing({ name, count, clearTime }) {
         </span>
         <div className="min-w-0">
           <p className="text-[14px] font-semibold" style={{ color: "var(--fg-muted)" }}>Good morning{name ? `, ${name}` : ""} <span aria-hidden>👋</span></p>
-          <h1 className="mt-1.5 mg-display" style={{ fontSize: "clamp(26px,2.9vw,36px)" }}>
+          <h1 className="mt-1.5 mg-display" style={{ fontSize: "clamp(30px,3.3vw,42px)" }}>
             {has ? <>Your <span className="dawn-text">one thing</span> to do today</> : <>You’re <span className="dawn-text">all caught up</span></>}
           </h1>
           <p className="mt-2.5 mg-lede" style={{ maxWidth: "44ch" }}>

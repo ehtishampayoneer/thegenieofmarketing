@@ -119,7 +119,7 @@ export default function CapabilitiesPage() {
     <OperatorShell active="capabilities">
       <div className="max-w-[1000px]">
         <p className="mg-eyebrow"><Icon.spark size={14} /> Your employee</p>
-        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>Everything Genie can do <span className="dawn-text">for you.</span></h1>
+        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>Everything Genie can do <span className="dawn-text">for you.</span></h1>
         <p className="mt-2 text-[14.5px] mg-muted max-w-[62ch]">One employee doing the work of a whole marketing team — finding buyers, creating and publishing content, winning search and AI answers, running outreach, and proving the results. <b style={{ color: "var(--fg)" }}>{counts.live}</b> of {counts.total} capabilities are active now; the rest switch on with a one-time connection.</p>
 
         <div className="mt-2 flex items-center gap-4 flex-wrap text-[12px] mg-subtle">

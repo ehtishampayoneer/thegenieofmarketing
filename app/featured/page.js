@@ -91,7 +91,7 @@ export default function FeaturedPage() {
   return (
     <OperatorShell active="featured">
       <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>Get featured</h1>
+        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Get featured</h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>The most powerful marketing is when <b style={{ color: "var(--fg)" }}>others</b> talk about you. Pick a goal, name your niche, and Genie finds real sites, the right contact, and a genuine pitch. You review and send from your own email. No fake accounts, no bought links.</p>
       </div>
 

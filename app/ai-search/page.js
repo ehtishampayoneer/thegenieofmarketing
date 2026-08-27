@@ -113,7 +113,7 @@ export default function AiSearchPage() {
       {/* ── HEADER ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(24px,2.6vw,30px)" }}>AI Search Visibility</h1>
+          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>AI Search Visibility</h1>
           <p className="mt-1.5 text-[14px] mg-muted">Track your brand mentions across ChatGPT, Perplexity, Gemini, and Claude.</p>
         </div>
         {state === "real" && (
@@ -404,7 +404,7 @@ function FirstCheck({ checking, step, onCheck, host }) {
     <div className="mt-8">
       <Card className="mg-ambient p-10 lg:p-12 text-center mg-rise">
         <span className="mg-tile mx-auto" style={{ width: 48, height: 48, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={22} /></span>
-        <h2 className="mt-4 mg-display" style={{ fontSize: 22 }}>Let’s see if AI recommends you</h2>
+        <h2 className="mt-4 mg-display" style={{ fontSize: 27 }}>Let’s see if AI recommends you</h2>
         <p className="mt-2 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>I ask ChatGPT, Perplexity, Gemini, and Claude the questions your buyers ask, then show you exactly where they name a competitor instead of you, and how to win those mentions.</p>
         <button onClick={onCheck} disabled={checking || !host} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-60" style={{ fontSize: 14, padding: ".8rem 1.3rem" }}>{checking ? (step || "Checking AI search…") : host ? "Check AI search now →" : "Run your first scan →"}</button>
       </Card>

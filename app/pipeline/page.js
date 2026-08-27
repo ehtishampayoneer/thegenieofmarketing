@@ -53,7 +53,7 @@ export default function PipelinePage() {
     <OperatorShell active="pipeline">
       <div>
         <p className="mg-eyebrow"><Icon.growth size={14} /> Deal Pipeline</p>
-        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(24px,2.6vw,32px)" }}>From reached to <span className="dawn-text">revenue.</span></h1>
+        <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>From reached to <span className="dawn-text">revenue.</span></h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Everyone Genie reached across every channel, who replied (each reply read and sorted for you), and the deals you closed. The one place that shows real money earned.</p>
       </div>
 
