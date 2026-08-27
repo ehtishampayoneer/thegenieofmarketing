@@ -27,6 +27,7 @@ export const Icon = {
   reply: (p) => <Svg {...p}><path d="M9 10L4 15l5 5" /><path d="M4 15h11a5 5 0 0 0 5-5V4" /></Svg>,
   target: (p) => <Svg {...p}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="0.8" fill="currentColor" /></Svg>,
   crosshair: (p) => <Svg {...p}><circle cx="12" cy="12" r="8" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /><circle cx="12" cy="12" r="1.4" fill="currentColor" /></Svg>,
+  coins: (p) => <Svg {...p}><ellipse cx="9" cy="6.5" rx="6" ry="3" /><path d="M3 6.5v4c0 1.6 2.7 3 6 3" /><ellipse cx="15" cy="13.5" rx="6" ry="3" /><path d="M9 13.5v4c0 1.6 2.7 3 6 3s6-1.4 6-3v-4" /></Svg>,
   brain: (p) => <Svg {...p}><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5 3 3 0 0 0 2 4 3 3 0 0 0 6 0V6a3 3 0 0 0-4-2z" /><path d="M13 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5 3 3 0 0 1-2 4" /></Svg>,
   bolt: (p) => <Svg {...p}><path d="M13 3L5 13h5l-1 8 8-11h-5z" /></Svg>,
   megaphone: (p) => <Svg {...p}><path d="M4 10v4l10 4V6z" /><path d="M14 8a3 3 0 0 1 0 8" /><path d="M6 14v3a1 1 0 0 0 1 1h1" /></Svg>,
