@@ -40,8 +40,9 @@ html, body {
   --mg-paper:#F6F5F1; --mg-paper-raised:#FBFAF7; --mg-white:#FFFFFF;
   --mg-night-950:#070C11; --mg-night-900:#0B141C; --mg-night-850:#0F1B25;
   --mg-night-800:#13212C; --mg-night-700:#1B2C39;
-  --mg-dawn-100:#FFF1DD; --mg-dawn-300:#FFD79E; --mg-dawn-500:#FBB360;
-  --mg-dawn-600:#F59E3D; --mg-dawn-700:#D97F1E; --mg-dawn-glow:#FFC876;
+  /* The ONE accent: a mature, earthy burnt terracotta — rare and powerful. */
+  --mg-dawn-100:#F6E5DD; --mg-dawn-300:#EDB49A; --mg-dawn-500:#E0592B;
+  --mg-dawn-600:#D4471E; --mg-dawn-700:#B93C15; --mg-dawn-glow:#EC7B50;
   --mg-emerald:#1E9E6A; --mg-emerald-soft:#E4F3EC; --mg-emerald-ink:#0F6B45;
   --mg-red:#D6483B; --mg-red-soft:#FBEAE8;
   --mg-blue:#3E7CC2; --mg-blue-soft:#E9F0F8;
@@ -51,11 +52,11 @@ html, body {
      A sophisticated blue-gray ENVIRONMENT: blue-gray canvas → warm-white floating
      surfaces → deep-navy content. Warm gold stays as the RESTRAINED Genie accent —
      the calm base lets the Genie's glow be the moment of magic. */
-  --bg:#d7dce6; --surface:#ffffff; --surface-2:#eef1f7; --surface-sunken:#e4e9f1;
-  --fg:#1b2440; --fg-muted:#4c5773; --fg-subtle:#727e99; --fg-on-dark:#EAF0F4;
-  --border:#dce2ee; --border-strong:#c7d0e0; --hair:#e7ebf3;
-  --primary:#1e2742; --on-primary:#ffffff;
-  --accent:var(--mg-dawn-600); --accent-quiet:#FFF1DD; --accent-ink:#B5701A;
+  --bg:#8d97b0; --surface:#ffffff; --surface-2:#eef1f6; --surface-sunken:#e5eaf1;
+  --fg:#282c40; --fg-muted:#565f78; --fg-subtle:#7b8397; --fg-on-dark:#EAF0F4;
+  --border:#dbe1ea; --border-strong:#c6cede; --hair:#e6ebf2;
+  --primary:#282c40; --on-primary:#ffffff;
+  --accent:var(--mg-dawn-600); --accent-strong:var(--mg-dawn-700); --accent-quiet:#f4e3dc; --accent-ink:#B23C15;
   --signal-live:var(--mg-emerald); --signal-live-soft:#e2f2ec; --signal-live-ink:var(--mg-emerald-ink);
   --signal-danger:var(--mg-red); --signal-danger-soft:#fbeae8;
   --signal-info:var(--mg-blue); --signal-info-soft:#e8eff9;
@@ -65,7 +66,7 @@ html, body {
   --shadow-1:0 1px 2px rgba(28,37,64,.05);
   --shadow-2:0 1px 2px rgba(28,37,64,.04), 0 5px 16px rgba(28,37,64,.06), 0 14px 30px rgba(28,37,64,.05);
   --shadow-3:0 2px 6px rgba(28,37,64,.06), 0 12px 28px rgba(28,37,64,.10), 0 24px 48px rgba(28,37,64,.06);
-  --shadow-dawn:0 10px 34px rgba(245,158,61,.22);
+  --shadow-dawn:0 8px 24px rgba(198,62,24,.26);
 
   /* ---- Layer 3: COMPONENT ---- */
   --card-bg:var(--surface); --card-border:#e6eaf2; --card-radius:18px; --card-shadow:var(--shadow-2);
@@ -221,15 +222,15 @@ html, body {
 /* ---- Surfaces & helpers ---- */
 .mg { color:var(--fg);
   background:
-    radial-gradient(135% 82% at 50% -28%, #e6eaf2, transparent 58%),
-    radial-gradient(46% 42% at 100% 2%, #dee4ee, transparent 60%),
+    radial-gradient(150% 78% at 50% -34%, #9aa4bc, transparent 60%),
+    radial-gradient(48% 44% at 100% 4%, #949eb7, transparent 60%),
     var(--bg); }
 .mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.6); }
 .mg-surface-quiet { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; }
 .mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }
 .mg-num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
 .mg-hairline { height:1px; width:100%; background:var(--hair); }
-.dawn-text { background:linear-gradient(100deg,#B26A16,#CE8A2C); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dawn-text { background:linear-gradient(100deg,var(--mg-dawn-700),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 [data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-dawn-glow),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .dawn-fill { background:linear-gradient(135deg,var(--mg-dawn-glow),var(--mg-dawn-600)); }
 
@@ -239,13 +240,16 @@ html, body {
   border:1px solid transparent; transition:transform var(--dur-1) var(--ease-out), background var(--dur-2), box-shadow var(--dur-2), border-color var(--dur-2), opacity var(--dur-2); }
 .mg-btn:active { transform:translateY(1px) scale(.99); }
 .mg-btn:disabled { opacity:.45; cursor:not-allowed; }
+/* ONE button family. PRIMARY = burnt terracotta (the rare, high-emphasis action).
+   SECONDARY (ghost) = warm-white + subtle border + navy. TERTIARY (quiet) =
+   transparent, muted navy. PRIMARY-DARK (primary) = deep navy, for dark actions. */
+.mg-btn--dawn { background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(180,55,20,.20), 0 5px 14px rgba(180,55,20,.18); }
+.mg-btn--dawn:hover { background:var(--accent-strong); transform:translateY(-1px); box-shadow:0 8px 20px rgba(180,55,20,.28); }
 .mg-btn--primary { background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-1); }
-.mg-btn--primary:hover { box-shadow:var(--shadow-2); }
-.mg-btn--dawn { background:linear-gradient(135deg,var(--mg-dawn-glow),var(--mg-dawn-500) 55%,var(--mg-dawn-600)); color:#2C1B05; box-shadow:var(--shadow-dawn), inset 0 1px 0 rgba(255,255,255,.5); }
-.mg-btn--dawn:hover { transform:translateY(-1px); filter:brightness(1.05); box-shadow:0 12px 32px rgba(245,158,61,.34), inset 0 1px 0 rgba(255,255,255,.55); }
-.mg-btn--ghost { background:transparent; border-color:var(--border); color:var(--fg); }
-.mg-btn--ghost:hover { border-color:var(--border-strong); background:var(--surface-2); }
-.mg-btn--quiet { background:var(--surface-2); color:var(--fg-muted); }
+.mg-btn--primary:hover { transform:translateY(-1px); box-shadow:var(--shadow-2); }
+.mg-btn--ghost { background:var(--surface); border-color:var(--border-strong); color:var(--fg); box-shadow:var(--shadow-1); }
+.mg-btn--ghost:hover { border-color:var(--fg-subtle); background:var(--surface-2); }
+.mg-btn--quiet { background:transparent; color:var(--fg-muted); }
 .mg-btn--quiet:hover { color:var(--fg); }
 
 /* ---- The draft the operator reviews — reading-optimised, the star of Approvals.

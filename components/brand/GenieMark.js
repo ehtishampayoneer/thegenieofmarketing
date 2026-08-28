@@ -51,14 +51,14 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
             <stop offset="100%" stopColor="#131C30" />
           </linearGradient>
           <radialGradient id={`gm-glow-${uid}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,205,128,0.62)" />
-            <stop offset="55%" stopColor="rgba(245,158,61,0.16)" />
+            <stop offset="0%" stopColor="rgba(246,158,98,0.60)" />
+            <stop offset="55%" stopColor="rgba(212,71,30,0.16)" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
           <radialGradient id={`gm-core-${uid}`} cx="50%" cy="45%" r="60%">
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="42%" stopColor="#FFE1B0" />
-            <stop offset="100%" stopColor="#F59E3D" stopOpacity="0" />
+            <stop offset="42%" stopColor="#FDD9B4" />
+            <stop offset="100%" stopColor="#E0592B" stopOpacity="0" />
           </radialGradient>
         </defs>
 
@@ -68,11 +68,11 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
         {/* warm halo inside the lens */}
         <circle cx="24" cy="24" r="14" fill={`url(#gm-glow-${uid})`} className="ap-halo" />
         {/* iris ring */}
-        <circle cx="24" cy="24" r="10.5" fill="none" stroke="rgba(255,201,120,0.5)" strokeWidth="1.3" />
+        <circle cx="24" cy="24" r="10.5" fill="none" stroke="rgba(240,140,88,0.52)" strokeWidth="1.3" />
         {/* four fine orbital ticks — an instrument, not a blob */}
         {[0, 90, 180, 270].map((deg) => {
           const a = ((deg - 90) * Math.PI) / 180;
-          return <line key={deg} x1={r3(24 + Math.cos(a) * 9.2)} y1={r3(24 + Math.sin(a) * 9.2)} x2={r3(24 + Math.cos(a) * 11.4)} y2={r3(24 + Math.sin(a) * 11.4)} stroke="rgba(255,201,120,0.7)" strokeWidth="1.3" strokeLinecap="round" />;
+          return <line key={deg} x1={r3(24 + Math.cos(a) * 9.2)} y1={r3(24 + Math.sin(a) * 9.2)} x2={r3(24 + Math.cos(a) * 11.4)} y2={r3(24 + Math.sin(a) * 11.4)} stroke="rgba(240,140,88,0.72)" strokeWidth="1.3" strokeLinecap="round" />;
         })}
         {/* the glowing eye */}
         <circle cx="24" cy="24" r="6.2" fill={`url(#gm-core-${uid})`} />

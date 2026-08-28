@@ -20,10 +20,11 @@ const STATES = {
   acting:      { orbit: 0.22, sweep: 0.70, pulse: 1.6,  spark: 0.030, glow: 0.95 },
 };
 
-// Warm "dawn" light — matches the brand. RGB tuples so we can vary alpha cheaply.
-const DAWN = [251, 179, 96];   // --mg-dawn-500
-const GLOW = [255, 200, 118];  // --mg-dawn-glow
-const CORE = [255, 244, 224];
+// Warm light in the Genie's own accent family (amber → burnt terracotta), so the glow
+// harmonises with the UI accent instead of reading as a second, different orange.
+const DAWN = [230, 112, 62];   // warm terracotta-orange
+const GLOW = [244, 156, 96];   // warm amber-terracotta
+const CORE = [255, 240, 224];
 
 export default function GenieAperture({ size = 120, state = "idle", className = "", style = {} }) {
   const canvasRef = useRef(null);
