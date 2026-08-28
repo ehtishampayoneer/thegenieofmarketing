@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
+import GenieAperture from "@/components/brand/GenieAperture";
 
 const STAGE_META = {
   ready_to_buy: { label: "Ready to buy", tone: "live" },
@@ -122,11 +123,17 @@ export default function HuntPage() {
       {loading && !hunting ? (
         <div className="mt-6 mg-surface p-10 text-center text-[13px] mg-subtle">Loading your buyers…</div>
       ) : !buyers || buyers.length === 0 ? (
-        <Card className="mt-6 p-10 text-center mg-ambient">
-          <span className="mg-tile mx-auto" style={{ width: 48, height: 48, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.crosshair size={22} /></span>
-          <p className="mt-4 text-[16px] font-bold" style={{ color: "var(--fg)" }}>No buyers in your sights yet</p>
-          <p className="mt-1.5 text-[13.5px] mg-muted max-w-md mx-auto">Hit <b style={{ color: "var(--fg)" }}>Find buyers now</b> and Genie sweeps Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy what you sell. Connect your Reddit key to unlock the biggest source for your niche.</p>
-          <button onClick={huntNow} disabled={hunting} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}><Icon.crosshair size={15} /> {hunting ? "Hunting…" : "Find buyers now"}</button>
+        <Card className="mt-6 p-10 text-center mg-aura-field">
+          <div style={{ display: "grid", placeItems: "center" }}><GenieAperture size={92} state={hunting ? "scanning" : "idle"} /></div>
+          <p className="mt-4 text-[17px] font-bold flex items-center justify-center gap-2" style={{ color: "var(--fg)" }}>
+            {hunting ? <>Genie is hunting the internet <span className="mg-thinking"><i /><i /><i /></span></> : "No buyers in your sights yet"}
+          </p>
+          <p className="mt-1.5 text-[13.5px] mg-muted max-w-md mx-auto">
+            {hunting
+              ? "Sweeping Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy what you sell. This takes up to a minute."
+              : <>Hit <b style={{ color: "var(--fg)" }}>Find buyers now</b> and Genie sweeps Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy. Connect your Reddit key to unlock the biggest source for your niche.</>}
+          </p>
+          {!hunting && <button onClick={huntNow} className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 13.5 }}><Icon.crosshair size={15} /> Find buyers now</button>}
         </Card>
       ) : (
         <div className="mt-4 flex flex-col gap-3">

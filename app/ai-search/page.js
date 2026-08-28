@@ -14,6 +14,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Provenance } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
+import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
 import { fetchLive } from "@/lib/live";
 
@@ -402,11 +403,17 @@ function SpeedUpCard({ approvals }) {
 function FirstCheck({ checking, step, onCheck, host }) {
   return (
     <div className="mt-8">
-      <Card className="mg-ambient p-10 lg:p-12 text-center mg-rise">
-        <span className="mg-tile mx-auto" style={{ width: 48, height: 48, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.spark size={22} /></span>
-        <h2 className="mt-4 mg-display" style={{ fontSize: 27 }}>Let’s see if AI recommends you</h2>
-        <p className="mt-2 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>I ask ChatGPT, Perplexity, Gemini, and Claude the questions your buyers ask, then show you exactly where they name a competitor instead of you, and how to win those mentions.</p>
-        <button onClick={onCheck} disabled={checking || !host} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-60" style={{ fontSize: 14, padding: ".8rem 1.3rem" }}>{checking ? (step || "Checking AI search…") : host ? "Check AI search now →" : "Run your first scan →"}</button>
+      <Card className="mg-aura-field p-10 lg:p-12 text-center mg-rise">
+        <div style={{ display: "grid", placeItems: "center" }}><GenieAperture size={96} state={checking ? "thinking" : "idle"} /></div>
+        <h2 className="mt-4 mg-display" style={{ fontSize: 27 }}>{checking ? "Asking the AI models…" : "Let’s see if AI recommends you"}</h2>
+        <p className="mt-2 mg-lede" style={{ marginLeft: "auto", marginRight: "auto" }}>
+          {checking
+            ? "Genie is putting your buyers' questions to ChatGPT, Perplexity, Gemini and Claude, and reading who they name in the answer."
+            : "I ask ChatGPT, Perplexity, Gemini, and Claude the questions your buyers ask, then show you exactly where they name a competitor instead of you, and how to win those mentions."}
+        </p>
+        {checking
+          ? <p className="mt-4 text-[13px] font-semibold flex items-center justify-center gap-2" style={{ color: "var(--accent-ink)" }}>{step || "Checking AI search"} <span className="mg-thinking"><i /><i /><i /></span></p>
+          : <button onClick={onCheck} disabled={!host} className="mg-btn mg-btn--dawn mt-5 inline-flex disabled:opacity-60" style={{ fontSize: 14, padding: ".8rem 1.3rem" }}>{host ? "Check AI search now →" : "Run your first scan →"}</button>}
       </Card>
     </div>
   );
