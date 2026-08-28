@@ -47,24 +47,28 @@ html, body {
   --mg-blue:#3E7CC2; --mg-blue-soft:#E9F0F8;
   --mg-amber:#C98A16; --mg-amber-soft:#FAF0DA;
 
-  /* ---- Layer 2: SEMANTIC (DAY theme — default) ---- */
-  --bg:var(--mg-paper); --surface:var(--mg-white); --surface-2:var(--mg-paper-raised); --surface-sunken:var(--mg-ink-50);
-  --fg:var(--mg-ink-900); --fg-muted:#455360; --fg-subtle:#5C6A77; --fg-on-dark:#EAF0F4;
-  --border:#E4DFD4; --border-strong:#D3CDBF; --hair:#EAE6DD;
-  --primary:var(--mg-ink-800); --on-primary:var(--mg-paper);
-  --accent:var(--mg-dawn-600); --accent-quiet:var(--mg-dawn-100); --accent-ink:#B5701A;
-  --signal-live:var(--mg-emerald); --signal-live-soft:var(--mg-emerald-soft); --signal-live-ink:var(--mg-emerald-ink);
-  --signal-danger:var(--mg-red); --signal-danger-soft:var(--mg-red-soft);
-  --signal-info:var(--mg-blue); --signal-info-soft:var(--mg-blue-soft);
+  /* ---- Layer 2: SEMANTIC (DAY theme — default) ----
+     A sophisticated blue-gray ENVIRONMENT: blue-gray canvas → warm-white floating
+     surfaces → deep-navy content. Warm gold stays as the RESTRAINED Genie accent —
+     the calm base lets the Genie's glow be the moment of magic. */
+  --bg:#e2e6f0; --surface:#ffffff; --surface-2:#f2f5fb; --surface-sunken:#e9edf6;
+  --fg:#1b2440; --fg-muted:#4c5773; --fg-subtle:#727e99; --fg-on-dark:#EAF0F4;
+  --border:#dce2ee; --border-strong:#c7d0e0; --hair:#e7ebf3;
+  --primary:#1e2742; --on-primary:#ffffff;
+  --accent:var(--mg-dawn-600); --accent-quiet:#FFF1DD; --accent-ink:#B5701A;
+  --signal-live:var(--mg-emerald); --signal-live-soft:#e2f2ec; --signal-live-ink:var(--mg-emerald-ink);
+  --signal-danger:var(--mg-red); --signal-danger-soft:#fbeae8;
+  --signal-info:var(--mg-blue); --signal-info-soft:#e8eff9;
   --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
   --ring:var(--mg-dawn-600);
-  --shadow-1:0 1px 2px rgba(38,34,24,.05);
-  --shadow-2:0 1px 2px rgba(38,34,24,.06), 0 6px 16px rgba(38,34,24,.07), 0 22px 44px rgba(40,34,20,.07);
-  --shadow-3:0 2px 4px rgba(38,34,24,.06), 0 10px 24px rgba(38,34,24,.08), 0 24px 48px rgba(38,34,24,.06);
-  --shadow-dawn:0 8px 40px rgba(245,158,61,.18);
+  /* extremely soft, cool-tinted elevation — gentle float, never heavy */
+  --shadow-1:0 1px 2px rgba(28,37,64,.05);
+  --shadow-2:0 1px 2px rgba(28,37,64,.04), 0 5px 16px rgba(28,37,64,.06), 0 14px 30px rgba(28,37,64,.05);
+  --shadow-3:0 2px 6px rgba(28,37,64,.06), 0 12px 28px rgba(28,37,64,.10), 0 24px 48px rgba(28,37,64,.06);
+  --shadow-dawn:0 10px 34px rgba(245,158,61,.22);
 
   /* ---- Layer 3: COMPONENT ---- */
-  --card-bg:var(--surface); --card-border:#E7E1D5; --card-radius:16px; --card-shadow:var(--shadow-2);
+  --card-bg:var(--surface); --card-border:#e6eaf2; --card-radius:18px; --card-shadow:var(--shadow-2);
   --btn-radius:12px;
 
   /* ---- Motion + type ---- */
@@ -217,9 +221,8 @@ html, body {
 /* ---- Surfaces & helpers ---- */
 .mg { color:var(--fg);
   background:
-    radial-gradient(62% 44% at 4% -10%, rgba(255,186,102,.22), transparent 60%),
-    radial-gradient(50% 42% at 100% -6%, rgba(108,142,214,.09), transparent 58%),
-    radial-gradient(85% 62% at 52% 114%, rgba(255,201,120,.09), transparent 62%),
+    radial-gradient(130% 80% at 50% -26%, #eef1f8, transparent 56%),
+    radial-gradient(46% 42% at 100% 2%, #e6ebf5, transparent 60%),
     var(--bg); }
 .mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.6); }
 .mg-surface-quiet { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; }
