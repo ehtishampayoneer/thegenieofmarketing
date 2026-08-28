@@ -281,7 +281,7 @@ export default function OperatorShell({ active = "today", children }) {
                 <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--fg-subtle)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
               </div>
             )}
-            <div className="px-4 sm:px-6 py-4 sm:py-5 xl:px-8 min-w-0" style={{ overflowWrap: "break-word", maxWidth: "100%" }}>{children}</div>
+            <div key={active} className="mg-rise px-4 sm:px-6 py-4 sm:py-5 xl:px-8 min-w-0" style={{ overflowWrap: "break-word", maxWidth: "100%" }}>{children}</div>
           </main>
         </div>
       </div>
