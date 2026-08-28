@@ -439,7 +439,7 @@ html, body {
 /* Live activity ticker — a quiet band of news under the top bar. Scrolls
    seamlessly (the track holds the items twice, animating to -50%), pauses on
    hover, and never dominates. Reduced-motion stops the scroll but keeps the row. */
-.mg-ticker { display:flex; align-items:stretch; height:40px; background:#F2ECE0; border-bottom:1px solid var(--hair); overflow:hidden; }
+.mg-ticker { display:flex; align-items:stretch; height:38px; background:color-mix(in srgb, var(--surface) 60%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--hair); overflow:hidden; }
 [data-theme="night"] .mg-ticker { background:#0E151F; }
 .mg-ticker-live { display:flex; align-items:center; gap:.45rem; padding:0 15px; flex:none; font-size:10px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--signal-live-ink); border-right:1px solid var(--hair); }
 .mg-ticker-vp { position:relative; flex:1; min-width:0; overflow:hidden; -webkit-mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); }
