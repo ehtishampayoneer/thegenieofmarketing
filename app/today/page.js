@@ -13,6 +13,7 @@ import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
+import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
 import { fetchLive } from "@/lib/live";
 import { useEffect, useMemo, useState } from "react";
@@ -121,14 +122,13 @@ export default function TodayPage() {
 function HeroOneThing({ name, count, clearTime }) {
   const has = count > 0;
   return (
-    <Card className="p-7 lg:p-8 flex flex-col mg-rise relative overflow-hidden">
-      <span className="absolute top-6 right-6" style={{ color: "var(--accent)", opacity: 0.9 }}><Icon.spark size={22} /></span>
+    <Card className="p-7 lg:p-8 flex flex-col mg-rise mg-aura-field relative overflow-hidden">
       <div className="flex items-start gap-5">
-        <span className="mg-tile shrink-0 hidden sm:flex" style={{ width: 76, height: 76, borderRadius: 22, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>
-          <Icon.tasks size={34} />
-        </span>
+        <span className="shrink-0 hidden sm:block"><GenieAperture size={84} state={has ? "discovering" : "idle"} /></span>
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold" style={{ color: "var(--fg-muted)" }}>Good morning{name ? `, ${name}` : ""} <span aria-hidden>👋</span></p>
+          <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg-muted)" }}>
+            <span className="mg-live-dot" /> Good morning{name ? `, ${name}` : ""}
+          </p>
           <h1 className="mt-1.5 mg-display" style={{ fontSize: "clamp(30px,3.3vw,42px)" }}>
             {has ? <>Your <span className="dawn-text">one thing</span> to do today</> : <>You’re <span className="dawn-text">all caught up</span></>}
           </h1>

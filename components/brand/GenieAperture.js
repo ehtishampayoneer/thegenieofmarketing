@@ -149,15 +149,13 @@ export default function GenieAperture({ size = 120, state = "idle", className = 
       raf = requestAnimationFrame(frame);
     }
 
-    if (reduce) {
-      // Single, composed static frame — still elegant, no motion.
-      stateRef.current = "idle";
-      running = false;
-      // draw one frame at a fixed phase
-      running = true; frame(0); running = false; cancelAnimationFrame(raf);
-    } else {
-      raf = requestAnimationFrame(frame);
-    }
+    // Always paint one frame immediately so the aperture is NEVER blank (even before
+    // the rAF loop starts, or in a background tab). Then run the loop unless the user
+    // prefers reduced motion, in which case the single composed frame is the whole show.
+    if (reduce) stateRef.current = "idle";
+    running = true;
+    frame(performance.now ? performance.now() : 0); // paints now + schedules next rAF
+    if (reduce) { running = false; cancelAnimationFrame(raf); }
 
     // Pause when tab hidden or the element scrolls off-screen (battery + smoothness).
     const onVis = () => { if (document.hidden) { running = false; cancelAnimationFrame(raf); } else if (!reduce && !running) { running = true; raf = requestAnimationFrame(frame); } };
@@ -177,7 +175,7 @@ export default function GenieAperture({ size = 120, state = "idle", className = 
 
   return (
     <span className={`gap-aperture ${className}`} style={{ display: "inline-block", lineHeight: 0, width: size, height: size, ...style }} aria-hidden="true">
-      <canvas ref={canvasRef} />
+      <canvas ref={canvasRef} width={size} height={size} style={{ width: size, height: size }} />
     </span>
   );
 }

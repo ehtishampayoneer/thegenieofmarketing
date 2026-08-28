@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { GenieLockup } from "@/components/brand/GenieMark";
+import GenieAperture from "@/components/brand/GenieAperture";
 
 const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)", borderRadius: 12, height: 46, padding: "0 14px", fontSize: 14, width: "100%", outline: "none" };
 
@@ -68,20 +69,23 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mg mg-ambient" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <main className="mg mg-ambient mg-aura-field" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <header className="px-6 py-5">
         <a href="/" className="inline-flex"><GenieLockup size={32} live /></a>
       </header>
 
       <section className="flex-1 flex items-center justify-center px-6 pb-16">
-        <div className="w-full" style={{ maxWidth: 400 }}>
+        <div className="w-full mg-rise" style={{ maxWidth: 408 }}>
           <div className="text-center">
+            <div style={{ display: "grid", placeItems: "center", marginBottom: 20 }}>
+              <GenieAperture size={112} state={busy ? "acting" : mode === "signin" ? "idle" : "discovering"} />
+            </div>
             <p className="mg-eyebrow" style={{ justifyContent: "center" }}>{mode === "signin" ? "Welcome back" : "Get started"}</p>
-            <h1 className="mg-display mt-2" style={{ fontSize: "clamp(29px,3.6vw,40px)" }}>
-              {mode === "signin" ? "Sign in to Genie." : "Create your account."}
+            <h1 className="mg-display mt-2" style={{ fontSize: "clamp(30px,3.8vw,42px)" }}>
+              {mode === "signin" ? "Your Genie has been working." : "Hire your AI marketing employee."}
             </h1>
-            <p className="mg-lede mt-2" style={{ marginInline: "auto" }}>
-              {mode === "signin" ? "Your AI marketing employee has been working. Pick up where it left off." : "Hire an AI marketing employee that works while you sleep."}
+            <p className="mg-lede mt-2.5" style={{ marginInline: "auto" }}>
+              {mode === "signin" ? "Pick up exactly where it left off — the buyers it found, the content it wrote, the moves it made overnight." : "It finds buyers, writes and publishes content, and grows your business while you sleep. You just approve."}
             </p>
           </div>
 
