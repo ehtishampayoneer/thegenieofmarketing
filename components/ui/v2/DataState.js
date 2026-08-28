@@ -6,6 +6,7 @@
 // always points back to the first scan. No "sample preview" anymore.
 
 import Icon from "@/components/ui/Icon";
+import GenieAperture from "@/components/brand/GenieAperture";
 
 export function DataStateBadge({ state }) {
   switch (state) {
@@ -20,14 +21,23 @@ export function DataStateBadge({ state }) {
 // its "empty / run your first scan" CTA before the real data arrives (that flash
 // read as two different pages loading in a row). Generic shimmer that fits any
 // layout; pages with a bespoke layout can pass their own via children.
-export function LoadingState({ rows = 3, children }) {
+export function LoadingState({ rows = 3, children, label = "Gathering your data" }) {
   if (children) return <div className="mt-6">{children}</div>;
   return (
-    <div className="mg-surface mg-rise" style={{ padding: 24, marginTop: 20 }} aria-busy="true" aria-label="Loading">
-      <div className="mg-skel" style={{ height: 18, width: "38%" }} />
-      <div className="mt-5 flex flex-col gap-3">
+    <div className="mg-surface mg-rise" style={{ padding: 22, marginTop: 20 }} aria-busy="true" aria-label="Loading">
+      <div className="flex items-center gap-3.5">
+        <GenieAperture size={44} state="scanning" />
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg)" }}>
+            Genie is working
+            <span className="mg-thinking"><i /><i /><i /></span>
+          </p>
+          <p className="text-[12.5px] mg-subtle mt-0.5">{label}…</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-3">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="mg-skel" style={{ height: 64, opacity: 1 - i * 0.14 }} />
+          <div key={i} className="mg-skel" style={{ height: 58, opacity: 1 - i * 0.14 }} />
         ))}
       </div>
     </div>
@@ -38,11 +48,13 @@ export function LoadingState({ rows = 3, children }) {
 export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, sub, action }) {
   const disconnected = state === "disconnected";
   return (
-    <div className="mg-surface mg-rise" style={{ padding: "44px 32px", textAlign: "center", marginTop: 20 }}>
-      <span className="mg-tile" style={{ width: 48, height: 48, margin: "0 auto", background: disconnected ? "var(--signal-danger-soft)" : "var(--accent-quiet)", color: disconnected ? "var(--signal-danger)" : "var(--accent-ink)" }}>
-        <IconC size={22} />
-      </span>
-      <p style={{ marginTop: 14, fontSize: 17, fontWeight: 700, color: "var(--fg)" }}>
+    <div className="mg-surface mg-rise mg-aura-field" style={{ padding: "48px 32px", textAlign: "center", marginTop: 20 }}>
+      <div style={{ display: "grid", placeItems: "center" }}>
+        {disconnected
+          ? <span className="mg-tile" style={{ width: 52, height: 52, background: "var(--signal-danger-soft)", color: "var(--signal-danger)" }}><IconC size={24} /></span>
+          : <GenieAperture size={76} state="idle" />}
+      </div>
+      <p style={{ marginTop: 14, fontSize: 18, fontWeight: 750, color: "var(--fg)", letterSpacing: "-.01em" }}>
         {title || (disconnected ? "Not connected" : "Nothing here yet")}
       </p>
       <p className="mg-muted" style={{ marginTop: 7, fontSize: 14, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>

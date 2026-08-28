@@ -14,6 +14,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/Icon";
 import { GenieMark, GenieLockup } from "@/components/brand/GenieMark";
+import GenieAperture from "@/components/brand/GenieAperture";
 import { Kbd } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
 import GenieChat from "@/components/shell/v2/GenieChat";
@@ -231,7 +232,7 @@ export default function OperatorShell({ active = "today", children }) {
                   <span className="text-[10.5px] mg-subtle">Auto-refreshes every 5 min</span>
                 </div>
                 <div className="hidden sm:flex items-center gap-2.5">
-                  <span className="mg-presence" data-state={genieState}><GenieMark size={30} live /></span>
+                  <GenieAperture size={38} state={genieState === "alerting" ? "discovering" : genieState === "working" ? "scanning" : "idle"} />
                   <div className="leading-tight">
                     <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
                     {working ? (

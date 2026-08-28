@@ -296,6 +296,66 @@ html, body {
 .mg-skel { border-radius:10px; background:linear-gradient(90deg,var(--surface-sunken) 25%,var(--hair) 37%,var(--surface-sunken) 63%); background-size:200% 100%; animation:mg-shimmer 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .mg-skel { animation:none; } }
 
+/* ============================================================================
+   LIVING GENIE — atmosphere, intelligence states & choreography
+   The metaphor made visible: an intelligence that observes, scans, thinks,
+   discovers and acts. Every effect is GPU-cheap (transform/opacity), purposeful,
+   and fully disabled under prefers-reduced-motion.
+   ============================================================================ */
+/* The living aperture canvas fills its span. */
+.gap-aperture { position:relative; }
+.gap-aperture canvas { display:block; width:100%; height:100%; }
+
+/* Ambient intelligence field — a slow warm light behind heroes / key surfaces, so
+   the product feels like something is quietly humming inside it. Restrained. */
+.mg-aura-field { position:relative; isolation:isolate; }
+.mg-aura-field::before { content:""; position:absolute; inset:-25% -12% auto -12%; height:150%; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(40% 52% at 20% 12%, rgba(255,200,118,.16), transparent 70%),
+    radial-gradient(30% 42% at 82% 26%, rgba(62,124,194,.055), transparent 72%);
+  animation:mg-aura-drift 20s var(--ease-out) infinite alternate; will-change:transform; }
+[data-theme="night"] .mg-aura-field::before { background:
+    radial-gradient(40% 52% at 20% 12%, rgba(255,200,118,.11), transparent 70%),
+    radial-gradient(30% 42% at 82% 26%, rgba(120,170,230,.06), transparent 72%); }
+@keyframes mg-aura-drift { from { transform:translate3d(-1.5%,-1%,0) scale(1); } to { transform:translate3d(1.5%,2%,0) scale(1.06); } }
+
+/* Scanning — a thin light sweeps across a surface the Genie is examining. */
+.mg-scanning { position:relative; overflow:hidden; }
+.mg-scanning::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:linear-gradient(105deg, transparent 42%, rgba(255,200,118,.16) 50%, transparent 58%);
+  transform:translateX(-130%); animation:mg-scan 2.1s var(--ease-out) infinite; }
+@keyframes mg-scan { to { transform:translateX(130%); } }
+
+/* Thinking — three considered dots (an AI processing state, not a spinner). */
+.mg-thinking { display:inline-flex; gap:5px; align-items:center; }
+.mg-thinking i { width:5px; height:5px; border-radius:999px; background:var(--accent); display:inline-block; animation:mg-think 1.25s ease-in-out infinite; }
+.mg-thinking i:nth-child(2){ animation-delay:.16s } .mg-thinking i:nth-child(3){ animation-delay:.32s }
+@keyframes mg-think { 0%,100%{ opacity:.28; transform:translateY(0) } 42%{ opacity:1; transform:translateY(-3px) } }
+
+/* Discovery — a found opportunity emerges (scale + settle), used on new items. */
+@keyframes mg-discover { 0%{ opacity:0; transform:scale(.9) translateY(8px); } 60%{ opacity:1; transform:scale(1.015) translateY(0);} 100%{ transform:scale(1);} }
+.mg-discover { animation:mg-discover .55s var(--ease-spring) both; }
+
+/* Completion — a satisfying but professional confirmation pop. */
+@keyframes mg-complete { 0%{ transform:scale(.6); opacity:0 } 55%{ transform:scale(1.12); opacity:1 } 100%{ transform:scale(1) } }
+.mg-complete { animation:mg-complete .42s var(--ease-spring) both; }
+
+/* Data flowing INTO the Genie — a dotted conduit that streams toward the core. */
+.mg-flow { background-image:linear-gradient(90deg, var(--accent) 40%, transparent 0); background-size:9px 2px; background-repeat:repeat-x;
+  animation:mg-flow 0.7s linear infinite; }
+@keyframes mg-flow { to { background-position:-9px 0; } }
+
+/* Elevated hover for interactive surfaces — a lift with a dawn edge, premium + fast. */
+.mg-lift-2 { transition:transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2); will-change:transform; }
+.mg-lift-2:hover { transform:translateY(-3px); box-shadow:var(--shadow-3); border-color:color-mix(in srgb, var(--accent) 45%, var(--border-strong)); }
+[data-theme="night"] .mg-lift-2:hover { border-color:rgba(255,200,118,.34); box-shadow:var(--shadow-3), 0 0 0 1px rgba(255,200,118,.08), inset 0 1px 0 rgba(255,255,255,.05); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-aura-field::before, .mg-scanning::after, .mg-thinking i, .mg-flow { animation:none !important; }
+  .mg-scanning::after { display:none; }
+  .mg-discover, .mg-complete { animation:none !important; opacity:1 !important; transform:none !important; }
+}
+
 /* ---- V2 motion utilities ---- */
 @keyframes mg-rise { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 .mg-rise { animation:mg-rise .5s var(--ease-out) both; }
