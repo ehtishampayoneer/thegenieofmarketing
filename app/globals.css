@@ -51,7 +51,7 @@ html, body {
      A sophisticated blue-gray ENVIRONMENT: blue-gray canvas → warm-white floating
      surfaces → deep-navy content. Warm gold stays as the RESTRAINED Genie accent —
      the calm base lets the Genie's glow be the moment of magic. */
-  --bg:#e2e6f0; --surface:#ffffff; --surface-2:#f2f5fb; --surface-sunken:#e9edf6;
+  --bg:#d7dce6; --surface:#ffffff; --surface-2:#eef1f7; --surface-sunken:#e4e9f1;
   --fg:#1b2440; --fg-muted:#4c5773; --fg-subtle:#727e99; --fg-on-dark:#EAF0F4;
   --border:#dce2ee; --border-strong:#c7d0e0; --hair:#e7ebf3;
   --primary:#1e2742; --on-primary:#ffffff;
@@ -127,18 +127,18 @@ html, body {
 
 /* One editorial type system — used on every operator screen so nothing is
    hand-sized inline. Confident display, quiet everything-else. */
-.mg-eyebrow { display:inline-flex; align-items:center; gap:.45rem; font-size:13px; font-weight:650; letter-spacing:.01em; color:var(--fg-subtle); }
+.mg-eyebrow { display:inline-flex; align-items:center; gap:.45rem; font-size:12.5px; font-weight:600; letter-spacing:.02em; color:var(--fg-subtle); }
 /* Section label — one consistent header for every card/section across the app. A
    small dawn tick anchors it so sections read as deliberate, scannable units.
    .mg-klabel sits on its own line; add mg-klabel + a wrapping row for actions. */
-.mg-klabel { position:relative; display:inline-flex; align-items:center; font-size:12px; font-weight:750; letter-spacing:.11em; text-transform:uppercase; line-height:1.1; color:var(--fg-muted); }
+.mg-klabel { position:relative; display:inline-flex; align-items:center; font-size:11.5px; font-weight:650; letter-spacing:.13em; text-transform:uppercase; line-height:1.1; color:var(--fg-subtle); }
 /* The dawn tick hangs into the left margin so the label TEXT stays flush with the
    title/description beneath it (labels ride at least 16px of card padding). */
-.mg-klabel::before { content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:3px; height:12px; border-radius:2px; background:var(--accent); }
+.mg-klabel::before { content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:2px; height:11px; border-radius:2px; background:var(--border-strong); }
 .mg-klabel--plain::before { display:none; }
-.mg-display { font-size:clamp(31px,3.4vw,44px); line-height:1.04; letter-spacing:-.024em; font-weight:820; color:var(--fg); text-wrap:balance; }
-.mg-display-lg { font-size:clamp(35px,4.6vw,56px); line-height:1.0; letter-spacing:-.03em; font-weight:820; color:var(--fg); text-wrap:balance; }
-.mg-title { font-size:18px; line-height:1.22; letter-spacing:-.012em; font-weight:730; color:var(--fg); }
+.mg-display { font-size:clamp(30px,3.3vw,42px); line-height:1.06; letter-spacing:-.022em; font-weight:680; color:var(--fg); text-wrap:balance; }
+.mg-display-lg { font-size:clamp(34px,4.4vw,54px); line-height:1.02; letter-spacing:-.028em; font-weight:700; color:var(--fg); text-wrap:balance; }
+.mg-title { font-size:17px; line-height:1.24; letter-spacing:-.008em; font-weight:640; color:var(--fg); }
 .mg-lede { font-size:16px; line-height:1.55; color:var(--fg-muted); max-width:62ch; }
 
 /* Genie's voice — a first-person line; key facts lift to full-strength ink. */
@@ -181,7 +181,7 @@ html, body {
    strongest "premium" cue: light comes from somewhere. Static (reduced-motion safe). */
 .mg-ambient { position:relative; isolation:isolate; }
 .mg-ambient::before { content:""; position:absolute; inset:-24px 0 auto 0; height:280px; pointer-events:none; z-index:-1;
-  background:radial-gradient(46% 100% at 20% 0%, var(--accent-quiet), transparent 70%); opacity:.85; }
+  background:radial-gradient(50% 100% at 22% 0%, rgba(206,216,236,.55), transparent 72%); opacity:.7; }
 [data-theme="night"] .mg-ambient::before { background:radial-gradient(44% 100% at 18% 0%, rgba(255,200,118,.11), transparent 64%); opacity:1; }
 
 /* Tactile surfaces — cards that acknowledge intent. In Night, the edge catches
@@ -221,15 +221,15 @@ html, body {
 /* ---- Surfaces & helpers ---- */
 .mg { color:var(--fg);
   background:
-    radial-gradient(130% 80% at 50% -26%, #eef1f8, transparent 56%),
-    radial-gradient(46% 42% at 100% 2%, #e6ebf5, transparent 60%),
+    radial-gradient(135% 82% at 50% -28%, #e6eaf2, transparent 58%),
+    radial-gradient(46% 42% at 100% 2%, #dee4ee, transparent 60%),
     var(--bg); }
 .mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.6); }
 .mg-surface-quiet { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; }
 .mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }
 .mg-num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
 .mg-hairline { height:1px; width:100%; background:var(--hair); }
-.dawn-text { background:linear-gradient(100deg,var(--mg-dawn-700),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dawn-text { background:linear-gradient(100deg,#B26A16,#CE8A2C); -webkit-background-clip:text; background-clip:text; color:transparent; }
 [data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-dawn-glow),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .dawn-fill { background:linear-gradient(135deg,var(--mg-dawn-glow),var(--mg-dawn-600)); }
 
@@ -443,7 +443,7 @@ html, body {
 .mg-ticker-vp:hover .mg-ticker-track { animation-play-state:paused; }
 .mg-ticker-item { display:inline-flex; align-items:center; gap:.5rem; padding:0 19px; font-size:13px; white-space:nowrap; color:var(--fg-muted); }
 .mg-ticker-item b { color:var(--fg); font-weight:600; }
-.mg-ticker-item svg { color:var(--accent-ink); flex:none; opacity:.9; }
+.mg-ticker-item svg { color:var(--fg-subtle); flex:none; opacity:.7; }
 .mg-ticker-sep { width:3px; height:3px; border-radius:50%; background:var(--border-strong); flex:none; }
 /* A real news bar: it keeps scrolling right-to-left even under prefers-reduced-
    motion (a product decision — the "always working" ticker is core to the page),

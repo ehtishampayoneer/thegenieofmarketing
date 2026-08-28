@@ -245,8 +245,8 @@ function Journey({ stage, d }) {
                 {i < STAGES.length - 1 && (
                   <div className="flex-1 self-start" style={{ marginTop: 22 }}>
                     {i < curIdx
-                      ? <div style={{ height: 3, borderRadius: 3, background: `linear-gradient(90deg, ${STAGES[i].color}, ${STAGES[i + 1].color})` }} />
-                      : <div style={{ height: 0, borderTop: "2px dashed var(--border-strong)" }} />}
+                      ? <div style={{ height: 2, borderRadius: 3, background: "var(--border-strong)" }} />
+                      : <div style={{ height: 0, borderTop: "2px dashed var(--border)" }} />}
                   </div>
                 )}
               </div>
@@ -257,7 +257,7 @@ function Journey({ stage, d }) {
 
       <div className="mt-5 flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-[12px] font-bold" style={{ color: STAGES[curIdx].color, textTransform: "uppercase", letterSpacing: ".1em" }}>Stage {stage}: {STAGES[curIdx].key}</p>
+          <p className="text-[12px] font-bold" style={{ color: "var(--fg)", textTransform: "uppercase", letterSpacing: ".1em" }}>Stage {stage}: {STAGES[curIdx].key}</p>
           <p className="mt-1 text-[14px] mg-muted">{STAGES[curIdx].desc}</p>
         </div>
         <div className="text-right">
@@ -272,7 +272,7 @@ function Journey({ stage, d }) {
         {STAGES.map((s, i) => (
           <div key={i} className="flex flex-col gap-1">
             <p className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--fg)" }}>
-              <span style={{ width: 8, height: 8, borderRadius: 999, background: s.color, flex: "none" }} /> {i + 1} {s.key}
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: i <= curIdx ? "var(--fg-muted)" : "var(--border-strong)", flex: "none" }} /> {i + 1} {s.key}
             </p>
             <p className="text-[11.5px] mg-subtle leading-snug">{s.desc}</p>
           </div>
@@ -287,8 +287,8 @@ function JourneyNode({ index, stage, st }) {
   const ringStyle = st === "current"
     ? { ...base, background: "linear-gradient(135deg,var(--mg-dawn-500),var(--mg-dawn-600))", border: "2px solid transparent", color: "#2C1B05" }
     : st === "done"
-      ? { ...base, border: `2px solid ${stage.color}`, color: stage.color }
-      : { ...base, border: "2px solid var(--border-strong)", color: "var(--fg-subtle)" };
+      ? { ...base, border: "2px solid var(--border-strong)", color: "var(--fg-muted)" }
+      : { ...base, border: "2px solid var(--border)", color: "var(--fg-subtle)" };
   return (
     <div className="flex flex-col items-center" style={{ width: 72, flex: "none" }}>
       <div className={st === "current" ? "mg-journey-cur mg-num" : "mg-num"} style={ringStyle}>{index + 1}</div>

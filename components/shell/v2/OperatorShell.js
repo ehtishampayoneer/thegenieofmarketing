@@ -272,12 +272,12 @@ export default function OperatorShell({ active = "today", children }) {
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden thin-scroll">
             {missingConns.length > 0 && !connDismissed && (
-              <div className="flex items-center gap-3 px-6 py-2.5" style={{ background: "var(--accent-quiet)", borderBottom: "1px solid var(--border)" }}>
-                <Icon.link size={15} style={{ color: "var(--accent-ink)" }} />
-                <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>
-                  Connect <b>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful, {missingConns.map((m) => m.why).join(", ")}.
+              <div className="flex items-center gap-3 px-4 sm:px-6 py-2.5" style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                <Icon.link size={15} style={{ color: "var(--fg-subtle)" }} />
+                <span className="text-[12.5px]" style={{ color: "var(--fg-muted)" }}>
+                  Connect <b style={{ color: "var(--fg)", fontWeight: 600 }}>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful, {missingConns.map((m) => m.why).join(", ")}.
                 </span>
-                <a href="/connections" className="mg-btn mg-btn--dawn ml-auto shrink-0" style={{ fontSize: 11.5, padding: ".32rem .7rem" }}>Connect</a>
+                <a href="/connections" className="mg-btn mg-btn--primary ml-auto shrink-0" style={{ fontSize: 11.5, padding: ".34rem .8rem" }}>Connect</a>
                 <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--fg-subtle)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
               </div>
             )}
