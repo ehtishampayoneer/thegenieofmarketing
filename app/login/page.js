@@ -78,7 +78,7 @@ export default function LoginPage() {
         <div className="w-full mg-rise" style={{ maxWidth: 408 }}>
           <div className="text-center">
             <div style={{ display: "grid", placeItems: "center", marginBottom: 20 }}>
-              <GenieAperture size={112} state={busy ? "acting" : mode === "signin" ? "idle" : "discovering"} />
+              <GenieAperture size={128} state={busy ? "acting" : mode === "signin" ? "idle" : "discovering"} />
             </div>
             <p className="mg-eyebrow" style={{ justifyContent: "center" }}>{mode === "signin" ? "Welcome back" : "Get started"}</p>
             <h1 className="mg-display mt-2" style={{ fontSize: "clamp(30px,3.8vw,42px)" }}>

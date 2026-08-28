@@ -59,7 +59,7 @@ html, body {
   --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
   --ring:var(--mg-dawn-600);
   --shadow-1:0 1px 2px rgba(38,34,24,.05);
-  --shadow-2:0 1px 2px rgba(38,34,24,.05), 0 4px 10px rgba(38,34,24,.05), 0 12px 26px rgba(38,34,24,.045);
+  --shadow-2:0 1px 2px rgba(38,34,24,.06), 0 6px 16px rgba(38,34,24,.07), 0 22px 44px rgba(40,34,20,.07);
   --shadow-3:0 2px 4px rgba(38,34,24,.06), 0 10px 24px rgba(38,34,24,.08), 0 24px 48px rgba(38,34,24,.06);
   --shadow-dawn:0 8px 40px rgba(245,158,61,.18);
 
@@ -215,7 +215,12 @@ html, body {
 }
 
 /* ---- Surfaces & helpers ---- */
-.mg { background:var(--bg); color:var(--fg); }
+.mg { color:var(--fg);
+  background:
+    radial-gradient(62% 44% at 4% -10%, rgba(255,186,102,.22), transparent 60%),
+    radial-gradient(50% 42% at 100% -6%, rgba(108,142,214,.09), transparent 58%),
+    radial-gradient(85% 62% at 52% 114%, rgba(255,201,120,.09), transparent 62%),
+    var(--bg); }
 .mg-surface { background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--card-radius); box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.6); }
 .mg-surface-quiet { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; }
 .mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }

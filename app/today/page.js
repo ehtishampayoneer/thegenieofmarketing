@@ -124,7 +124,7 @@ function HeroOneThing({ name, count, clearTime }) {
   return (
     <Card className="p-7 lg:p-8 flex flex-col mg-rise mg-aura-field relative overflow-hidden">
       <div className="flex items-start gap-5">
-        <span className="shrink-0 hidden sm:block"><GenieAperture size={84} state={has ? "discovering" : "idle"} /></span>
+        <span className="shrink-0 hidden sm:block"><GenieAperture size={96} state={has ? "discovering" : "idle"} /></span>
         <div className="min-w-0">
           <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg-muted)" }}>
             <span className="mg-live-dot" /> Good morning{name ? `, ${name}` : ""}

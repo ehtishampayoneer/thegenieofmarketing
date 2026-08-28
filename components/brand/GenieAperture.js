@@ -75,20 +75,36 @@ export default function GenieAperture({ size = 120, state = "idle", className = 
 
       ctx.clearRect(0, 0, W, H);
 
-      // 1) ambient glow — a soft warm field, restrained.
-      const g = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.15);
-      g.addColorStop(0, rgba(GLOW, 0.16 * S.glow));
-      g.addColorStop(0.5, rgba(DAWN, 0.06 * S.glow));
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.15, 0, 7); ctx.fill();
+      // 0) THE LENS — a deep night well so the luminous aperture GLOWS against it on
+      // any page (light on white was invisible; light on dark reads like an eye).
+      const lens = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.08);
+      lens.addColorStop(0, "rgba(18,32,45,0.99)");
+      lens.addColorStop(0.72, "rgba(9,17,25,1)");
+      lens.addColorStop(0.93, "rgba(9,17,25,1)");
+      lens.addColorStop(1, "rgba(9,17,25,0)");
+      ctx.fillStyle = lens; ctx.beginPath(); ctx.arc(cx, cy, R * 1.08, 0, 7); ctx.fill();
+      // outer glow bleed beyond the lens (soft warm halo on the page)
+      const bleed = ctx.createRadialGradient(cx, cy, R * 0.9, cx, cy, R * 1.5);
+      bleed.addColorStop(0, rgba(GLOW, 0.16 * S.glow));
+      bleed.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = bleed; ctx.beginPath(); ctx.arc(cx, cy, R * 1.5, 0, 7); ctx.fill();
 
-      // 2) the iris — a fine ring of ticks (an instrument, not a blob).
+      // 1) inner ambient glow — warm field inside the lens.
+      const g = ctx.createRadialGradient(cx, cy, R * 0.05, cx, cy, R * 0.95);
+      g.addColorStop(0, rgba(GLOW, 0.28 * S.glow));
+      g.addColorStop(0.5, rgba(DAWN, 0.1 * S.glow));
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 0.95, 0, 7); ctx.fill();
+
+      // 2) the iris — a bright rim + a fine ring of ticks (an instrument, not a blob).
+      ctx.strokeStyle = rgba(GLOW, 0.5); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, cy, R * 0.96, 0, 7); ctx.stroke();
       const ticks = 48;
       for (let i = 0; i < ticks; i++) {
         const a = (i / ticks) * Math.PI * 2;
         const lit = (Math.sin(a * 3 - t * 0.6) + 1) / 2; // subtle travelling shimmer
-        const r0 = R * 0.98, r1 = R * (1.02 + lit * 0.03);
-        ctx.strokeStyle = rgba(DAWN, 0.10 + lit * 0.18);
+        const r0 = R * 0.84, r1 = R * (0.9 + lit * 0.03);
+        ctx.strokeStyle = rgba(DAWN, 0.22 + lit * 0.4);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
@@ -96,8 +112,8 @@ export default function GenieAperture({ size = 120, state = "idle", className = 
         ctx.stroke();
       }
       // inner iris ring
-      ctx.strokeStyle = rgba(DAWN, 0.22); ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(cx, cy, R * 0.62, 0, 7); ctx.stroke();
+      ctx.strokeStyle = rgba(DAWN, 0.35); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx, cy, R * 0.6, 0, 7); ctx.stroke();
 
       // 3) scanner sweep — a bright wedge with a fading trail (clearly "examining").
       const trail = 0.9;
@@ -117,10 +133,13 @@ export default function GenieAperture({ size = 120, state = "idle", className = 
         const a = p.a + orbitA * p.dir;
         const px = cx + Math.cos(a) * p.r, py = cy + Math.sin(a) * p.r;
         const tw = 0.6 + (Math.sin(t * 2 + p.twk) + 1) / 2 * 0.4;
-        ctx.strokeStyle = rgba(DAWN, 0.05 * tw);
+        ctx.strokeStyle = rgba(DAWN, 0.1 * tw);
         ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py); ctx.stroke();
-        ctx.fillStyle = rgba(GLOW, 0.55 * tw);
-        ctx.beginPath(); ctx.arc(px, py, p.sz, 0, 7); ctx.fill();
+        // glow + crisp dot
+        ctx.fillStyle = rgba(GLOW, 0.9 * tw);
+        ctx.beginPath(); ctx.arc(px, py, p.sz + 0.6, 0, 7); ctx.fill();
+        ctx.fillStyle = rgba(CORE, 0.9 * tw);
+        ctx.beginPath(); ctx.arc(px, py, p.sz * 0.5, 0, 7); ctx.fill();
       }
 
       // 5) discovery sparks — occasional outward bursts.
