@@ -63,7 +63,7 @@ html, body {
   --fg:#262a3d; --fg-muted:#4c5570; --fg-subtle:#646e88; --fg-on-dark:#EAF0F4;
   --border:#d3dae6; --border-strong:#bec7d7; --hair:#e2e7f0;
   --primary:#262a3d; --on-primary:#ffffff;
-  --accent:var(--mg-royal-600); --accent-strong:var(--mg-royal-700); --accent-quiet:#e7eaf3; --accent-ink:#294C8C; --on-accent:var(--mg-gold);
+  --accent:var(--mg-royal-600); --accent-strong:var(--mg-royal-700); --accent-quiet:#e7eaf3; --accent-ink:#294C8C; --on-accent:#ffffff;
   --signal-live:var(--mg-emerald); --signal-live-soft:#e2f2ec; --signal-live-ink:var(--mg-emerald-ink);
   --signal-danger:var(--mg-red); --signal-danger-soft:#fbeae8;
   --signal-info:var(--mg-blue); --signal-info-soft:#e8eff9;

@@ -28,12 +28,13 @@ const SIGNAL_LABEL = {
 
 // Intent → heat colour + label.
 function heat(n) {
-  // Colours double as a solid score-tile background (white number on top) and as the
-  // caption ink on white, so each is deep enough to pass contrast in both roles.
-  if (n >= 85) return { color: "#C4372B", soft: "rgba(196,55,43,.20)", label: "Red hot" };
-  if (n >= 70) return { color: "#D14A22", soft: "rgba(209,74,34,.20)", label: "Hot" };
-  if (n >= 55) return { color: "#9C640D", soft: "rgba(156,100,13,.20)", label: "Warm" };
-  return { color: "#5b6478", soft: "rgba(91,100,120,.18)", label: "Simmering" };
+  // Buying-intent as a cohesive BLUE intensity ramp (deep royal = strongest intent ->
+  // light slate = weakest). No warm colours — the number carries the value, the depth of
+  // blue and the label carry the tier. White number on every tile.
+  if (n >= 85) return { color: "#16244E", soft: "rgba(22,36,78,.28)", label: "Top intent" };
+  if (n >= 70) return { color: "#2A407F", soft: "rgba(42,64,127,.26)", label: "High intent" };
+  if (n >= 55) return { color: "#4A6699", soft: "rgba(74,102,153,.22)", label: "Medium" };
+  return { color: "#7A889E", soft: "rgba(122,136,158,.20)", label: "Low" };
 }
 
 export default function HuntPage() {
@@ -161,15 +162,15 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
           <div className="flex items-center justify-center" style={{ width: 52, height: 52, borderRadius: 15, background: h.color, color: "#fff", boxShadow: `0 5px 16px ${h.soft}` }}>
             <span className="mg-num" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{b.intent}</span>
           </div>
-          <div className="text-[9.5px] font-bold uppercase tracking-wide mt-1.5 text-center" style={{ color: h.color, whiteSpace: "nowrap" }}>{h.label}</div>
+          <div className="text-[9.5px] font-bold uppercase tracking-wide mt-1.5 text-center" style={{ color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{h.label}</div>
         </div>
 
         {/* body */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${b.platformColor}1a`, color: b.platformColor }}>{b.platformLabel}</span>
+            <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "var(--surface-2)", color: "var(--fg-muted)", border: "1px solid var(--border)" }}>{b.platformLabel}</span>
             {stage && <Pill tone={stage.tone}>{stage.label}</Pill>}
-            {b.competitor && <Pill tone="danger">eyeing a rival</Pill>}
+            {b.competitor && <Pill tone="info">eyeing a rival</Pill>}
           </div>
           <a href={b.url} target="_blank" rel="noreferrer" className="block mt-1.5 text-[14.5px] font-bold mg-focus" style={{ color: "var(--fg)" }}>{b.title || "View the thread"} <span style={{ color: "var(--accent-ink)", fontWeight: 600, fontSize: 12 }}>↗</span></a>
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
