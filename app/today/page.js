@@ -13,7 +13,6 @@ import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
-import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
 import { fetchLive } from "@/lib/live";
 import { useEffect, useMemo, useState } from "react";
@@ -124,7 +123,7 @@ function HeroOneThing({ name, count, clearTime }) {
   return (
     <Card className="p-7 lg:p-8 flex flex-col mg-rise mg-aura-field relative overflow-hidden">
       <div className="flex items-start gap-5">
-        <span className="shrink-0 hidden sm:block"><GenieAperture size={96} state={has ? "discovering" : "idle"} /></span>
+        <span className="shrink-0 hidden sm:block"><span className="mg-presence" data-state={has ? "working" : "idle"}><GenieMark size={72} live={has} /></span></span>
         <div className="min-w-0">
           <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg-muted)" }}>
             <span className="mg-live-dot" /> Good morning{name ? `, ${name}` : ""}
@@ -331,7 +330,7 @@ function Glance({ d, count, clearTime, did }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <Card key={i} className="p-5 mg-lift flex flex-col">
-            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><c.icon size={17} /></span>
+            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent)", color: "#fff", boxShadow: "0 2px 8px rgba(198,62,24,.30)" }}><c.icon size={17} /></span>
             <p className="mt-3 mg-num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", color: c.n > 0 ? "var(--fg)" : "var(--fg)" }}>{c.n}</p>
             <p className="mt-1 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{c.label}</p>
             <p className="mt-1.5 text-[12.5px] mg-muted leading-snug flex-1">{c.body}</p>
@@ -353,7 +352,7 @@ function LastNight({ did }) {
           <ul className="space-y-3.5">
             {did.map((x, i) => (
               <li key={i} className="flex items-center gap-3">
-                <span className="mg-tile shrink-0" style={{ width: 26, height: 26, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={14} /></span>
+                <span className="mg-tile shrink-0" style={{ width: 26, height: 26, background: "var(--signal-live)", color: "#fff" }}><Icon.check size={14} /></span>
                 <span className="text-[14px]" style={{ color: "var(--fg)" }}><b className="mg-num" style={{ fontWeight: 700 }}>{x.n}</b> <span style={{ color: "var(--fg-muted)" }}>{x.label.toLowerCase()}</span></span>
               </li>
             ))}
@@ -380,7 +379,7 @@ function Insight({ d }) {
   const won = ai?.won ?? 0;
   return (
     <Card className="p-6 mg-lift flex gap-4">
-      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.search size={19} /></span>
+      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent)", color: "#fff", boxShadow: "0 3px 10px rgba(198,62,24,.28)" }}><Icon.search size={19} /></span>
       <div className="min-w-0">
         <p className="mg-klabel">Insight</p>
         <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Gemini and OpenAI name you in {won} of 6 buyer answers.</p>
@@ -396,7 +395,7 @@ function Opportunity({ d }) {
   const gaps = d?.aiSearch?.working;
   return (
     <Card className="p-6 mg-lift flex gap-4">
-      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.target size={19} /></span>
+      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-live)", color: "#fff", boxShadow: "0 3px 10px rgba(30,158,106,.26)" }}><Icon.target size={19} /></span>
       <div className="min-w-0">
         <p className="mg-klabel">Opportunity</p>
         <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Comparison content is your biggest opening{gaps > 0 ? ` (${gaps} in flight)` : ""}.</p>

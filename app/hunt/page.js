@@ -28,10 +28,12 @@ const SIGNAL_LABEL = {
 
 // Intent → heat colour + label.
 function heat(n) {
-  if (n >= 85) return { color: "#E0483D", soft: "rgba(224,72,61,.12)", label: "Red hot" };
-  if (n >= 70) return { color: "var(--mg-dawn-600)", soft: "var(--accent-quiet)", label: "Hot" };
-  if (n >= 55) return { color: "#C9861E", soft: "rgba(201,134,30,.12)", label: "Warm" };
-  return { color: "var(--fg-subtle)", soft: "var(--surface-2)", label: "Simmering" };
+  // Colours double as a solid score-tile background (white number on top) and as the
+  // caption ink on white, so each is deep enough to pass contrast in both roles.
+  if (n >= 85) return { color: "#C4372B", soft: "rgba(196,55,43,.20)", label: "Red hot" };
+  if (n >= 70) return { color: "var(--mg-dawn-600)", soft: "rgba(212,71,30,.20)", label: "Hot" };
+  if (n >= 55) return { color: "#9C640D", soft: "rgba(156,100,13,.20)", label: "Warm" };
+  return { color: "#5b6478", soft: "rgba(91,100,120,.18)", label: "Simmering" };
 }
 
 export default function HuntPage() {
@@ -152,15 +154,14 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
   const stage = STAGE_META[b.stage] || null;
   const sigs = (b.signals || []).map((s) => SIGNAL_LABEL[s] || s).slice(0, 3);
   return (
-    <Card className="p-0 overflow-hidden mg-lift" style={{ borderLeft: `3px solid ${h.color}` }}>
+    <Card className="p-0 overflow-hidden mg-lift">
       <div className="p-4 sm:p-5 flex items-start gap-4">
-        {/* intent meter */}
-        <div className="shrink-0 text-center" style={{ width: 62 }}>
-          <div className="mg-num" style={{ fontSize: 30, fontWeight: 800, lineHeight: 1, color: h.color }}>{b.intent}</div>
-          <div className="text-[9.5px] font-bold uppercase tracking-wide mt-0.5" style={{ color: h.color }}>{h.label}</div>
-          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
-            <div className="h-full rounded-full" style={{ width: `${b.intent}%`, background: h.color }} />
+        {/* intent score — a solid heat tile (the buying-intent, made tangible), not a line */}
+        <div className="shrink-0 flex flex-col items-center" style={{ width: 56 }}>
+          <div className="flex items-center justify-center" style={{ width: 52, height: 52, borderRadius: 15, background: h.color, color: "#fff", boxShadow: `0 5px 16px ${h.soft}` }}>
+            <span className="mg-num" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{b.intent}</span>
           </div>
+          <div className="text-[9.5px] font-bold uppercase tracking-wide mt-1.5 text-center" style={{ color: h.color, whiteSpace: "nowrap" }}>{h.label}</div>
         </div>
 
         {/* body */}
@@ -202,11 +203,13 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
 }
 
 function Stat({ label, value, suffix = "", icon: Ic, tint }) {
-  const tintColor = tint === "live" ? "var(--signal-live-ink)" : tint === "info" ? "var(--signal-info)" : "var(--accent-ink)";
-  const tintBg = tint === "live" ? "var(--signal-live-soft)" : tint === "info" ? "var(--signal-info-soft, var(--surface-2))" : "var(--accent-quiet)";
+  // Solid tile + white glyph (like the reference) — the icon carries the accent, the
+  // number stays deep navy so it reads as the fact.
+  const tileBg = tint === "live" ? "var(--signal-live)" : tint === "info" ? "var(--signal-info)" : "var(--accent)";
+  const tileShadow = tint === "live" ? "0 3px 10px rgba(30,158,106,.26)" : tint === "info" ? "0 3px 10px rgba(62,124,194,.24)" : "0 3px 10px rgba(198,62,24,.26)";
   return (
     <Card className="p-4 flex items-center gap-3">
-      <span className="mg-tile shrink-0" style={{ width: 38, height: 38, background: tintBg, color: tintColor }}><Ic size={18} /></span>
+      <span className="mg-tile shrink-0" style={{ width: 38, height: 38, background: tileBg, color: "#fff", boxShadow: tileShadow }}><Ic size={18} /></span>
       <div className="min-w-0">
         <div className="mg-num" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value}<span className="text-[13px] mg-subtle">{suffix}</span></div>
         <div className="text-[11.5px] mg-subtle mt-0.5">{label}</div>
