@@ -1,10 +1,11 @@
 "use client";
 
 // ── THE GENIE MARK — the face of the product ──
-// A premium "focus gem": a deep night badge (rounded superellipse) holding a
-// single focused lens of dawn light with a lit core. Iconic and geometric — it
-// reads at 16px like a real app icon, not a loading spinner. Static by default;
-// `live` adds a calm breathing core (reduced-motion safe via globals).
+// A clean, modern app mark that belongs to the light blue-gray system: a calm
+// navy rounded-square tile holding one precise spark of intelligence (white, with
+// a single warm terracotta accent). No busy orbits, no glowing "eye" — it reads at
+// 16px like a real product icon (Linear/Vercel/Stripe register), and it sits
+// comfortably on both the light workspace and the night theme.
 // This is the ONE mark, used everywhere: favicon, nav, operator status, hero.
 
 import React from "react";
@@ -14,25 +15,22 @@ import React from "react";
 // hydration mismatch on the brand mark, which appears on every screen.
 const r3 = (n) => Number(n.toFixed(3));
 
-function bladePath(i, cx, cy, rOut, rIn, gapDeg) {
-  const seg = 360 / 6;
-  const a0 = i * seg + gapDeg / 2;
-  const a1 = (i + 1) * seg - gapDeg / 2;
-  const p = (r, a) => {
-    const rad = ((a - 90) * Math.PI) / 180;
-    return [r3(cx + r * Math.cos(rad)), r3(cy + r * Math.sin(rad))];
-  };
-  const [x0o, y0o] = p(rOut, a0);
-  const [x1o, y1o] = p(rOut, a1);
-  const [x1i, y1i] = p(rIn, a1);
-  const [x0i, y0i] = p(rIn, a0);
-  return `M ${x0o} ${y0o} A ${rOut} ${rOut} 0 0 1 ${x1o} ${y1o} L ${x1i} ${y1i} A ${rIn} ${rIn} 0 0 0 ${x0i} ${y0i} Z`;
+// A precise 4-point spark (the "intelligence" glyph), centred at (cx,cy) with tip
+// radius o. Concave sides pinch toward the centre for a crisp, geometric star —
+// deliberately not the soft puffy sparkle. Built from four cubic segments.
+function spark(cx, cy, o) {
+  const s = o * 0.18, m = o * 0.5;
+  const P = (x, y) => `${r3(x)} ${r3(y)}`;
+  return [
+    `M ${P(cx, cy - o)}`,
+    `C ${P(cx + s, cy - m)} ${P(cx + m, cy - s)} ${P(cx + o, cy)}`,
+    `C ${P(cx + m, cy + s)} ${P(cx + s, cy + m)} ${P(cx, cy + o)}`,
+    `C ${P(cx - s, cy + m)} ${P(cx - m, cy + s)} ${P(cx - o, cy)}`,
+    `C ${P(cx - m, cy - s)} ${P(cx - s, cy - m)} ${P(cx, cy - o)}`,
+    "Z",
+  ].join(" ");
 }
 
-// ── THE GENIE MARK — a refined navy lens with a warm, intelligent eye ──
-// Echoes the living Aperture (dark lens + warm focal), rendered as a crisp static icon
-// that reads at 16px. Deep-navy gem so it sits calmly in the blue-gray system; the one
-// warm note is the glowing core — the Genie's intelligence. `live` breathes the core.
 export function GenieMark({ size = 40, live = false, className = "" }) {
   const uid = React.useId().replace(/[:]/g, "");
   return (
@@ -46,51 +44,44 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
       <svg viewBox="0 0 48 48" width={size} height={size}>
         <defs>
           <linearGradient id={`gm-tile-${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#26344B" />
-            <stop offset="55%" stopColor="#1B2740" />
-            <stop offset="100%" stopColor="#131C30" />
+            <stop offset="0%" stopColor="#37455F" />
+            <stop offset="55%" stopColor="#2A3550" />
+            <stop offset="100%" stopColor="#222B41" />
           </linearGradient>
-          <radialGradient id={`gm-glow-${uid}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(246,158,98,0.60)" />
-            <stop offset="55%" stopColor="rgba(212,71,30,0.16)" />
+          <radialGradient id={`gm-halo-${uid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(224,89,43,0.55)" />
+            <stop offset="60%" stopColor="rgba(224,89,43,0.10)" />
             <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-          <radialGradient id={`gm-core-${uid}`} cx="50%" cy="45%" r="60%">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="42%" stopColor="#FDD9B4" />
-            <stop offset="100%" stopColor="#E0592B" stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        {/* the deep-navy gem */}
-        <rect x="1.5" y="1.5" width="45" height="45" rx="13.5" fill={`url(#gm-tile-${uid})`} />
-        <rect x="1.5" y="1.5" width="45" height="45" rx="13.5" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
-        {/* warm halo inside the lens */}
-        <circle cx="24" cy="24" r="14" fill={`url(#gm-glow-${uid})`} className="ap-halo" />
-        {/* iris ring */}
-        <circle cx="24" cy="24" r="10.5" fill="none" stroke="rgba(240,140,88,0.52)" strokeWidth="1.3" />
-        {/* four fine orbital ticks — an instrument, not a blob */}
-        {[0, 90, 180, 270].map((deg) => {
-          const a = ((deg - 90) * Math.PI) / 180;
-          return <line key={deg} x1={r3(24 + Math.cos(a) * 9.2)} y1={r3(24 + Math.sin(a) * 9.2)} x2={r3(24 + Math.cos(a) * 11.4)} y2={r3(24 + Math.sin(a) * 11.4)} stroke="rgba(240,140,88,0.72)" strokeWidth="1.3" strokeLinecap="round" />;
-        })}
-        {/* the glowing eye */}
-        <circle cx="24" cy="24" r="6.2" fill={`url(#gm-core-${uid})`} />
-        <circle cx="24" cy="24" r="2.3" fill="#FFFFFF" className="ap-focal" style={{ filter: "drop-shadow(0 0 3px rgba(255,223,170,0.95))" }} />
+        {/* the calm navy tile */}
+        <rect x="1.5" y="1.5" width="45" height="45" rx="13" fill={`url(#gm-tile-${uid})`} />
+        {/* a hairline of light on the top edge — makes the tile feel lit, not flat */}
+        <rect x="1.5" y="1.5" width="45" height="45" rx="13" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" />
+
+        {/* a soft warm halo behind the spark — the single accent, kept quiet */}
+        <circle cx="22.5" cy="24" r="15" fill={`url(#gm-halo-${uid})`} className="ap-halo" />
+
+        {/* the main spark — bright, confident, the intelligence at the core */}
+        <path d={spark(22.5, 24, 12.5)} fill="#FFFFFF" className="ap-core" />
+        {/* a small terracotta companion spark — the "magic", top-right */}
+        <path d={spark(35, 13.5, 4.6)} fill="#E0592B" className="ap-focal" />
       </svg>
     </span>
   );
 }
 
-// Badge + stacked wordmark lockup (nav header). Wordmark stays deep-navy so the icon's
-// warm eye is the single accent — restrained, per the blue-gray system.
+// Badge + wordmark lockup (nav header / auth). One clean line: "Marketing" in the
+// muted tier, "Genie" in full-strength navy, so the name reads instantly and the
+// weight jump alone carries the hierarchy.
 export function GenieLockup({ size = 40, live = false, className = "" }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <GenieMark size={size} live={live} />
-      <span className="leading-[1.08]" style={{ letterSpacing: "-0.01em" }}>
-        <span className="block text-[15px] font-semibold" style={{ color: "var(--fg-muted)" }}>Marketing</span>
-        <span className="block text-[15px] font-bold" style={{ color: "var(--fg)" }}>Genie</span>
+      <span className="leading-[1.06]" style={{ letterSpacing: "-0.01em" }}>
+        <span className="block text-[13px] font-medium" style={{ color: "var(--fg-subtle)" }}>Marketing</span>
+        <span className="block text-[18px] font-bold" style={{ color: "var(--fg)" }}>Genie</span>
       </span>
     </span>
   );
