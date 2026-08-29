@@ -15,11 +15,14 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
   );
 }
 
+// The full "Marketing Genie" lockup: a small tracked "MARKETING" eyebrow over the
+// stylised "genie" wordmark (masked, so it follows the theme's ink).
 export function GenieLockup({ size = 34, live = false, className = "" }) {
   const h = size, w = Math.round(size * 1.74);
   return (
-    <span className={`inline-flex items-center ${className}`}>
-      <span className="genie-wordmark" style={{ width: w, height: h }} role="img" aria-label="Genie" />
+    <span className={`inline-flex flex-col ${className}`} style={{ lineHeight: 1 }} aria-label="Marketing Genie" role="img">
+      <span style={{ fontSize: Math.max(8, Math.round(size * 0.235)), fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: "var(--fg-muted)", marginLeft: 2, marginBottom: Math.round(size * 0.1) }}>Marketing</span>
+      <span className="genie-wordmark" style={{ width: w, height: h }} />
     </span>
   );
 }

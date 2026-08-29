@@ -45,29 +45,62 @@ function Setup({ onStart }) {
     try { await fetch("/api/sprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) }); await onStart(); } catch {}
     setBusy(false);
   }
+  const canStart = f.icp.trim() && f.offer.trim();
+  const STEPS = [
+    { t: "Commit", d: "Pick one customer type and one offer — the sharper, the cleaner the read." },
+    { t: "Run the engine", d: "Work Buyer Hunt, Find clients, Recovery and the outreach Genie drafts, hard." },
+    { t: "Watch the 7 numbers", d: "This page keeps honest score — scoped to your 30-day window only." },
+    { t: "Get the verdict", d: "On day 30 you get a plain call: scale it, change one thing, or rethink." },
+  ];
   return (
-    <div className="mt-6 max-w-[720px]">
-      <Card className="p-6">
+    <div className="mt-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+      {/* the commitment form */}
+      <Card className="p-6 lg:p-7">
         <p className="mg-eyebrow"><Icon.flag size={14} /> 30-day test</p>
-        <h2 className="mt-1 text-[18px] font-bold" style={{ color: "var(--fg)" }}>Commit to one customer, one offer.</h2>
-        <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "62ch" }}>
-          This is how you find out if Genie actually makes you money — not "someday", but in 30 days. Pick the <b style={{ color: "var(--fg)" }}>one</b> customer type most likely to buy and the <b style={{ color: "var(--fg)" }}>one</b> offer you'll pitch. Specific beats broad every time. Then run the fast-money engine (Buyer Hunt, Find clients, Recovery, outreach) hard, and let this page keep score.
+        <h2 className="mt-2 text-[22px] font-bold leading-tight" style={{ color: "var(--fg)" }}>Commit to one customer, one offer.</h2>
+        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)", maxWidth: "60ch" }}>
+          Find out if Genie actually makes you money — not "someday", but in 30 days. Pick the <b style={{ color: "var(--fg)" }}>one</b> customer type most likely to buy and the <b style={{ color: "var(--fg)" }}>one</b> offer you'll pitch, then run the fast-money engine and let this page keep score.
         </p>
-        <div className="mt-5 flex flex-col gap-3.5">
-          <L label="Your ONE customer type (ICP)" hint="Be specific — a niche + a size/place, not 'everyone'.">
-            <textarea value={f.icp} onChange={upd("icp")} rows={2} placeholder="e.g. Shopify skincare brands doing $10–50k/month; or dental clinics in Austin" className="w-full px-3 py-2 rounded-lg text-[13.5px] mg-focus resize-none" style={FIELD} />
+        <div className="mt-6 flex flex-col gap-4">
+          <L label="Your ONE customer type (ICP)" hint="a niche + a size/place, not 'everyone'">
+            <textarea value={f.icp} onChange={upd("icp")} rows={2} placeholder="e.g. Shopify skincare brands doing $10–50k/month; or dental clinics in Austin" className="mg-field mg-focus resize-none" />
           </L>
-          <L label="Your ONE offer" hint="The single thing you're selling them, and why they'd say yes now.">
-            <textarea value={f.offer} onChange={upd("offer")} rows={2} placeholder="e.g. A done-for-you 5-page SEO cluster + 30 days of outreach, $900 flat" className="w-full px-3 py-2 rounded-lg text-[13.5px] mg-focus resize-none" style={FIELD} />
+          <L label="Your ONE offer" hint="the single thing you're selling, and why they'd say yes now">
+            <textarea value={f.offer} onChange={upd("offer")} rows={2} placeholder="e.g. A done-for-you 5-page SEO cluster + 30 days of outreach, $900 flat" className="mg-field mg-focus resize-none" />
           </L>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <L label="Price (optional)"><input value={f.price} onChange={upd("price")} placeholder="$900" className="w-full px-3 py-2 rounded-lg text-[13.5px] mg-focus" style={FIELD} /></L>
-            <L label="Goal: sales by day 30"><input type="number" min="1" value={f.goalSales} onChange={upd("goalSales")} className="w-full px-3 py-2 rounded-lg text-[13.5px] mg-focus" style={FIELD} /></L>
-            <L label="Goal: real conversations"><input type="number" min="1" value={f.goalConvos} onChange={upd("goalConvos")} className="w-full px-3 py-2 rounded-lg text-[13.5px] mg-focus" style={FIELD} /></L>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <L label="Price (optional)"><input value={f.price} onChange={upd("price")} placeholder="$900" className="mg-field mg-focus" /></L>
+            <L label="Goal: sales by day 30"><input type="number" min="1" value={f.goalSales} onChange={upd("goalSales")} className="mg-field mg-focus" /></L>
+            <L label="Goal: conversations"><input type="number" min="1" value={f.goalConvos} onChange={upd("goalConvos")} className="mg-field mg-focus" /></L>
           </div>
         </div>
-        <button onClick={start} disabled={busy || !f.icp.trim() || !f.offer.trim()} className="mt-5 mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>{busy ? "Starting…" : "Start my 30-day sprint →"}</button>
+        <button onClick={start} disabled={busy || !canStart} className="mt-6 mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>{busy ? "Starting…" : "Start my 30-day sprint →"}</button>
       </Card>
+
+      {/* explainer sidebar — fills the space with the "how + why" */}
+      <div className="flex flex-col gap-4">
+        <Card className="p-6">
+          <p className="mg-klabel mb-4">How the sprint works</p>
+          <ol className="flex flex-col" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {STEPS.map((s, i) => (
+              <li key={i} className="flex gap-3" style={{ paddingBottom: i < STEPS.length - 1 ? 16 : 0 }}>
+                <div className="flex flex-col items-center">
+                  <span className="mg-num flex items-center justify-center shrink-0" style={{ width: 26, height: 26, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", fontSize: 12.5, fontWeight: 700 }}>{i + 1}</span>
+                  {i < STEPS.length - 1 && <span style={{ width: 2, flex: 1, minHeight: 14, background: "var(--hair)", marginTop: 4 }} />}
+                </div>
+                <div style={{ paddingTop: 2 }}>
+                  <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{s.t}</p>
+                  <p className="text-[12.5px] mt-0.5 leading-snug" style={{ color: "var(--fg-muted)" }}>{s.d}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Card>
+        <Card className="p-6">
+          <p className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}><Icon.spark size={15} /> Why one, not many</p>
+          <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>Specific beats broad every time. One sharp target and one clear offer give you a clean read on whether the machine makes money — with no confounding variables muddying the result.</p>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -190,7 +223,7 @@ function Bar({ label, now, goal, unit }) {
         <span className="mg-num" style={{ color: hit ? "var(--signal-live-ink)" : "var(--fg-muted)" }}><b>{now}</b> / {goal} {unit}{goal !== 1 ? "s" : ""}{hit ? " ✓" : ""}</span>
       </div>
       <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: hit ? "var(--signal-live)" : "linear-gradient(90deg,var(--mg-dawn-500),var(--signal-live))", transition: "width .5s" }} />
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: hit ? "var(--signal-live)" : "linear-gradient(90deg,var(--accent),var(--signal-live))", transition: "width .5s" }} />
       </div>
     </div>
   );

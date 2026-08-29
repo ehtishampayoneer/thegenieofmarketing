@@ -69,7 +69,7 @@ export default function PageGuide({ active }) {
                 <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 11 }}>
                   {guide.use.map((u, i) => (
                     <li key={i} style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
-                      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 999, background: "var(--accent)", color: "#2C1B05", fontSize: 11.5, fontWeight: 800, display: "grid", placeItems: "center", fontFamily: "var(--font-mono, monospace)", marginTop: 1 }}>{i + 1}</span>
+                      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", fontSize: 11.5, fontWeight: 800, display: "grid", placeItems: "center", fontFamily: "var(--font-mono, monospace)", marginTop: 1 }}>{i + 1}</span>
                       <span style={{ fontSize: 14.5, color: "var(--fg)", lineHeight: 1.5 }}>{u}</span>
                     </li>
                   ))}

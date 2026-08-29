@@ -171,13 +171,13 @@ function Growth() {
           </p>
 
           {/* how Genie speeds up indexing — the always-on internal-link acceleration */}
-          <p className="mt-2 text-[12px] mg-subtle flex items-start gap-1.5" style={{ maxWidth: "72ch" }}>
-            <Icon.link size={13} style={{ marginTop: 1, flexShrink: 0 }} />
-            <span>Every time Genie publishes a new page it links <b>2–3 of your older, related pages</b> to it — a whitehat trick that gets fresh pages found in <b>days, not weeks</b>, and passes them ranking strength. Runs automatically after each publish; watch for it in the live activity bar up top.</span>
-          </p>
+          <div className="mt-3 flex items-start gap-2.5 p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", maxWidth: "80ch" }}>
+            <span className="shrink-0 flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: 8, background: "var(--accent-quiet)", color: "var(--accent-ink)", marginTop: 1 }}><Icon.link size={14} /></span>
+            <span className="text-[12.5px]" style={{ color: "var(--fg-muted)", lineHeight: 1.55 }}>Every time Genie publishes a new page it links <b style={{ color: "var(--fg)" }}>2–3 of your older, related pages</b> to it — a whitehat trick that gets fresh pages found in <b style={{ color: "var(--fg)" }}>days, not weeks</b>, and passes them ranking strength. Runs automatically after each publish; watch for it in the live activity bar up top.</span>
+          </div>
 
           {/* controls */}
-          <div className="mt-4 flex items-center gap-4 flex-wrap">
+          <div className="mt-5 flex items-center gap-4 flex-wrap">
             <LabeledSelect label="Time range" value={range} opts={RANGE_OPTS} onChange={setRange} />
             <LabeledSelect label="Compare to" value={compare} opts={COMPARE_OPTS} onChange={setCompare} />
           </div>
@@ -434,15 +434,14 @@ function MetricsRow({ tracked, avgPosition, improvedBy, inTop20, aiCitations, po
         {cells.map((c, i) => (
           <div key={i} className="p-5" style={{ borderLeft: i % 4 === 0 ? "none" : "1px solid var(--hair)", borderTop: i >= 2 ? "1px solid var(--hair)" : "none" }}>
             <p className="text-[12px] mg-subtle">{c.label}</p>
-            <div className="mt-1.5 flex items-end justify-between gap-2">
+            <div className="mt-2 flex items-end justify-between gap-2" style={{ minHeight: 30 }}>
               <div className="flex items-baseline gap-1.5">
                 <span className="mg-num" style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1, color: "var(--fg)" }}>{c.value}</span>
                 {c.change != null && c.change !== 0 && (
                   <span className="flex items-center gap-0.5 text-[12px] font-semibold" style={{ color: c.change > 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}><Tri dir={c.change > 0 ? "up" : "down"} />{Math.abs(c.change)}</span>
                 )}
-                {c.change === null && <span className="text-[12px] mg-subtle">—</span>}
               </div>
-              <Spark data={c.spark} invert={c.invert} />
+              {c.spark && c.spark.length > 1 && <Spark data={c.spark} invert={c.invert} />}
             </div>
           </div>
         ))}
@@ -689,7 +688,7 @@ function HealthRing({ value, size = 156 }) {
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
         <circle cx={cx} cy={cx} r={r} fill="none" stroke="url(#healthGrad)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: "stroke-dashoffset 1.1s var(--ease-out)" }} />
-        <defs><linearGradient id="healthGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="var(--mg-dawn-500)" /><stop offset="100%" stopColor="var(--mg-dawn-600)" /></linearGradient></defs>
+        <defs><linearGradient id="healthGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="var(--mg-royal-500)" /><stop offset="100%" stopColor="var(--signal-live)" /></linearGradient></defs>
       </svg>
       {markers.map((m) => { const ang = (m / 100) * 2 * Math.PI - Math.PI / 2; const rr = r + stroke / 2 + 8; const mx = cx + rr * Math.cos(ang), my = cx + rr * Math.sin(ang); return (<span key={m} className="absolute mg-num" style={{ left: mx, top: my, transform: "translate(-50%,-50%)", fontSize: 9, color: "var(--fg-subtle)" }}>{m}</span>); })}
       <div className="absolute inset-0 flex flex-col items-center justify-center">

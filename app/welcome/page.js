@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import GenieAperture from "@/components/brand/GenieAperture";
 import { createClient } from "@/lib/supabase/client";
 import { hostOf } from "@/lib/business";
 import { BrandIcon } from "@/components/ui/BrandIcon";
@@ -685,13 +686,8 @@ function Check() {
   return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>;
 }
 
-// The genie mascot on the onboarding stage — the floating sprite, sized generously so
-// it reads as "your employee, arriving". Uses the shared .genie-stage / .genie-bob styles.
+// The genie mascot on the onboarding stage — the floating idle-animated sprite, sized
+// generously so it reads as "your employee, arriving".
 function ApertureMark({ size = 40, live = false, working = false }) {
-  const box = Math.round(size * 1.7);
-  return (
-    <span className="genie-stage" data-active={working ? "true" : undefined} style={{ width: box, height: box }} aria-hidden="true">
-      <img className="genie-stage-fig genie-bob" src="/genie-idle.png" alt="" draggable="false" />
-    </span>
-  );
+  return <GenieAperture size={Math.round(size * 1.7)} state={working ? "working" : "idle"} />;
 }

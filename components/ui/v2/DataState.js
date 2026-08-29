@@ -52,9 +52,9 @@ export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, s
       <div style={{ display: "grid", placeItems: "center" }}>
         {disconnected
           ? <span className="mg-tile" style={{ width: 52, height: 52, background: "var(--signal-danger-soft)", color: "var(--signal-danger)" }}><IconC size={24} /></span>
-          : <GenieAperture size={76} state="idle" />}
+          : <GenieAperture size={92} state="idle" />}
       </div>
-      <p style={{ marginTop: 14, fontSize: 18, fontWeight: 750, color: "var(--fg)", letterSpacing: "-.01em" }}>
+      <p style={{ marginTop: 22, fontSize: 18, fontWeight: 700, color: "var(--fg)", letterSpacing: "-.01em" }}>
         {title || (disconnected ? "Not connected" : "Nothing here yet")}
       </p>
       <p className="mg-muted" style={{ marginTop: 7, fontSize: 14, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>
