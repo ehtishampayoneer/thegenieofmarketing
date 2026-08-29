@@ -685,22 +685,13 @@ function Check() {
   return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>;
 }
 
+// The genie mascot on the onboarding stage — the floating sprite, sized generously so
+// it reads as "your employee, arriving". Uses the shared .genie-stage / .genie-bob styles.
 function ApertureMark({ size = 40, live = false, working = false }) {
-  const cx = size / 2;
+  const box = Math.round(size * 1.7);
   return (
-    <span style={{ display: "inline-flex", position: "relative", width: size, height: size }}>
-      {(live || working) && <span style={{ position: "absolute", inset: -size * 0.18, borderRadius: "50%", background: "radial-gradient(circle, rgba(203,174,112,.18), transparent 68%)" }} />}
-      <svg width={size} height={size} viewBox="0 0 48 48" style={{ position: "relative" }} aria-hidden="true">
-        <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="1" />
-        <circle cx="24" cy="24" r="15" fill="none" stroke="rgba(203,174,112,.18)" strokeWidth="1" />
-        <g className={working ? "onb-blades" : ""}>
-          <circle cx="24" cy="6" r="1.7" fill="rgba(203,174,112,.6)" />
-          <circle cx="39" cy="30" r="1.4" fill="rgba(79,224,166,.65)" />
-          <circle cx="9" cy="30" r="1.4" fill="rgba(203,174,112,.42)" />
-        </g>
-        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="5.4" fill="none" stroke="#CBAE70" strokeWidth="1.7" />
-        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="2" fill="#FFE7BE" />
-      </svg>
+    <span className="genie-stage" data-active={working ? "true" : undefined} style={{ width: box, height: box }} aria-hidden="true">
+      <img className="genie-stage-fig genie-bob" src="/genie-idle.png" alt="" draggable="false" />
     </span>
   );
 }

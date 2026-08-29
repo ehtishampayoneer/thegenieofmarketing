@@ -326,6 +326,27 @@ html, body {
 @keyframes ap-breathe { 0%,100% { transform:scale(1); opacity:.92; } 50% { transform:scale(1.05); opacity:1; } }
 @keyframes ap-pulse { 0%,100% { opacity:.78; } 50% { opacity:1; } }
 
+/* ── THE GENIE (sprite art) ──────────────────────────────────────────────────
+   The floating mascot, the small face avatar, and the wordmark. */
+/* Wordmark — a single-colour glyph via mask, so it follows the theme's ink. */
+.genie-wordmark { display:inline-block; -webkit-mask:url(/genie-wordmark.png) left center/contain no-repeat; mask:url(/genie-wordmark.png) left center/contain no-repeat; background-color:var(--fg); }
+/* Small circular face avatar — the bust cropped into a soft ring. */
+.genie-avatar { position:relative; display:inline-block; border-radius:50%; overflow:hidden; line-height:0;
+  background:radial-gradient(circle at 50% 32%, #eef2f8, #cbd3e1); box-shadow:inset 0 0 0 1px rgba(22,36,78,.14), 0 2px 8px rgba(22,36,78,.16); }
+[data-theme="night"] .genie-avatar { background:radial-gradient(circle at 50% 32%, #223049, #131c2e); box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), 0 2px 8px rgba(0,0,0,.4); }
+.genie-avatar img { width:132%; height:132%; object-fit:cover; object-position:50% 16%; margin:-16%; display:block; }
+/* Floating mascot on a soft royal-blue portal glow. */
+.genie-stage { position:relative; display:inline-block; line-height:0; isolation:isolate; }
+.genie-stage::before { content:""; position:absolute; inset:5% 4% 0 4%; border-radius:50%; z-index:0;
+  background:radial-gradient(circle at 50% 44%, rgba(58,93,168,.22), rgba(58,93,168,.06) 55%, transparent 72%); }
+.genie-stage-fig { position:relative; z-index:1; width:100%; height:100%; object-fit:contain; display:block; user-select:none;
+  filter:drop-shadow(0 10px 20px rgba(22,36,78,.28)); }
+.genie-stage[data-active="true"]::before { animation:genie-glow 3.2s var(--ease-out) infinite; }
+@keyframes genie-bob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
+.genie-bob { animation:genie-bob 4.4s var(--ease-out) infinite; }
+@keyframes genie-glow { 0%,100%{ opacity:.55; transform:scale(.97); } 50%{ opacity:1; transform:scale(1.05); } }
+@media (prefers-reduced-motion: reduce){ .genie-bob{ animation:none; } .genie-stage[data-active="true"]::before{ animation:none; } }
+
 /* ---- Loading skeleton (prevents the empty-state "flash" before data arrives) ---- */
 @keyframes mg-shimmer { 0% { background-position:-160% 0; } 100% { background-position:160% 0; } }
 .mg-skel { border-radius:10px; background:linear-gradient(90deg,var(--surface-sunken) 25%,var(--hair) 37%,var(--surface-sunken) 63%); background-size:200% 100%; animation:mg-shimmer 1.4s ease-in-out infinite; }
@@ -416,8 +437,8 @@ html, body {
 .mg-rail-item svg { color:var(--fg-subtle); transition:color var(--dur-2); }
 .mg-rail-item:hover { background:color-mix(in srgb, var(--surface-2) 60%, transparent); color:var(--fg); }
 .mg-rail-item:hover svg { color:var(--fg-muted); }
-.mg-rail-item[data-active="true"] { background:var(--surface-2); color:var(--fg); font-weight:600; }
-.mg-rail-item[data-active="true"] svg { color:var(--fg); }
+.mg-rail-item[data-active="true"] { background:var(--accent-quiet); color:var(--accent-ink); font-weight:600; }
+.mg-rail-item[data-active="true"] svg { color:var(--accent-ink); }
 /* The spine — a short lit dawn bar flush to the rail's left edge. */
 .mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:18px; border-radius:0 3px 3px 0; background:var(--accent); }
 [data-theme="night"] .mg-rail-item[data-active="true"]::before { box-shadow:0 0 10px rgba(255,200,118,.55); }
