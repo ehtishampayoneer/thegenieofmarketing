@@ -40,7 +40,13 @@ html, body {
   --mg-paper:#F6F5F1; --mg-paper-raised:#FBFAF7; --mg-white:#FFFFFF;
   --mg-night-950:#070C11; --mg-night-900:#0B141C; --mg-night-850:#0F1B25;
   --mg-night-800:#13212C; --mg-night-700:#1B2C39;
-  /* The ONE accent: a mature, earthy burnt terracotta — rare and powerful. */
+  /* THE ACCENT — deep royal blue + champagne gold (the "genie" palette). Royal blue is
+     the rich fill (buttons, tiles, chips, the mark); champagne gold is the pop that sits
+     ON the blue (text, numbers, icons, the spark) — gold only ever on a dark/blue ground,
+     never on white. Together: premium, warm-cool, unmistakably genie. */
+  --mg-royal-500:#2A407F; --mg-royal-600:#1E2F63; --mg-royal-700:#16244E; --mg-royal-glow:#3A5DA8;
+  --mg-gold-100:#F1E7CC; --mg-gold:#CBAE70; --mg-gold-deep:#A8863C;
+  /* legacy warm ramp — kept only for the semantic HEAT scale (red=hot) on Buyer Hunt. */
   --mg-dawn-100:#F6E5DD; --mg-dawn-300:#EDB49A; --mg-dawn-500:#E0592B;
   --mg-dawn-600:#D4471E; --mg-dawn-700:#B93C15; --mg-dawn-glow:#EC7B50;
   --mg-emerald:#1E9E6A; --mg-emerald-soft:#E4F3EC; --mg-emerald-ink:#0F6B45;
@@ -57,18 +63,18 @@ html, body {
   --fg:#262a3d; --fg-muted:#4c5570; --fg-subtle:#646e88; --fg-on-dark:#EAF0F4;
   --border:#d3dae6; --border-strong:#bec7d7; --hair:#e2e7f0;
   --primary:#262a3d; --on-primary:#ffffff;
-  --accent:var(--mg-dawn-600); --accent-strong:var(--mg-dawn-700); --accent-quiet:#f4e3dc; --accent-ink:#B23C15;
+  --accent:var(--mg-royal-600); --accent-strong:var(--mg-royal-700); --accent-quiet:#e7eaf3; --accent-ink:#294C8C; --on-accent:var(--mg-gold);
   --signal-live:var(--mg-emerald); --signal-live-soft:#e2f2ec; --signal-live-ink:var(--mg-emerald-ink);
   --signal-danger:var(--mg-red); --signal-danger-soft:#fbeae8;
   --signal-info:var(--mg-blue); --signal-info-soft:#e8eff9;
   --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
-  --ring:var(--mg-dawn-600);
+  --ring:var(--mg-royal-600);
   /* soft, cool-tinted elevation — a clear but gentle float that lifts white cards
      off the light-gray field (the separation the washed-out version was missing). */
   --shadow-1:0 1px 2px rgba(30,41,70,.06);
   --shadow-2:0 1px 2px rgba(30,41,70,.05), 0 6px 16px rgba(30,41,70,.09), 0 14px 30px rgba(30,41,70,.06);
   --shadow-3:0 2px 6px rgba(30,41,70,.07), 0 14px 30px rgba(30,41,70,.12), 0 28px 54px rgba(30,41,70,.08);
-  --shadow-dawn:0 8px 24px rgba(198,62,24,.24);
+  --shadow-dawn:0 8px 24px rgba(22,36,78,.26);
 
   /* ---- Layer 3: COMPONENT ---- */
   --card-bg:var(--surface); --card-border:#e0e5ee; --card-radius:18px;
@@ -97,17 +103,17 @@ html, body {
   --fg-subtle:#8695A2;       /* tertiary — ~4.7:1, passes AA */
   --fg-on-dark:#F5F8FC;
   --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.19); --hair:rgba(255,255,255,.06);
-  --primary:var(--mg-dawn-glow); --on-primary:#1A1206;
-  --accent:var(--mg-dawn-glow); --accent-quiet:rgba(255,200,118,.12); --accent-ink:#FFD79E;
+  --primary:var(--mg-gold); --on-primary:#171205;
+  --accent:var(--mg-gold); --accent-strong:var(--mg-gold-deep); --accent-quiet:rgba(203,174,112,.14); --accent-ink:#E7CC8F; --on-accent:#171205;
   --signal-live:#3FD79A; --signal-live-soft:rgba(45,215,154,.15); --signal-live-ink:#5FE0A6;
   --signal-danger:#FF6B5E; --signal-danger-soft:rgba(255,107,94,.16);
   --signal-info:#7FB0EC; --signal-info-soft:rgba(127,176,236,.15);
   --signal-warn:#E7B85E; --signal-warn-soft:rgba(231,184,94,.15);
-  --ring:var(--mg-dawn-glow);
+  --ring:var(--mg-gold);
   --shadow-1:0 1px 2px rgba(0,0,0,.55);
   --shadow-2:0 6px 22px rgba(0,0,0,.55);
   --shadow-3:0 28px 70px rgba(0,0,0,.66);
-  --shadow-dawn:0 0 48px rgba(255,200,118,.22);
+  --shadow-dawn:0 0 48px rgba(203,174,112,.24);
 }
 /* Atmosphere — a lit field, not a flat black rectangle. A dawn bloom on one
    horizon, a cool wash on the other, over a soft vertical gradient. */
@@ -245,9 +251,11 @@ html, body {
 .mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }
 .mg-num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
 .mg-hairline { height:1px; width:100%; background:var(--hair); }
-.dawn-text { background:linear-gradient(100deg,var(--mg-dawn-700),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-[data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-dawn-glow),var(--mg-dawn-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.dawn-fill { background:linear-gradient(135deg,var(--mg-dawn-glow),var(--mg-dawn-600)); }
+/* Hero highlight — royal blue on the light theme (gold can't read on white); champagne
+   gold in Night, where it sits on a dark ground. */
+.dawn-text { background:linear-gradient(100deg,var(--mg-royal-700),var(--mg-royal-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+[data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-gold-deep),var(--mg-gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dawn-fill { background:linear-gradient(135deg,var(--mg-royal-glow),var(--mg-royal-700)); }
 
 /* ---- Buttons ---- */
 .mg-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:var(--btn-radius);
@@ -258,8 +266,8 @@ html, body {
 /* ONE button family. PRIMARY = burnt terracotta (the rare, high-emphasis action).
    SECONDARY (ghost) = warm-white + subtle border + navy. TERTIARY (quiet) =
    transparent, muted navy. PRIMARY-DARK (primary) = deep navy, for dark actions. */
-.mg-btn--dawn { background:var(--accent); color:#fff; box-shadow:0 1px 2px rgba(180,55,20,.20), 0 5px 14px rgba(180,55,20,.18); }
-.mg-btn--dawn:hover { background:var(--accent-strong); transform:translateY(-1px); box-shadow:0 8px 20px rgba(180,55,20,.28); }
+.mg-btn--dawn { background:var(--accent); color:var(--on-accent); font-weight:650; box-shadow:0 1px 2px rgba(22,36,78,.22), 0 5px 14px rgba(22,36,78,.20); }
+.mg-btn--dawn:hover { background:var(--accent-strong); transform:translateY(-1px); box-shadow:0 8px 20px rgba(22,36,78,.30); }
 .mg-btn--primary { background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-1); }
 .mg-btn--primary:hover { transform:translateY(-1px); box-shadow:var(--shadow-2); }
 .mg-btn--ghost { background:var(--surface); border-color:var(--border-strong); color:var(--fg); box-shadow:var(--shadow-1); }
@@ -434,7 +442,7 @@ html, body {
 /* thinking — an active job is running; quicker still (used only when real). */
 .mg-presence[data-state="thinking"]::before { animation-duration:1.8s; }
 /* alerting — approvals are waiting; warmer, brighter, a touch faster. */
-.mg-presence[data-state="alerting"]::before { animation-duration:2.1s; background:radial-gradient(circle, rgba(245,158,61,.30), transparent 66%); }
+.mg-presence[data-state="alerting"]::before { animation-duration:2.1s; background:radial-gradient(circle, rgba(203,174,112,.34), transparent 66%); }
 [data-theme="night"] .mg-presence[data-state="alerting"]::before { background:radial-gradient(circle, rgba(255,200,118,.36), transparent 64%); }
 @keyframes mg-aura { 0%,100%{ opacity:.45; transform:scale(.94);} 50%{ opacity:.85; transform:scale(1.06);} }
 /* Reduced motion: no breathing, but the STATE still reads — alerting keeps its
@@ -471,7 +479,7 @@ html, body {
 
 /* The current journey stage breathes a warm ring; every other stage sits calm. */
 .mg-journey-cur { animation:mg-journey-glow 2.6s var(--ease-out) infinite; }
-@keyframes mg-journey-glow { 0%,100%{ box-shadow:0 0 0 0 rgba(245,158,61,.5);} 60%{ box-shadow:0 0 0 8px rgba(245,158,61,0);} }
+@keyframes mg-journey-glow { 0%,100%{ box-shadow:0 0 0 0 rgba(203,174,112,.55);} 60%{ box-shadow:0 0 0 8px rgba(203,174,112,0);} }
 @media (prefers-reduced-motion: reduce){ .mg-journey-cur{ animation:none; } }
 
 /* A card that lifts a hair on hover — Today's metric + insight surfaces. */

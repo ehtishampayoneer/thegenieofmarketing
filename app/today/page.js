@@ -330,7 +330,7 @@ function Glance({ d, count, clearTime, did }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <Card key={i} className="p-5 mg-lift flex flex-col">
-            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent)", color: "#fff", boxShadow: "0 2px 8px rgba(198,62,24,.30)" }}><c.icon size={17} /></span>
+            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent)", color: "var(--on-accent)", boxShadow: "0 2px 8px rgba(22,36,78,.30)" }}><c.icon size={17} /></span>
             <p className="mt-3 mg-num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", color: c.n > 0 ? "var(--fg)" : "var(--fg)" }}>{c.n}</p>
             <p className="mt-1 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{c.label}</p>
             <p className="mt-1.5 text-[12.5px] mg-muted leading-snug flex-1">{c.body}</p>
@@ -379,7 +379,7 @@ function Insight({ d }) {
   const won = ai?.won ?? 0;
   return (
     <Card className="p-6 mg-lift flex gap-4">
-      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent)", color: "#fff", boxShadow: "0 3px 10px rgba(198,62,24,.28)" }}><Icon.search size={19} /></span>
+      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent)", color: "var(--on-accent)", boxShadow: "0 3px 10px rgba(22,36,78,.28)" }}><Icon.search size={19} /></span>
       <div className="min-w-0">
         <p className="mg-klabel">Insight</p>
         <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Gemini and OpenAI name you in {won} of 6 buyer answers.</p>

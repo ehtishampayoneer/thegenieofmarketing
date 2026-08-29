@@ -31,7 +31,7 @@ function heat(n) {
   // Colours double as a solid score-tile background (white number on top) and as the
   // caption ink on white, so each is deep enough to pass contrast in both roles.
   if (n >= 85) return { color: "#C4372B", soft: "rgba(196,55,43,.20)", label: "Red hot" };
-  if (n >= 70) return { color: "var(--mg-dawn-600)", soft: "rgba(212,71,30,.20)", label: "Hot" };
+  if (n >= 70) return { color: "#D14A22", soft: "rgba(209,74,34,.20)", label: "Hot" };
   if (n >= 55) return { color: "#9C640D", soft: "rgba(156,100,13,.20)", label: "Warm" };
   return { color: "#5b6478", soft: "rgba(91,100,120,.18)", label: "Simmering" };
 }
@@ -203,13 +203,14 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
 }
 
 function Stat({ label, value, suffix = "", icon: Ic, tint }) {
-  // Solid tile + white glyph (like the reference) — the icon carries the accent, the
-  // number stays deep navy so it reads as the fact.
+  // Solid tile + glyph: royal-blue tile carries a gold glyph (like the reference); the
+  // semantic live/info tiles keep white glyphs. The number stays deep navy — the fact.
   const tileBg = tint === "live" ? "var(--signal-live)" : tint === "info" ? "var(--signal-info)" : "var(--accent)";
-  const tileShadow = tint === "live" ? "0 3px 10px rgba(30,158,106,.26)" : tint === "info" ? "0 3px 10px rgba(62,124,194,.24)" : "0 3px 10px rgba(198,62,24,.26)";
+  const tileShadow = tint === "live" ? "0 3px 10px rgba(30,158,106,.26)" : tint === "info" ? "0 3px 10px rgba(62,124,194,.24)" : "0 3px 10px rgba(22,36,78,.26)";
+  const glyph = tint === "live" || tint === "info" ? "#fff" : "var(--on-accent)";
   return (
     <Card className="p-4 flex items-center gap-3">
-      <span className="mg-tile shrink-0" style={{ width: 38, height: 38, background: tileBg, color: "#fff", boxShadow: tileShadow }}><Ic size={18} /></span>
+      <span className="mg-tile shrink-0" style={{ width: 38, height: 38, background: tileBg, color: glyph, boxShadow: tileShadow }}><Ic size={18} /></span>
       <div className="min-w-0">
         <div className="mg-num" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value}<span className="text-[13px] mg-subtle">{suffix}</span></div>
         <div className="text-[11.5px] mg-subtle mt-0.5">{label}</div>

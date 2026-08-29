@@ -20,11 +20,11 @@ const STATES = {
   acting:      { orbit: 0.22, sweep: 0.70, pulse: 1.6,  spark: 0.030, glow: 0.95 },
 };
 
-// Warm light in the Genie's own accent family (amber → burnt terracotta), so the glow
-// harmonises with the UI accent instead of reading as a second, different orange.
-const DAWN = [230, 112, 62];   // warm terracotta-orange
-const GLOW = [244, 156, 96];   // warm amber-terracotta
-const CORE = [255, 240, 224];
+// Champagne-gold light — the Genie's glow in the new royal-blue + gold identity. Gold
+// reads luminously against the dark lens and matches the gold accent used across the UI.
+const DAWN = [176, 140, 66];   // deep champagne gold
+const GLOW = [210, 182, 116];  // champagne gold
+const CORE = [248, 240, 216];  // pale gold-cream
 
 export default function GenieAperture({ size = 120, state = "idle", className = "", style = {} }) {
   const canvasRef = useRef(null);

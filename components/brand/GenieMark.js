@@ -44,13 +44,13 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
       <svg viewBox="0 0 48 48" width={size} height={size}>
         <defs>
           <linearGradient id={`gm-tile-${uid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#37455F" />
-            <stop offset="55%" stopColor="#2A3550" />
-            <stop offset="100%" stopColor="#222B41" />
+            <stop offset="0%" stopColor="#2A407F" />
+            <stop offset="55%" stopColor="#1E2F63" />
+            <stop offset="100%" stopColor="#16244E" />
           </linearGradient>
           <radialGradient id={`gm-halo-${uid}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(224,89,43,0.55)" />
-            <stop offset="60%" stopColor="rgba(224,89,43,0.10)" />
+            <stop offset="0%" stopColor="rgba(203,174,112,0.55)" />
+            <stop offset="60%" stopColor="rgba(203,174,112,0.12)" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
@@ -63,10 +63,10 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
         {/* a soft warm halo behind the spark — the single accent, kept quiet */}
         <circle cx="22.5" cy="24" r="15" fill={`url(#gm-halo-${uid})`} className="ap-halo" />
 
-        {/* the main spark — bright, confident, the intelligence at the core */}
-        <path d={spark(22.5, 24, 12.5)} fill="#FFFFFF" className="ap-core" />
-        {/* a small terracotta companion spark — the "magic", top-right */}
-        <path d={spark(35, 13.5, 4.6)} fill="#E0592B" className="ap-focal" />
+        {/* the main spark — champagne gold on royal blue: the genie's light */}
+        <path d={spark(22.5, 24, 12.5)} fill="#EFE1B6" className="ap-core" />
+        {/* a small deeper-gold companion spark — the "magic", top-right */}
+        <path d={spark(35, 13.5, 4.6)} fill="#CBAE70" className="ap-focal" />
       </svg>
     </span>
   );
