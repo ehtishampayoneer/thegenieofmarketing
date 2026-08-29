@@ -337,14 +337,12 @@ html, body {
 .genie-avatar img { width:132%; height:132%; object-fit:cover; object-position:50% 16%; margin:-16%; display:block; }
 /* Floating idle-animated mascot on a soft royal-blue portal glow. The glow is pulled up
    off the bottom edge so it never hazes text placed beneath the genie. */
-.genie-stage { position:relative; display:inline-block; line-height:0; isolation:isolate; }
-.genie-stage::before { content:""; position:absolute; inset:6% 6% 16% 6%; border-radius:50%; z-index:0;
-  background:radial-gradient(circle at 50% 42%, rgba(58,93,168,.20), rgba(58,93,168,.05) 55%, transparent 72%); }
-.genie-stage-inner { position:relative; z-index:1; width:100%; height:100%; display:block; }
-.genie-frame { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; user-select:none;
-  filter:drop-shadow(0 6px 12px rgba(22,36,78,.20)); }
-.genie-frame-base { opacity:1; }
-.genie-frame-alt { opacity:0; animation:genie-shift 12s ease-in-out infinite; }
+.genie-stage { position:relative; display:inline-block; line-height:0; isolation:isolate; overflow:hidden; }
+.genie-stage-inner { position:absolute; inset:0; z-index:1; }
+.genie-stage-inner .genie-frame { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center top; }
+.genie-frame { width:100%; height:100%; object-fit:contain; object-position:center top; display:block; user-select:none; }
+.genie-frame-base { position:relative; opacity:1; }
+.genie-frame-alt { position:absolute; inset:0; opacity:0; animation:genie-shift 12s ease-in-out infinite; }
 .genie-stage[data-active="true"] .genie-frame-alt { animation-duration:8s; }
 .genie-stage[data-active="true"]::before { animation:genie-glow 3.2s var(--ease-out) infinite; }
 @keyframes genie-shift { 0%,42%{ opacity:0; } 50%,60%{ opacity:1; } 68%,100%{ opacity:0; } }
@@ -371,10 +369,9 @@ html, body {
 /* Ambient intelligence field — a slow warm light behind heroes / key surfaces, so
    the product feels like something is quietly humming inside it. Restrained. */
 .mg-aura-field { position:relative; isolation:isolate; }
-.mg-aura-field::before { content:""; position:absolute; inset:-25% -12% auto -12%; height:150%; z-index:-1; pointer-events:none;
-  background:radial-gradient(42% 52% at 26% 10%, rgba(58,93,168,.09), transparent 72%);
-  animation:mg-aura-drift 20s var(--ease-out) infinite alternate; will-change:transform; }
-[data-theme="night"] .mg-aura-field::before { background:radial-gradient(42% 52% at 26% 10%, rgba(120,170,230,.07), transparent 72%); }
+/* Removed: the ambient glow behind heroes/empty-states read as a stray faded shadow.
+   .mg-aura-field is now a no-op hook (kept so existing class usages don't break). */
+.mg-aura-field::before { content:none; }
 @keyframes mg-aura-drift { from { transform:translate3d(-1.5%,-1%,0) scale(1); } to { transform:translate3d(1.5%,2%,0) scale(1.06); } }
 
 /* Scanning — a thin light sweeps across a surface the Genie is examining. */

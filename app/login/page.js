@@ -71,7 +71,7 @@ export default function LoginPage() {
   return (
     <main className="mg mg-ambient mg-aura-field" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <header className="px-6 py-5">
-        <a href="/" className="inline-flex"><GenieLockup size={32} live /></a>
+        <a href="/" className="inline-flex"><GenieLockup size={40} live /></a>
       </header>
 
       <section className="flex-1 flex items-center justify-center px-6 pb-16">

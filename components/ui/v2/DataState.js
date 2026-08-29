@@ -48,13 +48,13 @@ export function LoadingState({ rows = 3, children, label = "Gathering your data"
 export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, sub, action }) {
   const disconnected = state === "disconnected";
   return (
-    <div className="mg-surface mg-rise mg-aura-field" style={{ padding: "48px 32px", textAlign: "center", marginTop: 20 }}>
-      <div style={{ display: "grid", placeItems: "center" }}>
+    <div className="mg-surface mg-rise" style={{ padding: "48px 32px", textAlign: "center", marginTop: 20 }}>
+      <div style={{ display: "grid", placeItems: "center", marginBottom: disconnected ? 0 : 26 }}>
         {disconnected
           ? <span className="mg-tile" style={{ width: 52, height: 52, background: "var(--signal-danger-soft)", color: "var(--signal-danger)" }}><IconC size={24} /></span>
-          : <GenieAperture size={92} state="idle" />}
+          : <GenieAperture size={82} state="idle" />}
       </div>
-      <p style={{ marginTop: 22, fontSize: 18, fontWeight: 700, color: "var(--fg)", letterSpacing: "-.01em" }}>
+      <p style={{ marginTop: disconnected ? 14 : 0, fontSize: 18, fontWeight: 700, color: "var(--fg)", letterSpacing: "-.01em" }}>
         {title || (disconnected ? "Not connected" : "Nothing here yet")}
       </p>
       <p className="mg-muted" style={{ marginTop: 7, fontSize: 14, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>

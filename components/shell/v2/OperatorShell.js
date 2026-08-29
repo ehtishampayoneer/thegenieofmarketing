@@ -149,7 +149,7 @@ export default function OperatorShell({ active = "today", children }) {
   const railInner = (
     <>
       <div className="px-4 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--hair)" }}>
-        <GenieLockup size={34} live />
+        <GenieLockup size={42} live />
         <button onClick={() => setNavOpen(false)} className="md:hidden mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 4 }} aria-label="Close menu"><Icon.x size={18} /></button>
       </div>
       <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">

@@ -127,8 +127,8 @@ export default function HuntPage() {
         <div className="mt-6 mg-surface p-10 text-center text-[13px] mg-subtle">Loading your buyers…</div>
       ) : !buyers || buyers.length === 0 ? (
         <Card className="mt-6 p-10 text-center mg-aura-field">
-          <div style={{ display: "grid", placeItems: "center" }}><GenieAperture size={104} state={hunting ? "scanning" : "idle"} /></div>
-          <p className="mt-6 text-[17px] font-bold flex items-center justify-center gap-2" style={{ color: "var(--fg)" }}>
+          <div style={{ display: "grid", placeItems: "center", marginBottom: 26 }}><GenieAperture size={84} state={hunting ? "scanning" : "idle"} /></div>
+          <p className="text-[17px] font-bold flex items-center justify-center gap-2" style={{ color: "var(--fg)" }}>
             {hunting ? <>Genie is hunting the internet <span className="mg-thinking"><i /><i /><i /></span></> : "No buyers in your sights yet"}
           </p>
           <p className="mt-1.5 text-[13.5px] mg-muted max-w-md mx-auto">
