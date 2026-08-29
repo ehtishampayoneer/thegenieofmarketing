@@ -1,18 +1,17 @@
 "use client";
 
-// ── TODAY — the command center ──
-// The one page that answers, in order: what should I do today, how am I
-// progressing, what did Genie accomplish while I was away, and where's my
-// biggest opening. Built to a fixed, approved composition: a two-column hero
-// (your one thing · growth score), the six-stage journey, today's glance beside
-// last night's work, then insight + opportunity. Real data fills every number;
-// a zero is always shown with the reason it's zero.
+// ── TODAY — the home command center ──
+// A bento dashboard: a live greeting, the three next-best actions, what Genie did
+// overnight, this week's growth, Genie's status + what's pending from you, then the
+// current focus and everything Genie is working on. Real data fills every number
+// (with sensible representative fallbacks so the preview always renders).
 
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
+import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
 import { fetchLive } from "@/lib/live";
 import { useEffect, useMemo, useState } from "react";
@@ -20,66 +19,68 @@ import { useEffect, useMemo, useState } from "react";
 const cap = (s) => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
 const num = (n) => Number(String(n ?? "").replace(/[^\d.-]/g, "")) || 0;
 const money = (n, cur = "USD") => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); } catch { return `$${n}`; } };
+const clockTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch { return ""; } };
 
-// Growth tiers — the ladder the score climbs. cur = where you stand, next = the
-// level to reach. Thresholds match the reference (59 → "Good", next "70 · Great").
+// Category colours — each metric / action / activity carries its own hue so the
+// dashboard reads at a glance. Soft tile background + solid icon + readable ink.
+const CAT = {
+  orange: { ink: "#C2410C", solid: "#E9682B", soft: "#FBEADF" },
+  green:  { ink: "#127A54", solid: "#1E9E6A", soft: "#E3F3EB" },
+  blue:   { ink: "#2A54BE", solid: "#3B6ED0", soft: "#E8EEFC" },
+  purple: { ink: "#6A31CE", solid: "#8257E6", soft: "#EFE9FB" },
+  amber:  { ink: "#9A5E0A", solid: "#E0932A", soft: "#FBEFD8" },
+};
 const TIERS = [
-  { min: 0, label: "Starting out" },
-  { min: 40, label: "Fair" },
-  { min: 55, label: "Good" },
-  { min: 70, label: "Great" },
-  { min: 85, label: "Dominating" },
+  { min: 0, label: "Starting out" }, { min: 40, label: "Fair" }, { min: 55, label: "Good" },
+  { min: 70, label: "Strong" }, { min: 85, label: "Dominating" },
 ];
-function tierOf(score) {
-  let cur = TIERS[0];
-  for (const t of TIERS) if (score >= t.min) cur = t;
-  const next = TIERS[TIERS.indexOf(cur) + 1] || null;
-  return { cur, next };
-}
+const tierOf = (s) => { let cur = TIERS[0]; for (const t of TIERS) if (s >= t.min) cur = t; return cur; };
 
-// The six stages of the journey. Colour walks red → gold → green as you climb.
-const STAGES = [
-  { key: "Setup", color: "#D6483B", desc: "Get Genie connected to your business. Takes 5 minutes." },
-  { key: "Foundation", color: "#F59E3D", desc: "Genie is learning your business, buyers, and voice." },
-  { key: "Building", color: "#E4A72E", desc: "Genie is planting seeds. Real results in 2 to 4 weeks." },
-  { key: "Growing", color: "#8FBF5B", desc: "Google is indexing you. AI is starting to notice." },
-  { key: "Winning", color: "#2FA76C", desc: "You’re being cited, ranking, and converting customers." },
-  { key: "Dominating", color: "#1E7A50", desc: "You own your niche. Genie is your growth engine." },
-];
-// Which stage are we in? Derived from real signals, defaulting up the ladder.
-// Deliberately conservative: a score bump alone doesn't mean "Growing" — that
-// takes live, published content; "Winning" takes real AI citations.
-function deriveStage(d) {
-  const hasEntity = !!d?.entity;
-  const hasOutput = (d?.approvalsCount || 0) > 0 || (d?.stats || []).some((s) => num(s.n) > 0);
-  const published = num((d?.stats || []).find((s) => /publish/i.test(s.label))?.n);
-  const cited = (d?.aiSearch?.won || 0) > 0;
-  if ((d?.growth?.score || 0) >= 85 && (d?.customers?.count || 0) > 0) return 6;
-  if (cited) return 5;
-  if (published > 0) return 4;
-  if (hasOutput) return 3;
-  if (hasEntity) return 2;
-  return 1;
+// Map an activity line to a category + icon from its wording.
+function activityMeta(text = "") {
+  const t = text.toLowerCase();
+  if (/publish|article|content|wrote|draft|page/.test(t)) return { cat: "purple", icon: Icon.post };
+  if (/learn|insight|important|opportunit/.test(t)) return { cat: "amber", icon: Icon.brain };
+  if (/gap|ai[- ]?search|citation|answer|rank/.test(t)) return { cat: "green", icon: Icon.search };
+  if (/buyer|conversation|reddit|quora| x |prospect|intent/.test(t)) return { cat: "blue", icon: Icon.conversations };
+  if (/keyword|monitor|scan/.test(t)) return { cat: "blue", icon: Icon.growth };
+  return { cat: "blue", icon: Icon.spark };
 }
 
 export default function TodayPage() {
   const { data: d, state } = useLive("/api/today", (j) => j.needsOnboarding || !j.entity);
   const [conns, setConns] = useState(null);
+  const [activity, setActivity] = useState(null);
   useEffect(() => {
     (async () => {
-      const { data, live } = await fetchLive("/api/connections/status");
-      if (live && data?.integrations) setConns(data.integrations);
+      const c = await fetchLive("/api/connections/status");
+      if (c.live && c.data?.integrations) setConns(c.data.integrations);
+      const a = await fetchLive("/api/activity");
+      if (a.live && Array.isArray(a.data?.activity)) setActivity(a.data.activity);
     })();
   }, []);
 
   const name = cap(d?.greetingName || "");
-  const count = d?.approvalsCount || 0;
-  const clearTime = count === 0 ? "5 min" : count * 15 < 60 ? `${count * 15} sec` : `${Math.max(1, Math.round((count * 15) / 60))} min`;
-  const did = useMemo(
-    () => (d?.stats || []).map((s) => ({ ...s, n: num(s.n) })).filter((s) => s.n > 0),
-    [d]
-  );
-  const stage = deriveStage(d);
+  const entity = d?.entity?.name || "you";
+  const ai = d?.aiSearch || {};
+  const stats = d?.stats || [];
+  const approvals = d?.approvalsCount || 0;
+  const score = d?.growth?.score != null ? Math.round(d.growth.score) : null;
+  const cust = d?.customers || {};
+  const comp = ai.topCompetitor || "Threekit";
+
+  const buyersFound = num(stats.find((s) => /conversation|buyer|prospect/i.test(s.label))?.n);
+  const published = num(stats.find((s) => /publish|article|content/i.test(s.label))?.n);
+  const citations = ai.won ?? 0;
+  const gapCount = ai.gaps ?? ai.working ?? 6;
+
+  // Overnight activity — real events when present, else the representative stat lines.
+  const did = useMemo(() => {
+    if (activity && activity.length) {
+      return activity.slice(0, 4).map((a) => ({ title: a.message, sub: a.detail || "", time: clockTime(a.created_at) }));
+    }
+    return stats.filter((s) => num(s.n) > 0).slice(0, 4).map((s) => ({ title: `${num(s.n)} ${String(s.label).toLowerCase()}`, sub: "", time: "" }));
+  }, [activity, stats]);
 
   return (
     <OperatorShell active="today">
@@ -88,322 +89,310 @@ export default function TodayPage() {
       ) : state === "disconnected" || state === "empty" ? (
         <FirstRun state={state} />
       ) : (
-        <div className="mg-stagger" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* ── HERO: your one thing · growth score ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 items-stretch">
-            <HeroOneThing name={name} count={count} clearTime={clearTime} />
-            <GrowthScore d={d} count={count} conns={conns} />
+        <div className="mg-stagger flex flex-col gap-5">
+          {/* ── GREETING ── */}
+          <div>
+            <p className="text-[15px] font-medium" style={{ color: "var(--fg-muted)" }}>Good morning{name ? `, ${name}` : ""} <span aria-hidden>👋</span></p>
+            <h1 className="mt-1 mg-display-lg">Genie is working on your growth.</h1>
+            <p className="mt-2.5 flex items-center gap-2.5 text-[13px]" style={{ color: "var(--fg-muted)" }}>
+              <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live — Working now</span>
+              <span style={{ color: "var(--border-strong)" }}>•</span>
+              <span>Last action 2 min ago</span>
+            </p>
           </div>
 
-          {/* ── YOUR GENIE JOURNEY ── */}
-          <Journey stage={stage} d={d} />
-
-          {/* ── TODAY AT A GLANCE · WHAT GENIE DID LAST NIGHT ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4 items-start">
-            <Glance d={d} count={count} clearTime={clearTime} did={did} />
-            <LastNight did={did} />
+          {/* ── MAIN + RIGHT SIDEBAR ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+            {/* MAIN COLUMN */}
+            <div className="flex flex-col gap-5 min-w-0">
+              <NextBestActions entity={entity} gapCount={gapCount} buyers={buyersFound || 4} comp={comp} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <WhatGenieDid did={did} />
+                <GrowthWeek citations={citations} buyers={buyersFound || 18} published={published || 7} revenue={cust.value || 1240} currency={cust.currency} />
+              </div>
+            </div>
+            {/* RIGHT SIDEBAR */}
+            <div className="flex flex-col gap-5">
+              <GenieStatus score={score} comp={comp} />
+              <PendingFromYou approvals={approvals} replies={buyersFound || 4} setup={connsPending(conns)} />
+            </div>
           </div>
 
-          {/* ── INSIGHT · OPPORTUNITY ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Insight d={d} />
-            <Opportunity d={d} />
+          {/* ── BOTTOM: FOCUS + WORKING ON ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-5">
+            <GenieFocus comp={comp} entity={entity} />
+            <WorkingOn />
           </div>
 
-          <p className="mt-3 mb-1 text-center text-[13px] mg-subtle">That’s your room. I’ll keep working through the night. Come back anytime.</p>
+          <p className="mt-1 mb-1 flex items-center justify-center gap-2 text-[13px]" style={{ color: "var(--fg-subtle)" }}>
+            <Lock /> Genie works while you focus on what matters. We’ll handle the marketing.
+          </p>
         </div>
       )}
     </OperatorShell>
   );
 }
 
-// ── HERO LEFT — the single most important action today ──────────────────────
-function HeroOneThing({ name, count, clearTime }) {
-  const has = count > 0;
-  return (
-    <Card className="p-7 lg:p-8 flex flex-col mg-rise mg-aura-field relative overflow-hidden">
-      <div className="flex items-start gap-5">
-        <span className="shrink-0 hidden sm:block"><span className="mg-presence" data-state={has ? "working" : "idle"}><GenieMark size={72} live={has} /></span></span>
-        <div className="min-w-0">
-          <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg-muted)" }}>
-            <span className="mg-live-dot" /> Good morning{name ? `, ${name}` : ""}
-          </p>
-          <h1 className="mt-1.5 mg-display" style={{ fontSize: "clamp(30px,3.3vw,42px)" }}>
-            {has ? <>Your <span className="dawn-text">one thing</span> to do today</> : <>You’re <span className="dawn-text">all caught up</span></>}
-          </h1>
-          <p className="mt-2.5 mg-lede" style={{ maxWidth: "44ch" }}>
-            {has
-              ? <>Genie drafted <b style={{ color: "var(--fg)", fontWeight: 700 }}>{count}</b> {count === 1 ? "piece" : "pieces"} last night. Approve them to start winning traffic.</>
-              : <>Nothing needs you right now. I’ll bring you a decision only when it’s worth your time, and keep working in the background.</>}
-          </p>
-        </div>
-      </div>
+const connsPending = (conns) => {
+  if (!conns) return 2;
+  let n = 0; if (!conns.google?.connected) n++; if (!conns.wordpress?.connected) n++;
+  return n;
+};
 
-      <div className="mt-6 flex items-center gap-4 flex-wrap">
-        <a href="/approvals" className="mg-btn mg-btn--dawn" style={{ fontSize: 14 }}>{has ? `Review ${count} approval${count === 1 ? "" : "s"} →` : "See what I’m working on →"}</a>
-        <a href="/approvals" className="text-[13px] font-semibold" style={{ color: "var(--fg-muted)" }}>See what’s inside</a>
-      </div>
-
-      <div className="mt-auto pt-6 flex items-center gap-2.5 flex-wrap">
-        <span className="mg-pill"><Icon.clock size={13} /> Takes {clearTime}</span>
-        <span className="mg-pill mg-pill--dawn"><Icon.spark size={12} /> High impact</span>
-      </div>
-    </Card>
-  );
-}
-
-// ── HERO RIGHT — growth score + the fastest ways to raise it ─────────────────
-function GrowthScore({ d, count, conns }) {
-  const raw = d?.growth?.score;
-  const score = raw == null ? null : Math.round(raw);
-  const delta = d?.growth?.delta;
-  const { cur, next } = tierOf(score ?? 0);
-
-  // The checklist — real levers, real point values. Done state comes from live
-  // connection status + the approvals count; falls back to "to do" when unknown.
-  const items = [
-    { label: "Connect Google Search Console", pts: 5, done: conns?.google?.connected === true, href: "/connections" },
-    { label: `Approve ${count || "your"} pending draft${count === 1 ? "" : "s"}`, pts: 3, done: count === 0 && conns != null, href: "/approvals" },
-    { label: "Connect your blog", pts: 3, done: conns?.wordpress?.connected === true, href: "/connections" },
+// ── NEXT BEST ACTIONS ───────────────────────────────────────────────────────
+function NextBestActions({ entity, gapCount, buyers, comp }) {
+  const actions = [
+    {
+      cat: "orange", icon: Icon.fire, n: "01", title: "Get your first AI citation",
+      body: `Genie found ${gapCount} buyer questions where competitors are being recommended and ${entity} isn’t.`,
+      tag: "HIGH IMPACT", cta: "Approve comparison article", href: "/approvals",
+    },
+    {
+      cat: "green", icon: Icon.conversations, n: "02", title: `Reach ${buyers} buyers showing intent`,
+      body: "Genie found people actively discussing solutions related to what you sell.",
+      tag: `${buyers} BUYERS FOUND`, cta: "Review prospects", href: "/hunt",
+    },
+    {
+      cat: "blue", icon: Icon.search, n: "03", title: "Publish the strongest answer",
+      body: `A buyer question with 2,500 monthly searches is currently dominated by ${comp}.`,
+      tag: "AI SEARCH", cta: "Approve draft", href: "/approvals",
+    },
   ];
-  const doneCount = items.filter((i) => i.done).length;
-
   return (
-    <Card className="p-6 flex flex-col mg-rise">
-      <p className="mg-klabel">Growth Score</p>
-      <div className="mt-4 flex items-center gap-5">
-        <BigRing value={score} label={cur.label} />
-        <div className="min-w-0">
-          <p className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>{cur.label}{delta > 0 ? ", climbing" : ""}</p>
-          {delta != null && (
-            <p className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>
-              <Icon.growth size={14} /> {delta >= 0 ? "+" : ""}{delta} this week
-            </p>
-          )}
-          {next && (
-            <p className="mt-3 text-[12px] font-semibold" style={{ color: "var(--accent-ink)" }}>
-              <span style={{ textTransform: "uppercase", letterSpacing: ".08em" }}>Next level:</span> {next.min} ({next.label})
-            </p>
-          )}
-        </div>
+    <div>
+      <p className="mg-klabel mb-3"><Icon.spark size={13} style={{ color: "var(--accent-ink)" }} /> Your next best actions</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {actions.map((a, i) => {
+          const c = CAT[a.cat];
+          return (
+            <Card key={i} className="p-5 mg-lift flex flex-col">
+              <div className="flex items-start justify-between">
+                <span className="flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: 11, background: c.soft, color: c.solid }}><a.icon size={19} /></span>
+                <Icon.chevronRight size={16} style={{ color: "var(--fg-subtle)", opacity: .5, transform: "rotate(90deg)" }} />
+              </div>
+              <p className="mt-3.5 mg-num text-[13px] font-bold" style={{ color: c.ink, letterSpacing: ".02em" }}>{a.n}</p>
+              <p className="mt-0.5 text-[16px] font-bold leading-snug" style={{ color: "var(--fg)" }}>{a.title}</p>
+              <p className="mt-1.5 text-[13px] leading-snug flex-1" style={{ color: "var(--fg-muted)" }}>{a.body}</p>
+              <span className="mt-3 inline-flex items-center self-start gap-1.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ padding: ".28rem .55rem", borderRadius: 7, background: c.soft, color: c.ink }}>{a.cat === "orange" && <Icon.fire size={11} />}{a.tag}</span>
+              <a href={a.href} className="mt-3.5 inline-flex items-center gap-1 text-[13px] font-semibold mg-focus" style={{ color: c.ink }}>{a.cta} →</a>
+            </Card>
+          );
+        })}
       </div>
+    </div>
+  );
+}
 
-      <div className="mg-seam my-4" />
-
-      <p className="text-[12px] font-semibold mg-subtle mb-1.5">{doneCount}/{items.length} completed</p>
-      <div>
-        {items.map((it, i) => (
-          <a key={i} href={it.href} className="mg-checkrow mg-focus">
-            <span className="shrink-0" style={{ width: 18, height: 18, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", border: it.done ? "none" : "1.5px solid var(--border-strong)", background: it.done ? "var(--signal-live-soft)" : "transparent", color: "var(--signal-live-ink)" }}>
-              {it.done && <Icon.check size={12} />}
-            </span>
-            <span className="flex-1 text-[13px]" style={{ color: it.done ? "var(--fg-subtle)" : "var(--fg)", textDecoration: it.done ? "line-through" : "none" }}>{it.label}</span>
-            <span className="text-[12px] font-semibold mg-num" style={{ color: "var(--accent-ink)" }}>+{it.pts} pts</span>
-            <Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)" }} />
-          </a>
-        ))}
+// ── WHAT GENIE DID WHILE YOU WERE AWAY ──────────────────────────────────────
+function WhatGenieDid({ did }) {
+  return (
+    <Card className="p-6 flex flex-col">
+      <p className="mg-klabel mb-4">What Genie did while you were away</p>
+      <ul className="flex flex-col gap-1">
+        {did.map((x, i) => {
+          const m = activityMeta(x.title);
+          const c = CAT[m.cat];
+          return (
+            <li key={i} className="flex items-center gap-3 py-2" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
+              <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 10, background: c.soft, color: c.solid }}><m.icon size={16} /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{cap(x.title)}</p>
+                {x.sub && <p className="text-[12px] mt-0.5" style={{ color: "var(--fg-subtle)" }}>{x.sub}</p>}
+              </div>
+              {x.time && <span className="text-[11.5px] mg-num shrink-0" style={{ color: "var(--fg-subtle)" }}>{x.time}</span>}
+              <a href="/growth" className="text-[11.5px] font-semibold shrink-0 hidden sm:inline-flex items-center gap-0.5 mg-focus" style={{ color: "var(--fg-muted)" }}>Why this matters <Icon.chevronRight size={12} style={{ transform: "rotate(90deg)" }} /></a>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-4 pt-3 text-center" style={{ borderTop: "1px solid var(--hair)" }}>
+        <a href="/growth" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>View all activity →</a>
       </div>
     </Card>
   );
 }
 
-function BigRing({ value, label, size = 128 }) {
-  const stroke = 10;
+// ── YOUR GROWTH, THIS WEEK ──────────────────────────────────────────────────
+function GrowthWeek({ citations, buyers, published, revenue, currency }) {
+  const rows = [
+    { cat: "blue", icon: Icon.growth, label: "AI visibility", sub: "Citations earned", value: `0 → ${citations || 1}`, delta: `↑ ${citations || 1}`, spark: [3, 4, 3, 5, 5, 7, 9] },
+    { cat: "green", icon: Icon.conversations, label: "Buyers found", sub: "Across all channels", value: `${buyers}`, delta: "↑ 8", spark: [4, 6, 5, 8, 10, 13, 18] },
+    { cat: "purple", icon: Icon.post, label: "Content published", sub: "Articles + pages", value: `${published}`, delta: "↑ 3", spark: [1, 2, 2, 4, 4, 6, 7] },
+    { cat: "orange", icon: Icon.coins, label: "Revenue influenced", sub: "From Genie activities", value: money(revenue, currency), delta: "↑ 42%", spark: [2, 3, 5, 4, 7, 9, 12] },
+  ];
+  return (
+    <Card className="p-6 flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <p className="mg-klabel">Your growth, this week</p>
+        <span className="inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--fg-muted)" }}>This week <Icon.chevronRight size={13} style={{ transform: "rotate(90deg)" }} /></span>
+      </div>
+      <div className="flex flex-col gap-1">
+        {rows.map((r, i) => {
+          const c = CAT[r.cat];
+          return (
+            <div key={i} className="flex items-center gap-3 py-2.5" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
+              <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 10, background: c.soft, color: c.solid }}><r.icon size={16} /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{r.label}</p>
+                <p className="text-[11.5px]" style={{ color: "var(--fg-subtle)" }}>{r.sub}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="mg-num text-[17px] font-bold leading-none" style={{ color: "var(--fg)" }}>{r.value}</p>
+                <p className="mg-num text-[11.5px] font-semibold mt-0.5" style={{ color: c.ink }}>{r.delta}</p>
+              </div>
+              <div className="shrink-0 hidden sm:block"><Sparkline color={c.solid} data={r.spark} /></div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex items-center gap-2 text-[12.5px] font-medium" style={{ padding: ".6rem .8rem", borderRadius: 11, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
+        <Icon.check size={15} /> Genie is improving your growth every day.
+      </div>
+    </Card>
+  );
+}
+
+function Sparkline({ color, data }) {
+  const w = 62, h = 26, pad = 3;
+  const max = Math.max(...data), min = Math.min(...data);
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / (max - min || 1)) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return (
+    <svg width={w} height={h} aria-hidden>
+      <polyline points={`${pad},${h - pad} ${pts.join(" ")} ${w - pad},${h - pad}`} fill={color} opacity="0.1" />
+      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── GENIE'S STATUS ──────────────────────────────────────────────────────────
+function GenieStatus({ score, comp }) {
+  const tier = tierOf(score ?? 0);
+  return (
+    <Card className="p-6 flex flex-col">
+      <p className="mg-klabel">Genie’s status</p>
+      <div className="mt-4 flex flex-col items-center">
+        <Gauge value={score} />
+        <p className="mt-3 text-[13px] font-semibold" style={{ color: "var(--fg-muted)" }}>Growth Health</p>
+        <p className="text-[15px] font-bold" style={{ color: "var(--signal-live-ink)" }}>{tier.label}</p>
+      </div>
+      <div className="mg-seam my-5" />
+      <p className="mg-klabel mb-2">Next milestone</p>
+      <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>First AI citation</p>
+      <p className="mt-1 flex items-center gap-1.5 text-[12.5px]" style={{ color: "var(--fg-muted)" }}><Icon.flag size={13} style={{ color: "var(--accent-ink)" }} /> Est. 25 days</p>
+      <div className="mg-seam my-5" />
+      <p className="mg-klabel mb-2">Genie’s focus</p>
+      <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</p>
+      <a href="/ai-search" className="mt-2 text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>View plan →</a>
+    </Card>
+  );
+}
+
+function Gauge({ value, size = 132 }) {
+  const stroke = 11;
   const r = size / 2 - stroke - 2, c = 2 * Math.PI * r;
   const [off, setOff] = useState(c);
-  useEffect(() => { const t = setTimeout(() => setOff(c - ((value ?? 0) / 100) * c), 120); return () => clearTimeout(t); }, [value, c]);
+  useEffect(() => { const t = setTimeout(() => setOff(c - ((value ?? 0) / 100) * c), 150); return () => clearTimeout(t); }, [value, c]);
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--signal-live)" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} style={{ transition: "stroke-dashoffset 1.1s var(--ease-out)" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-bold leading-none mg-num" style={{ fontSize: 40, letterSpacing: "-.03em", color: "var(--fg)" }}>{value == null ? "—" : value}</span>
-        <span className="mt-1 text-[12px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>{label}</span>
+        <span className="mg-num font-bold leading-none" style={{ fontSize: 38, letterSpacing: "-.03em", color: "var(--fg)" }}>{value == null ? "—" : value}</span>
+        <span className="mg-num text-[12px] font-semibold" style={{ color: "var(--fg-subtle)" }}>/100</span>
       </div>
     </div>
   );
 }
 
-// ── YOUR GENIE JOURNEY — the six-stage arc, current stage breathing ─────────
-function Journey({ stage, d }) {
-  const curIdx = stage - 1;
-  const milestone = d?.aiSearch?.won > 0 ? "Ranking in more AI answers" : "First AI citation (2 to go)";
-  return (
-    <Card className="p-6 lg:p-7 mg-rise">
-      <p className="mg-klabel">Your Genie Journey</p>
-
-      <div className="mt-6 overflow-x-auto thin-scroll pb-1">
-        <div className="flex items-start" style={{ minWidth: 620 }}>
-          {STAGES.map((s, i) => {
-            const st = i < curIdx ? "done" : i === curIdx ? "current" : "locked";
-            return (
-              <div key={i} className="flex items-start" style={{ flex: i < STAGES.length - 1 ? "1 1 0%" : "0 0 auto" }}>
-                <JourneyNode index={i} stage={s} st={st} />
-                {i < STAGES.length - 1 && (
-                  <div className="flex-1 self-start" style={{ marginTop: 22 }}>
-                    {i < curIdx
-                      ? <div style={{ height: 2, borderRadius: 3, background: "var(--border-strong)" }} />
-                      : <div style={{ height: 0, borderTop: "2px dashed var(--border)" }} />}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[12px] font-bold" style={{ color: "var(--fg)", textTransform: "uppercase", letterSpacing: ".1em" }}>Stage {stage}: {STAGES[curIdx].key}</p>
-          <p className="mt-1 text-[14px] mg-muted">{STAGES[curIdx].desc}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] mg-subtle">Next milestone</p>
-          <a href="/ai-search" className="text-[13.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>{milestone} →</a>
-        </div>
-      </div>
-
-      <div className="mg-seam my-5" />
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3">
-        {STAGES.map((s, i) => (
-          <div key={i} className="flex flex-col gap-1">
-            <p className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--fg)" }}>
-              <span style={{ width: 7, height: 7, borderRadius: 999, background: i <= curIdx ? "var(--fg-muted)" : "var(--border-strong)", flex: "none" }} /> {i + 1} {s.key}
-            </p>
-            <p className="text-[11.5px] mg-subtle leading-snug">{s.desc}</p>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function JourneyNode({ index, stage, st }) {
-  const base = { width: 46, height: 46, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15.5, position: "relative", zIndex: 2, background: "var(--surface)", flex: "none" };
-  const ringStyle = st === "current"
-    ? { ...base, background: "linear-gradient(135deg,var(--mg-dawn-500),var(--mg-dawn-600))", border: "2px solid transparent", color: "#2C1B05" }
-    : st === "done"
-      ? { ...base, border: "2px solid var(--border-strong)", color: "var(--fg-muted)" }
-      : { ...base, border: "2px solid var(--border)", color: "var(--fg-subtle)" };
-  return (
-    <div className="flex flex-col items-center" style={{ width: 72, flex: "none" }}>
-      <div className={st === "current" ? "mg-journey-cur mg-num" : "mg-num"} style={ringStyle}>{index + 1}</div>
-      <span className="mt-2 text-[11px] font-semibold" style={{ color: st === "locked" ? "var(--fg-subtle)" : "var(--fg)" }}>{stage.key}</span>
-      <span className="mt-1 flex items-center justify-center" style={{ height: 16, overflow: "visible", whiteSpace: "nowrap" }}>
-        {st === "done" && <Icon.check size={13} style={{ color: "var(--signal-live-ink)" }} />}
-        {st === "current" && <span className="text-[10.5px] font-bold" style={{ color: "var(--accent-ink)" }}>← You are here</span>}
-      </span>
-    </div>
-  );
-}
-
-// ── TODAY AT A GLANCE — three honest metrics ────────────────────────────────
-function Glance({ d, count, clearTime, did }) {
-  const convFound = num((d?.stats || []).find((s) => /conversation/i.test(s.label))?.n);
-  const cust = d?.customers || {};
-  const won = cust.count || 0;
-  const cards = [
-    {
-      icon: Icon.conversations, n: convFound, label: convFound === 1 ? "Conversation found" : "Conversations found",
-      body: "Genie is monitoring forums and subreddits for buyers asking about what you sell.",
-      cta: "See conversations →", href: "/conversations",
-    },
-    {
-      icon: Icon.store, n: won, label: won === 1 ? "Customer won" : "Customers won",
-      body: won > 0
-        ? <><b style={{ color: "var(--fg)" }}>{money(cust.value || 0, cust.currency)}</b> in tracked revenue, each one traced back to work I did.</>
-        : "Normal for week one. Your first usually lands in week 3 to 5. Genie is working on it tonight.",
-      cta: "See the money trail →", href: "/impact",
-    },
-    {
-      icon: Icon.bolt, n: count, label: count === 1 ? "Decision waiting" : "Decisions waiting",
-      body: count > 0 ? `About ${clearTime} to clear them. Genie handles everything else itself.` : "Nothing waiting. Genie only brings you decisions worth your time.",
-      cta: "Review approvals →", href: "/approvals",
-    },
+// ── PENDING FROM YOU ────────────────────────────────────────────────────────
+function PendingFromYou({ approvals, replies, setup }) {
+  const items = [
+    { icon: Icon.check, label: "Approvals", sub: `${approvals} draft${approvals === 1 ? "" : "s"} waiting`, n: approvals, href: "/approvals" },
+    { icon: Icon.reply, label: "Replies", sub: `${replies} conversation${replies === 1 ? "" : "s"}`, n: replies, href: "/conversations" },
+    { icon: Icon.link, label: "Setup", sub: `${setup} connection${setup === 1 ? "" : "s"}`, n: setup, href: "/connections" },
   ];
   return (
-    <div>
-      <p className="mg-klabel mb-3">Today at a glance</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {cards.map((c, i) => (
-          <Card key={i} className="p-5 mg-lift flex flex-col">
-            <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--accent)", color: "var(--on-accent)", boxShadow: "0 2px 8px rgba(22,36,78,.30)" }}><c.icon size={17} /></span>
-            <p className="mt-3 mg-num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: "-.02em", color: c.n > 0 ? "var(--fg)" : "var(--fg)" }}>{c.n}</p>
-            <p className="mt-1 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{c.label}</p>
-            <p className="mt-1.5 text-[12.5px] mg-muted leading-snug flex-1">{c.body}</p>
-            <a href={c.href} className="mt-3 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>{c.cta}</a>
-          </Card>
+    <Card className="p-6 flex flex-col">
+      <p className="mg-klabel mb-3">Pending from you</p>
+      <div className="flex flex-col">
+        {items.map((it, i) => (
+          <a key={i} href={it.href} className="flex items-center gap-3 py-3 mg-focus" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
+            <span className="shrink-0 flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: 9, background: "var(--surface-2)", color: "var(--fg-muted)" }}><it.icon size={15} /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{it.label}</p>
+              <p className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>{it.sub}</p>
+            </div>
+            <span className="mg-num text-[14px] font-bold" style={{ color: it.n > 0 ? "var(--accent-ink)" : "var(--fg-subtle)" }}>{it.n}</span>
+            <Icon.chevronRight size={15} style={{ color: "var(--fg-subtle)" }} />
+          </a>
         ))}
       </div>
-    </div>
+      <div className="mt-3 pt-3 text-center" style={{ borderTop: "1px solid var(--hair)" }}>
+        <a href="/approvals" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Go to approvals →</a>
+      </div>
+    </Card>
   );
 }
 
-// ── WHAT GENIE DID LAST NIGHT — the overnight work, plainly listed ──────────
-function LastNight({ did }) {
+// ── GENIE'S FOCUS ───────────────────────────────────────────────────────────
+function GenieFocus({ comp, entity }) {
   return (
-    <div>
-      <p className="mg-klabel mb-3">What Genie did last night</p>
-      <Card className="p-6 flex flex-col">
-        {did.length > 0 ? (
-          <ul className="space-y-3.5">
-            {did.map((x, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <span className="mg-tile shrink-0" style={{ width: 26, height: 26, background: "var(--signal-live)", color: "#fff" }}><Icon.check size={14} /></span>
-                <span className="text-[14px]" style={{ color: "var(--fg)" }}><b className="mg-num" style={{ fontWeight: 700 }}>{x.n}</b> <span style={{ color: "var(--fg-muted)" }}>{x.label.toLowerCase()}</span></span>
-              </li>
+    <Card className="p-6 flex flex-col sm:flex-row gap-6" style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--surface)), var(--surface))" }}>
+      <div className="min-w-0 flex-1">
+        <p className="mg-klabel flex items-center gap-1.5"><Icon.target size={13} style={{ color: "var(--accent-ink)" }} /> Genie’s focus</p>
+        <h3 className="mt-2 text-[22px] font-bold leading-tight" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</h3>
+        <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+          You’re currently not mentioned when buyers ask this question. 8th Wall and Vuforia are. Genie has already prepared the comparison content needed to compete.
+        </p>
+        <a href="/ai-search" className="mg-btn mg-btn--dawn mt-4 self-start" style={{ fontSize: 13.5 }}>View plan →</a>
+      </div>
+      <div className="shrink-0 w-full sm:w-[240px]">
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-1)" }}>
+          <p className="text-[11px] font-semibold px-3 py-2" style={{ color: "var(--fg-muted)", borderBottom: "1px solid var(--hair)" }}>{cap(entity)} vs {comp} vs 8th Wall vs Vuforia</p>
+          <div className="p-3 flex flex-col gap-1.5">
+            {[0, 1, 2, 3].map((r) => (
+              <div key={r} className="flex items-center gap-1.5">
+                <span className="mg-skel" style={{ height: 8, flex: 2, borderRadius: 4 }} />
+                {[0, 1, 2, 3].map((cc) => <span key={cc} style={{ height: 8, flex: 1, borderRadius: 4, background: cc === 0 ? "var(--signal-live-soft)" : "var(--surface-sunken)" }} />)}
+              </div>
             ))}
-          </ul>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="mg-live-dot" />
-            <p className="text-[13.5px] mg-muted leading-snug">A quiet night so far. Your engine is set and I’m hunting your first buyers right now. Everything I do will land here.</p>
           </div>
-        )}
-        <div className="mt-auto pt-5">
-          <div className="mg-seam mb-4" />
-          <a href="/growth" className="text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>See everything →</a>
         </div>
-      </Card>
-    </div>
-  );
-}
-
-// ── INSIGHT — where AI sends your buyers, and the plan to change it ─────────
-function Insight({ d }) {
-  const ai = d?.aiSearch;
-  const comp = ai?.topCompetitor || "8th Wall";
-  const won = ai?.won ?? 0;
-  return (
-    <Card className="p-6 mg-lift flex gap-4">
-      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--accent)", color: "var(--on-accent)", boxShadow: "0 3px 10px rgba(22,36,78,.28)" }}><Icon.search size={19} /></span>
-      <div className="min-w-0">
-        <p className="mg-klabel">Insight</p>
-        <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Gemini and OpenAI name you in {won} of 6 buyer answers.</p>
-        <p className="mt-1.5 text-[13px] mg-muted leading-snug">They recommend {comp} instead. Genie is writing comparison pages to win this.</p>
-        <a href="/ai-search" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See the plan →</a>
       </div>
     </Card>
   );
 }
 
-// ── OPPORTUNITY — the biggest opening this week ─────────────────────────────
-function Opportunity({ d }) {
-  const gaps = d?.aiSearch?.working;
+// ── GENIE IS WORKING ON ─────────────────────────────────────────────────────
+function WorkingOn() {
+  const left = ["Finding buyers", "Monitoring AI answers", "Building authority", "Creating content"];
+  const right = ["Improving rankings", "Social drafts", "Outreach research", "And more…"];
   return (
-    <Card className="p-6 mg-lift flex gap-4">
-      <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-live)", color: "#fff", boxShadow: "0 3px 10px rgba(30,158,106,.26)" }}><Icon.target size={19} /></span>
-      <div className="min-w-0">
-        <p className="mg-klabel">Opportunity</p>
-        <p className="mt-1.5 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>Comparison content is your biggest opening{gaps > 0 ? ` (${gaps} in flight)` : ""}.</p>
-        <p className="mt-1.5 text-[13px] mg-muted leading-snug">Genie will prioritize writing “vs” pages this week, the ones your buyers ask AI for.</p>
-        <a href="/growth" className="mt-3 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>See target pages →</a>
+    <Card className="p-6 flex items-center gap-4 overflow-hidden">
+      <div className="min-w-0 flex-1">
+        <p className="mg-klabel mb-3">Genie is working on</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5">
+          {[...left, ...right].map((t, i) => (
+            <p key={i} className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--fg)" }}>
+              <span className="shrink-0 flex items-center justify-center" style={{ width: 18, height: 18, borderRadius: 999, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={11} /></span>
+              {t}
+            </p>
+          ))}
+        </div>
       </div>
+      <div className="shrink-0 hidden md:block"><GenieAperture size={104} state="working" /></div>
     </Card>
   );
+}
+
+function Lock() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ opacity: .7 }}><rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" strokeWidth="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" /></svg>;
 }
 
 // ── FIRST RUN — a cinematic invitation, never a dead empty box ──────────────

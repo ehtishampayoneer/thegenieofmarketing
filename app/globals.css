@@ -428,6 +428,12 @@ html, body {
 .mg-tile { border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .mg-searchbar { display:flex; align-items:center; gap:.55rem; height:40px; padding:0 .8rem; border-radius:11px; background:var(--surface-2); border:1px solid var(--border); color:var(--fg-subtle); font-size:14px; transition:border-color var(--dur-2); cursor:text; }
 .mg-searchbar:hover { border-color:var(--border-strong); }
+/* Round icon button — the top-bar controls (search · notifications · theme). */
+.mg-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:11px; color:var(--fg-muted); background:transparent; border:1px solid transparent; cursor:pointer; transition:background var(--dur-2), color var(--dur-2), border-color var(--dur-2); }
+.mg-icon-btn:hover { background:var(--surface-2); color:var(--fg); border-color:var(--hair); }
+/* "View all activity" — the quiet link that closes the live ticker row. */
+.mg-ticker-viewall { display:flex; align-items:center; flex:none; padding:0 16px; font-size:12px; font-weight:600; white-space:nowrap; color:var(--accent-ink); border-left:1px solid var(--hair); }
+.mg-ticker-viewall:hover { color:var(--fg); }
 /* Genie's presence — a dawn aura behind the operator mark whose STATE is driven
    by real data (see OperatorShell): idle when nothing's happening, working when
    the activity stream is live, alerting when approvals are waiting. Honesty

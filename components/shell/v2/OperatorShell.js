@@ -47,6 +47,8 @@ const NAV = [
 ];
 
 // The command bar's rotating prompt — shows the operator what they can ask for.
+const initials = (n) => (String(n || "You").trim().split(/\s+/).map((w) => w[0]).join("") || "Y").slice(0, 2).toUpperCase();
+
 const SEARCH_HINTS = [
   "Try: What content should I publish this week?",
   "Try: Show me my best performing pages",
@@ -140,7 +142,7 @@ export default function OperatorShell({ active = "today", children }) {
   // else idle.
   const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
   const working = activity.length > 0;
-  const tickerLines = working ? activity.slice(0, 10).map((a) => a.title).filter(Boolean) : FALLBACK_TICKER;
+  const tickerLines = working ? activity.slice(0, 10).map((a) => ({ title: a.title, time: a.time })).filter((a) => a.title) : FALLBACK_TICKER.map((t) => ({ title: t, time: "" }));
 
   // The rail's content — rendered once, used in the desktop aside AND the mobile
   // drawer, so navigation exists on every screen size.
@@ -219,36 +221,22 @@ export default function OperatorShell({ active = "today", children }) {
               <button onClick={() => setNavOpen(true)} className="md:hidden mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: -6 }} aria-label="Open menu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
               </button>
-              <button onClick={() => setChatOpen(true)} className="mg-searchbar mg-focus" style={{ width: 380, maxWidth: "44vw" }}>
-                <Icon.search size={16} />
-                <span key={hintIdx} className="flex-1 text-left truncate mg-rise" style={{ animationDuration: ".4s" }}>{SEARCH_HINTS[hintIdx]}</span>
-                <span className="hidden sm:flex items-center gap-0.5"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
-              </button>
-              <PageGuide active={active} />
-              <div className="ml-auto flex items-center gap-4">
-                <div className="hidden lg:flex flex-col items-end leading-tight">
-                  <span className="text-[11px] mg-subtle">Last updated {lastSync ? `${relTime(lastSync)} ago` : "just now"}</span>
-                  <span className="text-[10.5px] mg-subtle">Auto-refreshes every 5 min</span>
-                </div>
-                <div className="hidden sm:flex items-center gap-2.5">
-                  <span className="mg-presence" data-state={genieState === "alerting" ? "alerting" : genieState === "working" ? "working" : "idle"}>
-                    <GenieMark size={34} live={genieState === "working" || genieState === "alerting"} />
-                  </span>
-                  <div className="leading-tight">
-                    <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>AI Operator</p>
-                    {working ? (
-                      <p className="text-[10.5px] flex items-center gap-1" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live · working</p>
-                    ) : (
-                      <p className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>Standing by</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-                  {[["day", "Day"], ["night", "Night"]].map(([t, l]) => (
-                    <button key={t} onClick={() => pick(t)} className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full transition mg-focus"
-                      style={theme === t ? { background: "var(--primary)", color: "var(--on-primary)" } : { color: "var(--fg-muted)" }}>{l}</button>
-                  ))}
-                </div>
+              <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                <button onClick={() => setChatOpen(true)} className="mg-icon-btn mg-focus" title="Ask Genie (⌘K)" aria-label="Search"><Icon.search size={18} /></button>
+                <a href={hrefFor("inbox")} className="mg-icon-btn mg-focus" style={{ position: "relative" }} title="Notifications" aria-label="Notifications">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+                  {counts.approvals > 0 && <span style={{ position: "absolute", top: 7, right: 8, width: 8, height: 8, borderRadius: 999, background: "var(--signal-danger)", border: "2px solid var(--surface)" }} />}
+                </a>
+                <button onClick={() => pick(theme === "night" ? "day" : "night")} className="mg-icon-btn mg-focus" title="Toggle theme" aria-label="Toggle day / night">
+                  {theme === "night"
+                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg>}
+                </button>
+                <a href={hrefFor("settings")} className="flex items-center gap-2 mg-focus" style={{ borderRadius: 999, padding: 3 }} title="Account">
+                  <span className="flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: 999, background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 700 }}>{initials(user?.name)}</span>
+                  <span className="hidden md:block text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{user?.name || "You"}</span>
+                  <Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)", transform: "rotate(90deg)" }} />
+                </a>
               </div>
             </header>
 
@@ -259,15 +247,17 @@ export default function OperatorShell({ active = "today", children }) {
               <div className="mg-ticker-live"><span className="mg-live-dot" /> Live</div>
               <div className="mg-ticker-vp">
                 <div className="mg-ticker-track">
-                  {[...tickerLines, ...tickerLines].map((line, i) => (
+                  {[...tickerLines, ...tickerLines].map((item, i) => (
                     <span className="mg-ticker-item" key={i} aria-hidden={i >= tickerLines.length}>
                       <Icon.spark size={13} />
-                      <span>{line}</span>
+                      <span>{item.title}</span>
+                      {item.time && <span className="mg-num" style={{ color: "var(--fg-subtle)", fontSize: 12 }}>{item.time}</span>}
                       <span className="mg-ticker-sep" />
                     </span>
                   ))}
                 </div>
               </div>
+              <a href={hrefFor("growth")} className="mg-ticker-viewall mg-focus">View all activity</a>
             </div>
           </div>
 
