@@ -534,25 +534,26 @@ html, body {
    contained tokens so it's guaranteed premium regardless of the app theme.
    ============================================================================ */
 .onb {
-  --onb-ink:#05070E; --onb-panel:#0D111B; --onb-panel-2:#141A27;
-  --onb-dawn:#FFC876; --onb-dawn-deep:#F49A3C; --onb-live:#4FE0A6; --onb-live-soft:rgba(79,224,166,.14);
+  /* Royal-blue night stage with champagne-gold accents (matches the brand + Night theme). */
+  --onb-ink:#070C1A; --onb-panel:#0E1626; --onb-panel-2:#172034;
+  --onb-dawn:#CBAE70; --onb-dawn-deep:#A8863C; --onb-live:#4FE0A6; --onb-live-soft:rgba(79,224,166,.14);
   --onb-fg:#F4F8FC; --onb-muted:#AAB7C4; --onb-subtle:#6C7A88;
   --onb-hair:rgba(255,255,255,.08); --onb-hair2:rgba(255,255,255,.055);
   position:relative; min-height:100vh; width:100%; overflow-x:hidden; color:var(--onb-fg); font-family:var(--font-ui);
   background:
-    radial-gradient(44% 30% at 84% -6%, rgba(255,200,118,.10), transparent 62%),
-    radial-gradient(58% 42% at 6% 3%, rgba(84,132,214,.10), transparent 64%),
-    radial-gradient(125% 92% at 50% -14%, #0B1120 0%, var(--onb-ink) 58%);
+    radial-gradient(44% 30% at 84% -6%, rgba(203,174,112,.11), transparent 62%),
+    radial-gradient(58% 42% at 6% 3%, rgba(58,93,168,.16), transparent 64%),
+    radial-gradient(125% 92% at 50% -14%, #0E1B3A 0%, var(--onb-ink) 58%);
 }
 .onb-input { background:var(--onb-panel); border:1px solid var(--onb-hair); color:var(--onb-fg); border-radius:14px; font-family:var(--font-ui); }
 .onb-input::placeholder { color:var(--onb-subtle); }
-.onb-input:focus { outline:none; border-color:rgba(255,200,118,.5); box-shadow:0 0 0 4px rgba(255,200,118,.08); }
-.onb-cta { background:linear-gradient(135deg,#FFDDA3,var(--onb-dawn) 55%,var(--onb-dawn-deep)); color:#241606; border:none; border-radius:14px; font-weight:700; cursor:pointer; box-shadow:0 14px 38px rgba(255,175,80,.28), 0 1px 0 rgba(255,255,255,.45) inset; transition:transform .15s ease, filter .2s ease; }
+.onb-input:focus { outline:none; border-color:rgba(203,174,112,.5); box-shadow:0 0 0 4px rgba(203,174,112,.10); }
+.onb-cta { background:linear-gradient(135deg,#F1E7CC,var(--onb-dawn) 55%,var(--onb-dawn-deep)); color:#171205; border:none; border-radius:14px; font-weight:700; cursor:pointer; box-shadow:0 14px 38px rgba(203,174,112,.28), 0 1px 0 rgba(255,255,255,.4) inset; transition:transform .15s ease, filter .2s ease; }
 .onb-cta:hover { filter:brightness(1.05); transform:translateY(-1px); }
 .onb-cta:disabled { opacity:.55; cursor:default; transform:none; }
 .onb-ghost { background:transparent; border:1px solid var(--onb-hair); color:var(--onb-muted); border-radius:12px; cursor:pointer; transition:.2s; }
 .onb-ghost:hover { border-color:rgba(255,255,255,.25); color:var(--onb-fg); }
-.onb-spinner { width:13px; height:13px; border-radius:50%; border:2px solid rgba(255,200,118,.3); border-top-color:var(--onb-dawn); animation:onb-spin .8s linear infinite; flex:none; }
+.onb-spinner { width:13px; height:13px; border-radius:50%; border:2px solid rgba(203,174,112,.3); border-top-color:var(--onb-dawn); animation:onb-spin .8s linear infinite; flex:none; }
 @keyframes onb-spin { to { transform:rotate(360deg); } }
 @keyframes onb-breathe { 0%,100% { opacity:.85; transform:scale(1); } 50% { opacity:1; transform:scale(1.08); } }
 @keyframes onb-rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }

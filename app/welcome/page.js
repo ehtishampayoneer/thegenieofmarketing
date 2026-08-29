@@ -296,7 +296,7 @@ export default function WelcomePage() {
                   const active = i === revealed - 1 && !(revealed >= lines.length && data);
                   return (
                     <div key={i} className="flex items-start gap-3.5 onb-rise" style={{ padding: "12px 2px", borderBottom: i < revealed - 1 ? "1px solid var(--onb-hair2)" : "none" }}>
-                      <span className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, flex: "none", marginTop: 1, background: active ? "rgba(255,200,118,.14)" : "var(--onb-live-soft)", color: active ? "var(--onb-dawn)" : "var(--onb-live)" }}>
+                      <span className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, flex: "none", marginTop: 1, background: active ? "rgba(203,174,112,.14)" : "var(--onb-live-soft)", color: active ? "var(--onb-dawn)" : "var(--onb-live)" }}>
                         {active ? <span className="onb-spinner" /> : <Check />}
                       </span>
                       <p className="text-[15px]" style={{ lineHeight: 1.45, color: active ? "var(--onb-muted)" : "var(--onb-fg)" }}>
@@ -334,7 +334,7 @@ export default function WelcomePage() {
               </div>
 
               {/* what I already started — real kickoff */}
-              <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(255,200,118,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
+              <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(203,174,112,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
                 <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working, right now</p>
                 {/* Real findings resolve the spinners. A spinner that never finishes
                     is a lie about work being done — each row flips to what was
@@ -387,7 +387,7 @@ export default function WelcomePage() {
 
               <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                 {/* LEFT — what Genie found */}
-                <div style={{ borderRadius: 18, border: "1px solid rgba(255,200,118,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ borderRadius: 18, border: "1px solid rgba(203,174,112,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)" }}>
                     <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
                     <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", marginTop: 2, letterSpacing: "-.01em" }}>{cap(understanding?.businessName || host || "your business")}</p>
@@ -547,8 +547,8 @@ export default function WelcomePage() {
                     ))}
 
                     {/* the payoff */}
-                    <div className="flex items-center gap-4 mt-1" style={{ marginLeft: 46, borderRadius: 16, padding: "18px 20px", background: "linear-gradient(100deg, rgba(255,200,118,.10), rgba(255,255,255,.02))", border: "1px solid rgba(255,200,118,.28)" }}>
-                      <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,200,118,.12)", color: "var(--onb-dawn)" }}>
+                    <div className="flex items-center gap-4 mt-1" style={{ marginLeft: 46, borderRadius: 16, padding: "18px 20px", background: "linear-gradient(100deg, rgba(203,174,112,.10), rgba(255,255,255,.02))", border: "1px solid rgba(203,174,112,.28)" }}>
+                      <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(203,174,112,.12)", color: "var(--onb-dawn)" }}>
                         <Icon.spark size={20} />
                       </span>
                       <div className="min-w-0">
@@ -689,16 +689,16 @@ function ApertureMark({ size = 40, live = false, working = false }) {
   const cx = size / 2;
   return (
     <span style={{ display: "inline-flex", position: "relative", width: size, height: size }}>
-      {(live || working) && <span style={{ position: "absolute", inset: -size * 0.18, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,200,118,.18), transparent 68%)" }} />}
+      {(live || working) && <span style={{ position: "absolute", inset: -size * 0.18, borderRadius: "50%", background: "radial-gradient(circle, rgba(203,174,112,.18), transparent 68%)" }} />}
       <svg width={size} height={size} viewBox="0 0 48 48" style={{ position: "relative" }} aria-hidden="true">
         <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="1" />
-        <circle cx="24" cy="24" r="15" fill="none" stroke="rgba(255,200,118,.18)" strokeWidth="1" />
+        <circle cx="24" cy="24" r="15" fill="none" stroke="rgba(203,174,112,.18)" strokeWidth="1" />
         <g className={working ? "onb-blades" : ""}>
-          <circle cx="24" cy="6" r="1.7" fill="rgba(255,200,118,.6)" />
+          <circle cx="24" cy="6" r="1.7" fill="rgba(203,174,112,.6)" />
           <circle cx="39" cy="30" r="1.4" fill="rgba(79,224,166,.65)" />
-          <circle cx="9" cy="30" r="1.4" fill="rgba(255,200,118,.42)" />
+          <circle cx="9" cy="30" r="1.4" fill="rgba(203,174,112,.42)" />
         </g>
-        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="5.4" fill="none" stroke="#FFC876" strokeWidth="1.7" />
+        <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="5.4" fill="none" stroke="#CBAE70" strokeWidth="1.7" />
         <circle className={live || working ? "onb-core" : ""} cx="24" cy="24" r="2" fill="#FFE7BE" />
       </svg>
     </span>
