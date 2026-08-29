@@ -15,16 +15,12 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
   );
 }
 
-// The full "Marketing Genie" lockup: a small tracked "MARKETING" eyebrow sitting flush
-// over the stylised "genie" wordmark (masked, so it follows the theme's ink). Sizes are
-// tuned so the eyebrow's width matches the wordmark's — a balanced, aligned stack.
-export function GenieLockup({ size = 38, live = false, className = "" }) {
-  const h = size, w = Math.round(size * 1.737);
+// The full "Marketing Genie" logo (the user's artwork). size = logo height; the image
+// aspect (~3:1) sets the width. Inverted to light in Night via .genie-logo.
+export function GenieLockup({ size = 42, live = false, className = "" }) {
+  const h = size, w = Math.round(size * 3.0);
   return (
-    <span className={`inline-flex flex-col items-start ${className}`} style={{ lineHeight: 1 }} aria-label="Marketing Genie" role="img">
-      <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "0.34em", textTransform: "uppercase", color: "var(--fg-muted)", marginBottom: "4px" }}>Marketing</span>
-      <span className="genie-wordmark" style={{ width: w, height: h, display: "block" }} />
-    </span>
+    <span className={`genie-logo ${className}`} style={{ width: w, height: h }} role="img" aria-label="Marketing Genie" />
   );
 }
 

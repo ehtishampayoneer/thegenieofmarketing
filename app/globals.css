@@ -328,28 +328,36 @@ html, body {
 
 /* ── THE GENIE (sprite art) ──────────────────────────────────────────────────
    The floating mascot, the small face avatar, and the wordmark. */
-/* Wordmark — a single-colour glyph via mask, so it follows the theme's ink. */
-.genie-wordmark { display:inline-block; -webkit-mask:url(/genie-wordmark.png) left center/contain no-repeat; mask:url(/genie-wordmark.png) left center/contain no-repeat; background-color:var(--fg); }
-/* Small circular face avatar — the bust cropped into a soft ring. */
+/* Logo — the full "Marketing Genie" mark (image). Inverted to light in Night so it reads
+   on the dark chrome. */
+.genie-logo { display:inline-block; background:url(/logo.png) left center/contain no-repeat; }
+[data-theme="night"] .genie-logo { filter:brightness(0) invert(1); }
+/* Small circular genie-face avatar — the bust cropped into a soft ring. */
 .genie-avatar { position:relative; display:inline-block; border-radius:50%; overflow:hidden; line-height:0;
   background:radial-gradient(circle at 50% 32%, #eef2f8, #cbd3e1); box-shadow:inset 0 0 0 1px rgba(22,36,78,.14), 0 2px 8px rgba(22,36,78,.16); }
 [data-theme="night"] .genie-avatar { background:radial-gradient(circle at 50% 32%, #223049, #131c2e); box-shadow:inset 0 0 0 1px rgba(255,255,255,.10), 0 2px 8px rgba(0,0,0,.4); }
-.genie-avatar img { width:132%; height:132%; object-fit:cover; object-position:50% 16%; margin:-16%; display:block; }
-/* Floating idle-animated mascot on a soft royal-blue portal glow. The glow is pulled up
-   off the bottom edge so it never hazes text placed beneath the genie. */
-.genie-stage { position:relative; display:inline-block; line-height:0; isolation:isolate; overflow:hidden; }
+.genie-avatar img { width:112%; height:112%; object-fit:contain; object-position:50% 12%; margin:-6%; display:block; }
+/* The floating suited-genie mascot with rising blue "smoke" — alive, not static. */
+.genie-stage { position:relative; display:inline-block; line-height:0; isolation:isolate; }
 .genie-stage-inner { position:absolute; inset:0; z-index:1; }
-.genie-stage-inner .genie-frame { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center top; }
-.genie-frame { width:100%; height:100%; object-fit:contain; object-position:center top; display:block; user-select:none; }
-.genie-frame-base { position:relative; opacity:1; }
-.genie-frame-alt { position:absolute; inset:0; opacity:0; animation:genie-shift 12s ease-in-out infinite; }
-.genie-stage[data-active="true"] .genie-frame-alt { animation-duration:8s; }
-.genie-stage[data-active="true"]::before { animation:genie-glow 3.2s var(--ease-out) infinite; }
-@keyframes genie-shift { 0%,42%{ opacity:0; } 50%,60%{ opacity:1; } 68%,100%{ opacity:0; } }
-@keyframes genie-bob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
-.genie-bob { animation:genie-bob 4.4s var(--ease-out) infinite; }
-@keyframes genie-glow { 0%,100%{ opacity:.55; transform:scale(.97); } 50%{ opacity:1; transform:scale(1.05); } }
-@media (prefers-reduced-motion: reduce){ .genie-bob{ animation:none; } .genie-frame-alt{ animation:none; } .genie-stage[data-active="true"]::before{ animation:none; } }
+.genie-stage-inner .genie-frame { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center center; }
+.genie-frame { display:block; user-select:none; }
+@keyframes genie-bob { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
+.genie-bob { animation:genie-bob 4.6s var(--ease-out) infinite; }
+/* Smoke: soft royal-blue wisps rising from the tail, behind the figure (z-index 0). */
+.genie-smoke { position:absolute; left:50%; bottom:1%; width:52%; height:64%; transform:translateX(-50%); z-index:0; pointer-events:none; }
+.genie-smoke i { position:absolute; bottom:0; width:20%; padding-bottom:20%; border-radius:50%;
+  background:radial-gradient(circle, rgba(58,93,168,.5), rgba(58,93,168,0) 70%); filter:blur(4px); opacity:0;
+  animation:genie-smoke 4.8s ease-out infinite; }
+.genie-smoke i:nth-child(1){ left:12%; animation-delay:0s;   }
+.genie-smoke i:nth-child(2){ left:52%; animation-delay:.8s;  }
+.genie-smoke i:nth-child(3){ left:32%; animation-delay:1.7s; }
+.genie-smoke i:nth-child(4){ left:64%; animation-delay:2.5s; }
+.genie-smoke i:nth-child(5){ left:24%; animation-delay:3.3s; }
+.genie-smoke i:nth-child(6){ left:46%; animation-delay:4.0s; }
+.genie-stage[data-active="true"] .genie-smoke i { animation-duration:3.4s; }
+@keyframes genie-smoke { 0%{ opacity:0; transform:translateY(0) scale(.5); } 18%{ opacity:.55; } 100%{ opacity:0; transform:translateY(-155%) scale(1.9); } }
+@media (prefers-reduced-motion: reduce){ .genie-bob{ animation:none; } .genie-smoke{ display:none; } }
 
 /* ---- Loading skeleton (prevents the empty-state "flash" before data arrives) ---- */
 @keyframes mg-shimmer { 0% { background-position:-160% 0; } 100% { background-position:160% 0; } }
