@@ -17,10 +17,20 @@ async function fetchText(url, ms = 8000) {
   try {
     const r = await fetch(url, {
       signal: ctl.signal, redirect: "follow",
+      // Next patches fetch and stores successful responses in the Data Cache.
+      // Without this the first scan of a site is replayed for every scan after
+      // it — a customer fixes their SEO, rescans, and is told nothing changed.
+      // That is the one failure this tool cannot afford, so: never cached.
+      cache: "no-store",
       headers: { "User-Agent": "Mozilla/5.0 (compatible; MarketingGenie-SiteAudit/1.0; +https://thegenieofmarketing.vercel.app)", "Accept": "text/html,application/xhtml+xml" },
     });
     const text = r.ok ? await r.text() : "";
-    return { ok: r.ok, status: r.status, text: text.slice(0, 600000), finalUrl: r.url };
+    return {
+      ok: r.ok, status: r.status, text: text.slice(0, 600000), finalUrl: r.url,
+      // how old the copy we read was, so staleness can never hide again
+      age: Number(r.headers.get("age") || 0),
+      edgeCache: r.headers.get("x-vercel-cache") || r.headers.get("cf-cache-status") || "",
+    };
   } catch (e) {
     return { ok: false, status: 0, text: "", error: String(e?.name === "AbortError" ? "timeout" : e) };
   } finally {
@@ -82,6 +92,12 @@ export async function GET(req) {
       hasH2: /<h2[\s>]/i.test(html),
       ldTypes: [...ldTypes],
       hasRobots: robots.ok, hasSitemap: sitemap.ok || /sitemap/i.test(robots.text || ""),
+      // schema types are matched case-insensitively by the report, but the raw
+      // list is kept so a new badge can be checked without a server change
+      hasService: ldTypes.has("Service") || ldTypes.has("Product") || ldTypes.has("Offer"),
     },
+    // proof of what was read, for when a scan and a browser disagree
+    fetchedAt: new Date().toISOString(),
+    source: { bytes: html.length, finalUrl: home.finalUrl || base + "/", age: home.age || 0, edgeCache: home.edgeCache || "" },
   });
 }

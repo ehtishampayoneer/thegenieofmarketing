@@ -273,8 +273,7 @@ function buildChecks(d, { name, base, kw }) {
   "@type": "Organization",
   "name": "${name}",
   "url": "${base}/",
-  "logo": "${base}/logo.png",
-  "sameAs": ["https://www.linkedin.com/company/yourhandle", "https://x.com/yourhandle"]
+  "logo": "${base}/logo.png"
 }
 </script>`,
   });
@@ -312,6 +311,25 @@ function buildChecks(d, { name, base, kw }) {
     "name": "How much does ${kw || "it"} cost?",
     "acceptedAnswer": { "@type": "Answer", "text": "Give a clear, honest price range here." }
   }]
+}
+</script>`,
+  });
+
+  push({
+    id: "service", cat: "Structured-data badges", impact: "High",
+    status: has("Service") || has("Product") || has("Offer") ? "pass" : "fix",
+    label: "Pricing schema (what it costs)",
+    why: "When somebody asks an assistant what you charge, this is what it reads. Prices in markup get quoted; prices only in a picture or a table do not.",
+    lang: "json",
+    snippet: `<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": "What you sell",
+  "provider": { "@type": "Organization", "name": "${name}" },
+  "offers": [
+    { "@type": "Offer", "name": "Your plan", "price": "30", "priceCurrency": "USD" }
+  ]
 }
 </script>`,
   });
