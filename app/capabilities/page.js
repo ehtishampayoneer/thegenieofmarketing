@@ -59,6 +59,8 @@ const GROUPS = [
       { icon: "target", t: "Topic hubs (pillar pages)", p: "When you have several related articles, Genie assembles an authoritative hub page linking them all together (and links each back) — the hub-and-spoke structure Google reads as topical authority.", href: "/growth", status: ["live", "Active"] },
       { icon: "conversations", t: "Answers real ‘People Also Ask’", p: "Harvests the actual questions people type into Google about your topic (free) and answers them in each article’s FAQ with schema — exactly what AI answer engines quote.", href: "/approvals", status: ["live", "Automatic"] },
       { icon: "check", t: "Google Preferred Sources", p: "Auto-adds Google's official Preferred Sources button to every published page (and your own site), boosting Top Stories + AI Overviews.", href: "/growth", status: ["live", "Active"] },
+      { icon: "globe", t: "Website readiness audit", p: "Scans your own website and hands you exact copy-paste fixes — titles, meta, structured-data badges, sitemap, and FAQ schema — so everything Genie builds ranks faster. You paste them in; Genie never edits your site.", href: "/site", status: ["live", "Active"] },
+      { icon: "megaphone", t: "Finds new-country markets", p: "Ranks countries you can genuinely serve where demand is real and competition is thin — using your real Search Console country data — then drafts a localized page to test each as a tracked 30-day experiment.", href: "/markets", status: ["live", "Active"] },
     ],
   },
   {

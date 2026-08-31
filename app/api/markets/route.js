@@ -1,7 +1,11 @@
-// ── MARKET EXPANSION ── ranks countries this business can genuinely serve where demand is
-// real and competition is thin. Backbone = REAL Search Console per-country data (verified);
-// the curated model fills the rest (estimated); ineligible/local-only businesses are gated.
-// Read-only. Never promises results — projections are labelled as such on the page.
+// ── MARKET EXPANSION ── the full loop.
+// GET  → the ranked scoreboard (real GSC where available, else estimated) + the user's
+//        live experiments with real progress (draft status + per-country GSC traction).
+// POST → "target this market": persists a market experiment (actions/type=market_experiment,
+//        status=active so it doesn't clutter Approvals) AND drafts one real, locally-relevant
+//        landing page via the same AI + content pipeline the rest of the app uses — it lands
+//        in Approvals as a normal proposed article. POST {action:"stop"} ends an experiment.
+// Honest: never edits the user's site; the draft goes through the normal approve→publish flow.
 
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
@@ -9,56 +13,140 @@ import { resolveEntity } from "@/lib/growth-memory";
 import { ENTITY_TYPES } from "@/lib/entity";
 import { getGscCountries } from "@/lib/gsc";
 import { getValidAccessToken } from "@/lib/google";
-import { scoreMarkets } from "@/lib/markets";
+import { scoreMarkets, COUNTRIES, flagEmoji } from "@/lib/markets";
+import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // drafting the localized page calls the AI — give it room
+
+const slugify = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "landing";
+const jres = (o, status = 200) => Response.json(o, { status });
+
+async function loadContext(supabase, userId, host) {
+  let ai = {};
+  if (!host) {
+    const { data: scans } = await supabase.from("scans").select("ai, final_url, url, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(5);
+    if (scans?.length) { host = hostOf(scans[0]); ai = scans[0].ai || {}; }
+  }
+  let dims = null, name = ai.businessName || host || "Your business";
+  try { if (host) { const e = await resolveEntity(supabase, userId, host, ai); dims = ENTITY_TYPES[e?.type]?.dims || null; name = e?.name || name; } } catch {}
+  const keyword = (Array.isArray(ai.keywordsToOwn) && ai.keywordsToOwn[0]) || ai.whatTheySell || "";
+  return { host, ai, dims, name, keyword };
+}
+
+async function getGsc(supabase, userId, host) {
+  try {
+    const { data: conn } = await supabase.from("connections").select("*").eq("user_id", userId).eq("provider", "google").maybeSingle();
+    if (conn && host) { const token = await getValidAccessToken(supabase, conn); if (token) { const gc = await getGscCountries(token, host); if (gc?.available) return gc; } }
+  } catch {}
+  return null;
+}
+
+async function loadExperiments(supabase, userId, gsc) {
+  const { data } = await supabase.from("actions").select("id, payload, created_at").eq("user_id", userId).eq("type", "market_experiment").eq("status", "active").order("created_at", { ascending: false }).limit(24);
+  const gscMap = {}; if (gsc?.countries) for (const c of gsc.countries) gscMap[c.code] = c;
+  const out = [];
+  for (const a of data || []) {
+    const p = a.payload || {};
+    let draftStatus = p.draftStatus || "pending";
+    if (p.articleActionId) {
+      try { const { data: art } = await supabase.from("actions").select("status").eq("id", p.articleActionId).maybeSingle(); if (art) draftStatus = art.status === "proposed" ? "drafted" : (art.status === "done" || art.status === "published" ? "published" : art.status); } catch {}
+    }
+    const g = gscMap[p.code] || null;
+    let prog = 20;
+    if (draftStatus !== "pending") prog += 25;
+    if (draftStatus === "published") prog += 25;
+    if (g && g.impressions > 0) prog += 15;
+    if (g && g.clicks > 0) prog += 15;
+    out.push({ id: a.id, code: p.code, name: p.name, flag: p.flag, lang: p.lang, difficulty: p.difficulty, days: p.days, goal: p.goal, plan: p.plan || [], expTraffic: p.expTraffic, expSales: p.expSales, startedAt: p.startedAt || a.created_at, draftStatus, articleActionId: p.articleActionId || null, progress: Math.min(100, prog), traction: g ? { impressions: g.impressions, clicks: g.clicks, position: g.position } : null });
+  }
+  return out;
+}
 
 export async function GET(req) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return Response.json({ ok: false, reason: "not_authenticated" }, { status: 401 });
-
+  if (!user) return jres({ ok: false, reason: "not_authenticated" }, 401);
   const { searchParams } = new URL(req.url);
-  const profile = {
-    serveReach: searchParams.get("reach") || "", // global | regions | local
-    languages: (searchParams.get("langs") || "en").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
-  };
+  const profile = { serveReach: searchParams.get("reach") || "", languages: (searchParams.get("langs") || "en").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) };
+  const ctx = await loadContext(supabase, user.id, searchParams.get("host") || null);
+  const gsc = await getGsc(supabase, user.id, ctx.host);
+  const result = scoreMarkets({ entity: ctx.dims ? { dims: ctx.dims } : {}, profile, gsc });
+  const experiments = await loadExperiments(supabase, user.id, gsc);
+  return jres({ ok: true, host: ctx.host || null, audience: ctx.dims?.audience || "unknown", hasGsc: result.hasGsc, localOnly: result.localOnly, rows: result.rows, experiments, generatedAt: new Date().toISOString() });
+}
 
-  // host + entity dims
-  let host = searchParams.get("host") || null;
-  let ai = {};
+function marketPrompt({ name, country, keyword, host }) {
+  const kw = keyword || `${name}`;
+  return `Write ONE genuinely useful landing/answer page for "${name}"${host ? ` (${host})` : ""}, aimed at buyers in ${country} searching for "${kw}".
+Write in clear, natural English (do NOT machine-translate), but make it locally relevant to ${country}: reference the local context, mention that ${name} serves customers in ${country}, and use local currency/examples where it reads naturally. Be specific and genuinely helpful — no generic filler, no fluff.
+Return ONLY valid JSON (no markdown fences):
+{"title":"a compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case-url","body":"an 800–1100 word article in markdown with ## subheadings, ending with a short FAQ of 2–3 real questions buyers in ${country} would ask, each with a helpful answer"}`;
+}
+
+export async function POST(req) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return jres({ ok: false, reason: "not_authenticated" }, 401);
+  const body = await req.json().catch(() => ({}));
+
+  // stop an experiment
+  if (body.action === "stop" && body.id) {
+    try {
+      const { data: row } = await supabase.from("actions").select("payload").eq("id", body.id).eq("user_id", user.id).maybeSingle();
+      await supabase.from("actions").update({ status: "done", payload: { ...(row?.payload || {}), stoppedAt: new Date().toISOString() } }).eq("id", body.id).eq("user_id", user.id);
+    } catch {}
+    return jres({ ok: true, stopped: true });
+  }
+
+  const code = String(body.code || "").toLowerCase();
+  const co = COUNTRIES.find((c) => c.code === code);
+  if (!co) return jres({ ok: false, error: "Unknown market." }, 400);
+
+  const ctx = await loadContext(supabase, user.id, null);
+  if (!ctx.host) return jres({ ok: false, error: "Run your first website scan so Genie knows your business before expanding." }, 400);
+
+  // already targeting?
   try {
-    if (!host) {
-      const { data: scans } = await supabase.from("scans").select("ai, final_url, url, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(5);
-      if (scans?.length) { host = hostOf(scans[0]); ai = scans[0].ai || {}; }
-    }
+    const { data: existing } = await supabase.from("actions").select("id").eq("user_id", user.id).eq("type", "market_experiment").eq("status", "active").contains("payload", { code }).maybeSingle();
+    if (existing) return jres({ ok: true, already: true, id: existing.id });
   } catch {}
 
-  let dims = null, audience = "unknown";
+  // display facts for this market (reuse the scorer)
+  const sc = scoreMarkets({ entity: ctx.dims ? { dims: ctx.dims } : {}, profile: { serveReach: "global", languages: ["en"] }, gsc: null });
+  const row = sc.rows.find((r) => r.code === code) || {};
+  const keyword = ctx.keyword || co.name;
+  const plan = [`Localized landing page for ${co.name}`, "3–5 useful local content pieces", "Local CTA + payment/delivery clarity", "One conversion goal (leads / sales)"];
+  const goal = `First qualified leads from ${co.name} within ~${row.days || 60} days`;
+  const expPayload = { code, name: co.name, flag: flagEmoji(co.iso2), lang: co.lang, difficulty: row.difficulty || "Medium", days: row.days || 60, expTraffic: row.expTraffic || null, expSales: row.expSales || null, goal, plan, startedAt: new Date().toISOString(), draftStatus: "pending", articleActionId: null };
+
+  // 1) persist the experiment first (so it exists even if the AI hiccups)
+  let expId = null;
   try {
-    if (host) {
-      const e = await resolveEntity(supabase, user.id, host, ai);
-      dims = ENTITY_TYPES[e?.type]?.dims || null;
-      audience = dims?.audience || "unknown";
+    const { data: expRow } = await supabase.from("actions").insert({ user_id: user.id, type: "market_experiment", status: "active", title: `Market: ${co.name}`, priority: "strategic", payload: expPayload, target: { host: ctx.host } }).select("id").maybeSingle();
+    expId = expRow?.id || null;
+  } catch (e) { return jres({ ok: false, error: "Couldn't start that experiment. Try again." }, 500); }
+
+  // 2) draft ONE real, locally-relevant page → lands in Approvals as a proposed article
+  let articleActionId = null, draftStatus = "pending", aiError = null;
+  try {
+    const result = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Write genuinely useful, specific content — never generic filler. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3600, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host }) });
+    const d = result?.json;
+    if (d && d.title && d.body) {
+      const artPayload = { title: String(d.title), metaTitle: String(d.metaTitle || d.title).slice(0, 60), metaDescription: String(d.metaDescription || "").slice(0, 200), slug: slugify(d.slug || `${keyword}-${co.code}`), body: String(d.body), targetKeyword: keyword, market: co.code, marketName: co.name, experimentId: expId };
+      const { data: art } = await supabase.from("actions").insert({ user_id: user.id, type: "article", title: `${co.name}: ${String(d.title).slice(0, 80)}`, priority: "strategic", status: "proposed", payload: artPayload, target: { platform: "website", host: ctx.host, market: co.code } }).select("id").maybeSingle();
+      articleActionId = art?.id || null;
+      draftStatus = articleActionId ? "drafted" : "pending";
     }
+  } catch (e) { aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
+
+  if (expId) { try { await supabase.from("actions").update({ payload: { ...expPayload, articleActionId, draftStatus } }).eq("id", expId); } catch {} }
+
+  try {
+    const { logActivity } = await import("@/lib/activity");
+    await logActivity(supabase, user.id, { host: ctx.host, verb: "expanding", icon: "🌍", message: `Started a ${co.name} market experiment${articleActionId ? " — drafted a localized page" : ""}`, detail: articleActionId ? "Review the draft in Approvals." : "Genie will draft the localized page shortly.", meta: { market: co.code } });
   } catch {}
 
-  // REAL per-country Search Console data (only if the account owns the property)
-  let gsc = null;
-  try {
-    const { data: conn } = await supabase.from("connections").select("*").eq("user_id", user.id).eq("provider", "google").maybeSingle();
-    if (conn && host) {
-      const token = await getValidAccessToken(supabase, conn);
-      if (token) { const gc = await getGscCountries(token, host); if (gc?.available) gsc = gc; }
-    }
-  } catch {}
-
-  const result = scoreMarkets({ entity: dims ? { dims } : {}, profile, gsc });
-  return Response.json({
-    ok: true, host: host || null, audience,
-    hasGsc: result.hasGsc, localOnly: result.localOnly,
-    rows: result.rows,
-    generatedAt: new Date().toISOString(),
-  });
+  return jres({ ok: true, id: expId, draftStatus, articleActionId, aiError });
 }
