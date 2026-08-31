@@ -90,6 +90,9 @@ function normalizeAction(a) {
     draft, why: p.rationale || null, target_url,
     keyword: p.targetKeyword || null,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
+    market: p.market || a.target?.market || null,
+    marketName: p.marketName || null,
+    marketFlag: p.marketFlag || null,
     impact: clampNum(p.impact, priorityScore(a.priority)),
     tags: tagsFor(a.priority),
   };

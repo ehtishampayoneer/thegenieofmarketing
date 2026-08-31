@@ -25,6 +25,8 @@ const LANGS = [["en", "English"], ["es", "Spanish"], ["pt", "Portuguese"], ["de"
 const REGIONS = ["N. America", "Europe", "LatAm", "Asia", "Africa", "Middle East", "Oceania", "Caucasus"];
 const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n ?? 0));
 const salesRange = (r) => (r.expSalesLow === r.expSalesHigh ? `${r.expSalesLow}` : `${fmt(r.expSalesLow)}–${fmt(r.expSalesHigh)}`);
+const TASK_LABEL = { article: "Localized landing page", social_post: "Local intro post", outreach_email: "Local outreach email", seo_fix: "Copy-paste local-SEO snippet", distribution: "Local placement" };
+const taskLabel = (t) => TASK_LABEL[t.kind] || t.title;
 
 export default function MarketsPage() {
   const [data, setData] = useState(null);
@@ -33,6 +35,7 @@ export default function MarketsPage() {
   const [openId, setOpenId] = useState(null);
   const [targeting, setTargeting] = useState("");
   const [tgtErr, setTgtErr] = useState(null); // {code, msg}
+  const [tgtDone, setTgtDone] = useState(null); // {code, tasksAdded, tasks, country, flag}
   const [editing, setEditing] = useState(false);
   const [sort, setSort] = useState({ key: "opp", dir: "desc" });
   const toggleSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "difficulty" ? "asc" : "desc" }));
@@ -64,12 +67,27 @@ export default function MarketsPage() {
   }
   async function target(code) {
     if (targeting) return;
-    setTargeting(code); setTgtErr(null);
+    setTargeting(code); setTgtErr(null); setTgtDone(null);
     try {
       const j = await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }).then((r) => r.json());
       if (!j.ok) { setTgtErr({ code, msg: j.error || "Couldn't start that experiment." }); setTargeting(""); return; }
-      await load(); setOpenId(null);
+      setTgtDone({ code, tasksAdded: j.tasksAdded || 0, tasks: j.tasks || [], country: j.country, flag: j.flag });
+      await load(); // keep the row open so the result summary shows
     } catch { setTgtErr({ code, msg: "Couldn't start that experiment. Try again." }); }
+    setTargeting("");
+  }
+  // Add the market's local language to eligibility, then immediately target it — one tap.
+  async function addLangAndTarget(code, lang) {
+    if (targeting || !data?.profile) return;
+    setTargeting(code); setTgtErr(null); setTgtDone(null);
+    try {
+      const langs = Array.from(new Set([...(data.profile.languages || ["en"]), lang]));
+      await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "profile", profile: { ...data.profile, languages: langs } }) });
+      const j = await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }).then((r) => r.json());
+      if (!j.ok) { setTgtErr({ code, msg: j.error || "Couldn't start that experiment." }); setTargeting(""); await load(); return; }
+      setTgtDone({ code, tasksAdded: j.tasksAdded || 0, tasks: j.tasks || [], country: j.country, flag: j.flag });
+      await load();
+    } catch { setTgtErr({ code, msg: "Couldn't add that language. Try again." }); }
     setTargeting("");
   }
   async function stop(id) {
@@ -144,7 +162,7 @@ export default function MarketsPage() {
               <button onClick={() => toggleSort("progress")} className="mg-focus text-left" style={hbtn(sort.key === "progress")}>Time · progress{arrow(sort, "progress")}</button>
             </div>
             <div className="flex flex-col gap-2.5">
-              {rows.map((r) => <MarketRow key={r.code} r={r} exp={expByCode[r.code]} open={openId === r.code} onToggle={() => setOpenId(openId === r.code ? null : r.code)} onTarget={() => target(r.code)} targeting={targeting === r.code} err={tgtErr?.code === r.code ? tgtErr.msg : ""} />)}
+              {rows.map((r) => <MarketRow key={r.code} r={r} exp={expByCode[r.code]} open={openId === r.code} onToggle={() => setOpenId(openId === r.code ? null : r.code)} onTarget={() => target(r.code)} onAddLang={() => addLangAndTarget(r.code, r.lang)} targeting={targeting === r.code} err={tgtErr?.code === r.code ? tgtErr.msg : ""} done={tgtDone?.code === r.code ? tgtDone : null} />)}
               {rows.length === 0 && <p className="text-[13px] mg-subtle text-center py-8">No eligible markets in this view. Widen your delivery or languages above.</p>}
             </div>
           </div>
@@ -237,12 +255,12 @@ function ExperimentCard({ e, onStop }) {
         {t ? <span className="inline-flex items-center gap-1.5 mg-num" style={{ color: "var(--fg-muted)" }}><Icon.search size={13} /> {t.impressions} impr · {t.clicks} clicks</span> : <span className="mg-num" style={{ color: "var(--fg-subtle)" }}>No search data yet</span>}
       </div>
       <p className="text-[11.5px] mt-2" style={{ color: "var(--fg-subtle)" }}>Outcome: awaiting results — lead/revenue tracking by country comes next, then a Scale / Refine / Pause call.</p>
-      {e.draftStatus !== "pending" && <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the draft in Approvals →</a>}
+      {(e.taskCount > 0 || e.draftStatus !== "pending") && <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review {e.taskCount > 0 ? `${e.taskCount} ${e.name} ${e.taskCount === 1 ? "task" : "tasks"}` : "the draft"} in Approvals →</a>}
     </Card>
   );
 }
 
-function MarketRow({ r, exp, open, onToggle, onTarget, targeting, err }) {
+function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err, done }) {
   const d = DIFF[r.difficulty] || DIFF.Medium;
   const conf = CONF[r.confidence] || CONF.estimated;
   return (
@@ -293,19 +311,48 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting, err }) {
           <p className="text-[12.5px] mt-3.5" style={{ color: "var(--fg-subtle)" }}>
             <b style={{ color: "var(--fg-muted)" }}>Scenario, not a forecast:</b> at ~{fmt(r.expTraffic)} monthly visitors and a ~{r.assumedConvPct}% conversion, outcomes may be <b style={{ color: "var(--fg-muted)" }}>{salesRange(r)} sales/mo</b>. Your real numbers will differ — that's what the test is for.
           </p>
-          <p className="text-[13px] mt-3 leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-            <b style={{ color: "var(--fg)" }}>The 30-day play:</b> Genie drafts a locally-relevant landing page for {r.name} (into Approvals){r.supportsLang && r.lang !== "en" ? ` in ${r.langName}` : ""}, plus a few useful local pieces and a clear CTA + payment/delivery. Validate leads and replies first; organic ranking compounds over 60–90 days.
-          </p>
+          {/* what Genie will actually do for this country — shown before you target */}
+          {!exp && (
+            <div className="mt-3.5 rounded-xl p-3.5" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+              <p className="text-[12px] font-bold" style={{ color: "var(--fg)" }}>When you target {r.name}, Genie adds a country-specific kit to Approvals:</p>
+              <ul className="mt-2 space-y-1.5">
+                {[`Localized landing page${r.supportsLang && r.lang !== "en" ? ` in ${r.langName}` : ""}`, "A local intro post you can share", "A local outreach email (draft-and-you-send)", "A copy-paste local-SEO snippet for your own site", "A few local placements to get seen faster"].map((t, i) => (
+                  <li key={i} className="text-[12.5px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 5, height: 5, borderRadius: 999, background: "var(--accent)", marginTop: 6, flexShrink: 0 }} /> {t}</li>
+                ))}
+              </ul>
+              <p className="text-[11.5px] mt-2.5" style={{ color: "var(--fg-subtle)" }}>All tagged <b style={{ color: "var(--fg-muted)" }}>{r.name}</b> and grouped on their own tab in Approvals. Your everyday global marketing keeps running — this is an extra, country-specific track.</p>
+            </div>
+          )}
           {exp ? (
-            <p className="mt-3 text-[13px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>✓ Experiment running — see “Active experiments” above.</p>
+            <div className="mt-3.5">
+              <p className="text-[13px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>✓ Market test running — see “Active experiments” above.</p>
+              {done && (
+                <div className="mt-2.5 rounded-xl p-3.5" style={{ background: "var(--signal-live-soft)", border: "1px solid var(--hair)" }}>
+                  <p className="text-[13px] font-bold" style={{ color: "var(--signal-live-ink)" }}>{done.tasksAdded > 0 ? `Added ${done.tasksAdded} ${done.country}-specific ${done.tasksAdded === 1 ? "task" : "tasks"} to Approvals` : `${done.country} test started`}</p>
+                  {done.tasks?.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {done.tasks.map((t, i) => <li key={i} className="text-[12px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 4, height: 4, borderRadius: 999, background: "var(--signal-live-ink)", marginTop: 6, flexShrink: 0 }} /> {taskLabel(t)}</li>)}
+                    </ul>
+                  )}
+                  <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the {done.country} tab in Approvals →</a>
+                </div>
+              )}
+            </div>
           ) : r.needsLocalLang ? (
-            <p className="mt-3 text-[13px]" style={{ color: "var(--signal-warn)" }}>Needs <b>{r.langName}</b> content to reach the mainstream — add {r.langName} in Eligibility to target this market (an English-only page would be thin).</p>
+            <div className="mt-3.5">
+              <p className="text-[13px]" style={{ color: "var(--signal-warn)" }}>Needs <b>{r.langName}</b> to reach the mainstream — an English-only page would be thin.</p>
+              <button onClick={onAddLang} disabled={targeting} className="mg-btn mg-btn--dawn mt-2.5 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
+                {targeting ? <>Adding {r.langName} &amp; building your {r.name} kit… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.plus size={15} /> Add {r.langName} &amp; target {r.name} →</>}
+              </button>
+              <p className="text-[11.5px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Adds {r.langName} to your content languages, then drafts the whole kit in {r.langName}.</p>
+              {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+            </div>
           ) : r.englishTest ? (
             <p className="mt-3 text-[13px]" style={{ color: "var(--accent-ink)" }}>This is an <b>English-test market</b> — English isn't {r.name}'s first language. Turn on “I'm comfortable selling in English…” in Eligibility to test it, or target a market where you already get English search traffic.</p>
           ) : (
             <>
               <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
-                {targeting ? <>Drafting your {r.name} page… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.target size={15} /> Target this market →</>}
+                {targeting ? <>Building your {r.name} kit… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.target size={15} /> Target this market — build the kit →</>}
               </button>
               {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
             </>

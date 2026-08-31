@@ -61,6 +61,7 @@ function matchesType(it, f) {
   return !(it.kind === "article" || it.kind === "social_post" || it.kind === "outreach_email" || it.source === "placement");
 }
 function matchesImpact(it, f) { return f === "all" || impactMeta(it.impact).tier === f; }
+function matchesMarket(it, f) { if (f === "all") return true; if (f === "global") return !it.market; return it.market === f; }
 
 // Helpers for editing a branded card's overlay hook + underlying photo in place.
 function isCardUrl(u) { try { return new URL(u, location.origin).pathname.endsWith("/api/card"); } catch { return false; } }
@@ -79,6 +80,7 @@ export default function ApprovalsPage() {
   const [toast, setToast] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
+  const [marketFilter, setMarketFilter] = useState("all");
   const [openMenu, setOpenMenu] = useState(null); // 'type' | 'impact' | 'more' | null
   const [expandReason, setExpandReason] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
@@ -105,7 +107,20 @@ export default function ApprovalsPage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [openMenu]);
 
-  const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter)), [items, typeFilter, impactFilter]);
+  // Country tabs: markets present in the queue (from market-test kits), most tasks first.
+  const markets = useMemo(() => {
+    const m = new Map();
+    for (const it of items) {
+      if (!it.market) continue;
+      const e = m.get(it.market) || { code: it.market, name: it.marketName || it.market, flag: it.marketFlag || "🌍", count: 0 };
+      e.count++; m.set(it.market, e);
+    }
+    return [...m.values()].sort((a, b) => b.count - a.count);
+  }, [items]);
+  const globalCount = useMemo(() => items.filter((it) => !it.market).length, [items]);
+  useEffect(() => { if (marketFilter !== "all" && marketFilter !== "global" && !markets.some((m) => m.code === marketFilter)) setMarketFilter("all"); }, [markets, marketFilter]);
+
+  const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, marketFilter]);
   useEffect(() => { setIdx((i) => Math.max(0, Math.min(i, view.length - 1))); }, [view.length]);
   const current = view[idx] || null;
   useEffect(() => { setExpandReason(false); setEditing(false); }, [current?.id]);
@@ -284,6 +299,14 @@ export default function ApprovalsPage() {
         )}
       </div>
 
+      {state === "real" && markets.length > 0 && (
+        <div className="mt-4 flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
+          <MTab active={marketFilter === "all"} onClick={() => setMarketFilter("all")} label="All work" count={items.length} />
+          {globalCount > 0 && <MTab active={marketFilter === "global"} onClick={() => setMarketFilter("global")} label="🌍 Global" count={globalCount} />}
+          {markets.map((mk) => <MTab key={mk.code} active={marketFilter === mk.code} onClick={() => setMarketFilter(mk.code)} label={`${mk.flag} ${mk.name}`} count={mk.count} />)}
+        </div>
+      )}
+
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.tasks} title="I can’t reach your queue" sub="Sign in and I’ll show you everything I’ve drafted." /></div>
       ) : loading ? (
@@ -292,7 +315,7 @@ export default function ApprovalsPage() {
           <div className="mg-surface p-6" style={{ minHeight: 160 }}><div className="mg-skel" style={{ height: 16, width: "60%" }} /><div className="mg-skel mt-3" style={{ height: 90 }} /></div>
         </div>
       ) : empty ? (
-        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); }} />
+        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); setMarketFilter("all"); }} />
       ) : (
         <div className="mt-5 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
           {/* ── LEFT: progress + the current approval ── */}
@@ -360,6 +383,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <span className="text-[11.5px] font-bold tracking-[0.08em]" style={{ color: "var(--fg-muted)" }}>{typeLabel(item)}</span>
         <span className="mg-subtle">|</span>
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
+        {item.market && <Pill tone="info">{item.marketFlag} {item.marketName}</Pill>}
         <Pill tone={im.pill}>{im.label} impact</Pill>
         {item.isRefresh && <Pill tone="info">Refresh</Pill>}
         {item.isCarousel ? <Pill tone="live">{(item.images?.length || 0)} slides</Pill> : item.image && <Pill tone="neutral"><Icon.eye size={11} /> Image</Pill>}
@@ -579,7 +603,7 @@ function ApprovalQueue({ view, idx, onPick }) {
               <BrandIcon brand={it.brand} size={13} />
               <span className="flex-1 min-w-0">
                 <span className="block text-[12px] font-semibold truncate" style={{ color: i === idx ? "var(--fg)" : "var(--fg-muted)" }}>{queueTitle(it)}</span>
-                <span className="block text-[10.5px] mg-subtle">{im.label} impact</span>
+                <span className="block text-[10.5px] mg-subtle">{im.label} impact{it.marketFlag ? ` · ${it.marketFlag}` : ""}</span>
               </span>
               <span style={{ width: 7, height: 7, borderRadius: 999, background: im.dot, flexShrink: 0 }} />
             </button>
@@ -622,6 +646,13 @@ function AllClear({ done, drafting, onDraft, filtered, onClear }) {
 }
 
 // ── SMALL PARTS ─────────────────────────────────────────────────────────────
+function MTab({ active, onClick, label, count }) {
+  return (
+    <button onClick={onClick} className="shrink-0 mg-focus" style={{ fontSize: 12.5, fontWeight: 600, padding: ".4rem .75rem", borderRadius: 999, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${active ? "var(--accent)" : "var(--hair)"}`, background: active ? "var(--accent-quiet)" : "var(--surface)", color: active ? "var(--accent-ink)" : "var(--fg-muted)" }}>
+      {label}{count != null ? <span className="mg-num" style={{ opacity: 0.7 }}> · {count}</span> : null}
+    </button>
+  );
+}
 function FilterMenu({ value, opts, open, onToggle, onPick }) {
   const cur = opts.find((o) => o.id === value) || opts[0];
   return (

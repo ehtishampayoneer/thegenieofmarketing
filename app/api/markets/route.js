@@ -82,7 +82,7 @@ async function loadExperiments(supabase, userId, gsc) {
     if (draftStatus === "published") prog += 25;
     if (g && g.impressions > 0) prog += 15;
     if (g && g.clicks > 0) prog += 15;
-    out.push({ id: a.id, code: p.code, name: p.name, flag: p.flag, lang: p.lang, difficulty: p.difficulty, days: p.days, goal: p.goal, plan: p.plan || [], startedAt: p.startedAt || a.created_at, draftStatus, articleActionId: p.articleActionId || null, progress: Math.min(100, prog), searchTraction: g ? { impressions: g.impressions, clicks: g.clicks, position: g.position } : null });
+    out.push({ id: a.id, code: p.code, name: p.name, flag: p.flag, lang: p.lang, difficulty: p.difficulty, days: p.days, goal: p.goal, plan: p.plan || [], taskCount: p.taskCount || 0, startedAt: p.startedAt || a.created_at, draftStatus, articleActionId: p.articleActionId || null, progress: Math.min(100, prog), searchTraction: g ? { impressions: g.impressions, clicks: g.clicks, position: g.position } : null });
   }
   return out;
 }
@@ -109,6 +109,77 @@ function marketPrompt({ name, country, keyword, host, language = "en" }) {
 ${langLine} Reference the local context, mention that ${name} serves customers in ${country}, and use local currency/examples where it reads naturally. Be specific and genuinely helpful — no generic filler, no fluff.
 Return ONLY valid JSON (no markdown fences):
 {"title":"a compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case-url","body":"an 800–1100 word article in markdown with ## subheadings, ending with a short FAQ of 2–3 real questions buyers in ${country} would ask, each with a helpful answer"}`;
+}
+
+// The full country KIT prompt — one AI call returns every piece of the market test,
+// each of which becomes its own country-tagged task in Approvals.
+function marketPlanPrompt({ name, country, keyword, host, language = "en" }) {
+  const kw = keyword || name;
+  const langLine = language === "en"
+    ? `Write everything in clear, natural English (do NOT machine-translate), locally relevant to ${country}.`
+    : `Write everything natively and fluently in ${language.toUpperCase()} (the local language of ${country}) — natural, not machine-translated, for a local reader.`;
+  return `You are building a focused market-test kit for "${name}"${host ? ` (${host})` : ""} to win buyers in ${country} who search for "${kw}". ${langLine} Be specific and genuinely useful — no generic filler, no fluff. Reference real ${country} context and mention that ${name} serves customers there.
+Return ONLY valid JSON (no markdown fences) with EXACTLY these keys:
+{"landing":{"title":"compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case","body":"650–950 word markdown article with ## subheadings, ending with a 2–3 question FAQ that real buyers in ${country} would ask, each answered"},"social":{"platform":"linkedin","text":"a ready-to-post caption, max ~90 words, introducing ${name} to ${country}, with 2–3 relevant local hashtags"},"email":{"subject":"<=60 chars","body":"a 140–190 word outreach email to a local partner, blogger, or community in ${country}","audience":"one line: who to send this to"},"localSeo":{"title":"Local visibility setup","snippet":"copy-paste HTML: an hreflang tag and a geo/region meta targeting ${country}","note":"1–2 lines on where to paste it on their own site"},"distribution":[{"title":"short task name","where":"a real, specific ${country} directory, marketplace, or community","why":"one line on why it helps"}]}
+Give EXACTLY 3 items in distribution.`;
+}
+
+// Turn a parsed plan into concrete country-tagged action rows (pure — unit-testable).
+// Every task carries market/marketName/marketFlag so Approvals can group them on one tab.
+function buildMarketTasks({ plan, name, host, co, keyword, expId, writeLang }) {
+  if (!plan || typeof plan !== "object") return [];
+  const tasks = [];
+  const base = { market: co.code, marketName: co.name, marketFlag: flagEmoji(co.iso2), experimentId: expId, writeLang };
+  const L = plan.landing;
+  if (L && L.title && L.body) {
+    tasks.push({
+      type: "article", priority: "high",
+      title: `${co.name}: ${String(L.title).slice(0, 80)}`,
+      payload: { ...base, title: String(L.title), metaTitle: String(L.metaTitle || L.title).slice(0, 60), metaDescription: String(L.metaDescription || "").slice(0, 200), slug: slugify(L.slug || `${keyword}-${co.code}`), body: String(L.body), targetKeyword: keyword, rationale: `The anchor page for your ${co.name} market test — a locally-relevant answer page aimed at buyers there. Publishes to your own blog through the normal approve → publish flow.` },
+      target: { platform: "website", host, market: co.code },
+    });
+  }
+  const S = plan.social;
+  if (S && S.text) {
+    const platform = String(S.platform || "linkedin").toLowerCase();
+    tasks.push({
+      type: "social_post", priority: "strategic",
+      title: `${co.name}: intro post`,
+      payload: { ...base, platform, text: String(S.text), targetKeyword: keyword, rationale: `A ready-to-post caption introducing you to ${co.name}. Draft-and-you-post — Genie never auto-posts to your social accounts.` },
+      target: { channel: platform, market: co.code },
+    });
+  }
+  const E = plan.email;
+  if (E && E.body) {
+    tasks.push({
+      type: "outreach_email", priority: "strategic",
+      title: `${co.name}: local outreach email`,
+      payload: { ...base, subject: String(E.subject || `Partner with ${name} in ${co.name}`).slice(0, 120), body: String(E.body), text: String(E.body), audience: String(E.audience || ""), rationale: `Reach a local partner, blogger, or community in ${co.name}${E.audience ? ` (${String(E.audience).slice(0, 80)})` : ""}. Draft-and-you-send.` },
+      target: { market: co.code },
+    });
+  }
+  const Q = plan.localSeo;
+  if (Q && Q.snippet) {
+    tasks.push({
+      type: "seo_fix", priority: "strategic",
+      title: `${co.name}: local visibility snippet`,
+      payload: { ...base, title: String(Q.title || "Local visibility setup"), body: `\`\`\`html\n${String(Q.snippet)}\n\`\`\`\n\n${String(Q.note || "")}`.trim(), text: String(Q.snippet), copyPaste: true, rationale: `Copy-paste hreflang + geo signals so ${co.name} searchers find your page. Genie recommends — you (or your dev) paste it on your own site. Genie never edits your site.` },
+      target: { market: co.code },
+    });
+  }
+  (Array.isArray(plan.distribution) ? plan.distribution.slice(0, 3) : []).forEach((d) => {
+    if (!d || !(d.title || d.where)) return;
+    const bodyParts = [];
+    if (d.where) bodyParts.push(`**Where:** ${d.where}`);
+    if (d.why) bodyParts.push(`**Why:** ${d.why}`);
+    tasks.push({
+      type: "distribution", priority: "strategic",
+      title: `${co.name}: ${String(d.title || d.where).slice(0, 70)}`,
+      payload: { ...base, body: bodyParts.join("\n\n") || String(d.title), text: String(d.where || d.title), rationale: `A local placement in ${co.name} to get your page seen faster.` },
+      target: { market: co.code },
+    });
+  });
+  return tasks;
 }
 
 export async function POST(req) {
@@ -159,9 +230,10 @@ export async function POST(req) {
   if (row.englishTest) return jres({ ok: false, needsConfirm: true, error: `${co.name} is an English-test market — English isn't its first language. Confirm you're OK selling in English there (toggle it in Eligibility), or pick a market where you already get English search traffic.` }, 400);
   const writeLang = row.supportsLang && co.lang !== "en" ? co.lang : "en";
   const keyword = ctx.keyword || co.name;
-  const plan = [`Localized landing page for ${co.name}`, "3–5 useful local content pieces", "Local CTA + payment/delivery clarity", "One conversion goal (leads / sales)"];
-  const goal = `First qualified leads from ${co.name} within ~${row.days || 60} days`;
-  const expPayload = { code, name: co.name, flag: flagEmoji(co.iso2), lang: co.lang, writeLang, difficulty: row.difficulty || "Medium", days: row.days || 60, expTraffic: row.expTraffic || null, expSalesLow: row.expSalesLow ?? null, expSalesHigh: row.expSalesHigh ?? null, goal, plan, startedAt: new Date().toISOString(), draftStatus: "pending", articleActionId: null };
+  const days = row.days || 60;
+  const plan = ["Localized landing page", "Local intro post", "Local outreach email", "Copy-paste local-SEO snippet", "A few local placements"];
+  const goal = `First qualified leads from ${co.name} within ~${days} days`;
+  const expPayload = { code, name: co.name, flag: flagEmoji(co.iso2), lang: co.lang, writeLang, difficulty: row.difficulty || "Medium", days, expTraffic: row.expTraffic || null, expSalesLow: row.expSalesLow ?? null, expSalesHigh: row.expSalesHigh ?? null, goal, plan, startedAt: new Date().toISOString(), draftStatus: "pending", articleActionId: null, taskCount: 0 };
 
   // 1) persist the experiment first (so it exists even if the AI hiccups)
   let expId = null;
@@ -170,25 +242,42 @@ export async function POST(req) {
     expId = expRow?.id || null;
   } catch (e) { return jres({ ok: false, error: "Couldn't start that experiment. Try again." }, 500); }
 
-  // 2) draft ONE real, locally-relevant page → lands in Approvals as a proposed article
-  let articleActionId = null, draftStatus = "pending", aiError = null;
+  // 2) draft the country-specific KIT in ONE AI call. Each piece becomes its own
+  //    proposed action tagged with this country → Approvals groups them on one tab.
+  let planJson = null, aiError = null;
   try {
-    const result = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Write genuinely useful, specific content — never generic filler. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3600, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
-    const d = result?.json;
-    if (d && d.title && d.body) {
-      const artPayload = { title: String(d.title), metaTitle: String(d.metaTitle || d.title).slice(0, 60), metaDescription: String(d.metaDescription || "").slice(0, 200), slug: slugify(d.slug || `${keyword}-${co.code}`), body: String(d.body), targetKeyword: keyword, market: co.code, marketName: co.name, experimentId: expId };
-      const { data: art } = await supabase.from("actions").insert({ user_id: user.id, type: "article", title: `${co.name}: ${String(d.title).slice(0, 80)}`, priority: "strategic", status: "proposed", payload: artPayload, target: { platform: "website", host: ctx.host, market: co.code } }).select("id").maybeSingle();
-      articleActionId = art?.id || null;
-      draftStatus = articleActionId ? "drafted" : "pending";
-    }
+    const result = await callAI({ system: "You are Genie, an expert multilingual SEO/AEO marketer. Write genuinely useful, specific, locally-relevant content — never generic filler. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 4200, temperature: 0.7, prompt: marketPlanPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
+    planJson = result?.json || null;
   } catch (e) { aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
 
-  if (expId) { try { await supabase.from("actions").update({ payload: { ...expPayload, articleActionId, draftStatus } }).eq("id", expId).eq("user_id", user.id); } catch {} }
+  let tasks = buildMarketTasks({ plan: planJson, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang });
+  // Graceful fallback: always guarantee at least the anchor landing page.
+  if (!tasks.some((t) => t.type === "article")) {
+    try {
+      const r2 = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3200, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
+      if (r2?.json?.title && r2?.json?.body) tasks = [...buildMarketTasks({ plan: { landing: r2.json }, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang }), ...tasks];
+    } catch (e) { if (!aiError) aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
+  }
+
+  // 3) insert every kit task as a normal proposed action (country-tagged)
+  let inserted = [];
+  if (tasks.length) {
+    try {
+      const rows = tasks.map((t) => ({ user_id: user.id, type: t.type, status: "proposed", title: t.title, priority: t.priority, payload: t.payload, target: t.target }));
+      const { data } = await supabase.from("actions").insert(rows).select("id, type, title");
+      inserted = data || [];
+    } catch {}
+  }
+  const articleActionId = inserted.find((r) => r.type === "article")?.id || null;
+  const draftStatus = articleActionId ? "drafted" : "pending";
+  const tasksAdded = inserted.length;
+
+  if (expId) { try { await supabase.from("actions").update({ payload: { ...expPayload, articleActionId, draftStatus, taskCount: tasksAdded } }).eq("id", expId).eq("user_id", user.id); } catch {} }
 
   try {
     const { logActivity } = await import("@/lib/activity");
-    await logActivity(supabase, user.id, { host: ctx.host, verb: "expanding", icon: "🌍", message: `Started a ${co.name} market experiment${articleActionId ? " — drafted a localized page" : ""}`, detail: articleActionId ? "Review the draft in Approvals." : "Genie will draft the localized page shortly.", meta: { market: co.code } });
+    await logActivity(supabase, user.id, { host: ctx.host, verb: "expanding", icon: "🌍", message: `Started a ${co.name} market test${tasksAdded ? ` — added ${tasksAdded} ${co.name}-specific ${tasksAdded === 1 ? "task" : "tasks"} to Approvals` : ""}`, detail: tasksAdded ? "Review them in Approvals — they're tagged by country." : "Genie will add the country tasks shortly.", meta: { market: co.code } });
   } catch {}
 
-  return jres({ ok: true, id: expId, draftStatus, articleActionId, aiError });
+  return jres({ ok: true, id: expId, draftStatus, tasksAdded, tasks: inserted.map((r) => ({ kind: r.type, title: r.title })), country: co.name, flag: flagEmoji(co.iso2), aiError });
 }
