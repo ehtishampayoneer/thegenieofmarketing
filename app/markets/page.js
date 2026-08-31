@@ -1,10 +1,11 @@
 "use client";
 
-// ── MARKET EXPANSION ── a visual scoreboard of serve-able, low-competition countries +
-// the live experiments you've launched. Honest: Search Console numbers are Verified, the
-// rest are Estimated projections; local-only businesses are gated; progress only moves on
-// real draft status + real per-country traction. "Target" drafts a localized page into
-// Approvals and starts a tracked 30-day experiment — Genie never edits your own site.
+// ── MARKET EXPANSION ── a visual scoreboard of serve-able, low-competition countries + the
+// experiments you launch. HONEST by design: Search Console numbers are Verified; the rest
+// are Estimated projections (sales shown as an est. range with an assumed conversion);
+// eligibility (language/delivery/payment/restrictions) is stored and gates markets out;
+// English-only drafts are blocked for markets that need local-language content. Progress =
+// SEARCH progress only — lead/revenue country attribution is the next phase (not claimed here).
 
 import { useEffect, useMemo, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
@@ -20,19 +21,23 @@ const DIFF = {
 const CONF = { verified: { c: "var(--signal-live-ink)", label: "Verified" }, estimated: { c: "var(--accent-ink)", label: "Estimated" }, insufficient: { c: "var(--fg-subtle)", label: "No data" } };
 const DRAFT = { pending: { label: "Drafting…", c: "var(--fg-subtle)" }, drafted: { label: "Draft in Approvals", c: "var(--accent-ink)" }, published: { label: "Live", c: "var(--signal-live-ink)" } };
 const BUCKETS = [{ id: "all", label: "All markets" }, { id: "emerging", label: "Already emerging" }, { id: "ready", label: "Ready to test" }];
+const LANGS = [["en", "English"], ["es", "Spanish"], ["pt", "Portuguese"], ["de", "German"], ["fr", "French"], ["ar", "Arabic"], ["pl", "Polish"], ["tr", "Turkish"], ["it", "Italian"], ["nl", "Dutch"], ["id", "Indonesian"]];
+const REGIONS = ["N. America", "Europe", "LatAm", "Asia", "Africa", "Middle East", "Oceania", "Caucasus"];
 const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n ?? 0));
+const salesRange = (r) => (r.expSalesLow === r.expSalesHigh ? `${r.expSalesLow}` : `${fmt(r.expSalesLow)}–${fmt(r.expSalesHigh)}`);
 
 export default function MarketsPage() {
   const [data, setData] = useState(null);
   const [state, setState] = useState("loading");
   const [tab, setTab] = useState("all");
-  const [reach, setReach] = useState("global");
   const [openId, setOpenId] = useState(null);
   const [targeting, setTargeting] = useState("");
+  const [tgtErr, setTgtErr] = useState(null); // {code, msg}
+  const [editing, setEditing] = useState(false);
 
-  async function load(r = reach) {
+  async function load() {
     try {
-      const j = await fetch(`/api/markets?reach=${encodeURIComponent(r)}&langs=en`, { cache: "no-store" }).then((x) => x.json());
+      const j = await fetch(`/api/markets`, { cache: "no-store" }).then((x) => x.json());
       if (!j.ok) { setState(j.reason === "not_authenticated" ? "auth" : "error"); return; }
       setData(j); setState("done");
     } catch { setState("error"); }
@@ -47,12 +52,20 @@ export default function MarketsPage() {
   }, [data, tab]);
   const emergingCount = (data?.rows || []).filter((r) => r.bucket === "emerging").length;
 
+  async function saveProfile(profile) {
+    setState("loading"); setEditing(false);
+    try { await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "profile", profile }) }); } catch {}
+    await load();
+  }
   async function target(code) {
     if (targeting) return;
-    setTargeting(code);
-    try { await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }); await load(); }
-    catch {}
-    setTargeting(""); setOpenId(null);
+    setTargeting(code); setTgtErr(null);
+    try {
+      const j = await fetch("/api/markets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }).then((r) => r.json());
+      if (!j.ok) { setTgtErr({ code, msg: j.error || "Couldn't start that experiment." }); setTargeting(""); return; }
+      await load(); setOpenId(null);
+    } catch { setTgtErr({ code, msg: "Couldn't start that experiment. Try again." }); }
+    setTargeting("");
   }
   async function stop(id) {
     if (!window.confirm("Stop this market experiment? Any draft it created stays in Approvals.")) return;
@@ -62,22 +75,20 @@ export default function MarketsPage() {
   return (
     <OperatorShell active="markets">
       <OperatorHeader icon={Icon.globe} label="Market Expansion" title="Your next" accent="markets."
-        kicker="Countries you can actually serve where demand is real and competition is thin — ranked, with projected traffic, sales and how long each takes to win." />
+        kicker="Countries you can actually serve where demand is real and competition is thin — ranked, with projected search traffic, estimated sales and how long each takes to win." />
 
-      <Card className="p-4 mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <p className="text-[12.5px] flex items-start gap-2" style={{ color: "var(--fg-muted)", maxWidth: "62ch" }}>
+      {/* honesty note */}
+      <Card className="p-4 mt-5">
+        <p className="text-[12.5px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}>
           <Icon.info size={14} style={{ color: "var(--accent-ink)", marginTop: 2, flexShrink: 0 }} />
-          <span><b style={{ color: "var(--fg)" }}>Verified</b> numbers come from your Search Console; the rest are <b style={{ color: "var(--fg)" }}>estimates</b> from market data — direction, not promises.{data && !data.hasGsc && " Connect Search Console to verify the countries you already reach."}</span>
+          <span><b style={{ color: "var(--fg)" }}>Verified</b> = from your Search Console. <b style={{ color: "var(--fg)" }}>Estimated</b> = market-model projections (sales are a range at an assumed conversion) — direction, not promises. Progress tracks <b style={{ color: "var(--fg)" }}>search visibility</b> only; lead & revenue by country is the next phase.{data && !data.hasGsc && " Connect Search Console to verify countries you already reach."}</span>
         </p>
-        <label className="flex items-center gap-2 shrink-0 text-[12.5px]" style={{ color: "var(--fg-muted)" }}>
-          I can serve
-          <select value={reach} onChange={(e) => { setReach(e.target.value); setState("loading"); load(e.target.value); }} className="mg-filter" style={{ cursor: "pointer" }}>
-            <option value="global">customers anywhere</option>
-            <option value="regions">select regions</option>
-            <option value="local">only my area</option>
-          </select>
-        </label>
       </Card>
+
+      {/* eligibility (stored, hard gates) */}
+      {state === "done" && data?.profile && (
+        <EligibilityCard profile={data.profile} editing={editing} onEdit={() => setEditing(true)} onCancel={() => setEditing(false)} onSave={saveProfile} />
+      )}
 
       {state === "loading" && <div className="mt-5 mg-surface p-10 text-center text-[13px] mg-subtle">Finding your best markets…</div>}
       {state === "auth" && <div className="mt-5 mg-surface p-10 text-center text-[13px] mg-subtle">Sign in to see your market expansion opportunities.</div>}
@@ -87,15 +98,14 @@ export default function MarketsPage() {
         <Card className="mt-5 p-6 flex items-start gap-3">
           <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}><Icon.globe size={19} /></span>
           <div>
-            <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your business looks local-only</p>
-            <p className="text-[13px] mt-1" style={{ color: "var(--fg-muted)", maxWidth: "60ch" }}>Expanding into other countries only pays off if you can actually serve them. If you can sell remotely or ship, switch “I can serve” to <b>customers anywhere</b> above and Genie will find your best markets.</p>
+            <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your delivery is set to “only my area”</p>
+            <p className="text-[13px] mt-1" style={{ color: "var(--fg-muted)", maxWidth: "60ch" }}>Expanding into other countries only pays off if you can serve them. If you can sell remotely or ship, change delivery above and Genie will find your best markets.</p>
           </div>
         </Card>
       )}
 
       {state === "done" && !data?.localOnly && (
         <div className="mt-5 flex flex-col gap-6">
-          {/* ACTIVE EXPERIMENTS */}
           {data.experiments?.length > 0 && (
             <div>
               <p className="mg-klabel mb-3">Active experiments · {data.experiments.length}</p>
@@ -105,7 +115,6 @@ export default function MarketsPage() {
             </div>
           )}
 
-          {/* SCOREBOARD */}
           <div>
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               {BUCKETS.map((b) => (
@@ -115,11 +124,11 @@ export default function MarketsPage() {
               ))}
             </div>
             <div className="hidden lg:grid px-4 pb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ gridTemplateColumns: "2.4fr 1fr 1fr 1fr 1.4fr", gap: 16, color: "var(--fg-subtle)" }}>
-              <span>Country</span><span>Difficulty</span><span className="text-right">Traffic / mo</span><span className="text-right">Sales / mo</span><span>Time · progress</span>
+              <span>Country</span><span>Difficulty</span><span className="text-right">Search traffic/mo</span><span className="text-right">Sales/mo · est.</span><span>Time · progress</span>
             </div>
             <div className="flex flex-col gap-2.5">
-              {rows.map((r) => <MarketRow key={r.code} r={r} exp={expByCode[r.code]} open={openId === r.code} onToggle={() => setOpenId(openId === r.code ? null : r.code)} onTarget={() => target(r.code)} targeting={targeting === r.code} />)}
-              {rows.length === 0 && <p className="text-[13px] mg-subtle text-center py-8">No markets in this view yet.</p>}
+              {rows.map((r) => <MarketRow key={r.code} r={r} exp={expByCode[r.code]} open={openId === r.code} onToggle={() => setOpenId(openId === r.code ? null : r.code)} onTarget={() => target(r.code)} targeting={targeting === r.code} err={tgtErr?.code === r.code ? tgtErr.msg : ""} />)}
+              {rows.length === 0 && <p className="text-[13px] mg-subtle text-center py-8">No eligible markets in this view. Widen your delivery or languages above.</p>}
             </div>
           </div>
         </div>
@@ -128,8 +137,58 @@ export default function MarketsPage() {
   );
 }
 
+function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
+  const [delivery, setDelivery] = useState(profile.delivery || "anywhere");
+  const [languages, setLanguages] = useState(profile.languages || ["en"]);
+  const [regions, setRegions] = useState(profile.regions || []);
+  const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  const langNames = (profile.languages || ["en"]).map((c) => (LANGS.find((l) => l[0] === c)?.[1] || c)).join(", ");
+  const deliveryLabel = { anywhere: "customers anywhere", regions: `regions: ${(profile.regions || []).join(", ") || "none set"}`, local: "only my area" }[profile.delivery || "anywhere"];
+
+  if (!editing) return (
+    <Card className="p-4 mt-4 flex items-center justify-between gap-3 flex-wrap">
+      <p className="text-[12.5px]" style={{ color: "var(--fg-muted)" }}>
+        <b style={{ color: "var(--fg)" }}>Eligibility</b> · Serve: {deliveryLabel} · Content languages: {langNames}
+      </p>
+      <button onClick={onEdit} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12 }}>Edit</button>
+    </Card>
+  );
+  return (
+    <Card className="p-5 mt-4">
+      <p className="mg-klabel mb-3">Your eligibility · hard gates</p>
+      <div className="flex flex-col gap-4">
+        <div>
+          <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>I can serve / deliver to</p>
+          <div className="flex gap-2 flex-wrap">
+            {[["anywhere", "Customers anywhere"], ["regions", "Certain regions"], ["local", "Only my area"]].map(([v, l]) => (
+              <button key={v} onClick={() => setDelivery(v)} className="mg-focus" style={chip(delivery === v)}>{l}</button>
+            ))}
+          </div>
+        </div>
+        {delivery === "regions" && (
+          <div>
+            <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Which regions</p>
+            <div className="flex gap-2 flex-wrap">{REGIONS.map((r) => <button key={r} onClick={() => toggle(regions, setRegions, r)} className="mg-focus" style={chip(regions.includes(r))}>{r}</button>)}</div>
+          </div>
+        )}
+        <div>
+          <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Languages I can produce content in</p>
+          <div className="flex gap-2 flex-wrap">{LANGS.map(([c, l]) => <button key={c} onClick={() => toggle(languages, setLanguages, c)} className="mg-focus" style={chip(languages.includes(c))}>{l}</button>)}</div>
+          <p className="text-[11.5px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Markets that need a language you don't produce won't be auto-drafted in English (that would be thin content).</p>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2">
+        <button onClick={() => onSave({ ...profile, delivery, languages: languages.length ? languages : ["en"], regions })} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Save eligibility</button>
+        <button onClick={onCancel} className="mg-btn mg-btn--quiet" style={{ fontSize: 13 }}>Cancel</button>
+      </div>
+    </Card>
+  );
+}
+const chip = (on) => ({ fontSize: 12.5, fontWeight: 600, padding: ".38rem .7rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${on ? "var(--accent)" : "var(--border-strong)"}`, background: on ? "var(--accent-quiet)" : "var(--surface)", color: on ? "var(--accent-ink)" : "var(--fg-muted)" });
+
 function ExperimentCard({ e, onStop }) {
   const ds = DRAFT[e.draftStatus] || DRAFT.pending;
+  const t = e.searchTraction;
   return (
     <Card className="p-5">
       <div className="flex items-start gap-3">
@@ -142,7 +201,7 @@ function ExperimentCard({ e, onStop }) {
       </div>
       <div className="mt-3">
         <div className="flex items-center justify-between text-[11.5px] mb-1">
-          <span style={{ color: "var(--fg-muted)" }}>Progress</span>
+          <span style={{ color: "var(--fg-muted)" }}>Search progress</span>
           <span className="mg-num" style={{ color: "var(--signal-live-ink)" }}>{e.progress}%</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
@@ -151,15 +210,15 @@ function ExperimentCard({ e, onStop }) {
       </div>
       <div className="mt-3 flex items-center gap-3 flex-wrap text-[12px]">
         <span className="inline-flex items-center gap-1.5" style={{ color: ds.c }}><Icon.write size={13} /> {ds.label}</span>
-        {e.traction && <span className="inline-flex items-center gap-1.5 mg-num" style={{ color: "var(--fg-muted)" }}><Icon.growth size={13} /> {e.traction.impressions} impr · {e.traction.clicks} clicks</span>}
-        {!e.traction && <span className="mg-num" style={{ color: "var(--fg-subtle)" }}>No traction data yet</span>}
+        {t ? <span className="inline-flex items-center gap-1.5 mg-num" style={{ color: "var(--fg-muted)" }}><Icon.search size={13} /> {t.impressions} impr · {t.clicks} clicks</span> : <span className="mg-num" style={{ color: "var(--fg-subtle)" }}>No search data yet</span>}
       </div>
-      {e.draftStatus !== "pending" && <a href="/approvals" className="mt-3 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the draft in Approvals →</a>}
+      <p className="text-[11.5px] mt-2" style={{ color: "var(--fg-subtle)" }}>Outcome: awaiting results — lead/revenue tracking by country comes next, then a Scale / Refine / Pause call.</p>
+      {e.draftStatus !== "pending" && <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the draft in Approvals →</a>}
     </Card>
   );
 }
 
-function MarketRow({ r, exp, open, onToggle, onTarget, targeting }) {
+function MarketRow({ r, exp, open, onToggle, onTarget, targeting, err }) {
   const d = DIFF[r.difficulty] || DIFF.Medium;
   const conf = CONF[r.confidence] || CONF.estimated;
   return (
@@ -174,13 +233,14 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting }) {
                   {r.name}
                   <span title={conf.label} style={{ width: 7, height: 7, borderRadius: 999, background: conf.c, flexShrink: 0 }} />
                   {exp && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>Active</span>}
+                  {!exp && r.needsLocalLang && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}>Needs {r.langName}</span>}
                 </p>
                 <p className="text-[12px] leading-tight mt-0.5 truncate" style={{ color: "var(--fg-subtle)" }}>{r.region}{r.why[0] ? ` · ${r.why[0]}` : ""}</p>
               </div>
             </div>
             <div className="mt-2 lg:mt-0"><span className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ padding: ".3rem .6rem", borderRadius: 8, background: d.bg, color: d.c }}>{r.difficulty}</span></div>
-            <div className="hidden lg:flex flex-col items-end"><span className="mg-num text-[16px] font-bold" style={{ color: "var(--fg)" }}>{fmt(r.expTraffic)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>visitors</span></div>
-            <div className="hidden lg:flex flex-col items-end"><span className="mg-num text-[16px] font-bold" style={{ color: "var(--accent-ink)" }}>{fmt(r.expSales)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>sales</span></div>
+            <div className="hidden lg:flex flex-col items-end"><span className="mg-num text-[16px] font-bold" style={{ color: "var(--fg)" }}>{fmt(r.expTraffic)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>est. visitors</span></div>
+            <div className="hidden lg:flex flex-col items-end" title={`assumes ~${r.assumedConvPct}% visitor→sale`}><span className="mg-num text-[16px] font-bold" style={{ color: "var(--accent-ink)" }}>{salesRange(r)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>est. sales</span></div>
             <div className="mt-2.5 lg:mt-0">
               <div className="flex items-center justify-between text-[11.5px] mb-1">
                 <span className="mg-num" style={{ color: "var(--fg-muted)" }}>~{r.days} days</span>
@@ -192,8 +252,8 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting }) {
             </div>
           </div>
           <div className="lg:hidden flex items-center gap-4 mt-2">
-            <MiniStat icon={Icon.growth} v={fmt(r.expTraffic)} l="visitors/mo" />
-            <MiniStat icon={Icon.coins} v={fmt(r.expSales)} l="sales/mo" accent />
+            <MiniStat icon={Icon.search} v={fmt(r.expTraffic)} l="est. visitors/mo" />
+            <MiniStat icon={Icon.coins} v={salesRange(r)} l="est. sales/mo" accent />
           </div>
         </div>
       </button>
@@ -206,14 +266,19 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting }) {
             <Fact l="Opportunity" v={`${r.opp}/100`} /><Fact l="Competition gap" v={`${r.gap}/100`} /><Fact l="Business fit" v={`${r.fit}/100`} /><Fact l="Confidence" v={CONF[r.confidence].label} />
           </div>
           <p className="text-[13px] mt-4 leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-            <b style={{ color: "var(--fg)" }}>The 30-day play:</b> Genie drafts a locally-relevant landing page for {r.name} (into Approvals), plus a few useful local pieces and a clear CTA + payment/delivery. Validate leads and replies first; organic ranking compounds over 60–90 days.
+            <b style={{ color: "var(--fg)" }}>The 30-day play:</b> Genie drafts a locally-relevant landing page for {r.name} (into Approvals){r.supportsLang && r.lang !== "en" ? ` in ${r.langName}` : ""}, plus a few useful local pieces and a clear CTA + payment/delivery. Validate leads and replies first; organic ranking compounds over 60–90 days.
           </p>
           {exp ? (
             <p className="mt-3 text-[13px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>✓ Experiment running — see “Active experiments” above.</p>
+          ) : r.needsLocalLang ? (
+            <p className="mt-3 text-[13px]" style={{ color: "var(--signal-warn)" }}>Needs <b>{r.langName}</b> content to reach the mainstream — add {r.langName} in Eligibility to target this market (an English-only page would be thin).</p>
           ) : (
-            <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
-              {targeting ? <>Drafting your {r.name} page… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.target size={15} /> Target this market →</>}
-            </button>
+            <>
+              <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
+                {targeting ? <>Drafting your {r.name} page… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.target size={15} /> Target this market →</>}
+              </button>
+              {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+            </>
           )}
         </div>
       )}
