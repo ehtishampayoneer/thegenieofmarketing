@@ -14,6 +14,7 @@ import { ENTITY_TYPES } from "@/lib/entity";
 import { getGscCountries } from "@/lib/gsc";
 import { getValidAccessToken } from "@/lib/google";
 import { scoreMarkets, COUNTRIES, flagEmoji } from "@/lib/markets";
+import { pickPostImage } from "@/lib/media";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 
 export const runtime = "nodejs";
@@ -120,22 +121,26 @@ function marketPlanPrompt({ name, country, keyword, host, language = "en" }) {
     : `Write everything natively and fluently in ${language.toUpperCase()} (the local language of ${country}) — natural, not machine-translated, for a local reader.`;
   return `You are building a focused market-test kit for "${name}"${host ? ` (${host})` : ""} to win buyers in ${country} who search for "${kw}". ${langLine} Be specific and genuinely useful — no generic filler, no fluff. Reference real ${country} context and mention that ${name} serves customers there.
 Return ONLY valid JSON (no markdown fences) with EXACTLY these keys:
-{"landing":{"title":"compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case","body":"650–950 word markdown article with ## subheadings, ending with a 2–3 question FAQ that real buyers in ${country} would ask, each answered"},"social":{"platform":"linkedin","text":"a ready-to-post caption, max ~90 words, introducing ${name} to ${country}, with 2–3 relevant local hashtags"},"email":{"subject":"<=60 chars","body":"a 140–190 word outreach email to a local partner, blogger, or community in ${country}","audience":"one line: who to send this to"},"localSeo":{"title":"Local visibility setup","snippet":"copy-paste HTML: an hreflang tag and a geo/region meta targeting ${country}","note":"1–2 lines on where to paste it on their own site"},"distribution":[{"title":"short task name","where":"a real, specific ${country} directory, marketplace, or community","why":"one line on why it helps"}]}
+{"landing":{"title":"compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case","body":"650–950 word markdown article with ## subheadings, ending with a 2–3 question FAQ that real buyers in ${country} would ask, each answered"},"social":{"platform":"linkedin","hook":"a punchy 4–8 word hook to overlay on the post image (plain text, no hashtags, no emoji)","text":"a ready-to-post caption, max ~90 words, introducing ${name} to ${country}, with 2–3 relevant local hashtags"},"email":{"subject":"<=60 chars","body":"a 140–190 word outreach email to a local partner, blogger, or community in ${country}","audience":"one line: who to send this to"},"localSeo":{"title":"Local visibility setup","snippet":"copy-paste HTML: an hreflang tag and a geo/region meta targeting ${country}","note":"1–2 lines on where to paste it on their own site"},"distribution":[{"title":"short task name","where":"a real, specific ${country} directory, marketplace, or community","why":"one line on why it helps"}]}
 Give EXACTLY 3 items in distribution.`;
 }
 
 // Turn a parsed plan into concrete country-tagged action rows (pure — unit-testable).
 // Every task carries market/marketName/marketFlag so Approvals can group them on one tab.
-function buildMarketTasks({ plan, name, host, co, keyword, expId, writeLang }) {
+function buildMarketTasks({ plan, name, host, co, keyword, expId, writeLang, hero = null, socialCardUrl = null }) {
   if (!plan || typeof plan !== "object") return [];
   const tasks = [];
   const base = { market: co.code, marketName: co.name, marketFlag: flagEmoji(co.iso2), experimentId: expId, writeLang };
+  // Same on-brand imagery system as global content: real photo hero on the article,
+  // a designed branded card on the social post. Text-only only if none was found.
+  const heroFields = hero ? { heroImage: hero.url, heroImageAlt: hero.alt, imageSource: hero.source, imageCredit: hero.credit } : {};
+  const socialImgFields = hero ? { image: socialCardUrl || hero.url, imageRaw: hero.url, imageAlt: hero.alt, imageSource: hero.source, imageCredit: hero.credit, branded: !!socialCardUrl } : {};
   const L = plan.landing;
   if (L && L.title && L.body) {
     tasks.push({
       type: "article", priority: "high",
       title: `${co.name}: ${String(L.title).slice(0, 80)}`,
-      payload: { ...base, title: String(L.title), metaTitle: String(L.metaTitle || L.title).slice(0, 60), metaDescription: String(L.metaDescription || "").slice(0, 200), slug: slugify(L.slug || `${keyword}-${co.code}`), body: String(L.body), targetKeyword: keyword, rationale: `The anchor page for your ${co.name} market test — a locally-relevant answer page aimed at buyers there. Publishes to your own blog through the normal approve → publish flow.` },
+      payload: { ...base, ...heroFields, title: String(L.title), metaTitle: String(L.metaTitle || L.title).slice(0, 60), metaDescription: String(L.metaDescription || "").slice(0, 200), slug: slugify(L.slug || `${keyword}-${co.code}`), body: String(L.body), targetKeyword: keyword, rationale: `The anchor page for your ${co.name} market test — a locally-relevant answer page aimed at buyers there. Publishes to your own blog through the normal approve → publish flow.` },
       target: { platform: "website", host, market: co.code },
     });
   }
@@ -145,7 +150,7 @@ function buildMarketTasks({ plan, name, host, co, keyword, expId, writeLang }) {
     tasks.push({
       type: "social_post", priority: "strategic",
       title: `${co.name}: intro post`,
-      payload: { ...base, platform, text: String(S.text), targetKeyword: keyword, rationale: `A ready-to-post caption introducing you to ${co.name}. Draft-and-you-post — Genie never auto-posts to your social accounts.` },
+      payload: { ...base, ...socialImgFields, platform, text: String(S.text), targetKeyword: keyword, rationale: `A ready-to-post caption introducing you to ${co.name}. Draft-and-you-post — Genie never auto-posts to your social accounts.` },
       target: { channel: platform, market: co.code },
     });
   }
@@ -242,6 +247,11 @@ export async function POST(req) {
     expId = expRow?.id || null;
   } catch (e) { return jres({ ok: false, error: "Couldn't start that experiment. Try again." }, 500); }
 
+  // On-brand imagery, fetched in PARALLEL with the AI draft (same system as global
+  // content: the business's own photos first, then free stock). Topic is keyword-based
+  // so it doesn't wait on the plan. Best-effort — never blocks the kit.
+  const heroPromise = pickPostImage({ topic: keyword || co.name, siteUrl: ctx.host }).catch(() => null);
+
   // 2) draft the country-specific KIT in ONE AI call. Each piece becomes its own
   //    proposed action tagged with this country → Approvals groups them on one tab.
   let planJson = null, aiError = null;
@@ -250,12 +260,31 @@ export async function POST(req) {
     planJson = result?.json || null;
   } catch (e) { aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
 
-  let tasks = buildMarketTasks({ plan: planJson, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang });
+  // resolve imagery + compose the branded social card (a designed photo card via /api/card)
+  const hero = await heroPromise;
+  let socialCardUrl = null;
+  if (hero) {
+    try {
+      const appOrigin = (() => { try { return new URL(req.url).origin; } catch { return process.env.NEXT_PUBLIC_APP_URL || ""; } })();
+      const bizName = ctx.ai?.businessName || String(ctx.host || "").replace(/^www\./, "").replace(/\..*$/, "");
+      const handle = "@" + String(bizName || "brand").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 20);
+      const headline = String(planJson?.social?.hook || planJson?.landing?.title || keyword || co.name).slice(0, 90);
+      if (appOrigin) {
+        const u = new URL("/api/card", appOrigin);
+        u.searchParams.set("img", hero.url); u.searchParams.set("title", headline); u.searchParams.set("name", bizName || ""); u.searchParams.set("handle", handle);
+        if (ctx.ai?.brandColor) u.searchParams.set("brand", ctx.ai.brandColor);
+        u.searchParams.set("ratio", "square");
+        socialCardUrl = u.href;
+      }
+    } catch {}
+  }
+
+  let tasks = buildMarketTasks({ plan: planJson, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang, hero, socialCardUrl });
   // Graceful fallback: always guarantee at least the anchor landing page.
   if (!tasks.some((t) => t.type === "article")) {
     try {
       const r2 = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3200, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
-      if (r2?.json?.title && r2?.json?.body) tasks = [...buildMarketTasks({ plan: { landing: r2.json }, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang }), ...tasks];
+      if (r2?.json?.title && r2?.json?.body) tasks = [...buildMarketTasks({ plan: { landing: r2.json }, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang, hero, socialCardUrl }), ...tasks];
     } catch (e) { if (!aiError) aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
   }
 

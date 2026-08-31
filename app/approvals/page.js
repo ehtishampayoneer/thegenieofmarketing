@@ -66,7 +66,7 @@ function matchesMarket(it, f) { if (f === "all") return true; if (f === "global"
 // Helpers for editing a branded card's overlay hook + underlying photo in place.
 function isCardUrl(u) { try { return new URL(u, location.origin).pathname.endsWith("/api/card"); } catch { return false; } }
 function cardTitleOf(u) { try { const x = new URL(u, location.origin); return x.pathname.endsWith("/api/card") ? (x.searchParams.get("title") || "") : ""; } catch { return ""; } }
-function rebuildCard(u, { title, img }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) x.searchParams.set("img", img); return x.href; } catch { return u; } }
+function rebuildCard(u, { title, img, focus }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) x.searchParams.set("img", img); if (focus != null) x.searchParams.set("focus", String(focus)); return x.href; } catch { return u; } }
 
 export default function ApprovalsPage() {
   const { data: feed, state } = useLive("/api/approvals", (j) => !(j.items?.length));
@@ -90,6 +90,7 @@ export default function ApprovalsPage() {
   const [editImage, setEditImage] = useState(null);
   const [editImageRaw, setEditImageRaw] = useState(null);
   const [editBranded, setEditBranded] = useState(false);
+  const [editFocus, setEditFocus] = useState(50); // vertical image framing 0–100 (top→bottom)
   const [editSource, setEditSource] = useState(null);
   const [editCredit, setEditCredit] = useState(null);
   const [swapOpen, setSwapOpen] = useState(false);
@@ -209,6 +210,7 @@ export default function ApprovalsPage() {
     setEditImage(cur.image || null);
     setEditImageRaw(cur.imageBranded ? (cur.imageRaw || null) : (cur.image || null));
     setEditBranded(!!cur.imageBranded);
+    setEditFocus(Number.isFinite(cur.imageFocus) ? cur.imageFocus : 50);
     setEditSource(cur.imageSource || null);
     setEditCredit(cur.imageCredit || null);
     setEditHook(cur.imageBranded ? (cardTitleOf(cur.image) || cur.cardHeadline || "") : "");
@@ -216,6 +218,9 @@ export default function ApprovalsPage() {
     setEditing(true);
   }
   function onSetHook(v) { setEditHook(v); setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { title: v }) : img); }
+  // Vertical framing: for a designed card, re-render the card with the new focus; for a
+  // raw photo, the object-position on the preview <img> does the reframing.
+  function onSetFocus(v) { const f = Math.max(0, Math.min(100, Number(v) || 0)); setEditFocus(f); setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { focus: f }) : img); }
   async function openSwap(topic) {
     const next = !swapOpen; setSwapOpen(next);
     if (next && swapOpts.length === 0) {
@@ -248,8 +253,8 @@ export default function ApprovalsPage() {
     setSwapLoading(false);
   }
   async function persistEdits(cur) {
-    try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cur.id, source: cur.source, act: "edit", draft: editDraft, image: editImage, imageRaw: editImageRaw, hook: editHook, imageSource: editSource, imageCredit: editCredit, branded: editBranded }) }); } catch {}
-    setItems((prev) => prev.map((it) => it.id === cur.id ? { ...it, draft: editDraft, image: editImage, imageRaw: editImageRaw, imageSource: editSource, imageCredit: editCredit, imageBranded: editBranded, cardHeadline: editHook } : it));
+    try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cur.id, source: cur.source, act: "edit", draft: editDraft, image: editImage, imageRaw: editImageRaw, hook: editHook, imageSource: editSource, imageCredit: editCredit, branded: editBranded, imageFocus: editFocus }) }); } catch {}
+    setItems((prev) => prev.map((it) => it.id === cur.id ? { ...it, draft: editDraft, image: editImage, imageRaw: editImageRaw, imageSource: editSource, imageCredit: editCredit, imageBranded: editBranded, imageFocus: editFocus, cardHeadline: editHook } : it));
   }
   async function saveEdit(cur, approveAfter) {
     await persistEdits(cur);
@@ -334,7 +339,7 @@ export default function ApprovalsPage() {
               editing={editing} editDraft={editDraft} setEditDraft={setEditDraft}
               onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); }}
               onApprove={approveCurrent} onSkip={skipCurrent} working={working}
-              edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, upload: uploadImage, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
+              edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, focus: editFocus, setFocus: onSetFocus, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, upload: uploadImage, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
               expandReason={expandReason} setExpandReason={setExpandReason}
               saved={saved.has(current.id)} onToggleSave={() => toggleSave(current.id)}
               openMore={openMenu === "more"} onToggleMore={() => setOpenMenu(openMenu === "more" ? null : "more")}
@@ -448,7 +453,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               </figure>
             ) : item.image && !editing && (
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
-                <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", background: "var(--surface-2)" }} />
+                <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", objectPosition: `50% ${item.imageFocus ?? 50}%`, background: "var(--surface-2)" }} />
                 <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
                   <span style={{ fontWeight: 700, color: (item.imageSource === "site" || item.imageSource === "upload") ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageBranded ? "Designed card" : item.imageSource === "upload" ? "Your upload" : item.imageSource === "site" ? "Your image" : "Free stock"}</span>
                   <span>· {item.imageBranded ? `built from ${item.imageSource === "site" ? "your photo" : "a free stock photo"}` : item.imageCredit}</span>
@@ -459,7 +464,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               <div className="flex flex-col gap-3">
                 {edit.image && (
                   <div>
-                    <img src={edit.image} alt="" style={{ display: "block", width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, border: "1px solid var(--hair)", background: "var(--surface-2)" }} />
+                    <img src={edit.image} alt="" style={{ display: "block", width: "100%", maxHeight: 220, objectFit: "cover", objectPosition: `50% ${edit.focus ?? 50}%`, borderRadius: 10, border: "1px solid var(--hair)", background: "var(--surface-2)" }} />
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <button type="button" onClick={edit.openSwap} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}><Icon.eye size={13} /> Swap photo</button>
                       <label className="mg-btn mg-btn--quiet" style={{ fontSize: 12, cursor: "pointer" }}>
@@ -469,6 +474,12 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                       {edit.branded && (
                         <input value={edit.hook} onChange={(e) => edit.setHook(e.target.value)} placeholder="Hook shown on the image" className="mg-field mg-focus" style={{ flex: 1, minWidth: 170, fontSize: 13 }} />
                       )}
+                    </div>
+                    {/* vertical framing — move the photo up/down so nothing important is cropped */}
+                    <div className="mt-2 flex items-center gap-2.5">
+                      <span className="text-[11px] font-semibold shrink-0" style={{ color: "var(--fg-muted)", minWidth: 52 }}>Framing</span>
+                      <input type="range" min="0" max="100" step="1" value={edit.focus ?? 50} onChange={(e) => edit.setFocus(e.target.value)} className="mg-focus" style={{ flex: 1, accentColor: "var(--accent)", cursor: "pointer" }} aria-label="Move image up or down within the frame" />
+                      <span className="text-[11px] mg-subtle shrink-0" style={{ minWidth: 52, textAlign: "right" }}>{(edit.focus ?? 50) <= 12 ? "Top" : (edit.focus ?? 50) >= 88 ? "Bottom" : "Center"}</span>
                     </div>
                     {edit.swapOpen && (
                       <div className="mt-2">

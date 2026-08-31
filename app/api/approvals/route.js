@@ -85,6 +85,7 @@ function normalizeAction(a) {
     imageSource: p.imageSource || null,
     imageCredit: p.imageCredit || null,
     imageBranded: !!p.branded,
+    imageFocus: Number.isFinite(Number(p.imageFocus)) ? Number(p.imageFocus) : 50,
     cardHeadline: p.cardHeadline || null,
     isRefresh: !!p.refresh,
     draft, why: p.rationale || null, target_url,

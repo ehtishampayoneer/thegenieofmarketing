@@ -47,6 +47,8 @@ export async function GET(request) {
   const handle = (searchParams.get("handle") || "").slice(0, 32);
   const brand = clampHex(searchParams.get("brand"), "#F5A623");
   const ratio = searchParams.get("ratio"); // "wide" | "tall" (2:3 pin) | square (default)
+  const focusRaw = parseInt(searchParams.get("focus") || "50", 10); // vertical framing 0–100 (top→bottom)
+  const focusY = Number.isFinite(focusRaw) ? Math.max(0, Math.min(100, focusRaw)) : 50;
   const wide = ratio === "wide", tall = ratio === "tall";
   const W = wide ? 1200 : tall ? 1000 : 1080;
   const H = wide ? 630 : tall ? 1500 : 1080;
@@ -91,7 +93,7 @@ export async function GET(request) {
     <div style={{ width: W, height: H, display: "flex", flexDirection: "column", background: "#FAF7F2", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", width: "100%", height: photoH, overflow: "hidden", position: "relative", background: brand, alignItems: "center", justifyContent: "center" }}>
         {photo
-          ? <img src={photo} width={W} height={photoH} style={{ objectFit: "cover" }} />
+          ? <img src={photo} width={W} height={photoH} style={{ objectFit: "cover", objectPosition: `50% ${focusY}%` }} />
           : <div style={{ display: "flex", fontSize: 260, fontWeight: 800, color: "rgba(255,255,255,0.9)" }}>{initial}</div>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: pad, position: "relative", justifyContent: "space-between" }}>

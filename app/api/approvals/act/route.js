@@ -21,7 +21,7 @@ export async function POST(request) {
 
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
-  const { id, source, act, draft, image, imageRaw, hook, imageSource, imageCredit, branded } = body || {};
+  const { id, source, act, draft, image, imageRaw, hook, imageSource, imageCredit, branded, imageFocus } = body || {};
   if (!id || !source || !act) return json({ ok: false, error: "id, source and act are required." }, 400);
 
   try {
@@ -61,6 +61,7 @@ export async function POST(request) {
       if (imageSource !== undefined) payload.imageSource = imageSource || null;
       if (imageCredit !== undefined) payload.imageCredit = imageCredit || null;
       if (branded !== undefined) payload.branded = !!branded;
+      if (imageFocus !== undefined) { const f = Math.max(0, Math.min(100, parseInt(imageFocus, 10))); payload.imageFocus = Number.isFinite(f) ? f : 50; }
       await supabase.from("actions").update({ payload }).eq("id", id).eq("user_id", user.id);
       return json({ ok: true });
     }
