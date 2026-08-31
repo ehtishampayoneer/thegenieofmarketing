@@ -40,7 +40,7 @@ const NAV = [
   { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
   { id: "foundation", label: "Foundation links", icon: Icon.link },
   { id: "site", label: "Website Setup", icon: Icon.globe },
-  { id: "markets", label: "Market Expansion", icon: Icon.megaphone },
+  { id: "markets", label: "Market Testing", icon: Icon.megaphone },
   { section: "Settings" },
   { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },

@@ -62,6 +62,7 @@ function sanitizeProfile(p) {
     payment: p?.payment === "limited" ? "limited" : "global",
     paymentCountries: Array.isArray(p?.paymentCountries) ? p.paymentCountries.map((s) => String(s).toLowerCase()).slice(0, 80) : [],
     excluded: Array.isArray(p?.excluded) ? p.excluded.map((s) => String(s).toLowerCase()).slice(0, 80) : [],
+    englishConfirmed: !!p?.englishConfirmed,
   };
 }
 
@@ -73,7 +74,7 @@ async function loadExperiments(supabase, userId, gsc) {
     const p = a.payload || {};
     let draftStatus = p.draftStatus || "pending";
     if (p.articleActionId) {
-      try { const { data: art } = await supabase.from("actions").select("status").eq("id", p.articleActionId).maybeSingle(); if (art) draftStatus = art.status === "proposed" ? "drafted" : (art.status === "done" || art.status === "published" ? "published" : art.status); } catch {}
+      try { const { data: art } = await supabase.from("actions").select("status").eq("id", p.articleActionId).eq("user_id", userId).maybeSingle(); if (art) draftStatus = art.status === "proposed" ? "drafted" : (art.status === "done" || art.status === "published" ? "published" : art.status); } catch {}
     }
     const g = gscMap[p.code] || null;
     let prog = 20;
@@ -130,7 +131,7 @@ export async function POST(req) {
     const clean = sanitizeProfile(body.profile || {});
     try {
       const { data: ex } = await supabase.from("actions").select("id").eq("user_id", user.id).eq("type", "market_profile").maybeSingle();
-      if (ex) await supabase.from("actions").update({ payload: clean, status: "active" }).eq("id", ex.id);
+      if (ex) await supabase.from("actions").update({ payload: clean, status: "active" }).eq("id", ex.id).eq("user_id", user.id);
       else await supabase.from("actions").insert({ user_id: user.id, type: "market_profile", status: "active", title: "Market eligibility", payload: clean });
     } catch { return jres({ ok: false, error: "Couldn't save your settings." }, 500); }
     return jres({ ok: true, profile: clean });
@@ -155,6 +156,7 @@ export async function POST(req) {
   const row = sc.rows.find((r) => r.code === code) || {};
   if (!row.eligible) return jres({ ok: false, error: "That market isn't eligible under your current serve & delivery settings." }, 400);
   if (row.needsLocalLang) return jres({ ok: false, needsLang: true, langName: row.langName, error: `${co.name} needs ${row.langName} content to reach the mainstream — an English-only page would be thin. Add ${row.langName} to your languages in Eligibility, or target an English-suitable market.` }, 400);
+  if (row.englishTest) return jres({ ok: false, needsConfirm: true, error: `${co.name} is an English-test market — English isn't its first language. Confirm you're OK selling in English there (toggle it in Eligibility), or pick a market where you already get English search traffic.` }, 400);
   const writeLang = row.supportsLang && co.lang !== "en" ? co.lang : "en";
   const keyword = ctx.keyword || co.name;
   const plan = [`Localized landing page for ${co.name}`, "3–5 useful local content pieces", "Local CTA + payment/delivery clarity", "One conversion goal (leads / sales)"];
@@ -181,7 +183,7 @@ export async function POST(req) {
     }
   } catch (e) { aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
 
-  if (expId) { try { await supabase.from("actions").update({ payload: { ...expPayload, articleActionId, draftStatus } }).eq("id", expId); } catch {} }
+  if (expId) { try { await supabase.from("actions").update({ payload: { ...expPayload, articleActionId, draftStatus } }).eq("id", expId).eq("user_id", user.id); } catch {} }
 
   try {
     const { logActivity } = await import("@/lib/activity");

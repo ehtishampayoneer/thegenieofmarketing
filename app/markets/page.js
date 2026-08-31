@@ -34,6 +34,8 @@ export default function MarketsPage() {
   const [targeting, setTargeting] = useState("");
   const [tgtErr, setTgtErr] = useState(null); // {code, msg}
   const [editing, setEditing] = useState(false);
+  const [sort, setSort] = useState({ key: "opp", dir: "desc" });
+  const toggleSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "difficulty" ? "asc" : "desc" }));
 
   async function load() {
     try {
@@ -47,9 +49,12 @@ export default function MarketsPage() {
   const expByCode = useMemo(() => { const m = {}; (data?.experiments || []).forEach((e) => (m[e.code] = e)); return m; }, [data]);
   const rows = useMemo(() => {
     if (!data?.rows) return [];
-    const elig = data.rows.filter((r) => r.eligible);
-    return tab === "all" ? elig : elig.filter((r) => r.bucket === tab);
-  }, [data, tab]);
+    let list = data.rows.filter((r) => r.eligible);
+    if (tab !== "all") list = list.filter((r) => r.bucket === tab);
+    const diffRank = { Easy: 1, Medium: 2, Hard: 3 };
+    const val = (r) => sort.key === "difficulty" ? diffRank[r.difficulty] : sort.key === "traffic" ? r.expTraffic : sort.key === "sales" ? r.expSalesHigh : sort.key === "progress" ? (expByCode[r.code]?.progress ?? r.progress) : r.opp;
+    return [...list].sort((a, b) => { const d = (val(a) || 0) - (val(b) || 0); return sort.dir === "asc" ? d : -d; });
+  }, [data, tab, sort, expByCode]);
   const emergingCount = (data?.rows || []).filter((r) => r.bucket === "emerging").length;
 
   async function saveProfile(profile) {
@@ -74,8 +79,8 @@ export default function MarketsPage() {
 
   return (
     <OperatorShell active="markets">
-      <OperatorHeader icon={Icon.globe} label="Market Expansion" title="Your next" accent="markets."
-        kicker="Countries you can actually serve where demand is real and competition is thin — ranked, with projected search traffic, estimated sales and how long each takes to win." />
+      <OperatorHeader icon={Icon.globe} label="Market Testing" title="Test your next" accent="markets."
+        kicker="Countries you can actually serve where demand is real and competition is thin. Genie ranks them, drafts a localized page to test each one, and tracks the search results — so you validate a market before you commit to it." />
 
       {/* honesty note */}
       <Card className="p-4 mt-5">
@@ -123,8 +128,20 @@ export default function MarketsPage() {
                 </button>
               ))}
             </div>
+            {/* mobile sort control */}
+            <div className="lg:hidden flex items-center gap-1.5 mb-3 overflow-x-auto thin-scroll">
+              <span className="text-[11px] mg-subtle shrink-0">Sort:</span>
+              {[["opp", "Best"], ["difficulty", "Difficulty"], ["traffic", "Traffic"], ["sales", "Sales"], ["progress", "Progress"]].map(([k, l]) => (
+                <button key={k} onClick={() => toggleSort(k)} className="shrink-0 mg-focus" style={{ ...chip(sort.key === k), fontSize: 11.5, padding: ".3rem .55rem" }}>{l}{arrow(sort, k)}</button>
+              ))}
+            </div>
+            {/* desktop sortable header */}
             <div className="hidden lg:grid px-4 pb-2 text-[11px] font-semibold uppercase tracking-wide" style={{ gridTemplateColumns: "2.4fr 1fr 1fr 1fr 1.4fr", gap: 16, color: "var(--fg-subtle)" }}>
-              <span>Country</span><span>Difficulty</span><span className="text-right">Search traffic/mo</span><span className="text-right">Sales/mo · est.</span><span>Time · progress</span>
+              <span>Country</span>
+              <button onClick={() => toggleSort("difficulty")} className="mg-focus text-left" style={hbtn(sort.key === "difficulty")}>Difficulty{arrow(sort, "difficulty")}</button>
+              <button onClick={() => toggleSort("traffic")} className="mg-focus text-right" style={hbtn(sort.key === "traffic")}>Search traffic/mo{arrow(sort, "traffic")}</button>
+              <button onClick={() => toggleSort("sales")} className="mg-focus text-right" style={hbtn(sort.key === "sales")}>Sales/mo · est.{arrow(sort, "sales")}</button>
+              <button onClick={() => toggleSort("progress")} className="mg-focus text-left" style={hbtn(sort.key === "progress")}>Time · progress{arrow(sort, "progress")}</button>
             </div>
             <div className="flex flex-col gap-2.5">
               {rows.map((r) => <MarketRow key={r.code} r={r} exp={expByCode[r.code]} open={openId === r.code} onToggle={() => setOpenId(openId === r.code ? null : r.code)} onTarget={() => target(r.code)} targeting={targeting === r.code} err={tgtErr?.code === r.code ? tgtErr.msg : ""} />)}
@@ -141,6 +158,7 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
   const [delivery, setDelivery] = useState(profile.delivery || "anywhere");
   const [languages, setLanguages] = useState(profile.languages || ["en"]);
   const [regions, setRegions] = useState(profile.regions || []);
+  const [englishConfirmed, setEnglishConfirmed] = useState(!!profile.englishConfirmed);
   const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const langNames = (profile.languages || ["en"]).map((c) => (LANGS.find((l) => l[0] === c)?.[1] || c)).join(", ");
   const deliveryLabel = { anywhere: "customers anywhere", regions: `regions: ${(profile.regions || []).join(", ") || "none set"}`, local: "only my area" }[profile.delivery || "anywhere"];
@@ -176,15 +194,21 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
           <div className="flex gap-2 flex-wrap">{LANGS.map(([c, l]) => <button key={c} onClick={() => toggle(languages, setLanguages, c)} className="mg-focus" style={chip(languages.includes(c))}>{l}</button>)}</div>
           <p className="text-[11.5px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Markets that need a language you don't produce won't be auto-drafted in English (that would be thin content).</p>
         </div>
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input type="checkbox" checked={englishConfirmed} onChange={(e) => setEnglishConfirmed(e.target.checked)} style={{ marginTop: 3, accentColor: "var(--accent)", width: 15, height: 15 }} />
+          <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>I'm comfortable selling in <b>English</b> to non-native-English markets <span className="mg-subtle">— lets Genie test high-English countries (Germany, Netherlands…) without local-language content. Off by default.</span></span>
+        </label>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={() => onSave({ ...profile, delivery, languages: languages.length ? languages : ["en"], regions })} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Save eligibility</button>
+        <button onClick={() => onSave({ ...profile, delivery, languages: languages.length ? languages : ["en"], regions, englishConfirmed })} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Save eligibility</button>
         <button onClick={onCancel} className="mg-btn mg-btn--quiet" style={{ fontSize: 13 }}>Cancel</button>
       </div>
     </Card>
   );
 }
 const chip = (on) => ({ fontSize: 12.5, fontWeight: 600, padding: ".38rem .7rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${on ? "var(--accent)" : "var(--border-strong)"}`, background: on ? "var(--accent-quiet)" : "var(--surface)", color: on ? "var(--accent-ink)" : "var(--fg-muted)" });
+const arrow = (sort, key) => (sort.key === key ? (sort.dir === "asc" ? " ↑" : " ↓") : "");
+const hbtn = (active) => ({ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: active ? "var(--accent-ink)" : "var(--fg-subtle)" });
 
 function ExperimentCard({ e, onStop }) {
   const ds = DRAFT[e.draftStatus] || DRAFT.pending;
@@ -234,6 +258,7 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting, err }) {
                   <span title={conf.label} style={{ width: 7, height: 7, borderRadius: 999, background: conf.c, flexShrink: 0 }} />
                   {exp && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>Active</span>}
                   {!exp && r.needsLocalLang && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}>Needs {r.langName}</span>}
+                  {!exp && r.englishTest && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>English test</span>}
                 </p>
                 <p className="text-[12px] leading-tight mt-0.5 truncate" style={{ color: "var(--fg-subtle)" }}>{r.region}{r.why[0] ? ` · ${r.why[0]}` : ""}</p>
               </div>
@@ -265,13 +290,18 @@ function MarketRow({ r, exp, open, onToggle, onTarget, targeting, err }) {
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Fact l="Opportunity" v={`${r.opp}/100`} /><Fact l="Competition gap" v={`${r.gap}/100`} /><Fact l="Business fit" v={`${r.fit}/100`} /><Fact l="Confidence" v={CONF[r.confidence].label} />
           </div>
-          <p className="text-[13px] mt-4 leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+          <p className="text-[12.5px] mt-3.5" style={{ color: "var(--fg-subtle)" }}>
+            <b style={{ color: "var(--fg-muted)" }}>Scenario, not a forecast:</b> at ~{fmt(r.expTraffic)} monthly visitors and a ~{r.assumedConvPct}% conversion, outcomes may be <b style={{ color: "var(--fg-muted)" }}>{salesRange(r)} sales/mo</b>. Your real numbers will differ — that's what the test is for.
+          </p>
+          <p className="text-[13px] mt-3 leading-relaxed" style={{ color: "var(--fg-muted)" }}>
             <b style={{ color: "var(--fg)" }}>The 30-day play:</b> Genie drafts a locally-relevant landing page for {r.name} (into Approvals){r.supportsLang && r.lang !== "en" ? ` in ${r.langName}` : ""}, plus a few useful local pieces and a clear CTA + payment/delivery. Validate leads and replies first; organic ranking compounds over 60–90 days.
           </p>
           {exp ? (
             <p className="mt-3 text-[13px] font-semibold" style={{ color: "var(--signal-live-ink)" }}>✓ Experiment running — see “Active experiments” above.</p>
           ) : r.needsLocalLang ? (
             <p className="mt-3 text-[13px]" style={{ color: "var(--signal-warn)" }}>Needs <b>{r.langName}</b> content to reach the mainstream — add {r.langName} in Eligibility to target this market (an English-only page would be thin).</p>
+          ) : r.englishTest ? (
+            <p className="mt-3 text-[13px]" style={{ color: "var(--accent-ink)" }}>This is an <b>English-test market</b> — English isn't {r.name}'s first language. Turn on “I'm comfortable selling in English…” in Eligibility to test it, or target a market where you already get English search traffic.</p>
           ) : (
             <>
               <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
