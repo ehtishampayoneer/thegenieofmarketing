@@ -103,11 +103,21 @@ html, body {
   --cat-purple:#AF52DE; --cat-purple-ink:#8944AB; --cat-purple-soft:#F6EBFB;
   --cat-amber:#FFCC00;  --cat-amber-ink:#845F00;  --cat-amber-soft:#FFF8DB;
 
+  /* ---- Reading measure ----
+     One measure for prose, one for dense secondary copy. Before this the same
+     16px body text rendered at 535 / 552 / 569px on a single page because
+     62ch / 64ch / 66ch were used interchangeably. */
+  --measure:64ch; --measure-wide:72ch;
+
   /* ---- Motion + type ---- */
   --ease-out:cubic-bezier(.2,.8,.2,1); --ease-in:cubic-bezier(.4,0,1,1); --ease-spring:cubic-bezier(.34,1.4,.64,1);
   --dur-1:120ms; --dur-2:200ms; --dur-3:320ms;
-  --font-ui:"Geist","Inter",system-ui,sans-serif;
-  --font-mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
+  /* Apple's system stack. On Apple hardware -apple-system resolves to the real
+     SF Pro, with optical sizing (SF Text under 20px, SF Display above) applied
+     automatically by the OS — which is exactly how Apple ships it. Elsewhere it
+     falls to Segoe UI / Roboto, the native UI face of that platform. */
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Segoe UI",Roboto,Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Monaco,Consolas,monospace;
 }
 
 /* ---- DARK theme — Apple Dark Mode ----
@@ -174,13 +184,36 @@ html, body {
    title/description beneath it (labels ride at least 16px of card padding). */
 .mg-klabel::before { content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%); width:2px; height:11px; border-radius:2px; background:var(--border-strong); }
 .mg-klabel--plain::before { display:none; }
-.mg-display { font-size:clamp(28px,3vw,38px); line-height:1.08; letter-spacing:-.02em; font-weight:700; color:var(--fg); text-wrap:balance; }
-.mg-display-lg { font-size:clamp(34px,4.2vw,50px); line-height:1.04; letter-spacing:-.026em; font-weight:700; color:var(--fg); text-wrap:balance; }
-.mg-title { font-size:18px; line-height:1.3; letter-spacing:-.006em; font-weight:600; color:var(--fg); }
-.mg-lede { font-size:16px; line-height:1.6; color:var(--fg-muted); max-width:66ch; }
+/* Apple's optical tracking. SF tightens as size grows and opens up as it shrinks;
+   these values mirror that curve so headings feel set rather than scaled.
+   Weights stay within Apple's UI range — semibold for headings, bold reserved
+   for display. Apple never ships an 800-weight interface. */
+.mg-display { font-size:clamp(28px,3vw,38px); line-height:1.08; letter-spacing:-.021em; font-weight:700; color:var(--fg); text-wrap:balance; }
+.mg-display-lg { font-size:clamp(34px,4.2vw,50px); line-height:1.05; letter-spacing:-.026em; font-weight:700; color:var(--fg); text-wrap:balance; }
+.mg-title { font-size:18px; line-height:1.28; letter-spacing:-.014em; font-weight:600; color:var(--fg); }
+/* Apple body copy: 1.47 leading, no tracking. The most-read text on every screen. */
+.mg-lede { font-size:16px; line-height:1.47; letter-spacing:-.006em; color:var(--fg-muted); max-width:var(--measure); }
+
+/* ── Optical tracking by size ──────────────────────────────────────────────
+   Applied to the arbitrary-size utilities the app is built from, so every
+   heading picks up the right tracking without each page restating it.
+   Small text gets a touch of positive tracking (SF Text opens up); large text
+   gets negative (SF Display tightens). This is the single biggest thing that
+   separates "system font applied" from "typeset like Apple".
+
+   Wrapped in :where() so these carry ZERO specificity — any explicit
+   tracking-* utility on the element still wins, and uppercase labels keep the
+   wide tracking they set for themselves. */
+:where(.text-\[11px\]) { letter-spacing:.006em; }
+:where(.text-\[12px\]) { letter-spacing:.003em; }
+:where(.text-\[13px\]), :where(.text-\[14px\]) { letter-spacing:0; }
+:where(.text-\[15px\]), :where(.text-\[16px\]) { letter-spacing:-.006em; }
+:where(.text-\[17px\]), :where(.text-\[18px\]) { letter-spacing:-.011em; }
+:where(.text-\[20px\]) { letter-spacing:-.016em; }
+:where(.text-\[22px\]), :where(.text-\[24px\]) { letter-spacing:-.019em; }
 
 /* Genie's voice — a first-person line; key facts lift to full-strength ink. */
-.mg-voice { font-size:16px; line-height:1.6; color:var(--fg-muted); max-width:66ch; }
+.mg-voice { font-size:16px; line-height:1.6; color:var(--fg-muted); max-width:var(--measure); }
 .mg-voice b, .mg-voice strong { color:var(--fg); font-weight:600; }
 
 /* ── READABILITY STEP-UP ──────────────────────────────────────────────────────
@@ -306,11 +339,11 @@ html, body {
 /* ---- The draft the operator reviews — reading-optimised, the star of Approvals.
    Full-strength ink (it's the actual work, not chrome), generous line-height. ---- */
 .mg-draft { background:var(--surface-2); border:1px solid var(--hair); border-radius:14px; padding:1.1rem 1.3rem;
-  font-size:14.5px; line-height:1.68; color:var(--fg); white-space:pre-wrap; max-height:46vh; overflow-y:auto; }
+  font-size:15px; line-height:1.68; color:var(--fg); white-space:pre-wrap; max-height:46vh; overflow-y:auto; }
 
 /* ---- Fields — one input surface everywhere (promoted from repeated inline styles) ---- */
 .mg-field { width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--fg); border-radius:11px;
-  padding:.62rem .85rem; font-size:13.5px; font-family:var(--font-ui); line-height:1.5;
+  padding:.62rem .85rem; font-size:14px; font-family:var(--font-ui); line-height:1.5;
   transition:border-color var(--dur-2), box-shadow var(--dur-2); }
 .mg-field::placeholder { color:var(--fg-subtle); }
 .mg-field:focus, .mg-field:focus-visible { outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent); }
@@ -468,7 +501,7 @@ html, body {
    Hover: a barely-there surface. Active: full-strength text + a dawn spine at
    the rail's left edge + the faintest neutral pill. Colour lives in the spine,
    not a loud background wash. */
-.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:9px; font-size:14.5px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
+.mg-rail-item { position:relative; display:flex; align-items:center; gap:.7rem; padding:.55rem .7rem; border-radius:9px; font-size:15px; font-weight:500; color:var(--fg-muted); transition:background var(--dur-2), color var(--dur-2); cursor:pointer; user-select:none; }
 .mg-rail-item svg { color:var(--fg-subtle); transition:color var(--dur-2); }
 .mg-rail-item:hover { background:color-mix(in srgb, var(--surface-2) 60%, transparent); color:var(--fg); }
 .mg-rail-item:hover svg { color:var(--fg-muted); }
@@ -526,7 +559,7 @@ html, body {
    hover, and never dominates. Reduced-motion stops the scroll but keeps the row. */
 .mg-ticker { display:flex; align-items:stretch; height:38px; background:color-mix(in srgb, var(--surface) 60%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--hair); overflow:hidden; }
 [data-theme="night"] .mg-ticker { background:#0E151F; }
-.mg-ticker-live { display:flex; align-items:center; gap:.45rem; padding:0 15px; flex:none; font-size:10px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--signal-live-ink); border-right:1px solid var(--hair); }
+.mg-ticker-live { display:flex; align-items:center; gap:.45rem; padding:0 15px; flex:none; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--signal-live-ink); border-right:1px solid var(--hair); }
 .mg-ticker-vp { position:relative; flex:1; min-width:0; overflow:hidden; -webkit-mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); mask:linear-gradient(90deg,#000 calc(100% - 54px),transparent); }
 .mg-ticker-track { display:flex; align-items:center; height:100%; width:max-content; animation:mg-ticker-scroll 46s linear infinite; will-change:transform; }
 .mg-ticker-vp:hover .mg-ticker-track { animation-play-state:paused; }
@@ -570,7 +603,7 @@ html, body {
 .mg-menu-item:hover { background:var(--surface-2); color:var(--fg); }
 .mg-menu-item[data-active="true"] { color:var(--fg); font-weight:600; }
 /* A filter trigger — quiet until opened. */
-.mg-filter { display:inline-flex; align-items:center; gap:.4rem; height:36px; padding:0 .7rem; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--fg-muted); font-size:12.5px; font-weight:500; cursor:pointer; transition:border-color var(--dur-2), color var(--dur-2); }
+.mg-filter { display:inline-flex; align-items:center; gap:.4rem; height:36px; padding:0 .7rem; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--fg-muted); font-size:13px; font-weight:500; cursor:pointer; transition:border-color var(--dur-2), color var(--dur-2); }
 .mg-filter:hover, .mg-filter[data-open="true"] { border-color:var(--border-strong); color:var(--fg); }
 
 /* Queue row — compact, tactile, status dot at the end. */
@@ -621,3 +654,20 @@ html, body {
 .onb-blades { animation:onb-spin 16s linear infinite; transform-origin:50% 50%; }
 .onb-core { animation:onb-breathe 3s ease-in-out infinite; transform-origin:50% 50%; }
 @media (prefers-reduced-motion: reduce) { .onb-rise, .onb-spinner, .onb-blades, .onb-core { animation:none; } }
+
+/* ── TOUCH TARGETS (Apple HIG: 44x44pt minimum) ─────────────────────────────
+   Scoped to coarse pointers, so a mouse keeps the tighter desktop control sizes
+   and only touch gets the larger hit area — which is how Apple ships their own
+   pages. Audited sizes before this: nav toggle 32x32, icon buttons 38x38, every
+   .mg-btn 37px tall. All under the minimum, and all in shared components, so
+   this one block fixes every screen at once. */
+.mg-navtoggle { display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:11px; }
+@media (pointer: coarse) {
+  .mg-btn { min-height:44px; }
+  .mg-icon-btn, .mg-navtoggle { width:44px; height:44px; }
+  .mg-ticker-viewall, .mg-ticker-live { min-height:44px; }
+  .mg-rail-item { min-height:44px; }
+  .mg-checkrow { min-height:44px; }
+  /* The account chip in the top bar and the rail footer link. */
+  header a[title="Account"], .mg-filter { min-height:44px; }
+}

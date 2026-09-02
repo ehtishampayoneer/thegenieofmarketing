@@ -355,7 +355,7 @@ export default function ApprovalsPage() {
       {confirmBulk && (
         <Modal onClose={() => setConfirmBulk(false)}>
           <p className="mg-title" style={{ fontSize: 18 }}>Approve {highOwned.length} high-impact {highOwned.length === 1 ? "article" : "articles"}?</p>
-          <p className="mt-2 text-[13.5px] mg-muted leading-snug">These are the recommendations I currently believe will have the highest expected impact. I’ll publish each to your blog.</p>
+          <p className="mt-2 text-[14px] mg-muted leading-snug">These are the recommendations I currently believe will have the highest expected impact. I’ll publish each to your blog.</p>
           <div className="mt-5 flex items-center gap-2.5">
             <button onClick={runBulk} className="mg-btn mg-btn--dawn">Approve {highOwned.length} →</button>
             <button onClick={() => setConfirmBulk(false)} className="mg-btn mg-btn--ghost">Review individually</button>
@@ -385,7 +385,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
       {/* header chrome */}
       <div className="flex items-center gap-2.5 px-6 pt-5 flex-wrap">
         <BrandIcon brand={item.brand} size={16} />
-        <span className="text-[11.5px] font-bold tracking-[0.08em]" style={{ color: "var(--fg-muted)" }}>{typeLabel(item)}</span>
+        <span className="text-[12px] font-bold tracking-[0.08em]" style={{ color: "var(--fg-muted)" }}>{typeLabel(item)}</span>
         <span className="mg-subtle">|</span>
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
         {item.market && <Pill tone="info">{item.marketFlag} {item.marketName}</Pill>}
@@ -413,7 +413,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
       <div className="px-6 pt-4 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
         <div className="min-w-0">
           <h2 className="text-[22px] font-bold tracking-tight leading-snug" style={{ color: "var(--fg)" }}>{item.title}</h2>
-          <p className="mt-2.5 text-[13.5px]">
+          <p className="mt-2.5 text-[14px]">
             <span className="mg-subtle">Impact Score:</span> <span className="mg-num font-bold" style={{ color: "var(--fg)" }}>{Number(item.impact) || 0}/100</span> <span style={{ color: "var(--accent-ink)", fontWeight: 700 }}>({im.label})</span>
           </p>
           <WhyRow item={item} />
@@ -421,7 +421,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
 
         <div className="rounded-2xl p-4" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
           <p className="flex items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--fg)" }}><Icon.spark size={13} style={{ color: "var(--accent-ink)" }} /> Why Genie chose this</p>
-          <p className="mt-2 text-[12.5px] mg-muted leading-relaxed" style={longReason && !expandReason ? { display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>{reasoning}</p>
+          <p className="mt-2 text-[13px] mg-muted leading-relaxed" style={longReason && !expandReason ? { display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" } : undefined}>{reasoning}</p>
           {longReason && (
             <button onClick={() => setExpandReason((v) => !v)} className="mt-2 flex items-center gap-1 text-[12px] font-semibold mg-focus" style={{ color: "var(--accent-ink)", background: "none", border: "none", cursor: "pointer" }}>
               {expandReason ? "Show less" : "Show more reasoning"} <Icon.chevronRight size={13} style={{ transform: expandReason ? "rotate(-90deg)" : "rotate(90deg)", transition: "transform .2s" }} />
@@ -436,7 +436,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--hair)" }}>
           <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--hair)" }}>
             <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] mg-subtle"><Icon.eye size={13} /> PREVIEW <span className="font-medium normal-case tracking-normal" style={{ textTransform: "none" }}>(as it will publish)</span></span>
-            <span className="text-[11.5px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
+            <span className="text-[12px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
           </div>
           <div className="thin-scroll" style={{ maxHeight: 360, overflowY: "auto", padding: "18px 20px", background: "var(--surface)" }}>
             {!editing && item.images && item.images.length > 1 ? (
@@ -446,7 +446,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                     <img key={i} src={src} alt="" loading="lazy" style={{ height: 220, width: 220, objectFit: "cover", borderRadius: 12, border: "1px solid var(--hair)", flex: "none", background: "var(--surface-2)" }} />
                   ))}
                 </div>
-                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 2px" }}>
+                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--fg-subtle)", padding: "5px 2px" }}>
                   <span style={{ fontWeight: 700, color: "var(--signal-live-ink)" }}>Carousel</span>
                   <span>· {item.images.length} slides · swipe to preview · upload all when you post</span>
                 </figcaption>
@@ -454,7 +454,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             ) : item.image && !editing && (
               <figure style={{ margin: "0 0 14px", borderRadius: 12, overflow: "hidden", border: "1px solid var(--hair)" }}>
                 <img src={item.image} alt={item.imageAlt || ""} loading="lazy" style={{ display: "block", width: "100%", maxHeight: 240, objectFit: "cover", objectPosition: `50% ${item.imageFocus ?? 50}%`, background: "var(--surface-2)" }} />
-                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 10.5, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
+                <figcaption className="flex items-center gap-1.5" style={{ fontSize: 11, color: "var(--fg-subtle)", padding: "5px 9px", background: "var(--surface-2)" }}>
                   <span style={{ fontWeight: 700, color: (item.imageSource === "site" || item.imageSource === "upload") ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{item.imageBranded ? "Designed card" : item.imageSource === "upload" ? "Your upload" : item.imageSource === "site" ? "Your image" : "Free stock"}</span>
                   <span>· {item.imageBranded ? `built from ${item.imageSource === "site" ? "your photo" : "a free stock photo"}` : item.imageCredit}</span>
                 </figcaption>
@@ -521,8 +521,8 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             <button className="mg-btn mg-btn--ghost" onClick={onEdit}>Edit <span className="mg-kbd" style={{ marginLeft: 4 }}>E</span></button>
             <button className="mg-btn mg-btn--quiet" onClick={onSkip}>Skip <span className="mg-kbd" style={{ marginLeft: 4 }}>S</span></button>
             <div className="ml-auto flex items-center gap-2">
-              <button className="mg-btn mg-btn--quiet" onClick={onPrev} disabled={idx === 0} style={{ fontSize: 12.5 }}>← Previous</button>
-              <button className="mg-btn mg-btn--ghost" onClick={onNext} disabled={idx >= count - 1} style={{ fontSize: 12.5 }}>Next →</button>
+              <button className="mg-btn mg-btn--quiet" onClick={onPrev} disabled={idx === 0} style={{ fontSize: 13 }}>← Previous</button>
+              <button className="mg-btn mg-btn--ghost" onClick={onNext} disabled={idx >= count - 1} style={{ fontSize: 13 }}>Next →</button>
             </div>
           </>
         )}
@@ -539,7 +539,7 @@ function WhyRow({ item }) {
   if (!chips.length && item.outcome) chips.push(<span>{item.outcome}</span>);
   if (!chips.length) return null;
   return (
-    <p className="mt-2 text-[12.5px] mg-subtle flex items-center gap-2 flex-wrap">
+    <p className="mt-2 text-[13px] mg-subtle flex items-center gap-2 flex-wrap">
       <span className="font-semibold" style={{ color: "var(--fg-muted)" }}>Why:</span>
       {chips.map((c, i) => <span key={i} className="flex items-center gap-2">{i > 0 && <span className="mg-subtle">·</span>}{c}</span>)}
     </p>
@@ -555,17 +555,17 @@ function LeftPanel({ item, isArticle }) {
 
       {item.keyword ? (
         <div className="mt-3">
-          <p className="text-[10.5px] font-semibold mg-subtle tracking-wide">PRIMARY</p>
-          <p className="mt-0.5 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{item.keyword}</p>
+          <p className="text-[11px] font-semibold mg-subtle tracking-wide">PRIMARY</p>
+          <p className="mt-0.5 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{item.keyword}</p>
         </div>
       ) : null}
 
       {secondary.length > 0 && (
         <div className="mt-3">
-          <p className="text-[10.5px] font-semibold mg-subtle tracking-wide">SECONDARY</p>
+          <p className="text-[11px] font-semibold mg-subtle tracking-wide">SECONDARY</p>
           <ul className="mt-1 space-y-1">
             {secondary.map((k, i) => (
-              <li key={i} className="text-[12.5px] mg-muted flex items-center gap-1.5"><span style={{ width: 3, height: 3, borderRadius: 999, background: "var(--fg-subtle)" }} /> {typeof k === "string" ? k : (k.keyword || k.kw)}</li>
+              <li key={i} className="text-[13px] mg-muted flex items-center gap-1.5"><span style={{ width: 3, height: 3, borderRadius: 999, background: "var(--fg-subtle)" }} /> {typeof k === "string" ? k : (k.keyword || k.kw)}</li>
             ))}
           </ul>
         </div>
@@ -588,7 +588,7 @@ function PubRow({ icon: I, label, value }) {
       <I size={14} style={{ color: "var(--fg-subtle)", marginTop: 1, flexShrink: 0 }} />
       <div className="min-w-0">
         <dt className="text-[11px] mg-subtle leading-tight">{label}</dt>
-        <dd className="text-[12.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{value}</dd>
+        <dd className="text-[13px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{value}</dd>
       </div>
     </div>
   );
@@ -614,14 +614,14 @@ function ApprovalQueue({ view, idx, onPick }) {
               <BrandIcon brand={it.brand} size={13} />
               <span className="flex-1 min-w-0">
                 <span className="block text-[12px] font-semibold truncate" style={{ color: i === idx ? "var(--fg)" : "var(--fg-muted)" }}>{queueTitle(it)}</span>
-                <span className="block text-[10.5px] mg-subtle">{im.label} impact{it.marketFlag ? ` · ${it.marketFlag}` : ""}</span>
+                <span className="block text-[11px] mg-subtle">{im.label} impact{it.marketFlag ? ` · ${it.marketFlag}` : ""}</span>
               </span>
               <span style={{ width: 7, height: 7, borderRadius: 999, background: im.dot, flexShrink: 0 }} />
             </button>
           );
         })}
       </div>
-      <a href="/tasks" className="mt-2.5 mg-btn mg-btn--ghost w-full" style={{ fontSize: 12.5 }}>View all queue ({view.length}) →</a>
+      <a href="/tasks" className="mt-2.5 mg-btn mg-btn--ghost w-full" style={{ fontSize: 13 }}>View all queue ({view.length}) →</a>
     </div>
   );
 }
@@ -659,7 +659,7 @@ function AllClear({ done, drafting, onDraft, filtered, onClear }) {
 // ── SMALL PARTS ─────────────────────────────────────────────────────────────
 function MTab({ active, onClick, label, count }) {
   return (
-    <button onClick={onClick} className="shrink-0 mg-focus" style={{ fontSize: 12.5, fontWeight: 600, padding: ".4rem .75rem", borderRadius: 999, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${active ? "var(--accent)" : "var(--hair)"}`, background: active ? "var(--accent-quiet)" : "var(--surface)", color: active ? "var(--accent-ink)" : "var(--fg-muted)" }}>
+    <button onClick={onClick} className="shrink-0 mg-focus" style={{ fontSize: 13, fontWeight: 600, padding: ".4rem .75rem", borderRadius: 999, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${active ? "var(--accent)" : "var(--hair)"}`, background: active ? "var(--accent-quiet)" : "var(--surface)", color: active ? "var(--accent-ink)" : "var(--fg-muted)" }}>
       {label}{count != null ? <span className="mg-num" style={{ opacity: 0.7 }}> · {count}</span> : null}
     </button>
   );

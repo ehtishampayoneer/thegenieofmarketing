@@ -67,7 +67,7 @@ export default function LearningPage() {
       <div className="mt-8">
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Decision Ledger</h2>
-          <span className="mg-subtle text-[12.5px]">every choice Genie made — and why</span>
+          <span className="mg-subtle text-[13px]">every choice Genie made — and why</span>
         </div>
         <Card className="overflow-hidden">
           {d.ledger.map((x, i) => (
@@ -79,8 +79,8 @@ export default function LearningPage() {
                   <span className={`mg-pill ${outcomeClass(x.outcome)}`}>{x.outcome}</span>
                   <span className="ml-auto text-[11px] mg-subtle">{x.time || relTime(x.createdAt)}</span>
                 </div>
-                <p className="mt-1.5 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{x.choice}</p>
-                {x.why && <p className="text-[12.5px] mg-muted mt-0.5"><span className="font-medium" style={{ color: "var(--fg-muted)" }}>Why:</span> {x.why}</p>}
+                <p className="mt-1.5 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{x.choice}</p>
+                {x.why && <p className="text-[13px] mg-muted mt-0.5"><span className="font-medium" style={{ color: "var(--fg-muted)" }}>Why:</span> {x.why}</p>}
               </div>
             </div>
           ))}

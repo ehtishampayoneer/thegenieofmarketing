@@ -17,8 +17,8 @@ module.exports = {
         accent: { DEFAULT: "#1E9E6A", soft: "#E4F3EC", ink: "#0F6B45" },
       },
       fontFamily: {
-        sans: ["Geist", "Inter", "system-ui", "sans-serif"],
-        mono: ["Geist Mono", "JetBrains Mono", "ui-monospace", "monospace"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "SF Pro Text", "SF Pro Display", "Helvetica Neue", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+        mono: ["ui-monospace", "SF Mono", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
       backdropBlur: {
         xs: "2px",

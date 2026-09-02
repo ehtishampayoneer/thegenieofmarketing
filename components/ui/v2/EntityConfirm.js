@@ -63,11 +63,11 @@ export function EntityConfirm({ entity, onConfirmed }) {
       <div className="flex items-center gap-2 shrink-0">
         {!open ? (
           <>
-            <Button variant="dawn" disabled={busy} onClick={() => save(entity.type)} style={{ fontSize: 12.5, padding: ".5rem .9rem" }}>Yes, that’s me</Button>
-            <Button variant="ghost" onClick={() => setOpen(true)} style={{ fontSize: 12.5, padding: ".5rem .8rem" }}>Change</Button>
+            <Button variant="dawn" disabled={busy} onClick={() => save(entity.type)} style={{ fontSize: 13, padding: ".5rem .9rem" }}>Yes, that’s me</Button>
+            <Button variant="ghost" onClick={() => setOpen(true)} style={{ fontSize: 13, padding: ".5rem .8rem" }}>Change</Button>
           </>
         ) : (
-          <Button variant="dawn" disabled={busy} onClick={() => save(type)} style={{ fontSize: 12.5, padding: ".5rem .95rem" }}>{busy ? "Saving…" : "Save"}</Button>
+          <Button variant="dawn" disabled={busy} onClick={() => save(type)} style={{ fontSize: 13, padding: ".5rem .95rem" }}>{busy ? "Saving…" : "Save"}</Button>
         )}
       </div>
     </div>

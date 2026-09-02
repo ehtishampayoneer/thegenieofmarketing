@@ -92,7 +92,7 @@ export default function FeaturedPage() {
     <OperatorShell active="featured">
       <div>
         <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Get featured</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>The most powerful marketing is when <b style={{ color: "var(--fg)" }}>others</b> talk about you. Pick a goal, name your niche, and Genie finds real sites, the right contact, and a genuine pitch. You review and send from your own email. No fake accounts, no bought links.</p>
+        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>The most powerful marketing is when <b style={{ color: "var(--fg)" }}>others</b> talk about you. Pick a goal, name your niche, and Genie finds real sites, the right contact, and a genuine pitch. You review and send from your own email. No fake accounts, no bought links.</p>
       </div>
 
       {/* play selector — each keeps its own saved results */}
@@ -103,10 +103,10 @@ export default function FeaturedPage() {
             <button key={p.id} onClick={() => setPlay(p.id)} className="mg-focus text-left" style={{ padding: 14, borderRadius: 14, cursor: "pointer", background: on ? "var(--accent-quiet)" : "var(--surface)", border: `1px solid ${on ? "var(--accent)" : "var(--hair)"}`, transition: "all .15s" }}>
               <span className="flex items-center gap-2">
                 <span className="mg-tile" style={{ width: 28, height: 28, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-primary)" : "var(--fg-muted)" }}><Ic size={15} /></span>
-                <span className="text-[13.5px] font-bold" style={{ color: on ? "var(--accent-ink)" : "var(--fg)" }}>{p.label}</span>
+                <span className="text-[14px] font-bold" style={{ color: on ? "var(--accent-ink)" : "var(--fg)" }}>{p.label}</span>
                 {c?.total > 0 && <span className="ml-auto mg-num text-[11px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-primary)" : "var(--fg-muted)" }}>{c.total}</span>}
               </span>
-              <span className="block mt-1.5 text-[11.5px] mg-muted leading-snug">{p.blurb}</span>
+              <span className="block mt-1.5 text-[12px] mg-muted leading-snug">{p.blurb}</span>
             </button>
           );
         })}
@@ -116,7 +116,7 @@ export default function FeaturedPage() {
       <div className="mt-4 flex items-center gap-2 flex-wrap">
         <input value={niche} onChange={(e) => setNiche(e.target.value)} onKeyDown={(e) => e.key === "Enter" && scan()}
           placeholder="Your niche or topic, e.g. rugs, AR shopping tech, sustainable fashion" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
-        <button onClick={scan} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13.5 }}>
+        <button onClick={scan} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
           {busy ? "Finding sites…" : (rows && rows.length ? "Find more →" : "Find sites →")}
         </button>
       </div>
@@ -126,7 +126,7 @@ export default function FeaturedPage() {
         <Card className="mt-5 p-8 text-center">
           <span className="mg-live-dot mx-auto" style={{ display: "block", width: 8 }} />
           <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Genie is finding new sites for “{current.label}”…</p>
-          <p className="mt-1 text-[12.5px] mg-muted">Finding real sites, crawling each for the right contact, and writing a tailored pitch. Up to a minute.</p>
+          <p className="mt-1 text-[13px] mg-muted">Finding real sites, crawling each for the right contact, and writing a tailored pitch. Up to a minute.</p>
         </Card>
       )}
 
@@ -155,7 +155,7 @@ export default function FeaturedPage() {
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>{p.company} <a href={p.url} target="_blank" rel="noreferrer" className="text-[12px] font-medium" style={{ color: "var(--accent-ink)" }}>{p.domain} ↗</a></p>
-                  {p.summary && <p className="mt-0.5 text-[12.5px] mg-muted">{p.summary}</p>}
+                  {p.summary && <p className="mt-0.5 text-[13px] mg-muted">{p.summary}</p>}
                 </div>
                 {p.applied ? <Pill tone="live"><Icon.check size={12} /> Applied</Pill> : p.contact?.email ? <Pill tone="dawn">{p.contact.emailType === "named" ? "Direct contact" : "Editor inbox"}</Pill> : <Pill tone="info">Contact form</Pill>}
               </div>
@@ -166,13 +166,13 @@ export default function FeaturedPage() {
                 {p.contact?.title && <Pill tone="neutral">{p.contact.title}</Pill>}
                 <span className="mg-num" style={{ color: "var(--fg-muted)" }}>{p.contact?.email || (p.contact?.contactForm ? "via contact form" : "no email found")}</span>
               </div>
-              {p.whyFit && <p className="mt-2 text-[12.5px]" style={{ color: "var(--fg-muted)" }}><span className="font-semibold" style={{ color: "var(--fg)" }}>Why them:</span> {p.whyFit}</p>}
+              {p.whyFit && <p className="mt-2 text-[13px]" style={{ color: "var(--fg-muted)" }}><span className="font-semibold" style={{ color: "var(--fg)" }}>Why them:</span> {p.whyFit}</p>}
 
               {!p.applied && (
                 <div className="mt-3.5 rounded-xl p-3.5" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
                   <p className="text-[11px] font-bold tracking-[0.08em] mg-subtle mb-2">THE PITCH · edit before you send</p>
-                  <input value={p.subject} onChange={(e) => patch(i, { subject: e.target.value })} className="mg-field mg-focus" style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }} />
-                  <textarea value={p.body} onChange={(e) => patch(i, { body: e.target.value })} className="mg-field mg-focus" style={{ fontSize: 13.5, lineHeight: 1.6, minHeight: 120 }} />
+                  <input value={p.subject} onChange={(e) => patch(i, { subject: e.target.value })} className="mg-field mg-focus" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }} />
+                  <textarea value={p.body} onChange={(e) => patch(i, { body: e.target.value })} className="mg-field mg-focus" style={{ fontSize: 14, lineHeight: 1.6, minHeight: 120 }} />
                 </div>
               )}
 
@@ -180,12 +180,12 @@ export default function FeaturedPage() {
                 <button onClick={() => send(i)} disabled={p.state === "sending" || p.state === "sent"} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
                   {p.applied ? "Applied ✓" : p.state === "sending" ? "Sending…" : p.contact?.email ? "Send →" : "Copy & open form →"}
                 </button>
-                {!p.applied && <span className="text-[11.5px] mg-subtle">{p.contact?.email ? "From your own email · counts toward today's cap" : "No email — send via their form"}</span>}
-                {p.applied && p.appliedAt && <span className="text-[11.5px] mg-subtle">Applied {new Date(p.appliedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>}
+                {!p.applied && <span className="text-[12px] mg-subtle">{p.contact?.email ? "From your own email · counts toward today's cap" : "No email — send via their form"}</span>}
+                {p.applied && p.appliedAt && <span className="text-[12px] mg-subtle">Applied {new Date(p.appliedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>}
               </div>
             </Card>
           ))}
-          <p className="text-[12px] mg-subtle" style={{ maxWidth: "72ch" }}>Genie only keeps real, reachable sites and never invents an address. Results stay saved here per section. Applied sites are held back from re-scans for 60 days so you don't pester the same editor. Replies land in your Inbox.</p>
+          <p className="text-[12px] mg-subtle" style={{ maxWidth: "var(--measure-wide)" }}>Genie only keeps real, reachable sites and never invents an address. Results stay saved here per section. Applied sites are held back from re-scans for 60 days so you don't pester the same editor. Replies land in your Inbox.</p>
         </div>
       )}
 

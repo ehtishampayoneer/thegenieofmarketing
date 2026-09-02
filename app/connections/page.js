@@ -139,14 +139,14 @@ export default function ConnectionsPage() {
   );
 }
 
-const btn = { fontSize: 12.5, padding: ".5rem .9rem" };
+const btn = { fontSize: 13, padding: ".5rem .9rem" };
 const tile = { width: 34, height: 34, background: "var(--surface-sunken)", color: "var(--fg-muted)" };
 
 function Group({ title, sub, children }) {
   return (
     <div className="mt-6">
       <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>{title}</h2>
-      <p className="mt-0.5 text-[12.5px] mg-muted">{sub}</p>
+      <p className="mt-0.5 text-[13px] mg-muted">{sub}</p>
       <div className="mt-3 space-y-2.5">{children}</div>
     </div>
   );
@@ -158,7 +158,7 @@ function Row({ icon, label, sub, connected, connectedLabel = "Connected", action
       <div className="flex items-center gap-3 flex-wrap">
         {icon}
         <div className="flex-1 min-w-[160px]">
-          <p className="text-[13.5px] font-semibold flex items-center gap-2" style={{ color: "var(--fg)" }}>
+          <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg)" }}>
             {label}
             {connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
           </p>
@@ -195,12 +195,12 @@ var el=document.currentScript;if(el&&el.getAttribute("data-genie-convert")!==nul
 
   return (
     <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
-      <p className="text-[11.5px] mg-muted mb-2">Add this webhook URL in your provider (Stripe, Shopify, Paddle, Lemon Squeezy…). Your URL is private to your account.</p>
+      <p className="text-[12px] mg-muted mb-2">Add this webhook URL in your provider (Stripe, Shopify, Paddle, Lemon Squeezy…). Your URL is private to your account.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {(ingest?.providers || []).map((p) => (
           <div key={p.id} className="mg-surface-quiet p-2.5 flex items-center gap-2">
-            <span className="text-[12.5px] font-semibold w-24 shrink-0" style={{ color: "var(--fg)" }}>{p.label}</span>
-            <code className="flex-1 min-w-0 text-[10.5px] mg-subtle truncate" style={{ fontFamily: "var(--font-mono)" }}>{url(p.id)}</code>
+            <span className="text-[13px] font-semibold w-24 shrink-0" style={{ color: "var(--fg)" }}>{p.label}</span>
+            <code className="flex-1 min-w-0 text-[11px] mg-subtle truncate" style={{ fontFamily: "var(--font-mono)" }}>{url(p.id)}</code>
             <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11, padding: ".3rem .55rem" }}>{copied === p.id ? "✓" : "Copy"}</button>
           </div>
         ))}
@@ -212,10 +212,10 @@ var el=document.currentScript;if(el&&el.getAttribute("data-genie-convert")!==nul
           <p className="text-[12px] font-semibold" style={{ color: "var(--fg)" }}>No Stripe or Shopify? Use the universal pixel</p>
           <button onClick={() => copy("__pixel", pixel)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11, padding: ".3rem .55rem" }}>{copied === "__pixel" ? "Copied ✓" : "Copy snippet"}</button>
         </div>
-        <p className="text-[11.5px] mg-muted mb-2">
-          Paste this on your thank-you / order-confirmation page. To auto-record a sale, add <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>data-genie-convert data-genie-value="49"</code> to the <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>&lt;script&gt;</code> tag, or call <code style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>genieConversion(total)</code> after checkout.
+        <p className="text-[12px] mg-muted mb-2">
+          Paste this on your thank-you / order-confirmation page. To auto-record a sale, add <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>data-genie-convert data-genie-value="49"</code> to the <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>&lt;script&gt;</code> tag, or call <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>genieConversion(total)</code> after checkout.
         </p>
-        <pre className="mg-surface-quiet p-2.5 overflow-x-auto text-[10.5px] mg-subtle" style={{ fontFamily: "var(--font-mono)", lineHeight: 1.5, maxHeight: 150 }}>{pixel}</pre>
+        <pre className="mg-surface-quiet p-2.5 overflow-x-auto text-[11px] mg-subtle" style={{ fontFamily: "var(--font-mono)", lineHeight: 1.5, maxHeight: 150 }}>{pixel}</pre>
       </div>
     </div>
   );
@@ -244,7 +244,7 @@ function DeliverabilityCheck() {
       <div className="flex items-center gap-3 flex-wrap">
         <span className="mg-tile" style={tile}><Icon.check size={17} /></span>
         <div className="flex-1 min-w-[160px]">
-          <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>Email deliverability</p>
+          <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Email deliverability</p>
           <p className="text-[12px] mg-muted mt-0.5">
             {!d.connected ? "Connect Google above, then Genie checks whether your outreach will actually land in the inbox."
               : d.unknown || d.error ? (d.message || "Couldn't check right now.")
@@ -253,14 +253,14 @@ function DeliverabilityCheck() {
           </p>
         </div>
         {r && <span className="mg-num text-[20px] font-bold shrink-0" style={{ color: scoreColor }}>{r.score}<span className="text-[12px] mg-subtle">/100</span></span>}
-        <button onClick={load} disabled={busy} className="mg-btn mg-btn--quiet shrink-0 disabled:opacity-50" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{busy ? "Checking…" : "Recheck"}</button>
+        <button onClick={load} disabled={busy} className="mg-btn mg-btn--quiet shrink-0 disabled:opacity-50" style={{ fontSize: 12, padding: ".35rem .6rem" }}>{busy ? "Checking…" : "Recheck"}</button>
       </div>
 
       {r && (
         <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
           <div className="flex items-center gap-2 flex-wrap mb-2.5">
             <span className="text-[12px] font-semibold" style={{ color: scoreColor }}>{r.grade}</span>
-            <span className="text-[11.5px] mg-subtle">· Suggested start: ~{r.volume.start}/day, ramp {r.volume.ramp}. {r.volume.note}</span>
+            <span className="text-[12px] mg-subtle">· Suggested start: ~{r.volume.start}/day, ramp {r.volume.ramp}. {r.volume.note}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {r.checks.map((c) => (
@@ -310,8 +310,8 @@ function WordPressConnect({ connected }) {
               className="w-full px-3 py-2 rounded-lg text-[13px] mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }} />
           ))}
           <Button variant="dawn" onClick={connect} disabled={state === "saving"} style={btn}>{state === "saving" ? "Checking…" : "Connect WordPress"}</Button>
-          {state === "error" && <p className="text-[11.5px]" style={{ color: "var(--signal-danger)" }}>Couldn’t connect — check your details.</p>}
-          <p className="text-[10.5px] mg-subtle">Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+          {state === "error" && <p className="text-[12px]" style={{ color: "var(--signal-danger)" }}>Couldn’t connect — check your details.</p>}
+          <p className="text-[11px] mg-subtle">Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
         </div>
       )}
     </div>

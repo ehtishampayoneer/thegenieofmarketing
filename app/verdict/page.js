@@ -56,7 +56,7 @@ export default function VerdictPage() {
 
         <header className="onb-rise" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Gem size={26} />
-          <span style={{ fontWeight: 800, letterSpacing: "-.02em", fontSize: 16 }}>
+          <span style={{ fontWeight: 700, letterSpacing: "-.02em", fontSize: 16 }}>
             Marketing <span style={{ color: "var(--onb-dawn)" }}>Genie</span>
           </span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--onb-subtle)" }}>The AI Verdict · free</span>
@@ -64,7 +64,7 @@ export default function VerdictPage() {
 
         {phase === "idle" && (
           <section className="onb-rise" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <h1 style={{ fontSize: "clamp(28px,5vw,44px)", lineHeight: 1.05, letterSpacing: "-.03em", fontWeight: 800, textWrap: "balance" }}>
+            <h1 style={{ fontSize: "clamp(28px,5vw,44px)", lineHeight: 1.05, letterSpacing: "-.03em", fontWeight: 700, textWrap: "balance" }}>
               When your buyers ask AI what to buy,<br />
               <span style={{ background: "linear-gradient(100deg,var(--onb-dawn),#64D2FF)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
                 does it name you — or your competitor?
@@ -79,11 +79,11 @@ export default function VerdictPage() {
                 className="onb-input" placeholder="yourwebsite.com" inputMode="url" autoFocus
                 style={{ flex: "1 1 260px", padding: "15px 16px", fontSize: 16 }}
               />
-              <button type="submit" className="onb-cta" style={{ padding: "15px 22px", fontSize: 15.5 }}>
+              <button type="submit" className="onb-cta" style={{ padding: "15px 22px", fontSize: 16 }}>
                 Get my verdict →
               </button>
             </form>
-            <p style={{ fontSize: 12.5, color: "var(--onb-subtle)" }}>Free · no signup · about 15 seconds · we don't store your site</p>
+            <p style={{ fontSize: 13, color: "var(--onb-subtle)" }}>Free · no signup · about 15 seconds · we don't store your site</p>
           </section>
         )}
 
@@ -98,7 +98,7 @@ export default function VerdictPage() {
         {phase === "error" && (
           <section className="onb-rise" style={{ display: "flex", flexDirection: "column", gap: 16, padding: "16px 0" }}>
             <div style={{ padding: 20, borderRadius: 16, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-              <p style={{ fontSize: 15.5, lineHeight: 1.5, color: "var(--onb-fg)" }}>{err}</p>
+              <p style={{ fontSize: 16, lineHeight: 1.5, color: "var(--onb-fg)" }}>{err}</p>
             </div>
             <button onClick={reset} className="onb-ghost" style={{ alignSelf: "flex-start", padding: "11px 18px" }}>Try again</button>
           </section>
@@ -106,7 +106,7 @@ export default function VerdictPage() {
 
         {phase === "done" && result && <Reveal result={result} onReset={reset} />}
 
-        <footer style={{ marginTop: 8, fontSize: 11.5, color: "var(--onb-subtle)", lineHeight: 1.5 }}>
+        <footer style={{ marginTop: 8, fontSize: 12, color: "var(--onb-subtle)", lineHeight: 1.5 }}>
           We ask each model directly — this reflects each model's trained knowledge, not a live web search. Marketing Genie is independent and not affiliated with OpenAI, Google, or Meta.
         </footer>
       </div>
@@ -129,14 +129,14 @@ function Reveal({ result, onReset }) {
         <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--onb-subtle)", marginBottom: 8 }}>
           Your AI Verdict · we asked {joinNames(engines)}
         </p>
-        <h2 style={{ fontSize: "clamp(24px,4.4vw,36px)", lineHeight: 1.08, letterSpacing: "-.025em", fontWeight: 800, textWrap: "balance" }}>{headline}</h2>
-        <p style={{ marginTop: 12, fontSize: 15.5, color: "var(--onb-muted)", lineHeight: 1.55 }}>
+        <h2 style={{ fontSize: "clamp(24px,4.4vw,36px)", lineHeight: 1.08, letterSpacing: "-.025em", fontWeight: 700, textWrap: "balance" }}>{headline}</h2>
+        <p style={{ marginTop: 12, fontSize: 16, color: "var(--onb-muted)", lineHeight: 1.55 }}>
           Of <b style={{ color: "var(--onb-fg)" }}>{total}</b> question{total === 1 ? "" : "s"} your buyers ask AI, you were named in <b style={{ color: visible ? "var(--onb-live)" : "#FF453A" }}>{visible}</b>.
         </p>
       </div>
 
       <div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, fontWeight: 600, color: "var(--onb-subtle)", marginBottom: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, color: "var(--onb-subtle)", marginBottom: 8 }}>
           <span>Share of AI answers that name you</span>
           <span style={{ color: score ? "var(--onb-live)" : "#FF453A", fontVariantNumeric: "tabular-nums" }}>{score}%</span>
         </div>
@@ -145,7 +145,7 @@ function Reveal({ result, onReset }) {
 
       {topCompetitors.length > 0 && (
         <div>
-          <p style={{ fontSize: 13.5, color: "var(--onb-muted)", marginBottom: 8 }}>Instead, AI sends your buyers to:</p>
+          <p style={{ fontSize: 14, color: "var(--onb-muted)", marginBottom: 8 }}>Instead, AI sends your buyers to:</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {topCompetitors.map((c, i) => (
               <span key={i} style={{ fontSize: 13, fontWeight: 600, padding: "6px 12px", borderRadius: 999, background: "var(--onb-panel-2)", border: "1px solid var(--onb-hair)" }}>{c}</span>
@@ -157,10 +157,10 @@ function Reveal({ result, onReset }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {questions.map((q, i) => (
           <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", borderRadius: 12, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-            <span style={{ flex: "none", marginTop: 1, color: q.named ? "var(--onb-live)" : "#FF453A", fontWeight: 800 }}>{q.named ? "✓" : "✗"}</span>
+            <span style={{ flex: "none", marginTop: 1, color: q.named ? "var(--onb-live)" : "#FF453A", fontWeight: 700 }}>{q.named ? "✓" : "✗"}</span>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, color: "var(--onb-fg)", lineHeight: 1.35 }}>“{q.question}”</p>
-              <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--onb-subtle)" }}>
+              <p style={{ marginTop: 3, fontSize: 13, color: "var(--onb-subtle)" }}>
                 {q.named
                   ? <>Named by {joinNames(q.namedBy)}</>
                   : q.recommendsInstead?.length
@@ -174,7 +174,7 @@ function Reveal({ result, onReset }) {
 
       <div style={{ padding: "22px", borderRadius: 18, background: "linear-gradient(135deg, rgba(10,132,255,.12), rgba(10,132,255,.04))", border: "1px solid rgba(10,132,255,.22)" }}>
         <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35 }}>This is the gap Marketing Genie closes.</p>
-        <p style={{ marginTop: 8, fontSize: 14.5, color: "var(--onb-muted)", lineHeight: 1.55 }}>
+        <p style={{ marginTop: 8, fontSize: 15, color: "var(--onb-muted)", lineHeight: 1.55 }}>
           Genie writes the answer pages and gets you into the lists these AI models read — automatically, organically, with no ad spend — then tracks every buyer question it wins back for you.
         </p>
         <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>

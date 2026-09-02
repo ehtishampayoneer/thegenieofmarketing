@@ -28,11 +28,9 @@ const SIGNAL_LABEL = {
 
 // Intent → heat colour + label.
 function heat(n) {
-  // Buying-intent as a cohesive BLUE intensity ramp (deep royal = strongest intent ->
-  // light slate = weakest). No warm colours — the number carries the value, the depth of
-  // blue and the label carry the tier. White number on every tile.
-  // Apple's own urgency ramp — systemRed for the hottest, then orange, then the
-  // neutral systemGray scale as intent cools. Same ladder iOS uses for severity.
+  // Apple's own urgency ramp — systemRed for the hottest, then orange, then blue,
+  // cooling to systemGray. The same ladder iOS uses for severity, so the tier reads
+  // at a glance. The number carries the value; colour and label carry the tier.
   if (n >= 85) return { color: "#FF3B30", soft: "rgba(255,59,48,.26)", label: "Top intent" };
   if (n >= 70) return { color: "#FF9500", soft: "rgba(255,149,0,.24)", label: "High intent" };
   if (n >= 55) return { color: "#007AFF", soft: "rgba(0,122,255,.22)", label: "Medium" };
@@ -93,18 +91,18 @@ export default function HuntPage() {
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.crosshair size={14} /> Buyer Hunt</p>
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>People ready to <span className="dawn-text">buy — right now.</span></h1>
-          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "60ch" }}>Genie hunts the whole internet for people researching, comparing and deciding in your space, ranks them by buying intent, and drafts the perfect helpful reply. You engage in one tap.</p>
+          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Genie hunts the whole internet for people researching, comparing and deciding in your space, ranks them by buying intent, and drafts the perfect helpful reply. You engage in one tap.</p>
         </div>
         <button onClick={huntNow} disabled={hunting} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
           <Icon.crosshair size={15} /> {hunting ? "Hunting…" : "Find buyers now"}
         </button>
       </div>
-      {msg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+      {msg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
 
       {/* competitor-poaching mode */}
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <input value={rivals} onChange={(e) => setRivals(e.target.value)} placeholder="Poach from rivals — name competitors, comma-separated (optional)" className="mg-field mg-focus" style={{ flex: 1, minWidth: 280, maxWidth: 520, fontSize: 13 }} />
-        <span className="text-[11.5px] mg-subtle">Genie hunts people asking for an alternative to them.</span>
+        <span className="text-[12px] mg-subtle">Genie hunts people asking for an alternative to them.</span>
       </div>
 
       {/* stat strip */}
@@ -119,7 +117,7 @@ export default function HuntPage() {
       {buyers && buyers.length > 0 && (
         <div className="mt-5 flex items-center gap-2 flex-wrap">
           {[["all", "All buyers"], ["ready_to_buy", "Ready to buy"], ["comparing", "Comparing"]].map(([id, label]) => (
-            <button key={id} onClick={() => setFilter(id)} className="mg-focus" style={{ fontSize: 12.5, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${filter === id ? "var(--accent)" : "var(--hair)"}`, background: filter === id ? "var(--accent-quiet)" : "var(--surface)", color: filter === id ? "var(--accent-ink)" : "var(--fg-muted)" }}>{label}</button>
+            <button key={id} onClick={() => setFilter(id)} className="mg-focus" style={{ fontSize: 13, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${filter === id ? "var(--accent)" : "var(--hair)"}`, background: filter === id ? "var(--accent-quiet)" : "var(--surface)", color: filter === id ? "var(--accent-ink)" : "var(--fg-muted)" }}>{label}</button>
           ))}
         </div>
       )}
@@ -133,12 +131,12 @@ export default function HuntPage() {
           <p className="text-[17px] font-bold flex items-center justify-center gap-2" style={{ color: "var(--fg)" }}>
             {hunting ? <>Genie is hunting the internet <span className="mg-thinking"><i /><i /><i /></span></> : "No buyers in your sights yet"}
           </p>
-          <p className="mt-1.5 text-[13.5px] mg-muted max-w-md mx-auto">
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">
             {hunting
               ? "Sweeping Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy what you sell. This takes up to a minute."
               : <>Hit <b style={{ color: "var(--fg)" }}>Find buyers now</b> and Genie sweeps Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy. Connect your Reddit key to unlock the biggest source for your niche.</>}
           </p>
-          {!hunting && <button onClick={huntNow} className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 13.5 }}><Icon.crosshair size={15} /> Find buyers now</button>}
+          {!hunting && <button onClick={huntNow} className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 14 }}><Icon.crosshair size={15} /> Find buyers now</button>}
         </Card>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
@@ -162,9 +160,9 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
         {/* intent score — a solid heat tile (the buying-intent, made tangible), not a line */}
         <div className="shrink-0 flex flex-col items-center" style={{ width: 56 }}>
           <div className="flex items-center justify-center" style={{ width: 52, height: 52, borderRadius: 15, background: h.color, color: "#fff", boxShadow: `0 5px 16px ${h.soft}` }}>
-            <span className="mg-num" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{b.intent}</span>
+            <span className="mg-num" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{b.intent}</span>
           </div>
-          <div className="text-[9.5px] font-bold uppercase tracking-wide mt-1.5 text-center" style={{ color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{h.label}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide mt-1.5 text-center" style={{ color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{h.label}</div>
         </div>
 
         {/* body */}
@@ -174,17 +172,17 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
             {stage && <Pill tone={stage.tone}>{stage.label}</Pill>}
             {b.competitor && <Pill tone="info">eyeing a rival</Pill>}
           </div>
-          <a href={b.url} target="_blank" rel="noreferrer" className="block mt-1.5 text-[14.5px] font-bold mg-focus" style={{ color: "var(--fg)" }}>{b.title || "View the thread"} <span style={{ color: "var(--accent-ink)", fontWeight: 600, fontSize: 12 }}>↗</span></a>
+          <a href={b.url} target="_blank" rel="noreferrer" className="block mt-1.5 text-[15px] font-bold mg-focus" style={{ color: "var(--fg)" }}>{b.title || "View the thread"} <span style={{ color: "var(--accent-ink)", fontWeight: 600, fontSize: 12 }}>↗</span></a>
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
             {sigs.map((s, i) => <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--surface-2)", color: "var(--fg-muted)" }}>{s}</span>)}
             {b.query && <span className="text-[11px] mg-subtle">· from “{b.query}”</span>}
           </div>
-          {b.reason && <p className="mt-1.5 text-[12.5px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Why:</span> {b.reason}</p>}
+          {b.reason && <p className="mt-1.5 text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Why:</span> {b.reason}</p>}
         </div>
 
         {/* actions */}
         <div className="shrink-0 flex flex-col gap-2 items-end">
-          <button onClick={onEngage} className="mg-btn mg-btn--dawn" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Icon.reply size={13} /> Engage</button>
+          <button onClick={onEngage} className="mg-btn mg-btn--dawn" style={{ fontSize: 13, whiteSpace: "nowrap" }}><Icon.reply size={13} /> Engage</button>
           <button onClick={onToggle} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>{open ? "Hide reply" : "See reply"}</button>
         </div>
       </div>
@@ -193,9 +191,9 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
         <div className="px-4 sm:px-5 pb-5">
           <div className="rounded-xl p-3.5" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
             <p className="text-[11px] font-bold tracking-[0.08em] mg-subtle mb-2">GENIE'S VALUE-FIRST REPLY · edit before you post</p>
-            <p className="text-[13.5px] whitespace-pre-wrap" style={{ color: "var(--fg)", lineHeight: 1.6 }}>{b.draft}</p>
+            <p className="text-[14px] whitespace-pre-wrap" style={{ color: "var(--fg)", lineHeight: 1.6 }}>{b.draft}</p>
             <div className="mt-3 flex items-center gap-2.5">
-              <button onClick={onEngage} className="mg-btn mg-btn--dawn" style={{ fontSize: 12.5 }}>Copy &amp; open thread →</button>
+              <button onClick={onEngage} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Copy &amp; open thread →</button>
               <button onClick={onDismiss} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Not a fit</button>
             </div>
           </div>
@@ -215,8 +213,8 @@ function Stat({ label, value, suffix = "", icon: Ic, tint }) {
     <Card className="p-4 flex items-center gap-3">
       <span className="mg-tile shrink-0" style={{ width: 38, height: 38, background: tileBg, color: glyph, boxShadow: tileShadow }}><Ic size={18} /></span>
       <div className="min-w-0">
-        <div className="mg-num" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value}<span className="text-[13px] mg-subtle">{suffix}</span></div>
-        <div className="text-[11.5px] mg-subtle mt-0.5">{label}</div>
+        <div className="mg-num" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: "var(--fg)" }}>{value}<span className="text-[13px] mg-subtle">{suffix}</span></div>
+        <div className="text-[12px] mg-subtle mt-0.5">{label}</div>
       </div>
     </Card>
   );

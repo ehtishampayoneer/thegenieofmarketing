@@ -158,7 +158,7 @@ export default function OperatorShell({ active = "today", children }) {
       <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">
         {NAV.map((item, i) =>
           item.section ? (
-            <p key={i} className="px-2.5 pt-3 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
+            <p key={i} className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
           ) : (
             <a key={item.id} href={hrefFor(item.id)} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
               <item.icon size={18} />
@@ -175,9 +175,9 @@ export default function OperatorShell({ active = "today", children }) {
         <div className="mg-surface-quiet p-3.5">
           <div className="flex items-center gap-2">
             <span className="mg-live-dot" style={working ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
-            <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{working ? "Genie is working" : "Genie is standing by"}</span>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{working ? "Genie is working" : "Genie is standing by"}</span>
           </div>
-          <p className="mt-1.5 text-[11.5px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
+          <p className="mt-1.5 text-[12px] mg-muted leading-snug">{activity[0]?.title || "Run your first scan and I’ll get to work."}</p>
           {working && (
             <div className="mt-2.5 h-1 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
               <div className="h-full rounded-full" style={{ width: "62%", background: "linear-gradient(90deg,var(--mg-dawn-500),var(--signal-live))" }} />
@@ -221,7 +221,7 @@ export default function OperatorShell({ active = "today", children }) {
           {/* Top bar + live ticker travel together as the sticky chrome. */}
           <div className="sticky top-0 z-20">
             <header className="mg-chrome flex items-center gap-3 px-4 sm:px-6" style={{ height: 60 }}>
-              <button onClick={() => setNavOpen(true)} className="md:hidden mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: -6 }} aria-label="Open menu">
+              <button onClick={() => setNavOpen(true)} className="md:hidden mg-navtoggle mg-focus shrink-0" style={{ color: "var(--fg-muted)", background: "none", border: "none", cursor: "pointer", marginLeft: -10 }} aria-label="Open menu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
               </button>
               <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
@@ -269,10 +269,10 @@ export default function OperatorShell({ active = "today", children }) {
             {missingConns.length > 0 && !connDismissed && (
               <div className="flex items-center gap-3 px-4 sm:px-6 py-2.5" style={{ background: "var(--accent-quiet)", borderBottom: "1px solid color-mix(in srgb, var(--accent) 22%, transparent)" }}>
                 <span className="mg-tile shrink-0" style={{ width: 24, height: 24, background: "var(--accent)", color: "#fff" }}><Icon.link size={13} /></span>
-                <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>
+                <span className="text-[13px]" style={{ color: "var(--fg)" }}>
                   Connect <b style={{ color: "var(--fg)", fontWeight: 700 }}>{missingConns.map((m) => m.label).join(" & ")}</b> to make Genie more powerful, {missingConns.map((m) => m.why).join(", ")}.
                 </span>
-                <a href="/connections" className="mg-btn mg-btn--primary ml-auto shrink-0" style={{ fontSize: 11.5, padding: ".34rem .8rem" }}>Connect</a>
+                <a href="/connections" className="mg-btn mg-btn--primary ml-auto shrink-0" style={{ fontSize: 12, padding: ".34rem .8rem" }}>Connect</a>
                 <button onClick={dismissConnect} className="mg-focus shrink-0" style={{ color: "var(--accent-ink)", fontSize: 17, lineHeight: 1, padding: "0 4px", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">×</button>
               </div>
             )}

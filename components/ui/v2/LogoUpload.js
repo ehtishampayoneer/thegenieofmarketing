@@ -29,7 +29,7 @@ export function LogoUpload({ value, onChange, buttonClassName = "mg-btn mg-btn--
         <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={buttonClassName} style={{ fontSize: 13, padding: ".55rem 1rem" }}>
           {busy ? "Uploading…" : value ? "Replace logo" : label}
         </button>
-        {value ? <button type="button" onClick={() => onChange("")} className="mg-focus" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12.5, color: mutedColor }}>Remove</button> : null}
+        {value ? <button type="button" onClick={() => onChange("")} className="mg-focus" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: mutedColor }}>Remove</button> : null}
       </div>
       {err ? <p style={{ marginTop: 6, fontSize: 12, color: "#E5484D" }}>{err}</p> : null}
     </div>

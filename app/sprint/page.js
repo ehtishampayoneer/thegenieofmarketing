@@ -58,7 +58,7 @@ function Setup({ onStart }) {
       <Card className="p-6 lg:p-7">
         <p className="mg-eyebrow"><Icon.flag size={14} /> 30-day test</p>
         <h2 className="mt-2 text-[22px] font-bold leading-tight" style={{ color: "var(--fg)" }}>Commit to one customer, one offer.</h2>
-        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)", maxWidth: "60ch" }}>
+        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)", maxWidth: "var(--measure)" }}>
           Find out if Genie actually makes you money — not "someday", but in 30 days. Pick the <b style={{ color: "var(--fg)" }}>one</b> customer type most likely to buy and the <b style={{ color: "var(--fg)" }}>one</b> offer you'll pitch, then run the fast-money engine and let this page keep score.
         </p>
         <div className="mt-6 flex flex-col gap-4">
@@ -85,12 +85,12 @@ function Setup({ onStart }) {
             {STEPS.map((s, i) => (
               <li key={i} className="flex gap-3" style={{ paddingBottom: i < STEPS.length - 1 ? 16 : 0 }}>
                 <div className="flex flex-col items-center">
-                  <span className="mg-num flex items-center justify-center shrink-0" style={{ width: 26, height: 26, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", fontSize: 12.5, fontWeight: 700 }}>{i + 1}</span>
+                  <span className="mg-num flex items-center justify-center shrink-0" style={{ width: 26, height: 26, borderRadius: 999, background: "var(--accent)", color: "var(--on-accent)", fontSize: 13, fontWeight: 700 }}>{i + 1}</span>
                   {i < STEPS.length - 1 && <span style={{ width: 2, flex: 1, minHeight: 14, background: "var(--hair)", marginTop: 4 }} />}
                 </div>
                 <div style={{ paddingTop: 2 }}>
-                  <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{s.t}</p>
-                  <p className="text-[12.5px] mt-0.5 leading-snug" style={{ color: "var(--fg-muted)" }}>{s.d}</p>
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{s.t}</p>
+                  <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "var(--fg-muted)" }}>{s.d}</p>
                 </div>
               </li>
             ))}
@@ -132,8 +132,8 @@ function Dashboard({ d, onChange }) {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="mg-eyebrow"><Icon.flag size={13} /> Day {dayNum} of {length} · {daysLeft} left</p>
-            <p className="mt-1 text-[13.5px]" style={{ color: "var(--fg)" }}><b>Target:</b> {c.icp || "—"}</p>
-            <p className="text-[13.5px] mg-muted"><b style={{ color: "var(--fg)" }}>Offer:</b> {c.offer || "—"}{c.price ? ` · ${c.price}` : ""}</p>
+            <p className="mt-1 text-[14px]" style={{ color: "var(--fg)" }}><b>Target:</b> {c.icp || "—"}</p>
+            <p className="text-[14px] mg-muted"><b style={{ color: "var(--fg)" }}>Offer:</b> {c.offer || "—"}{c.price ? ` · ${c.price}` : ""}</p>
           </div>
           <button onClick={endSprint} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12 }}>End sprint</button>
         </div>
@@ -145,8 +145,8 @@ function Dashboard({ d, onChange }) {
       {/* verdict */}
       <Card className="p-5" style={{ borderColor: v.color, borderWidth: 1.5 }}>
         <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: v.color }}>{done ? "Verdict" : "Pace check"}</p>
-        <p className="mt-1 text-[16.5px] font-bold" style={{ color: "var(--fg)" }}>{v.title}</p>
-        <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "68ch" }}>{v.text}</p>
+        <p className="mt-1 text-[17px] font-bold" style={{ color: "var(--fg)" }}>{v.title}</p>
+        <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{v.text}</p>
       </Card>
 
       {/* the 7 numbers */}
@@ -172,7 +172,7 @@ function Dashboard({ d, onChange }) {
         <Bar label="Real conversations" now={convos} goal={c.goalConvos || 1} unit="conversation" />
       </Card>
 
-      <p className="text-[11.5px] mg-subtle">
+      <p className="text-[12px] mg-subtle">
         Auto numbers come from real outreach + events since your start date. Meetings and proposals are yours to log (Genie can't see your calls). Update them as they happen so the verdict stays honest.
       </p>
     </div>
@@ -198,8 +198,8 @@ function Stat({ label, value, sub, accent, auto, onMinus, onPlus, busy }) {
   return (
     <Card className="p-3.5">
       <div className="flex items-center justify-between gap-1">
-        <p className="text-[11.5px] mg-muted leading-tight">{label}</p>
-        {auto ? <span title="Measured automatically" className="mg-subtle" style={{ fontSize: 9.5 }}>AUTO</span> : null}
+        <p className="text-[12px] mg-muted leading-tight">{label}</p>
+        {auto ? <span title="Measured automatically" className="mg-subtle" style={{ fontSize: 11 }}>AUTO</span> : null}
       </div>
       <p className="mt-1.5 mg-num text-[24px] font-bold leading-none" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" }}>{value}</p>
       {sub && <p className="mt-1 text-[11px] mg-subtle">{sub}</p>}
@@ -218,7 +218,7 @@ function Bar({ label, now, goal, unit }) {
   const hit = now >= goal;
   return (
     <div>
-      <div className="flex items-center justify-between text-[12.5px] mb-1.5">
+      <div className="flex items-center justify-between text-[13px] mb-1.5">
         <span style={{ color: "var(--fg)" }}>{label}</span>
         <span className="mg-num" style={{ color: hit ? "var(--signal-live-ink)" : "var(--fg-muted)" }}><b>{now}</b> / {goal} {unit}{goal !== 1 ? "s" : ""}{hit ? " ✓" : ""}</span>
       </div>
@@ -232,7 +232,7 @@ function Bar({ label, now, goal, unit }) {
 function L({ label, hint, children }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>{label}{hint && <span className="ml-1.5 font-normal mg-subtle">— {hint}</span>}</span>
+      <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{label}{hint && <span className="ml-1.5 font-normal mg-subtle">— {hint}</span>}</span>
       {children}
     </label>
   );

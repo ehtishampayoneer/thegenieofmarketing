@@ -60,7 +60,7 @@ export function SectionHead({ index, title, note, action, className = "" }) {
       <div className="flex items-baseline gap-2.5 min-w-0">
         {index != null && <span className="text-[11px] font-bold mg-num tracking-widest" style={{ color: "var(--accent-ink)" }}>{index}</span>}
         <h2 className="mg-title">{title}</h2>
-        {note && <span className="text-[12.5px] mg-subtle">{note}</span>}
+        {note && <span className="text-[13px] mg-subtle">{note}</span>}
       </div>
       {action && <div className="shrink-0 flex items-center gap-2">{action}</div>}
     </div>

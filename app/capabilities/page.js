@@ -122,7 +122,7 @@ export default function CapabilitiesPage() {
       <div className="max-w-[1000px]">
         <p className="mg-eyebrow"><Icon.spark size={14} /> Your employee</p>
         <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>Everything Genie can do <span className="dawn-text">for you.</span></h1>
-        <p className="mt-2 text-[14.5px] mg-muted max-w-[62ch]">One employee doing the work of a whole marketing team — finding buyers, creating and publishing content, winning search and AI answers, running outreach, and proving the results. <b style={{ color: "var(--fg)" }}>{counts.live}</b> of {counts.total} capabilities are active now; the rest switch on with a one-time connection.</p>
+        <p className="mt-2 text-[15px] mg-muted max-w-[var(--measure)]">One employee doing the work of a whole marketing team — finding buyers, creating and publishing content, winning search and AI answers, running outreach, and proving the results. <b style={{ color: "var(--fg)" }}>{counts.live}</b> of {counts.total} capabilities are active now; the rest switch on with a one-time connection.</p>
 
         <div className="mt-2 flex items-center gap-4 flex-wrap text-[12px] mg-subtle">
           <span className="flex items-center gap-1.5"><span className="mg-live-dot" /> Active now</span>
@@ -134,7 +134,7 @@ export default function CapabilitiesPage() {
           {GROUPS.map((g, gi) => (
             <section key={gi}>
               <p className="mg-klabel">{g.label}</p>
-              <p className="mt-1 text-[13px] mg-muted max-w-[64ch]">{g.sub}</p>
+              <p className="mt-1 text-[13px] mg-muted max-w-[var(--measure)]">{g.sub}</p>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {g.items.map((it, i) => {
                   const Ic = Icon[it.icon] || Icon.spark;
@@ -148,7 +148,7 @@ export default function CapabilitiesPage() {
                             <span className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{it.t}</span>
                             <span className="ml-auto"><Pill tone={TONE[it.status[0]]}>{it.status[1]}</Pill></span>
                           </div>
-                          <p className="mt-1 text-[12.5px] mg-muted leading-snug">{it.p}</p>
+                          <p className="mt-1 text-[13px] mg-muted leading-snug">{it.p}</p>
                         </div>
                       </div>
                     </Card>
@@ -163,12 +163,12 @@ export default function CapabilitiesPage() {
         <div className="mt-9 mb-2">
           <Card className="p-5 mg-ambient">
             <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Two things unlock the most</p>
-            <p className="mt-1 text-[13px] mg-muted max-w-[64ch]">Reconnect Google to grant fast-indexing + inbox-reply access, and approve your first article so the ranking tracker, AI-search presence and refresh loop have something real to work with.</p>
+            <p className="mt-1 text-[13px] mg-muted max-w-[var(--measure)]">Reconnect Google to grant fast-indexing + inbox-reply access, and approve your first article so the ranking tracker, AI-search presence and refresh loop have something real to work with.</p>
             <div className="mt-3 flex items-center gap-2.5 flex-wrap">
               <a href="/connections" className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}>Reconnect Google</a>
               <a href="/approvals" className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Review &amp; publish →</a>
             </div>
-            <p className="mt-3 text-[12.5px] mg-subtle">
+            <p className="mt-3 text-[13px] mg-subtle">
               New here? <a href="/how-it-works" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>How it works</a> walks through the whole thing end to end: setup, the night shift, your daily review, and what Genie will never do.
             </p>
           </Card>

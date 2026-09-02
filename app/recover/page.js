@@ -93,11 +93,11 @@ export default function RecoverPage() {
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.bolt size={14} /> Revenue Recovery</p>
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>The money you already <span className="dawn-text">paid to earn.</span></h1>
-          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Upload your old leads, quotes and past customers. Genie sorts them by how likely they are to buy now, writes a specific win-back for each, and you send from your own email. Warm contacts convert in days — replies land in your Inbox and the money shows up here.</p>
+          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Upload your old leads, quotes and past customers. Genie sorts them by how likely they are to buy now, writes a specific win-back for each, and you send from your own email. Warm contacts convert in days — replies land in your Inbox and the money shows up here.</p>
         </div>
         {contacts && contacts.length > 0 && <button onClick={() => setShowImport((v) => !v)} className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}><Icon.plus size={14} /> Import more</button>}
       </div>
-      {msg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+      {msg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
 
       {/* pipeline strip */}
       {summary && summary.total > 0 && (
@@ -124,7 +124,7 @@ export default function RecoverPage() {
               <Icon.plus size={14} /> {importing ? "Working…" : "Upload CSV & draft win-backs"}
               <input type="file" accept=".csv,text/csv" disabled={importing} style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; onFile(f); }} />
             </label>
-            <span className="text-[11.5px] mg-subtle">Up to 45 per import · re-import for more.</span>
+            <span className="text-[12px] mg-subtle">Up to 45 per import · re-import for more.</span>
           </div>
         </Card>
       )}
@@ -133,7 +133,7 @@ export default function RecoverPage() {
       {contacts && contacts.length > 0 && (
         <div className="mt-5 flex items-center gap-2 flex-wrap">
           {[["all", "All"], ["tosend", "To send"], ["sent", "Sent"], ["replied", "Replied"], ["won", "Won"]].map(([id, label]) => (
-            <button key={id} onClick={() => setFilter(id)} className="mg-focus" style={{ fontSize: 12.5, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${filter === id ? "var(--accent)" : "var(--hair)"}`, background: filter === id ? "var(--accent-quiet)" : "var(--surface)", color: filter === id ? "var(--accent-ink)" : "var(--fg-muted)" }}>{label}</button>
+            <button key={id} onClick={() => setFilter(id)} className="mg-focus" style={{ fontSize: 13, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${filter === id ? "var(--accent)" : "var(--hair)"}`, background: filter === id ? "var(--accent-quiet)" : "var(--surface)", color: filter === id ? "var(--accent-ink)" : "var(--fg-muted)" }}>{label}</button>
           ))}
         </div>
       )}
@@ -170,8 +170,8 @@ function ContactRow({ c, open, onToggle, onEdit, onSend, onMark }) {
           </div>
           <p className="mt-0.5 text-[12px] mg-subtle mg-num truncate">{c.email}{c.company ? ` · ${c.company}` : ""}</p>
           <div className="mt-2 flex items-center gap-2.5 flex-wrap">
-            {!c.sent && !c.outcome && <button onClick={onSend} disabled={c._sending} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 12.5 }}>{c._sending ? "Sending…" : "Send win-back →"}</button>}
-            {c.replied && !c.outcome && <><button onClick={() => onMark("won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 12.5 }}>Mark won 💰</button><button onClick={() => onMark("lost")} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Lost</button></>}
+            {!c.sent && !c.outcome && <button onClick={onSend} disabled={c._sending} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>{c._sending ? "Sending…" : "Send win-back →"}</button>}
+            {c.replied && !c.outcome && <><button onClick={() => onMark("won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Mark won 💰</button><button onClick={() => onMark("lost")} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Lost</button></>}
             {c.outcome && <button onClick={() => onMark("reopen")} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Reopen</button>}
             <button onClick={onToggle} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>{open ? "Hide email" : "See email"}</button>
           </div>
@@ -179,8 +179,8 @@ function ContactRow({ c, open, onToggle, onEdit, onSend, onMark }) {
       </div>
       {open && (
         <div className="mt-3 rounded-xl p-3.5" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-          <input value={c.subject || ""} onChange={(e) => onEdit({ subject: e.target.value })} disabled={c.sent} className="mg-field mg-focus" style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }} />
-          <textarea value={c.body || ""} onChange={(e) => onEdit({ body: e.target.value })} disabled={c.sent} className="mg-field mg-focus" style={{ fontSize: 13.5, lineHeight: 1.6, minHeight: 130 }} />
+          <input value={c.subject || ""} onChange={(e) => onEdit({ subject: e.target.value })} disabled={c.sent} className="mg-field mg-focus" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }} />
+          <textarea value={c.body || ""} onChange={(e) => onEdit({ body: e.target.value })} disabled={c.sent} className="mg-field mg-focus" style={{ fontSize: 14, lineHeight: 1.6, minHeight: 130 }} />
         </div>
       )}
     </Card>
@@ -191,8 +191,8 @@ function Stat({ label, value, tint, big }) {
   const col = tint === "live" ? "var(--signal-live-ink)" : tint === "info" ? "var(--signal-info)" : tint === "dawn" ? "var(--accent-ink)" : "var(--fg)";
   return (
     <Card className="p-4">
-      <div className="mg-num" style={{ fontSize: big ? 26 : 24, fontWeight: 800, lineHeight: 1, color: col }}>{value}</div>
-      <div className="text-[11.5px] mg-subtle mt-1">{label}</div>
+      <div className="mg-num" style={{ fontSize: big ? 26 : 24, fontWeight: 700, lineHeight: 1, color: col }}>{value}</div>
+      <div className="text-[12px] mg-subtle mt-1">{label}</div>
     </Card>
   );
 }

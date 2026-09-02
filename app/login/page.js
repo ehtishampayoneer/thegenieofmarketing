@@ -94,14 +94,14 @@ export default function LoginPage() {
               <GoogleIcon /> Continue with Google
             </button>
 
-            <div className="my-5 flex items-center gap-3" style={{ color: "var(--fg-subtle)", fontSize: 12.5 }}>
+            <div className="my-5 flex items-center gap-3" style={{ color: "var(--fg-subtle)", fontSize: 13 }}>
               <span className="mg-hairline" style={{ flex: 1 }} /> or <span className="mg-hairline" style={{ flex: 1 }} />
             </div>
 
             <div className="flex flex-col gap-3">
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" className="mg-focus" style={FIELD} />
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && emailAuth()} placeholder="Password" className="mg-focus" style={FIELD} />
-              <button onClick={emailAuth} disabled={busy} className="mg-btn mg-btn--dawn w-full mg-focus" style={{ height: 46, fontSize: 14.5 }}>
+              <button onClick={emailAuth} disabled={busy} className="mg-btn mg-btn--dawn w-full mg-focus" style={{ height: 46, fontSize: 15 }}>
                 {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
               </button>
             </div>
@@ -115,7 +115,7 @@ export default function LoginPage() {
             )}
           </div>
 
-          <p className="mt-5 text-center" style={{ fontSize: 13.5, color: "var(--fg-muted)" }}>
+          <p className="mt-5 text-center" style={{ fontSize: 14, color: "var(--fg-muted)" }}>
             {mode === "signin" ? "New here? " : "Already have an account? "}
             <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMsg(""); }}
               className="mg-focus" style={{ color: "var(--accent-ink)", fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>

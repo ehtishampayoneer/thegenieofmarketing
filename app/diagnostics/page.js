@@ -47,7 +47,7 @@ export default function DiagnosticsPage() {
         accent="console."
         action={state === "real" ? (
           <div className="text-right">
-            <button onClick={factoryReset} disabled={resetting} className="mg-btn mg-btn--ghost" style={{ fontSize: 12.5, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
+            <button onClick={factoryReset} disabled={resetting} className="mg-btn mg-btn--ghost" style={{ fontSize: 13, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
               {resetting ? "Wiping everything…" : "Full reset — wipe everything"}
             </button>
             {resetMsg && <p className="text-[11px] mt-1" style={{ color: "var(--signal-live-ink)" }}>{resetMsg}</p>}
@@ -111,7 +111,7 @@ export default function DiagnosticsPage() {
                   <div key={i} className="flex items-center gap-3 py-2" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
                     <span className="mg-pill" style={{ minWidth: 92, justifyContent: "center", textTransform: "capitalize" }}>{a.verb || "event"}</span>
                     <span className="text-[13px] flex-1 min-w-0 truncate" style={{ color: "var(--fg)" }}>{a.message}{a.detail ? <span className="mg-subtle"> · {a.detail}</span> : null}</span>
-                    <span className="text-[11.5px] mg-subtle mg-num shrink-0">{relTime(a.created_at)}</span>
+                    <span className="text-[12px] mg-subtle mg-num shrink-0">{relTime(a.created_at)}</span>
                   </div>
                 ))}
               </div>
@@ -120,7 +120,7 @@ export default function DiagnosticsPage() {
         </div>
       )}
 
-      {d?.generatedAt && <p className="mt-6 text-center text-[11.5px] mg-subtle">Snapshot at {new Date(d.generatedAt).toLocaleTimeString()} · reload to refresh</p>}
+      {d?.generatedAt && <p className="mt-6 text-center text-[12px] mg-subtle">Snapshot at {new Date(d.generatedAt).toLocaleTimeString()} · reload to refresh</p>}
     </OperatorShell>
   );
 }
@@ -138,7 +138,7 @@ function Row({ ok, label, right, danger, dim }) {
   return (
     <div className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid var(--hair)" }}>
       <span style={{ width: 9, height: 9, borderRadius: 999, flex: "none", background: ok ? "var(--signal-live)" : danger ? "var(--signal-danger)" : "var(--fg-subtle)" }} />
-      <span className="text-[13.5px] flex-1" style={{ color: "var(--fg)" }}>{label}</span>
+      <span className="text-[14px] flex-1" style={{ color: "var(--fg)" }}>{label}</span>
       <span className="text-[12px] mg-num" style={{ color: dim ? "var(--fg-subtle)" : danger ? "var(--signal-danger)" : "var(--fg-muted)" }}>{right}</span>
     </div>
   );

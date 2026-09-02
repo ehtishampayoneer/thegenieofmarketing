@@ -49,8 +49,8 @@ export function OpportunityCard({
       </div>
 
       <div className="mt-4 flex items-center gap-2.5 flex-wrap">
-        <Button variant="dawn" onClick={onApprove} style={{ fontSize: 12.5, padding: ".5rem .95rem" }}>{primaryLabel}</Button>
-        <Button variant="ghost" onClick={() => setOpen((v) => !v)} style={{ fontSize: 12.5, padding: ".5rem .85rem" }}>
+        <Button variant="dawn" onClick={onApprove} style={{ fontSize: 13, padding: ".5rem .95rem" }}>{primaryLabel}</Button>
+        <Button variant="ghost" onClick={() => setOpen((v) => !v)} style={{ fontSize: 13, padding: ".5rem .85rem" }}>
           {open ? "Hide reasoning" : "Why?"}
         </Button>
         {confidence != null && (
@@ -85,7 +85,7 @@ function Field({ label, value, accent, estimated }) {
   if (!value) return null;
   return (
     <div>
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] mg-subtle flex items-center gap-1.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mg-subtle flex items-center gap-1.5">
         {label}{estimated && <Estimated />}
       </p>
       <p className="mt-1 text-[13px] leading-snug" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" , fontWeight: accent ? 600 : 400 }}>{value}</p>

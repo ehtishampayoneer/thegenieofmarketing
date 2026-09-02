@@ -64,7 +64,7 @@ export default function ImpactPage() {
                   <div key={i} className="flex items-center gap-3 px-2 py-3" style={{ borderTop: "1px solid var(--hair)" }}>
                     <span className="mg-tile" style={{ width: 34, height: 34, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={16} /></span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{fmtMoney(r.value, d.currency)}</p>
+                      <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{fmtMoney(r.value, d.currency)}</p>
                       <p className="text-[12px] mg-muted truncate mt-0.5">via {r.source}{r.campaign ? ` · ${r.campaign}` : ""}</p>
                     </div>
                     <span className="text-[11px] mg-subtle mg-num">{r.at ? relTime(r.at) : ""}</span>
@@ -76,7 +76,7 @@ export default function ImpactPage() {
 
             {/* by source */}
             <Card className="p-5 self-start">
-              <h3 className="text-[13.5px] font-bold mb-3" style={{ color: "var(--fg)" }}>Where it came from</h3>
+              <h3 className="text-[14px] font-bold mb-3" style={{ color: "var(--fg)" }}>Where it came from</h3>
               <div className="space-y-2.5">
                 {(d.bySource || []).map((s) => {
                   const max = Math.max(...(d.bySource || []).map((x) => x.count), 1);
@@ -131,12 +131,12 @@ function ConnectRevenue({ ingest, empty }) {
       {/* LIVE STATUS — confirms the wiring before a real sale */}
       <div className="mt-4 flex items-center gap-2.5 flex-wrap rounded-xl px-3.5 py-2.5" style={{ background: connected ? "var(--signal-live-soft)" : "var(--surface-sunken)", border: `1px solid ${connected ? "var(--signal-live-ink)" : "var(--hair)"}` }}>
         <span className="mg-live-dot" style={connected ? undefined : { background: "var(--fg-subtle)", animation: "none" }} />
-        <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>
+        <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>
           {connected
             ? <>Connected{status.provider ? ` · ${status.provider}` : ""} ✓ — received an event {status.lastEventAt ? relTime(status.lastEventAt) : "just now"}. {status.hasSales ? "Sales are flowing in." : "Waiting for your first sale."}</>
             : <>Not connected yet — add the webhook, then send a test event.</>}
         </span>
-        <button onClick={check} disabled={checking} className="mg-btn mg-btn--quiet shrink-0 ml-auto disabled:opacity-50" style={{ fontSize: 11.5, padding: ".3rem .6rem" }}>{checking ? "Checking…" : "Recheck"}</button>
+        <button onClick={check} disabled={checking} className="mg-btn mg-btn--quiet shrink-0 ml-auto disabled:opacity-50" style={{ fontSize: 12, padding: ".3rem .6rem" }}>{checking ? "Checking…" : "Recheck"}</button>
       </div>
 
       <div className="mt-4 flex flex-col gap-2.5">
@@ -145,8 +145,8 @@ function ConnectRevenue({ ingest, empty }) {
             <div className="flex items-center gap-2.5">
               <span className="text-[13px] font-semibold w-28 shrink-0" style={{ color: "var(--fg)" }}>{p.label}</span>
               <code className="flex-1 min-w-0 text-[11px] mg-subtle truncate" style={{ fontFamily: "var(--font-mono)" }}>{urlFor(p.id)}</code>
-              <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{copied === p.id ? "Copied" : "Copy"}</button>
-              {p.steps?.length ? <button onClick={() => setOpen(open === p.id ? "" : p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5, padding: ".35rem .6rem" }}>{open === p.id ? "Hide" : "Steps"}</button> : null}
+              <button onClick={() => copy(p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 12, padding: ".35rem .6rem" }}>{copied === p.id ? "Copied" : "Copy"}</button>
+              {p.steps?.length ? <button onClick={() => setOpen(open === p.id ? "" : p.id)} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 12, padding: ".35rem .6rem" }}>{open === p.id ? "Hide" : "Steps"}</button> : null}
             </div>
             {open === p.id && p.steps?.length ? (
               <ol className="mt-2.5 ml-1 flex flex-col gap-1.5">
@@ -170,7 +170,7 @@ function ImpactStat({ label, value, sub }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[12.5px] mg-muted">{label}</p>
+        <p className="text-[13px] mg-muted">{label}</p>
         {sub && <p className="text-[11px] mg-subtle mt-0.5">{sub}</p>}
       </div>
       <p className="mg-num text-[22px] font-bold leading-none shrink-0" style={{ color: "var(--fg)" }}>{value}</p>

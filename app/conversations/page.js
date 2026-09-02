@@ -63,9 +63,9 @@ export default function ConversationsPage() {
         provenance={<DataStateBadge state={state} />}
         title="Genie is out there"
         accent="talking to your market."
-        action={<button onClick={findNow} disabled={scanning} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 12.5 }}><Icon.target size={14} /> {scanning ? "Hunting…" : "Find buyers now"}</button>}
+        action={<button onClick={findNow} disabled={scanning} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}><Icon.target size={14} /> {scanning ? "Hunting…" : "Find buyers now"}</button>}
       />
-      {scanMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{scanMsg}</p>}
+      {scanMsg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{scanMsg}</p>}
 
       {state === "loading" ? (
         <LoadingState />
@@ -172,13 +172,13 @@ function TimelineStep({ step, last }) {
         <IconC size={14} />
       </span>
       <div className="ml-1 pt-0.5">
-        <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{step.title}</p>
-        {step.meta && <p className="text-[11.5px] mt-0.5" style={{ color: "var(--accent-ink)" }}>{step.meta}</p>}
-        {step.detail && <p className="text-[12.5px] mg-muted mt-0.5">{step.detail}</p>}
+        <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{step.title}</p>
+        {step.meta && <p className="text-[12px] mt-0.5" style={{ color: "var(--accent-ink)" }}>{step.meta}</p>}
+        {step.detail && <p className="text-[13px] mg-muted mt-0.5">{step.detail}</p>}
 
         {isReply && step.draft && (
           <div className="mt-2.5 mg-surface-quiet p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: "var(--accent-ink)" }}>Genie drafted your answer</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-1" style={{ color: "var(--accent-ink)" }}>Genie drafted your answer</p>
             <p className="text-[13px] whitespace-pre-wrap" style={{ color: "var(--fg-muted)" }}>{step.draft}</p>
             <button onClick={act} className="mg-btn mg-btn--dawn mt-2.5" style={{ fontSize: 12 }}>
               {copied ? "Copied — paste & reply" : "Copy & open thread"}

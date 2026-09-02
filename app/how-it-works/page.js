@@ -201,8 +201,8 @@ function Sequence({ items }) {
             {String(i + 1).padStart(2, "0")}
           </span>
           <div className="min-w-0">
-            <p className="text-[15.5px] font-bold" style={{ color: "var(--fg)", lineHeight: 1.35 }}>{s.t}</p>
-            <p className="mt-1.5 text-[14px] mg-muted leading-relaxed" style={{ maxWidth: "64ch" }}>{s.p}</p>
+            <p className="text-[16px] font-bold" style={{ color: "var(--fg)", lineHeight: 1.35 }}>{s.t}</p>
+            <p className="mt-1.5 text-[14px] mg-muted leading-relaxed" style={{ maxWidth: "var(--measure)" }}>{s.p}</p>
             {s.where && <p className="mt-2 text-[12px] mg-subtle">{s.where}</p>}
           </div>
         </li>
@@ -223,8 +223,8 @@ function RoomCard({ it }) {
               <span className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{it.t}</span>
               <span className="ml-auto"><Pill tone={TONE[it.tag[0]]}>{it.tag[1]}</Pill></span>
             </div>
-            <p className="mt-1 text-[12.5px] mg-muted leading-snug">{it.p}</p>
-            <p className="mt-2 text-[11.5px] mg-subtle">{it.when}</p>
+            <p className="mt-1 text-[13px] mg-muted leading-snug">{it.p}</p>
+            <p className="mt-2 text-[12px] mg-subtle">{it.when}</p>
           </div>
         </div>
       </Card>
@@ -244,7 +244,7 @@ export default function HowItWorksPage() {
         <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>
           How Genie works, <span className="dawn-text">start to finish.</span>
         </h1>
-        <p className="mt-2 text-[14.5px] mg-muted" style={{ maxWidth: "62ch" }}>
+        <p className="mt-2 text-[15px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
           You give Genie your website. It learns your business, finds people who want to buy, writes the content, publishes what it is allowed to publish, and asks you before it does anything in your name. This is the whole thing, in plain words.
         </p>
 
@@ -261,7 +261,7 @@ export default function HowItWorksPage() {
           title="Not a dashboard. An employee."
           sub="Most marketing tools hand you charts and let you do the work. Genie does the work and hands you decisions."
         >
-          <p className="mt-3 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>
+          <p className="mt-3 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
             Think of it as hiring someone on day one. It reads your website to understand what you sell and who buys it, then does five jobs at once, every night:
           </p>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -273,7 +273,7 @@ export default function HowItWorksPage() {
                     <span className="mg-tile shrink-0" style={{ width: 34, height: 34, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Ic size={17} /></span>
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{j.t}</p>
-                      <p className="mt-1 text-[12.5px] mg-muted leading-snug">{j.p}</p>
+                      <p className="mt-1 text-[13px] mg-muted leading-snug">{j.p}</p>
                     </div>
                   </div>
                 </Card>
@@ -282,8 +282,8 @@ export default function HowItWorksPage() {
           </div>
 
           <Card className="mt-3 p-4" style={{ borderLeft: "3px solid var(--signal-live)" }}>
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>The one promise</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>The one promise</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Genie is built around a single measure: getting you a real customer you can trace, within 30 days. Not traffic, not published posts, not keywords tracked. A customer.
             </p>
           </Card>
@@ -308,8 +308,8 @@ export default function HowItWorksPage() {
         >
           <Sequence items={NIGHT} />
           <Card className="mt-3 p-4">
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Each business gets its own run</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Each business gets its own run</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Runs are separated per business and can be safely retried, so one slow or failing business never blocks anyone else's night. If a run fails it is retried on the next pass rather than silently skipped.
             </p>
           </Card>
@@ -321,10 +321,10 @@ export default function HowItWorksPage() {
           label="YOUR DAILY 10 MINUTES"
           title="Open two screens. That is the routine."
         >
-          <p className="mt-3 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>
+          <p className="mt-3 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
             <b style={{ color: "var(--fg)" }}>First, Today.</b> Your home screen opens with what Genie did overnight, the three things worth doing next, this week's growth, and what is waiting on you. You are not meant to study it. Read the top, then move on.
           </p>
-          <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>
+          <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
             <b style={{ color: "var(--fg)" }}>Then, Approvals.</b> The only screen you truly have to visit. One item fills the screen at a time: what it is, why Genie chose it, what it targets, and a real formatted preview of exactly what will go out. Your own channels come first, because those are the ones Genie can actually publish for you.
           </p>
 
@@ -335,24 +335,24 @@ export default function HowItWorksPage() {
                   <span className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{d.t}</span>
                   <span className="ml-auto"><Pill tone={d.tone}>{d.k}</Pill></span>
                 </div>
-                <p className="mt-1 text-[12.5px] mg-muted leading-snug">{d.p}</p>
+                <p className="mt-1 text-[13px] mg-muted leading-snug">{d.p}</p>
               </Card>
             ))}
           </div>
 
           <p className="mt-5 text-[14px] font-bold" style={{ color: "var(--fg)" }}>What happens the second you approve an article</p>
-          <ul className="mt-2 flex flex-col gap-2" style={{ listStyle: "none", margin: 0, padding: 0, maxWidth: "66ch" }}>
+          <ul className="mt-2 flex flex-col gap-2" style={{ listStyle: "none", margin: 0, padding: 0, maxWidth: "var(--measure)" }}>
             {ON_APPROVE.map((line, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span className="mg-tile shrink-0" style={{ width: 18, height: 18, marginTop: 2, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={11} /></span>
-                <span className="text-[13.5px] mg-muted leading-snug">{line}</span>
+                <span className="text-[14px] mg-muted leading-snug">{line}</span>
               </li>
             ))}
           </ul>
 
           <Card className="mt-4 p-4" style={{ borderLeft: "3px solid var(--signal-warn)" }}>
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Genie will never post to your social accounts by itself</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Genie will never post to your social accounts by itself</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Reddit, Quora, X, LinkedIn, Medium and forums are draft-and-you-post. Genie writes it and opens the page with everything filled in. You press post. This is deliberate: silent automated posting is exactly what gets accounts banned, and a banned account costs more than a saved click.
             </p>
           </Card>
@@ -369,7 +369,7 @@ export default function HowItWorksPage() {
             {ROOMS.map((g, gi) => (
               <div key={gi}>
                 <p className="mg-klabel">{g.label}</p>
-                <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>{g.sub}</p>
+                <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{g.sub}</p>
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {g.items.map((it, i) => <RoomCard key={i} it={it} />)}
                 </div>
@@ -378,8 +378,8 @@ export default function HowItWorksPage() {
           </div>
 
           <Card className="mt-4 p-4">
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Ask Genie anything, from anywhere</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Ask Genie anything, from anywhere</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Press Ctrl+K or Cmd+K on any screen to open the chat. Ask things like what should I publish this week, or which buyers are asking for me right now. A live activity ticker runs across the top of every page, and the How this works button in the header explains whichever screen you are on.
             </p>
           </Card>
@@ -401,15 +401,15 @@ export default function HowItWorksPage() {
                     {c.sub && <span className="text-[12px] mg-subtle">{c.sub}</span>}
                     <span className="ml-auto"><Pill tone={TONE[c.tag[0]]}>{c.tag[1]}</Pill></span>
                   </div>
-                  <p className="text-[13px] mg-muted leading-snug" style={{ maxWidth: "70ch" }}>{c.unlocks}</p>
+                  <p className="text-[13px] mg-muted leading-snug" style={{ maxWidth: "var(--measure-wide)" }}>{c.unlocks}</p>
                 </div>
               </Card>
             ))}
           </div>
 
           <Card className="mt-3 p-4" style={{ borderLeft: "3px solid var(--accent)" }}>
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Before your first outreach email</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Before your first outreach email</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Genie checks your sending domain's SPF, DKIM and DMARC records, scores how ready your domain is to reach inboxes, hands you the exact records to fix, and sets a safe sending volume. That is the difference between landing in an inbox and dying in spam, and it runs before anything goes out.
             </p>
             <div className="mt-3">
@@ -434,7 +434,7 @@ export default function HowItWorksPage() {
                     <span className="mg-tile shrink-0" style={{ width: 34, height: 34, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Ic size={17} /></span>
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{r.t}</p>
-                      <p className="mt-1 text-[12.5px] mg-muted leading-snug">{r.p}</p>
+                      <p className="mt-1 text-[13px] mg-muted leading-snug">{r.p}</p>
                     </div>
                   </div>
                 </Card>
@@ -455,23 +455,23 @@ export default function HowItWorksPage() {
               <Card key={i} className="p-4">
                 <div className="flex items-start gap-3 flex-wrap">
                   <span style={{ minWidth: 84 }}><Pill tone={t.tone}>{t.level}</Pill></span>
-                  <p className="text-[13.5px] mg-muted flex-1 min-w-[220px] leading-snug">{t.means}</p>
-                  <p className="text-[12.5px] mg-subtle mg-num">{t.how}</p>
+                  <p className="text-[14px] mg-muted flex-1 min-w-[220px] leading-snug">{t.means}</p>
+                  <p className="text-[13px] mg-subtle mg-num">{t.how}</p>
                 </div>
               </Card>
             ))}
           </div>
 
-          <p className="mt-4 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>
+          <p className="mt-4 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
             Even at Auto there are two more gates. The content has to pass a safety and brand check, and Genie's own confidence in it has to be at least 80 out of 100. If either fails, it falls back to asking you. The system is built to fail towards asking permission, never towards acting alone.
           </p>
-          <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>
+          <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
             Every one of those decisions is written down with the reason: what it chose, why, how confident it was, and whether it acted or held back. You can read the whole ledger in <a href="/learning" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>What Genie Learned</a>.
           </p>
 
           <Card className="mt-3 p-4" style={{ borderLeft: "3px solid var(--signal-live)" }}>
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>You can always pull the brake</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "64ch" }}>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>You can always pull the brake</p>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               There is a kill switch, per-channel permission levels, and a spending cap. Revoking trust takes one click and takes effect immediately.
             </p>
             <div className="mt-3">
@@ -487,11 +487,11 @@ export default function HowItWorksPage() {
           title="What Genie cannot do yet."
           sub="Knowing these upfront prevents the disappointment that makes people quit in week three."
         >
-          <ul className="mt-4 flex flex-col gap-3" style={{ listStyle: "none", margin: 0, padding: 0, maxWidth: "70ch" }}>
+          <ul className="mt-4 flex flex-col gap-3" style={{ listStyle: "none", margin: 0, padding: 0, maxWidth: "var(--measure-wide)" }}>
             {LIMITS.map(([t, p], i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span className="mg-tile shrink-0" style={{ width: 18, height: 18, marginTop: 3, background: "var(--surface-2)", color: "var(--fg-subtle)" }}><Icon.info size={11} /></span>
-                <span className="text-[13.5px] mg-muted leading-snug">
+                <span className="text-[14px] mg-muted leading-snug">
                   <b style={{ color: "var(--fg)", fontWeight: 600 }}>{t}</b> {p}
                 </span>
               </li>
@@ -510,7 +510,7 @@ export default function HowItWorksPage() {
               <a key={i} href={r.href} className="mg-lift mg-focus" style={{ textDecoration: "none" }}>
                 <Card className="p-4 h-full">
                   <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{r.q}</p>
-                  <p className="mt-1 text-[12.5px] mg-muted leading-snug">{r.a}</p>
+                  <p className="mt-1 text-[13px] mg-muted leading-snug">{r.a}</p>
                 </Card>
               </a>
             ))}
@@ -521,7 +521,7 @@ export default function HowItWorksPage() {
         <div className="mt-9 mb-2">
           <Card className="p-5 mg-ambient">
             <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>The shortest possible version</p>
-            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "66ch" }}>
+            <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
               Paste your website. Spend five minutes correcting how Genie understood your business, because everything is built on that. Connect Google and your blog. Then open Approvals once a day and press approve, edit or skip. Genie does the rest overnight, writes down every decision it made, and asks before doing anything in your name.
             </p>
             <div className="mt-3 flex items-center gap-2.5 flex-wrap">

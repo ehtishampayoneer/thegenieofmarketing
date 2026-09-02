@@ -57,19 +57,19 @@ export default function ProspectsPage() {
     <OperatorShell active="prospects">
       <div>
         <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Find clients</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Name who you want to sell to. Genie finds real companies, the right person at each, their contact, and a pitch written for them. You review and send, from your own email, capped and compliant.</p>
+        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Name who you want to sell to. Genie finds real companies, the right person at each, their contact, and a pitch written for them. You review and send, from your own email, capped and compliant.</p>
       </div>
 
       {/* search */}
       <div className="mt-5 flex items-center gap-2 flex-wrap">
         <input value={niche} onChange={(e) => setNiche(e.target.value)} onKeyDown={(e) => e.key === "Enter" && find()}
           placeholder="Who should I target? e.g. rug e-commerce brands" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
-        <button onClick={find} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13.5 }}>
+        <button onClick={find} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
           {busy ? "Finding companies…" : "Find prospects →"}
         </button>
       </div>
       {rows === null && !busy && (
-        <div className="mt-3 flex items-center gap-2 flex-wrap text-[12.5px] mg-subtle">
+        <div className="mt-3 flex items-center gap-2 flex-wrap text-[13px] mg-subtle">
           <span>Try:</span>
           {EXAMPLES.map((ex) => <button key={ex} onClick={() => setNiche(ex)} className="mg-pill mg-focus" style={{ cursor: "pointer" }}>{ex}</button>)}
         </div>
@@ -80,7 +80,7 @@ export default function ProspectsPage() {
         <Card className="mt-5 p-8 text-center">
           <span className="mg-live-dot mx-auto" style={{ display: "block", width: 8 }} />
           <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Genie is finding companies and reading their sites…</p>
-          <p className="mt-1 text-[12.5px] mg-muted">Searching, crawling each site for the decision-maker and contact, and writing a pitch for each. This takes up to a minute.</p>
+          <p className="mt-1 text-[13px] mg-muted">Searching, crawling each site for the decision-maker and contact, and writing a pitch for each. This takes up to a minute.</p>
         </Card>
       )}
 
@@ -110,7 +110,7 @@ export default function ProspectsPage() {
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>{p.company} <a href={p.url} target="_blank" rel="noreferrer" className="text-[12px] font-medium" style={{ color: "var(--accent-ink)" }}>{p.domain} ↗</a></p>
-                  {p.summary && <p className="mt-0.5 text-[12.5px] mg-muted">{p.summary}</p>}
+                  {p.summary && <p className="mt-0.5 text-[13px] mg-muted">{p.summary}</p>}
                 </div>
                 {p.state === "sent" ? <Pill tone="live"><Icon.check size={12} /> Sent</Pill> : p.contact?.email ? <Pill tone="dawn">{p.contact.emailType === "named" ? "Direct contact" : "Role inbox"}</Pill> : <Pill tone="info">Contact form</Pill>}
               </div>
@@ -122,24 +122,24 @@ export default function ProspectsPage() {
                 {p.contact?.title && <Pill tone="neutral">{p.contact.title}</Pill>}
                 <span className="mg-num" style={{ color: "var(--fg-muted)" }}>{p.contact?.email || (p.contact?.contactForm ? "via contact form" : "no email found")}</span>
               </div>
-              {p.whyFit && <p className="mt-2 text-[12.5px]" style={{ color: "var(--fg-muted)" }}><span className="font-semibold" style={{ color: "var(--fg)" }}>Why them:</span> {p.whyFit}</p>}
+              {p.whyFit && <p className="mt-2 text-[13px]" style={{ color: "var(--fg-muted)" }}><span className="font-semibold" style={{ color: "var(--fg)" }}>Why them:</span> {p.whyFit}</p>}
 
               {/* the pitch (editable) */}
               <div className="mt-3.5 rounded-xl p-3.5" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
                 <p className="text-[11px] font-bold tracking-[0.08em] mg-subtle mb-2">THE PITCH · edit before you send</p>
-                <input value={p.subject} onChange={(e) => patch(i, { subject: e.target.value })} disabled={p.state === "sent"} className="mg-field mg-focus" style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }} />
-                <textarea value={p.body} onChange={(e) => patch(i, { body: e.target.value })} disabled={p.state === "sent"} className="mg-field mg-focus" style={{ fontSize: 13.5, lineHeight: 1.6, minHeight: 120 }} />
+                <input value={p.subject} onChange={(e) => patch(i, { subject: e.target.value })} disabled={p.state === "sent"} className="mg-field mg-focus" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }} />
+                <textarea value={p.body} onChange={(e) => patch(i, { body: e.target.value })} disabled={p.state === "sent"} className="mg-field mg-focus" style={{ fontSize: 14, lineHeight: 1.6, minHeight: 120 }} />
               </div>
 
               <div className="mt-3 flex items-center gap-3 flex-wrap">
                 <button onClick={() => send(i)} disabled={p.state === "sending" || p.state === "sent"} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
                   {p.state === "sent" ? "Sent ✓" : p.state === "sending" ? "Sending…" : p.contact?.email ? "Send →" : "Copy & open form →"}
                 </button>
-                <span className="text-[11.5px] mg-subtle">{p.contact?.email ? "From your own email · counts toward today's cap" : "No email found — send via their form"}</span>
+                <span className="text-[12px] mg-subtle">{p.contact?.email ? "From your own email · counts toward today's cap" : "No email found — send via their form"}</span>
               </div>
             </Card>
           ))}
-          <p className="text-[12px] mg-subtle" style={{ maxWidth: "70ch" }}>Genie only keeps companies with a real, deliverable contact, and never guesses an address. Coverage is honest: a direct decision-maker for some, a role inbox or contact form for others. Sends are capped and paced to protect your email reputation.</p>
+          <p className="text-[12px] mg-subtle" style={{ maxWidth: "var(--measure-wide)" }}>Genie only keeps companies with a real, deliverable contact, and never guesses an address. Coverage is honest: a direct decision-maker for some, a role inbox or contact form for others. Sends are capped and paced to protect your email reputation.</p>
         </div>
       )}
 

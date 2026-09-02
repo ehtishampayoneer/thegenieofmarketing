@@ -139,21 +139,21 @@ function Growth() {
           <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={refreshRankings} disabled={ranksBusy || !host} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }} title="Pull your latest Google positions from Search Console">
+          <button onClick={refreshRankings} disabled={ranksBusy || !host} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13 }} title="Pull your latest Google positions from Search Console">
             <Icon.growth size={14} /> {ranksBusy ? "Refreshing…" : "Refresh rankings"}
           </button>
-          <button onClick={refreshPage} disabled={busy === "refresh" || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Re-optimize your stalest published page and republish it in place">
+          <button onClick={refreshPage} disabled={busy === "refresh" || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }} title="Re-optimize your stalest published page and republish it in place">
             <Icon.history size={14} /> {busy === "refresh" ? "Refreshing…" : "Refresh a page"}
           </button>
-          <button onClick={buildHub} disabled={hubBusy || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 12.5 }} title="Assemble a pillar hub page that links your related articles together — builds topical authority">
+          <button onClick={buildHub} disabled={hubBusy || !host} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }} title="Assemble a pillar hub page that links your related articles together — builds topical authority">
             <Icon.link size={14} /> {hubBusy ? "Building…" : "Build topic hub"}
           </button>
-          <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
+          <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
             <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}
           </button>
         </div>
       </div>
-      {refreshMsg && <p className="mt-2 text-[12.5px]" style={{ color: "var(--accent-ink)" }}>{refreshMsg}</p>}
+      {refreshMsg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{refreshMsg}</p>}
 
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.growth} title="I can’t reach your growth data" sub="Sign in and I’ll show your rankings and strategy." /></div>
@@ -164,16 +164,16 @@ function Growth() {
       ) : (
         <>
           {/* plain-language Google standing */}
-          <p className="mt-4 text-[13.5px]" style={{ color: "var(--fg)", maxWidth: "72ch" }}>
+          <p className="mt-4 text-[14px]" style={{ color: "var(--fg)", maxWidth: "var(--measure-wide)" }}>
             {avgPosition != null
               ? <>Right now you rank <b style={{ color: "var(--accent-ink)" }}>#{Math.round(avgPosition)}</b> on average across <b>{tracked}</b> tracked {tracked === 1 ? "keyword" : "keywords"}{inTop20 > 0 ? <> · <b>{inTop20}</b> already in the top 20</> : null}{improvedBy > 0 ? <> · <span style={{ color: "var(--signal-live-ink)", fontWeight: 600 }}>up {improvedBy} spots this period</span></> : null}. Your climbers are in the table below (status <b>Climbing</b>/<b>Ranking</b>).</>
               : <>Genie is tracking <b>{tracked}</b> {tracked === 1 ? "keyword" : "keywords"}. Your live Google positions show here once Search Console reports for your site — usually a few days after your first page is indexed. Tap <b>Refresh rankings</b> to pull the latest.</>}
           </p>
 
           {/* how Genie speeds up indexing — the always-on internal-link acceleration */}
-          <div className="mt-3 flex items-start gap-2.5 p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", maxWidth: "80ch" }}>
+          <div className="mt-3 flex items-start gap-2.5 p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", maxWidth: "var(--measure-wide)" }}>
             <span className="shrink-0 flex items-center justify-center" style={{ width: 26, height: 26, borderRadius: 8, background: "var(--accent-quiet)", color: "var(--accent-ink)", marginTop: 1 }}><Icon.link size={14} /></span>
-            <span className="text-[12.5px]" style={{ color: "var(--fg-muted)", lineHeight: 1.55 }}>Every time Genie publishes a new page it links <b style={{ color: "var(--fg)" }}>2–3 of your older, related pages</b> to it — a whitehat trick that gets fresh pages found in <b style={{ color: "var(--fg)" }}>days, not weeks</b>, and passes them ranking strength. Runs automatically after each publish; watch for it in the live activity bar up top.</span>
+            <span className="text-[13px]" style={{ color: "var(--fg-muted)", lineHeight: 1.55 }}>Every time Genie publishes a new page it links <b style={{ color: "var(--fg)" }}>2–3 of your older, related pages</b> to it — a whitehat trick that gets fresh pages found in <b style={{ color: "var(--fg)" }}>days, not weeks</b>, and passes them ranking strength. Runs automatically after each publish; watch for it in the live activity bar up top.</span>
           </div>
 
           {/* controls */}
@@ -182,7 +182,7 @@ function Growth() {
             <LabeledSelect label="Compare to" value={compare} opts={COMPARE_OPTS} onChange={setCompare} />
           </div>
 
-          {deriveErr && <p className="mt-3 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
+          {deriveErr && <p className="mt-3 text-[13px]" style={{ color: "var(--signal-danger)" }}>{deriveErr}</p>}
 
           <div className="mt-4 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5 items-start">
             {/* ── MAIN ── */}
@@ -219,7 +219,7 @@ function RankingProgression({ points, tracked, improvedBy, climb, compare, conns
           <p className="mg-klabel">RANKING PROGRESSION</p>
           <p className="mt-1 text-[13px] mg-muted">Average position across {tracked} tracked {tracked === 1 ? "keyword" : "keywords"}</p>
           {points.length > 1 && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-[12.5px] font-semibold" style={{ color: improved ? "var(--signal-live-ink)" : improvedBy < 0 ? "var(--signal-danger)" : "var(--fg-muted)" }}>
+            <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: improved ? "var(--signal-live-ink)" : improvedBy < 0 ? "var(--signal-danger)" : "var(--fg-muted)" }}>
               <Tri dir={improved ? "up" : improvedBy < 0 ? "down" : "flat"} /> {improved ? `Improved by ${Math.abs(improvedBy)} positions` : improvedBy < 0 ? `Down ${Math.abs(improvedBy)} positions` : "Holding steady"}
             </p>
           )}
@@ -240,11 +240,11 @@ function RankingProgression({ points, tracked, improvedBy, climb, compare, conns
         </>
       ) : (
         <div className="mt-4 rounded-xl px-5 py-10 text-center" style={{ border: "1px dashed var(--border-strong)" }}>
-          <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>Your ranking line starts as soon as positions come in.</p>
+          <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Your ranking line starts as soon as positions come in.</p>
           {googleOn ? (
-            <p className="mt-1 text-[12.5px] mg-muted max-w-md mx-auto">Google is connected ✓. I record your average position every night — the line fills in once your pages are indexed and Search Console starts reporting for your site (usually a few days after your first article goes live). <a href="/approvals" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Publish your first page</a> to start the clock.</p>
+            <p className="mt-1 text-[13px] mg-muted max-w-md mx-auto">Google is connected ✓. I record your average position every night — the line fills in once your pages are indexed and Search Console starts reporting for your site (usually a few days after your first article goes live). <a href="/approvals" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Publish your first page</a> to start the clock.</p>
           ) : (
-            <p className="mt-1 text-[12.5px] mg-muted max-w-sm mx-auto">I record your average Google position every night. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google Search Console</a> for live rankings.</p>
+            <p className="mt-1 text-[13px] mg-muted max-w-sm mx-auto">I record your average Google position every night. <a href="/connections" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Connect Google Search Console</a> for live rankings.</p>
           )}
         </div>
       )}
@@ -282,7 +282,7 @@ function PagePerformance({ host }) {
       <div className="px-5 pt-5 pb-3 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>What your pages are earning</h2>
-          <p className="mt-0.5 text-[12.5px] mg-muted">Real clicks to your site and leads captured — first-party, no analytics needed.</p>
+          <p className="mt-0.5 text-[13px] mg-muted">Real clicks to your site and leads captured — first-party, no analytics needed.</p>
         </div>
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right"><p className="mg-num text-[20px] font-bold leading-none" style={{ color: "var(--accent-ink)" }}>{t.clicks}</p><p className="text-[11px] mg-subtle mt-1">clicks to site</p></div>
@@ -296,7 +296,7 @@ function PagePerformance({ host }) {
               <a href={p.url} target="_blank" rel="noopener" className="text-[13px] font-semibold truncate block mg-focus" style={{ color: "var(--fg)", textDecoration: "none" }}>{p.title}</a>
               {p.keyword && <p className="text-[11px] mg-subtle truncate mt-0.5">{p.keyword}</p>}
             </div>
-            <div className="flex items-center gap-4 shrink-0 mg-num text-[12.5px]">
+            <div className="flex items-center gap-4 shrink-0 mg-num text-[13px]">
               <span title="Clicks to your site" style={{ color: p.clicks ? "var(--fg)" : "var(--fg-subtle)" }}>{p.clicks} <span className="mg-subtle text-[11px]">clicks</span></span>
               <span title="Leads captured" style={{ color: p.leads ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>{p.leads} <span className="mg-subtle text-[11px]">leads</span></span>
             </div>
@@ -350,10 +350,10 @@ function LocalServices({ host }) {
         <Icon.target size={16} />
         <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Local service optimizer</h2>
       </div>
-      <p className="mt-1 text-[12.5px] mg-muted" style={{ maxWidth: "64ch" }}>Google ranks local businesses on relevance + proximity. Tagging each service with your city (&ldquo;Roman Shades {city || "Your City"}&rdquo;) wins more &ldquo;near me&rdquo; searches. Genie writes them; you paste into your Google Business Profile.</p>
+      <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Google ranks local businesses on relevance + proximity. Tagging each service with your city (&ldquo;Roman Shades {city || "Your City"}&rdquo;) wins more &ldquo;near me&rdquo; searches. Genie writes them; you paste into your Google Business Profile.</p>
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Your city (e.g. Austin)" style={{ fontSize: 13, padding: ".5rem .7rem", borderRadius: 8, border: "1px solid var(--border-strong)", background: "var(--surface)", color: "var(--fg)", minWidth: 180 }} />
-        <button onClick={generate} disabled={busy || !city.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }}>{busy ? "Optimizing…" : services.length ? "Regenerate" : "Optimize services"}</button>
+        <button onClick={generate} disabled={busy || !city.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13 }}>{busy ? "Optimizing…" : services.length ? "Regenerate" : "Optimize services"}</button>
       </div>
       {msg && <p className="mt-2 text-[12px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
       {services.length > 0 && (
@@ -411,8 +411,8 @@ function RankChart({ points }) {
       </svg>
       {hover != null && (
         <div className="absolute pointer-events-none mg-surface px-3 py-2" style={{ left: `${(x(hover) / W) * 100}%`, top: 0, transform: "translateX(-50%)", boxShadow: "var(--shadow-3)", borderColor: "var(--border-strong)", whiteSpace: "nowrap" }}>
-          <p className="text-[10.5px] mg-subtle">{points[hover].date}</p>
-          <p className="text-[12.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>Avg position {points[hover].position.toFixed(1)}</p>
+          <p className="text-[11px] mg-subtle">{points[hover].date}</p>
+          <p className="text-[13px] font-bold mg-num" style={{ color: "var(--fg)" }}>Avg position {points[hover].position.toFixed(1)}</p>
         </div>
       )}
     </div>
@@ -436,7 +436,7 @@ function MetricsRow({ tracked, avgPosition, improvedBy, inTop20, aiCitations, po
             <p className="text-[12px] mg-subtle">{c.label}</p>
             <div className="mt-2 flex items-end justify-between gap-2" style={{ minHeight: 30 }}>
               <div className="flex items-baseline gap-1.5">
-                <span className="mg-num" style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-.02em", lineHeight: 1, color: "var(--fg)" }}>{c.value}</span>
+                <span className="mg-num" style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-.02em", lineHeight: 1, color: "var(--fg)" }}>{c.value}</span>
                 {c.change != null && c.change !== 0 && (
                   <span className="flex items-center gap-0.5 text-[12px] font-semibold" style={{ color: c.change > 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}><Tri dir={c.change > 0 ? "up" : "down"} />{Math.abs(c.change)}</span>
                 )}
@@ -520,7 +520,7 @@ function KeywordTable({ active, series, host, onAdded }) {
         {adding ? (
           <AddKeyword host={host} onAdded={(j) => { setAdding(false); onAdded(j); }} onCancel={() => setAdding(false)} />
         ) : (
-          <button onClick={() => setAdding(true)} className="mg-btn" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}><Icon.plus size={14} /> Add keyword</button>
+          <button onClick={() => setAdding(true)} className="mg-btn" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}><Icon.plus size={14} /> Add keyword</button>
         )}
         <div className="flex items-center gap-3">
           <span className="text-[12px] mg-subtle mg-num">Showing {sorted.length === 0 ? 0 : page * PAGE_SIZE + 1}–{Math.min(sorted.length, (page + 1) * PAGE_SIZE)} of {sorted.length}</span>
@@ -538,12 +538,12 @@ function FragmentRow({ k, p, trend, st, vol, realVol, open, onToggle }) {
   return (
     <>
       <tr onClick={onToggle} className="mg-krow" style={{ borderBottom: "1px solid var(--hair)", cursor: "pointer" }}>
-        <td className="px-4 py-3 text-[13.5px] font-semibold" style={{ color: "var(--fg)", maxWidth: 260 }}>{k.keyword}{k.source === "aeo" && <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full align-middle" style={{ color: "var(--accent-ink)", background: "var(--accent-quiet)" }}>AI</span>}</td>
-        <td className="px-4 py-3 text-right mg-num text-[13.5px]" style={{ color: p != null ? "var(--fg)" : "var(--fg-subtle)" }}>{p != null ? Math.round(p) : "—"}</td>
+        <td className="px-4 py-3 text-[14px] font-semibold" style={{ color: "var(--fg)", maxWidth: 260 }}>{k.keyword}{k.source === "aeo" && <span className="ml-2 text-[11px] font-semibold px-1.5 py-0.5 rounded-full align-middle" style={{ color: "var(--accent-ink)", background: "var(--accent-quiet)" }}>AI</span>}</td>
+        <td className="px-4 py-3 text-right mg-num text-[14px]" style={{ color: p != null ? "var(--fg)" : "var(--fg-subtle)" }}>{p != null ? Math.round(p) : "—"}</td>
         <td className="px-4 py-3 text-right text-[13px]">{trend > 0 ? <span style={{ color: "var(--signal-live-ink)", fontWeight: 600 }}>▲ {Math.abs(trend)}</span> : trend < 0 ? <span style={{ color: "var(--signal-danger)", fontWeight: 600 }}>▼ {Math.abs(trend)}</span> : <span className="mg-subtle">—</span>}</td>
-        <td className="px-4 py-3 text-right mg-num text-[13px]" style={{ color: "var(--fg-muted)" }} title={realVol ? "Real Google volume" : "Genie estimate"}>{fmtNum(vol)}{!realVol && <span className="mg-subtle" style={{ fontSize: 10 }}> *</span>}</td>
+        <td className="px-4 py-3 text-right mg-num text-[13px]" style={{ color: "var(--fg-muted)" }} title={realVol ? "Real Google volume" : "Genie estimate"}>{fmtNum(vol)}{!realVol && <span className="mg-subtle" style={{ fontSize: 11 }}> *</span>}</td>
         <td className="px-4 py-3 text-right mg-num text-[13px]" style={{ color: "var(--fg-muted)" }}>{k.competition != null ? Math.round(k.competition) : "—"}</td>
-        <td className="px-4 py-3 text-[12.5px] font-semibold" style={{ color: statusTone(st) }}>{STATUS_TEXT[st] || "Queued"}</td>
+        <td className="px-4 py-3 text-[13px] font-semibold" style={{ color: statusTone(st) }}>{STATUS_TEXT[st] || "Queued"}</td>
         <td className="px-3 py-3 text-right"><Icon.chevronRight size={14} style={{ color: "var(--fg-subtle)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }} /></td>
       </tr>
       {open && (
@@ -573,7 +573,7 @@ function KeywordDetail({ k }) {
       </div>
       <div className="flex items-start gap-2 pt-1">
         <Icon.spark size={14} style={{ color: "var(--accent-ink)", marginTop: 2, flexShrink: 0 }} />
-        <p className="text-[12.5px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Genie’s next move:</span> {move}</p>
+        <p className="text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Genie’s next move:</span> {move}</p>
       </div>
     </div>
   );
@@ -599,8 +599,8 @@ function AddKeyword({ host, onAdded, onCancel }) {
   return (
     <div className="flex items-center gap-2 flex-1" style={{ minWidth: 260 }}>
       <input value={val} autoFocus onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); if (e.key === "Escape") onCancel?.(); }} placeholder="Enter a keyword you want Genie to track…" className="flex-1 px-3 py-2 rounded-lg text-[13px] mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }} />
-      <button onClick={add} disabled={busy || !val.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 12.5 }}>{busy ? "Adding…" : "Add"}</button>
-      <button onClick={onCancel} className="mg-btn mg-btn--quiet" style={{ fontSize: 12.5 }}>Cancel</button>
+      <button onClick={add} disabled={busy || !val.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13 }}>{busy ? "Adding…" : "Add"}</button>
+      <button onClick={onCancel} className="mg-btn mg-btn--quiet" style={{ fontSize: 13 }}>Cancel</button>
     </div>
   );
 }
@@ -629,7 +629,7 @@ function StrategyPhase({ active, inTop20 }) {
         {phases.map((ph, i) => (
           <div key={i} className="flex flex-col" style={{ alignItems: i === 0 ? "flex-start" : i === 1 ? "center" : "flex-end" }}>
             <p className="text-[13px] font-bold" style={{ color: ph.current ? "var(--accent-ink)" : ph.done ? "var(--fg)" : "var(--fg-subtle)" }}>{ph.key}{ph.current ? " (current)" : ""}</p>
-            <p className="text-[11.5px] mg-subtle">{ph.sub}</p>
+            <p className="text-[12px] mg-subtle">{ph.sub}</p>
           </div>
         ))}
       </div>
@@ -692,7 +692,7 @@ function HealthRing({ value, size = 156 }) {
       </svg>
       {markers.map((m) => { const ang = (m / 100) * 2 * Math.PI - Math.PI / 2; const rr = r + stroke / 2 + 8; const mx = cx + rr * Math.cos(ang), my = cx + rr * Math.sin(ang); return (<span key={m} className="absolute mg-num" style={{ left: mx, top: my, transform: "translate(-50%,-50%)", fontSize: 9, color: "var(--fg-subtle)" }}>{m}</span>); })}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="mg-num" style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value == null ? "—" : value}</span>
+        <span className="mg-num" style={{ fontSize: 40, fontWeight: 700, lineHeight: 1, color: "var(--fg)" }}>{value == null ? "—" : value}</span>
         <span className="text-[12px] mg-subtle mg-num">/100</span>
       </div>
     </div>
@@ -723,7 +723,7 @@ function BuildStrategy({ host, busy, step, err, onBuild }) {
           {busy === "derive" ? (step || "Genie is analyzing…") : host ? "Build my keyword strategy →" : "Run your first scan →"}
         </button>
         {busy === "derive" && <p className="mt-2 text-[12px] mg-subtle">This takes up to a minute. I’m using real Google data, not guessing.</p>}
-        {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+        {err && <p className="mt-2 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
       </Card>
     </div>
   );

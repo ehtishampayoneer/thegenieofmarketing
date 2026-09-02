@@ -255,7 +255,7 @@ export default function WelcomePage() {
         <ApertureMark size={26} live />
         <span className="text-[14px] font-semibold" style={{ letterSpacing: "-.01em" }}>Marketing <span style={{ color: "var(--onb-dawn)" }}>Genie</span></span>
         {phase !== "working" && (
-          <button onClick={() => router.push("/today")} className="ml-auto text-[12.5px]" style={{ color: "var(--onb-subtle)" }}>Skip →</button>
+          <button onClick={() => router.push("/today")} className="ml-auto text-[13px]" style={{ color: "var(--onb-subtle)" }}>Skip →</button>
         )}
       </header>
 
@@ -265,7 +265,7 @@ export default function WelcomePage() {
           {phase === "intro" && (
             <div className="text-center onb-rise">
               <div className="flex justify-center"><ApertureMark size={92} live /></div>
-              <h1 className="mt-9 font-extrabold tracking-tight" style={{ fontSize: "clamp(32px,5vw,50px)", lineHeight: 1.04, letterSpacing: "-.03em", textWrap: "balance" }}>
+              <h1 className="mt-9 font-bold tracking-tight" style={{ fontSize: "clamp(32px,5vw,50px)", lineHeight: 1.04, letterSpacing: "-.03em", textWrap: "balance" }}>
                 Hire your <span style={{ background: "linear-gradient(96deg,#64D2FF,var(--onb-dawn) 55%,var(--onb-dawn-deep))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>AI marketing employee.</span>
               </h1>
               <p className="mt-4 text-[16px]" style={{ color: "var(--onb-muted)", maxWidth: 440, margin: "16px auto 0", lineHeight: 1.5 }}>
@@ -273,7 +273,7 @@ export default function WelcomePage() {
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-2.5" style={{ maxWidth: 460, margin: "32px auto 0" }}>
                 <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()}
-                  placeholder="yourwebsite.com" className="onb-input flex-1 px-4 text-[15.5px]" style={{ height: 52 }} aria-label="Your website" />
+                  placeholder="yourwebsite.com" className="onb-input flex-1 px-4 text-[16px]" style={{ height: 52 }} aria-label="Your website" />
                 <button onClick={go} className="onb-cta px-6 text-[15px]" style={{ height: 52 }}>Show me →</button>
               </div>
               {err && <p className="mt-3 text-[13px]" style={{ color: "#FF453A" }}>{err}</p>}
@@ -313,17 +313,17 @@ export default function WelcomePage() {
           {phase === "reveal" && data && (
             <div className="onb-rise lg:grid lg:grid-cols-2 lg:gap-16 lg:items-center">
               <div>
-                <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
+                <p className="text-[14px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)", letterSpacing: ".03em" }}>
                   <span style={{ fontSize: 15 }}>✦</span> Done. That took {Math.max(secs, 12)} seconds. I did the rest.
                 </p>
-                <h1 className="mt-4 font-extrabold tracking-tight" style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
+                <h1 className="mt-4 font-bold tracking-tight" style={{ fontSize: "clamp(34px,4.6vw,54px)", lineHeight: 1.05, letterSpacing: "-.03em", textWrap: "balance" }}>
                   I’ve met {data.ai?.businessName || host}. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s how I’ll grow you.</span>
                 </h1>
                 {data.ai?.summary && (
                   <p className="mt-5 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>{data.ai.summary}</p>
                 )}
                 {entity?.label && (
-                  <p className="mt-4 text-[14.5px]" style={{ color: "var(--onb-muted)" }}>
+                  <p className="mt-4 text-[15px]" style={{ color: "var(--onb-muted)" }}>
                     I’ll grow you as a <span style={{ color: "var(--onb-dawn)", fontWeight: 600 }}>{entity.label}</span>. You can change that anytime.
                   </p>
                 )}
@@ -361,7 +361,7 @@ export default function WelcomePage() {
                         ? <span style={{ marginTop: 1, color: "var(--onb-live)", fontSize: 15, lineHeight: 1.2 }}>✦</span>
                         : <span className="onb-spinner" style={{ marginTop: 3 }} />}
                       <span className="flex-1">
-                        <span className="block text-[15.5px]" style={{ color: "var(--onb-fg)", lineHeight: 1.35 }}>{row.t}</span>
+                        <span className="block text-[16px]" style={{ color: "var(--onb-fg)", lineHeight: 1.35 }}>{row.t}</span>
                         <span className="block text-[13px]" style={{ color: "var(--onb-subtle)" }}>{row.s}</span>
                       </span>
                     </div>
@@ -377,11 +377,11 @@ export default function WelcomePage() {
             <div className="onb-rise" style={{ width: "100%", maxWidth: 1040, margin: "0 auto" }}>
               <StepDots step={1} />
               <div className="mt-7">
-                <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 1 of 4 · Confirm</p>
-                <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                <p className="text-[14px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 1 of 4 · Confirm</p>
+                <h1 className="mt-3 font-bold tracking-tight" style={{ fontSize: "clamp(28px,4vw,44px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
                   Did I get you right?
                 </h1>
-                <p className="mt-3.5 text-[16px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55, maxWidth: "60ch" }}>
+                <p className="mt-3.5 text-[16px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55, maxWidth: "var(--measure)" }}>
                   Everything I do next, the keywords I target, the content I write, the buyers I reach, is built on this. A minute here means I chase the right customers, not the wrong ones.
                 </p>
               </div>
@@ -390,7 +390,7 @@ export default function WelcomePage() {
                 {/* LEFT — what Genie found */}
                 <div style={{ borderRadius: 18, border: "1px solid rgba(10,132,255,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)" }}>
-                    <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
+                    <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
                     <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", marginTop: 2, letterSpacing: "-.01em" }}>{cap(understanding?.businessName || host || "your business")}</p>
                   </div>
                   <div className="flex-1 flex flex-col gap-3.5" style={{ padding: "18px 20px", overflowY: "auto" }}>
@@ -410,14 +410,14 @@ export default function WelcomePage() {
                 <div style={{ borderRadius: 18, border: "1px solid var(--onb-hair)", background: "var(--onb-ink)", display: "flex", flexDirection: "column", minHeight: 440, overflow: "hidden" }}>
                   <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)", display: "flex", alignItems: "center", gap: 9 }}>
                     <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--onb-live)", display: "inline-block", flex: "none" }} />
-                    <p className="text-[13.5px] font-semibold" style={{ color: "var(--onb-fg)" }}>Chat with Genie</p>
+                    <p className="text-[14px] font-semibold" style={{ color: "var(--onb-fg)" }}>Chat with Genie</p>
                     <span className="ml-auto text-[12px]" style={{ color: "var(--onb-subtle)" }}>Correct or add anything</span>
                   </div>
                   <div className="flex-1 flex flex-col gap-3 thin-scroll" style={{ padding: 18, overflowY: "auto" }}>
                     {convo.map((m, i) => (
                       <div key={i} className={m.role === "owner" ? "self-end" : "self-start"} style={{ maxWidth: "88%" }}>
                         <div style={{
-                          padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
+                          padding: "11px 14px", borderRadius: 14, fontSize: 15, lineHeight: 1.5,
                           background: m.role === "owner" ? "var(--onb-dawn)" : "var(--onb-panel)",
                           color: m.role === "owner" ? "#FFFFFF" : "var(--onb-fg)",
                           border: m.role === "owner" ? "none" : "1px solid var(--onb-hair)",
@@ -429,7 +429,7 @@ export default function WelcomePage() {
                   <div style={{ padding: 14, borderTop: "1px solid var(--onb-hair)", display: "flex", gap: 10 }}>
                     <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendCorrection()}
                       placeholder="e.g. We sell furniture and shoes; AR is just how customers preview"
-                      className="onb-input flex-1 px-4 text-[14.5px]" style={{ height: 48 }} aria-label="Correct Genie" />
+                      className="onb-input flex-1 px-4 text-[15px]" style={{ height: 48 }} aria-label="Correct Genie" />
                     <button onClick={sendCorrection} disabled={chatBusy || !chatInput.trim()} className="onb-cta px-5 text-[14px] disabled:opacity-40" style={{ height: 48, flex: "none" }}>Send</button>
                   </div>
                 </div>
@@ -450,12 +450,12 @@ export default function WelcomePage() {
               <StepDots step={2} />
               <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
                 <div className="lg:sticky lg:top-16">
-                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 2 of 4 · Connect</p>
-                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                  <p className="text-[14px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 2 of 4 · Connect</p>
+                  <h1 className="mt-3 font-bold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
                     Give me hands.
                   </h1>
                   <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>Connect what you have so I can publish and measure, not just draft. Connect one, come right back here for the next.</p>
-                  <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-subtle)", lineHeight: 1.5 }}>Nothing publishes without your approval. You can change these anytime in Connections.</p>
+                  <p className="mt-4 text-[14px]" style={{ color: "var(--onb-subtle)", lineHeight: 1.5 }}>Nothing publishes without your approval. You can change these anytime in Connections.</p>
                 </div>
                 <div className="mt-8 lg:mt-0 flex flex-col gap-3">
                   <ConnectRow brand="google" label="Google" sub="Real rankings, traffic, and send outreach from your Gmail" href="/api/connect/google/start?from=welcome" cta="Connect" connected={conns?.google?.connected} />
@@ -478,18 +478,18 @@ export default function WelcomePage() {
               <StepDots step={3} />
               <div className="mt-8 lg:grid lg:grid-cols-2 lg:gap-16 lg:items-start">
                 <div className="lg:sticky lg:top-16">
-                  <p className="text-[13.5px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 3 of 4 · Your details</p>
-                  <h1 className="mt-3 font-extrabold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
+                  <p className="text-[14px] font-mono flex items-center gap-2" style={{ color: "var(--onb-live)" }}><span style={{ fontSize: 15 }}>✦</span> Step 3 of 4 · Your details</p>
+                  <h1 className="mt-3 font-bold tracking-tight" style={{ fontSize: "clamp(30px,4.2vw,46px)", lineHeight: 1.06, letterSpacing: "-.03em", textWrap: "balance" }}>
                     Who are you?
                   </h1>
                   <p className="mt-4 text-[17px]" style={{ color: "var(--onb-muted)", lineHeight: 1.55 }}>So every email and post I send goes out as you, with your logo. I pre-filled what I could. Fix anything.</p>
-                  <p className="mt-4 text-[13.5px]" style={{ color: "var(--onb-subtle)" }}>You can edit all of this later in Settings.</p>
+                  <p className="mt-4 text-[14px]" style={{ color: "var(--onb-subtle)" }}>You can edit all of this later in Settings.</p>
                 </div>
                 <div className="mt-8 lg:mt-0 flex flex-col gap-4">
                   <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
                   <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--onb-subtle)" }}>Logo (shown at the top of your emails)</span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--onb-subtle)" }}>Logo (shown at the top of your emails)</span>
                     <LogoUpload value={details.logo_url} onChange={(url) => setDetails((d) => ({ ...d, logo_url: url }))} buttonClassName="onb-ghost" mutedColor="var(--onb-subtle)" />
                   </div>
                 </div>
@@ -507,11 +507,11 @@ export default function WelcomePage() {
               <StepDots step={4} />
               <div className="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14 lg:items-start">
                 <div className="lg:sticky lg:top-16">
-                  <div className="flex items-center gap-3"><ApertureMark size={48} live /><p className="text-[13.5px] font-mono" style={{ color: "var(--onb-live)" }}>Step 4 of 4 · You’re all set</p></div>
-                  <h1 className="mt-5 font-extrabold tracking-tight" style={{ fontSize: "clamp(34px,4.8vw,54px)", lineHeight: 1.03, letterSpacing: "-.035em", textWrap: "balance" }}>
+                  <div className="flex items-center gap-3"><ApertureMark size={48} live /><p className="text-[14px] font-mono" style={{ color: "var(--onb-live)" }}>Step 4 of 4 · You’re all set</p></div>
+                  <h1 className="mt-5 font-bold tracking-tight" style={{ fontSize: "clamp(34px,4.8vw,54px)", lineHeight: 1.03, letterSpacing: "-.035em", textWrap: "balance" }}>
                     You’ve hired me. <span style={{ color: "var(--onb-muted)", fontWeight: 700 }}>Here’s what happens now.</span>
                   </h1>
-                  <p className="mt-6 text-[17.5px]" style={{ color: "var(--onb-muted)", lineHeight: 1.6, maxWidth: 460 }}>
+                  <p className="mt-6 text-[18px]" style={{ color: "var(--onb-muted)", lineHeight: 1.6, maxWidth: 460 }}>
                     You’ll land on your command center every day, where I execute the marketing and keep you informed with real progress.
                   </p>
                   <div className="mt-9 flex items-center gap-4 flex-wrap">
@@ -539,7 +539,7 @@ export default function WelcomePage() {
                             <row.icon size={20} />
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[16.5px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3, letterSpacing: "-.01em" }}>{row.t}</p>
+                            <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3, letterSpacing: "-.01em" }}>{row.t}</p>
                             <p className="mt-1.5 text-[14px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>{row.s}</p>
                           </div>
                           <span className="shrink-0 text-[12px] font-semibold px-2.5 py-1 rounded-full self-start" style={{ color: "var(--onb-live)", border: "1px solid var(--onb-live)", opacity: .85 }}>{row.tag}</span>
@@ -553,7 +553,7 @@ export default function WelcomePage() {
                         <Icon.spark size={20} />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[16.5px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3 }}>You focus on your business.</p>
+                        <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", lineHeight: 1.3 }}>You focus on your business.</p>
                         <p className="mt-1 text-[14px]" style={{ color: "var(--onb-muted)" }}>I’ll handle the marketing, every single day.</p>
                       </div>
                     </div>
@@ -580,7 +580,7 @@ function RowBody({ brand, label, sub }) {
     <>
       <BrandIcon brand={brand} size={22} />
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, color: "var(--onb-fg)" }}>{label}</span>
+        <span style={{ display: "block", fontSize: 16, fontWeight: 600, color: "var(--onb-fg)" }}>{label}</span>
         <span style={{ display: "block", fontSize: 13, color: "var(--onb-subtle)", lineHeight: 1.4 }}>{sub}</span>
       </span>
     </>
@@ -594,7 +594,7 @@ function ConnectedTag() {
 // Google / X — one-tap OAuth. Returns to this step when done (?from=welcome).
 function ConnectRow({ brand, label, sub, href, cta, connected, ready }) {
   if (connected) return <div style={rowBox(true)}><RowBody brand={brand} label={label} sub={sub} /><ConnectedTag /></div>;
-  if (ready) return <div style={rowBox(false)}><RowBody brand={brand} label={label} sub={sub} /><span className="onb-ghost" style={{ padding: ".4rem .8rem", fontSize: 12.5, fontWeight: 600, cursor: "default" }}>I draft, you post</span></div>;
+  if (ready) return <div style={rowBox(false)}><RowBody brand={brand} label={label} sub={sub} /><span className="onb-ghost" style={{ padding: ".4rem .8rem", fontSize: 13, fontWeight: 600, cursor: "default" }}>I draft, you post</span></div>;
   return (
     <a href={href} style={rowBox(false)}>
       <RowBody brand={brand} label={label} sub={sub} />
@@ -632,9 +632,9 @@ function WordPressInline({ connected, onConnected }) {
           ))}
           <div className="flex items-center gap-3">
             <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
-            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF453A" }}>Couldn’t connect. Check your details.</span>}
+            {state === "error" && <span className="text-[13px]" style={{ color: "#FF453A" }}>Couldn’t connect. Check your details.</span>}
           </div>
-          <p className="text-[11.5px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+          <p className="text-[12px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
         </div>
       )}
     </div>
@@ -644,8 +644,8 @@ function WordPressInline({ connected, onConnected }) {
 function URow({ label, value }) {
   return (
     <div className="flex gap-3">
-      <span style={{ flex: "none", width: 108, fontSize: 12.5, color: "var(--onb-subtle)", paddingTop: 1 }}>{label}</span>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, color: "var(--onb-fg)", lineHeight: 1.45 }}>
+      <span style={{ flex: "none", width: 108, fontSize: 13, color: "var(--onb-subtle)", paddingTop: 1 }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: "var(--onb-fg)", lineHeight: 1.45 }}>
         {value ? cap(value) : <span style={{ color: "var(--onb-subtle)" }}>Tell me in the chat</span>}
       </span>
     </div>
@@ -660,7 +660,7 @@ function StepDots({ step }) {
         const n = i + 1, active = n === step, done = n < step;
         return (
           <div key={l} className="flex items-center gap-2">
-            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 999, fontSize: 11, fontWeight: 700,
               background: active ? "var(--onb-dawn)" : done ? "var(--onb-live-soft)" : "var(--onb-panel)",
               color: active ? "#FFFFFF" : done ? "var(--onb-live)" : "var(--onb-subtle)",
               border: active ? "none" : "1px solid var(--onb-hair)" }}>{done ? "✓" : n}</span>
@@ -675,9 +675,9 @@ function StepDots({ step }) {
 function OnbField({ label, value, onChange, placeholder, type = "text" }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--onb-subtle)" }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--onb-subtle)" }}>{label}</span>
       <input type={type} value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ padding: "10px 13px", borderRadius: 11, fontSize: 13.5, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)", color: "var(--onb-fg, #fff)", outline: "none" }} />
+        style={{ padding: "10px 13px", borderRadius: 11, fontSize: 14, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)", color: "var(--onb-fg, #fff)", outline: "none" }} />
     </label>
   );
 }

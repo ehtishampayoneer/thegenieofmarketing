@@ -102,7 +102,7 @@ export default function MarketsPage() {
 
       {/* honesty note */}
       <Card className="p-4 mt-5">
-        <p className="text-[12.5px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}>
+        <p className="text-[13px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}>
           <Icon.info size={14} style={{ color: "var(--accent-ink)", marginTop: 2, flexShrink: 0 }} />
           <span><b style={{ color: "var(--fg)" }}>Verified</b> = from your Search Console. <b style={{ color: "var(--fg)" }}>Estimated</b> = market-model projections (sales are a range at an assumed conversion) — direction, not promises. Progress tracks <b style={{ color: "var(--fg)" }}>search visibility</b> only; lead & revenue by country is the next phase.{data && !data.hasGsc && " Connect Search Console to verify countries you already reach."}</span>
         </p>
@@ -122,7 +122,7 @@ export default function MarketsPage() {
           <span className="mg-tile shrink-0" style={{ width: 40, height: 40, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}><Icon.globe size={19} /></span>
           <div>
             <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your delivery is set to “only my area”</p>
-            <p className="text-[13px] mt-1" style={{ color: "var(--fg-muted)", maxWidth: "60ch" }}>Expanding into other countries only pays off if you can serve them. If you can sell remotely or ship, change delivery above and Genie will find your best markets.</p>
+            <p className="text-[13px] mt-1" style={{ color: "var(--fg-muted)", maxWidth: "var(--measure)" }}>Expanding into other countries only pays off if you can serve them. If you can sell remotely or ship, change delivery above and Genie will find your best markets.</p>
           </div>
         </Card>
       )}
@@ -141,7 +141,7 @@ export default function MarketsPage() {
           <div>
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               {BUCKETS.map((b) => (
-                <button key={b.id} onClick={() => setTab(b.id)} className="mg-focus" style={{ fontSize: 12.5, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${tab === b.id ? "var(--accent)" : "var(--hair)"}`, background: tab === b.id ? "var(--accent-quiet)" : "var(--surface)", color: tab === b.id ? "var(--accent-ink)" : "var(--fg-muted)" }}>
+                <button key={b.id} onClick={() => setTab(b.id)} className="mg-focus" style={{ fontSize: 13, fontWeight: 600, padding: ".4rem .8rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${tab === b.id ? "var(--accent)" : "var(--hair)"}`, background: tab === b.id ? "var(--accent-quiet)" : "var(--surface)", color: tab === b.id ? "var(--accent-ink)" : "var(--fg-muted)" }}>
                   {b.label}{b.id === "emerging" && emergingCount > 0 ? ` · ${emergingCount}` : ""}
                 </button>
               ))}
@@ -150,7 +150,7 @@ export default function MarketsPage() {
             <div className="lg:hidden flex items-center gap-1.5 mb-3 overflow-x-auto thin-scroll">
               <span className="text-[11px] mg-subtle shrink-0">Sort:</span>
               {[["opp", "Best"], ["difficulty", "Difficulty"], ["traffic", "Traffic"], ["sales", "Sales"], ["progress", "Progress"]].map(([k, l]) => (
-                <button key={k} onClick={() => toggleSort(k)} className="shrink-0 mg-focus" style={{ ...chip(sort.key === k), fontSize: 11.5, padding: ".3rem .55rem" }}>{l}{arrow(sort, k)}</button>
+                <button key={k} onClick={() => toggleSort(k)} className="shrink-0 mg-focus" style={{ ...chip(sort.key === k), fontSize: 12, padding: ".3rem .55rem" }}>{l}{arrow(sort, k)}</button>
               ))}
             </div>
             {/* desktop sortable header */}
@@ -183,7 +183,7 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
 
   if (!editing) return (
     <Card className="p-4 mt-4 flex items-center justify-between gap-3 flex-wrap">
-      <p className="text-[12.5px]" style={{ color: "var(--fg-muted)" }}>
+      <p className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
         <b style={{ color: "var(--fg)" }}>Eligibility</b> · Serve: {deliveryLabel} · Content languages: {langNames}
       </p>
       <button onClick={onEdit} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12 }}>Edit</button>
@@ -194,7 +194,7 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
       <p className="mg-klabel mb-3">Your eligibility · hard gates</p>
       <div className="flex flex-col gap-4">
         <div>
-          <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>I can serve / deliver to</p>
+          <p className="text-[13px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>I can serve / deliver to</p>
           <div className="flex gap-2 flex-wrap">
             {[["anywhere", "Customers anywhere"], ["regions", "Certain regions"], ["local", "Only my area"]].map(([v, l]) => (
               <button key={v} onClick={() => setDelivery(v)} className="mg-focus" style={chip(delivery === v)}>{l}</button>
@@ -203,18 +203,18 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
         </div>
         {delivery === "regions" && (
           <div>
-            <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Which regions</p>
+            <p className="text-[13px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Which regions</p>
             <div className="flex gap-2 flex-wrap">{REGIONS.map((r) => <button key={r} onClick={() => toggle(regions, setRegions, r)} className="mg-focus" style={chip(regions.includes(r))}>{r}</button>)}</div>
           </div>
         )}
         <div>
-          <p className="text-[12.5px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Languages I can produce content in</p>
+          <p className="text-[13px] font-semibold mb-1.5" style={{ color: "var(--fg)" }}>Languages I can produce content in</p>
           <div className="flex gap-2 flex-wrap">{LANGS.map(([c, l]) => <button key={c} onClick={() => toggle(languages, setLanguages, c)} className="mg-focus" style={chip(languages.includes(c))}>{l}</button>)}</div>
-          <p className="text-[11.5px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Markets that need a language you don't produce won't be auto-drafted in English (that would be thin content).</p>
+          <p className="text-[12px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Markets that need a language you don't produce won't be auto-drafted in English (that would be thin content).</p>
         </div>
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input type="checkbox" checked={englishConfirmed} onChange={(e) => setEnglishConfirmed(e.target.checked)} style={{ marginTop: 3, accentColor: "var(--accent)", width: 15, height: 15 }} />
-          <span className="text-[12.5px]" style={{ color: "var(--fg)" }}>I'm comfortable selling in <b>English</b> to non-native-English markets <span className="mg-subtle">— lets Genie test high-English countries (Germany, Netherlands…) without local-language content. Off by default.</span></span>
+          <span className="text-[13px]" style={{ color: "var(--fg)" }}>I'm comfortable selling in <b>English</b> to non-native-English markets <span className="mg-subtle">— lets Genie test high-English countries (Germany, Netherlands…) without local-language content. Off by default.</span></span>
         </label>
       </div>
       <div className="mt-4 flex items-center gap-2">
@@ -224,7 +224,7 @@ function EligibilityCard({ profile, editing, onEdit, onCancel, onSave }) {
     </Card>
   );
 }
-const chip = (on) => ({ fontSize: 12.5, fontWeight: 600, padding: ".38rem .7rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${on ? "var(--accent)" : "var(--border-strong)"}`, background: on ? "var(--accent-quiet)" : "var(--surface)", color: on ? "var(--accent-ink)" : "var(--fg-muted)" });
+const chip = (on) => ({ fontSize: 13, fontWeight: 600, padding: ".38rem .7rem", borderRadius: 999, cursor: "pointer", border: `1px solid ${on ? "var(--accent)" : "var(--border-strong)"}`, background: on ? "var(--accent-quiet)" : "var(--surface)", color: on ? "var(--accent-ink)" : "var(--fg-muted)" });
 const arrow = (sort, key) => (sort.key === key ? (sort.dir === "asc" ? " ↑" : " ↓") : "");
 const hbtn = (active) => ({ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: active ? "var(--accent-ink)" : "var(--fg-subtle)" });
 
@@ -239,10 +239,10 @@ function ExperimentCard({ e, onStop }) {
           <p className="text-[15px] font-bold leading-tight" style={{ color: "var(--fg)" }}>{e.name}</p>
           <p className="text-[12px] mt-0.5" style={{ color: "var(--fg-subtle)" }}>{e.goal}</p>
         </div>
-        <button onClick={onStop} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5 }}>Stop</button>
+        <button onClick={onStop} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 12 }}>Stop</button>
       </div>
       <div className="mt-3">
-        <div className="flex items-center justify-between text-[11.5px] mb-1">
+        <div className="flex items-center justify-between text-[12px] mb-1">
           <span style={{ color: "var(--fg-muted)" }}>Search progress</span>
           <span className="mg-num" style={{ color: "var(--signal-live-ink)" }}>{e.progress}%</span>
         </div>
@@ -254,8 +254,8 @@ function ExperimentCard({ e, onStop }) {
         <span className="inline-flex items-center gap-1.5" style={{ color: ds.c }}><Icon.write size={13} /> {ds.label}</span>
         {t ? <span className="inline-flex items-center gap-1.5 mg-num" style={{ color: "var(--fg-muted)" }}><Icon.search size={13} /> {t.impressions} impr · {t.clicks} clicks</span> : <span className="mg-num" style={{ color: "var(--fg-subtle)" }}>No search data yet</span>}
       </div>
-      <p className="text-[11.5px] mt-2" style={{ color: "var(--fg-subtle)" }}>Outcome: awaiting results — lead/revenue tracking by country comes next, then a Scale / Refine / Pause call.</p>
-      {(e.taskCount > 0 || e.draftStatus !== "pending") && <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review {e.taskCount > 0 ? `${e.taskCount} ${e.name} ${e.taskCount === 1 ? "task" : "tasks"}` : "the draft"} in Approvals →</a>}
+      <p className="text-[12px] mt-2" style={{ color: "var(--fg-subtle)" }}>Outcome: awaiting results — lead/revenue tracking by country comes next, then a Scale / Refine / Pause call.</p>
+      {(e.taskCount > 0 || e.draftStatus !== "pending") && <a href="/approvals" className="mt-2.5 inline-flex text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review {e.taskCount > 0 ? `${e.taskCount} ${e.name} ${e.taskCount === 1 ? "task" : "tasks"}` : "the draft"} in Approvals →</a>}
     </Card>
   );
 }
@@ -274,18 +274,18 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
                 <p className="text-[15px] font-bold leading-tight flex items-center gap-2" style={{ color: "var(--fg)" }}>
                   {r.name}
                   <span title={conf.label} style={{ width: 7, height: 7, borderRadius: 999, background: conf.c, flexShrink: 0 }} />
-                  {exp && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>Active</span>}
-                  {!exp && r.needsLocalLang && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}>Needs {r.langName}</span>}
-                  {!exp && r.englishTest && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>English test</span>}
+                  {exp && <span className="text-[11px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>Active</span>}
+                  {!exp && r.needsLocalLang && <span className="text-[11px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--signal-warn-soft)", color: "var(--signal-warn)" }}>Needs {r.langName}</span>}
+                  {!exp && r.englishTest && <span className="text-[11px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}>English test</span>}
                 </p>
                 <p className="text-[12px] leading-tight mt-0.5 truncate" style={{ color: "var(--fg-subtle)" }}>{r.region}{r.why[0] ? ` · ${r.why[0]}` : ""}</p>
               </div>
             </div>
             <div className="mt-2 lg:mt-0"><span className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ padding: ".3rem .6rem", borderRadius: 8, background: d.bg, color: d.c }}>{r.difficulty}</span></div>
-            <div className="hidden lg:flex flex-col items-end"><span className="mg-num text-[16px] font-bold" style={{ color: "var(--fg)" }}>{fmt(r.expTraffic)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>est. visitors</span></div>
-            <div className="hidden lg:flex flex-col items-end" title={`assumes ~${r.assumedConvPct}% visitor→sale`}><span className="mg-num text-[16px] font-bold" style={{ color: "var(--accent-ink)" }}>{salesRange(r)}</span><span className="text-[10.5px]" style={{ color: "var(--fg-subtle)" }}>est. sales</span></div>
+            <div className="hidden lg:flex flex-col items-end"><span className="mg-num text-[16px] font-bold" style={{ color: "var(--fg)" }}>{fmt(r.expTraffic)}</span><span className="text-[11px]" style={{ color: "var(--fg-subtle)" }}>est. visitors</span></div>
+            <div className="hidden lg:flex flex-col items-end" title={`assumes ~${r.assumedConvPct}% visitor→sale`}><span className="mg-num text-[16px] font-bold" style={{ color: "var(--accent-ink)" }}>{salesRange(r)}</span><span className="text-[11px]" style={{ color: "var(--fg-subtle)" }}>est. sales</span></div>
             <div className="mt-2.5 lg:mt-0">
-              <div className="flex items-center justify-between text-[11.5px] mb-1">
+              <div className="flex items-center justify-between text-[12px] mb-1">
                 <span className="mg-num" style={{ color: "var(--fg-muted)" }}>~{r.days} days</span>
                 <span className="mg-num" style={{ color: (exp?.progress ?? r.progress) > 0 ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>{exp?.progress ?? r.progress}%</span>
               </div>
@@ -303,12 +303,12 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
       {open && (
         <div className="px-4 pb-4 pt-1" style={{ borderTop: "1px solid var(--hair)" }}>
           <div className="flex flex-wrap gap-2 mt-3">
-            {r.why.map((w, i) => <span key={i} className="text-[11.5px] font-medium" style={{ padding: ".3rem .6rem", borderRadius: 8, background: "var(--surface-2)", color: "var(--fg-muted)" }}>{w}</span>)}
+            {r.why.map((w, i) => <span key={i} className="text-[12px] font-medium" style={{ padding: ".3rem .6rem", borderRadius: 8, background: "var(--surface-2)", color: "var(--fg-muted)" }}>{w}</span>)}
           </div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Fact l="Opportunity" v={`${r.opp}/100`} /><Fact l="Competition gap" v={`${r.gap}/100`} /><Fact l="Business fit" v={`${r.fit}/100`} /><Fact l="Confidence" v={CONF[r.confidence].label} />
           </div>
-          <p className="text-[12.5px] mt-3.5" style={{ color: "var(--fg-subtle)" }}>
+          <p className="text-[13px] mt-3.5" style={{ color: "var(--fg-subtle)" }}>
             <b style={{ color: "var(--fg-muted)" }}>Scenario, not a forecast:</b> at ~{fmt(r.expTraffic)} monthly visitors and a ~{r.assumedConvPct}% conversion, outcomes may be <b style={{ color: "var(--fg-muted)" }}>{salesRange(r)} sales/mo</b>. Your real numbers will differ — that's what the test is for.
           </p>
           {/* what Genie will actually do for this country — shown before you target */}
@@ -317,10 +317,10 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
               <p className="text-[12px] font-bold" style={{ color: "var(--fg)" }}>When you target {r.name}, Genie adds a country-specific kit to Approvals:</p>
               <ul className="mt-2 space-y-1.5">
                 {[`Localized landing page${r.supportsLang && r.lang !== "en" ? ` in ${r.langName}` : ""}`, "A local intro post you can share", "A local outreach email (draft-and-you-send)", "A copy-paste local-SEO snippet for your own site", "A few local placements to get seen faster"].map((t, i) => (
-                  <li key={i} className="text-[12.5px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 5, height: 5, borderRadius: 999, background: "var(--accent)", marginTop: 6, flexShrink: 0 }} /> {t}</li>
+                  <li key={i} className="text-[13px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 5, height: 5, borderRadius: 999, background: "var(--accent)", marginTop: 6, flexShrink: 0 }} /> {t}</li>
                 ))}
               </ul>
-              <p className="text-[11.5px] mt-2.5" style={{ color: "var(--fg-subtle)" }}>All tagged <b style={{ color: "var(--fg-muted)" }}>{r.name}</b> and grouped on their own tab in Approvals. Your everyday global marketing keeps running — this is an extra, country-specific track.</p>
+              <p className="text-[12px] mt-2.5" style={{ color: "var(--fg-subtle)" }}>All tagged <b style={{ color: "var(--fg-muted)" }}>{r.name}</b> and grouped on their own tab in Approvals. Your everyday global marketing keeps running — this is an extra, country-specific track.</p>
             </div>
           )}
           {exp ? (
@@ -334,27 +334,27 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
                       {done.tasks.map((t, i) => <li key={i} className="text-[12px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 4, height: 4, borderRadius: 999, background: "var(--signal-live-ink)", marginTop: 6, flexShrink: 0 }} /> {taskLabel(t)}</li>)}
                     </ul>
                   )}
-                  <a href="/approvals" className="mt-2.5 inline-flex text-[12.5px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the {done.country} tab in Approvals →</a>
+                  <a href="/approvals" className="mt-2.5 inline-flex text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Review the {done.country} tab in Approvals →</a>
                 </div>
               )}
             </div>
           ) : r.needsLocalLang ? (
             <div className="mt-3.5">
               <p className="text-[13px]" style={{ color: "var(--signal-warn)" }}>Needs <b>{r.langName}</b> to reach the mainstream — an English-only page would be thin.</p>
-              <button onClick={onAddLang} disabled={targeting} className="mg-btn mg-btn--dawn mt-2.5 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
+              <button onClick={onAddLang} disabled={targeting} className="mg-btn mg-btn--dawn mt-2.5 inline-flex disabled:opacity-60" style={{ fontSize: 14 }}>
                 {targeting ? <>Adding {r.langName} &amp; building your {r.name} kit… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.plus size={15} /> Add {r.langName} &amp; target {r.name} →</>}
               </button>
-              <p className="text-[11.5px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Adds {r.langName} to your content languages, then drafts the whole kit in {r.langName}.</p>
-              {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+              <p className="text-[12px] mt-1.5" style={{ color: "var(--fg-subtle)" }}>Adds {r.langName} to your content languages, then drafts the whole kit in {r.langName}.</p>
+              {err && <p className="mt-2 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
             </div>
           ) : r.englishTest ? (
             <p className="mt-3 text-[13px]" style={{ color: "var(--accent-ink)" }}>This is an <b>English-test market</b> — English isn't {r.name}'s first language. Turn on “I'm comfortable selling in English…” in Eligibility to test it, or target a market where you already get English search traffic.</p>
           ) : (
             <>
-              <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 13.5 }}>
+              <button onClick={onTarget} disabled={targeting} className="mg-btn mg-btn--dawn mt-3 inline-flex disabled:opacity-60" style={{ fontSize: 14 }}>
                 {targeting ? <>Building your {r.name} kit… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.target size={15} /> Target this market — build the kit →</>}
               </button>
-              {err && <p className="mt-2 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+              {err && <p className="mt-2 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
             </>
           )}
         </div>
@@ -364,6 +364,6 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
 }
 
 function MiniStat({ icon: I, v, l, accent }) {
-  return (<span className="inline-flex items-center gap-1.5"><I size={14} style={{ color: accent ? "var(--accent-ink)" : "var(--fg-subtle)" }} /><span className="mg-num text-[13.5px] font-bold" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" }}>{v}</span><span className="text-[11px]" style={{ color: "var(--fg-subtle)" }}>{l}</span></span>);
+  return (<span className="inline-flex items-center gap-1.5"><I size={14} style={{ color: accent ? "var(--accent-ink)" : "var(--fg-subtle)" }} /><span className="mg-num text-[14px] font-bold" style={{ color: accent ? "var(--accent-ink)" : "var(--fg)" }}>{v}</span><span className="text-[11px]" style={{ color: "var(--fg-subtle)" }}>{l}</span></span>);
 }
-function Fact({ l, v }) { return (<div><p className="text-[11px] mg-subtle">{l}</p><p className="text-[13.5px] font-bold mg-num" style={{ color: "var(--fg)" }}>{v}</p></div>); }
+function Fact({ l, v }) { return (<div><p className="text-[11px] mg-subtle">{l}</p><p className="text-[14px] font-bold mg-num" style={{ color: "var(--fg)" }}>{v}</p></div>); }

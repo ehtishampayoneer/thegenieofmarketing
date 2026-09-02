@@ -64,7 +64,7 @@ export async function GET(request) {
   // The footer byline (shared by both layouts).
   const byline = (
     <div style={{ display: "flex", alignItems: "center" }}>
-      <div style={{ display: "flex", width: 60, height: 60, borderRadius: 16, background: "#1A1A1A", color: "#fff", alignItems: "center", justifyContent: "center", fontSize: 30, fontWeight: 800 }}>{initial}</div>
+      <div style={{ display: "flex", width: 60, height: 60, borderRadius: 16, background: "#1A1A1A", color: "#fff", alignItems: "center", justifyContent: "center", fontSize: 30, fontWeight: 700 }}>{initial}</div>
       <div style={{ display: "flex", flexDirection: "column", marginLeft: 18 }}>
         <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: "#1A1A1A" }}>{name}</div>
         {handle ? <div style={{ display: "flex", fontSize: 24, color: "#8B8680" }}>{handle}</div> : null}
@@ -80,7 +80,7 @@ export async function GET(request) {
         {total ? <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: "#8B8680" }}>{index}/{total}</div> : <div style={{ display: "flex" }} />}
       </div>
       <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
-        <div style={{ display: "flex", fontSize: 66, fontWeight: 800, color: "#1A1A1A", lineHeight: 1.08, letterSpacing: "-1px", maxWidth: W - 144 }}>{title}</div>
+        <div style={{ display: "flex", fontSize: 66, fontWeight: 700, color: "#1A1A1A", lineHeight: 1.08, letterSpacing: "-1px", maxWidth: W - 144 }}>{title}</div>
         {body ? <div style={{ display: "flex", fontSize: 33, color: "#55606c", marginTop: 28, lineHeight: 1.4, maxWidth: W - 144 }}>{body}</div> : null}
       </div>
       {byline}
@@ -94,11 +94,11 @@ export async function GET(request) {
       <div style={{ display: "flex", width: "100%", height: photoH, overflow: "hidden", position: "relative", background: brand, alignItems: "center", justifyContent: "center" }}>
         {photo
           ? <img src={photo} width={W} height={photoH} style={{ objectFit: "cover", objectPosition: `50% ${focusY}%` }} />
-          : <div style={{ display: "flex", fontSize: 260, fontWeight: 800, color: "rgba(255,255,255,0.9)" }}>{initial}</div>}
+          : <div style={{ display: "flex", fontSize: 260, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>{initial}</div>}
       </div>
       <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: pad, position: "relative", justifyContent: "space-between" }}>
         <div style={{ position: "absolute", left: 0, top: pad, width: 10, height: headlineSize * 1.8, background: brand, borderRadius: 5 }} />
-        <div style={{ display: "flex", fontSize: headlineSize, fontWeight: 800, color: "#1A1A1A", lineHeight: 1.12, letterSpacing: "-0.5px", paddingLeft: 28, maxWidth: W - pad * 2 }}>{title}</div>
+        <div style={{ display: "flex", fontSize: headlineSize, fontWeight: 700, color: "#1A1A1A", lineHeight: 1.12, letterSpacing: "-0.5px", paddingLeft: 28, maxWidth: W - pad * 2 }}>{title}</div>
         <div style={{ display: "flex", paddingLeft: 28 }}>{byline}</div>
       </div>
     </div>

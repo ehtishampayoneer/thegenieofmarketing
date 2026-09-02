@@ -66,7 +66,7 @@ export default function TrustCenterPage() {
         <span className="mg-tile" style={{ width: 40, height: 40, background: kill ? "var(--signal-danger-soft)" : "var(--surface-sunken)", color: kill ? "var(--signal-danger)" : "var(--fg-muted)" }}><Icon.bolt size={19} /></span>
         <div className="flex-1">
           <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Emergency stop</p>
-          <p className="text-[12.5px] mg-muted">{kill ? "Genie is paused — nothing will publish or send until you turn this off." : "Instantly pause all of Genie’s publishing and sending."}</p>
+          <p className="text-[13px] mg-muted">{kill ? "Genie is paused — nothing will publish or send until you turn this off." : "Instantly pause all of Genie’s publishing and sending."}</p>
         </div>
         <button onClick={toggleKill} className="relative w-12 h-7 rounded-full transition shrink-0" style={{ background: kill ? "var(--signal-danger)" : "var(--border-strong)" }}>
           <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all" style={{ left: kill ? 22 : 2 }} />
@@ -76,12 +76,12 @@ export default function TrustCenterPage() {
       {/* Per-channel autonomy */}
       <div className="mt-6">
         <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Autonomy by channel</h2>
-        <p className="mt-0.5 text-[12.5px] mg-muted">Start in Review. Genie earns Assisted after a few approvals, and Auto once it’s consistently winning — or grant it yourself.</p>
+        <p className="mt-0.5 text-[13px] mg-muted">Start in Review. Genie earns Assisted after a few approvals, and Auto once it’s consistently winning — or grant it yourself.</p>
         <div className="mt-3 space-y-2.5">
           {CHANNELS.map((c) => (
             <Card key={c.id} className="p-4 flex items-center gap-3 flex-wrap">
               <BrandIcon brand={c.id} size={18} />
-              <span className="text-[13.5px] font-semibold flex-1 min-w-[120px]" style={{ color: "var(--fg)" }}>{c.label}</span>
+              <span className="text-[14px] font-semibold flex-1 min-w-[120px]" style={{ color: "var(--fg)" }}>{c.label}</span>
               <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
                 {LEVELS.map((lv) => (
                   <button key={lv.id} onClick={() => setLevel(c.id, lv.id)} title={lv.desc}
@@ -113,7 +113,7 @@ function Protect({ icon: IconC, title, body }) {
     <Card className="p-5">
       <span className="mg-tile" style={{ width: 36, height: 36, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><IconC size={17} /></span>
       <p className="mt-3 text-[14px] font-bold" style={{ color: "var(--fg)" }}>{title}</p>
-      <p className="mt-1 text-[12.5px] mg-muted leading-snug">{body}</p>
+      <p className="mt-1 text-[13px] mg-muted leading-snug">{body}</p>
     </Card>
   );
 }

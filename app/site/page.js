@@ -71,9 +71,9 @@ export default function SitePage() {
       <Card className="p-5 mt-5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
           <label className="flex-1 min-w-0">
-            <span className="text-[12.5px] font-semibold" style={{ color: "var(--fg)" }}>Your website address</span>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>Your website address</span>
             <div className="mt-1.5 flex items-center gap-2 mg-field" style={{ paddingRight: 6 }}>
-              <span className="text-[13.5px] shrink-0" style={{ color: "var(--fg-subtle)" }}>https://</span>
+              <span className="text-[14px] shrink-0" style={{ color: "var(--fg-subtle)" }}>https://</span>
               <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && scan()} placeholder="yoursite.com"
                 className="flex-1 min-w-0 bg-transparent outline-none text-[14px]" style={{ color: "var(--fg)", border: "none", padding: 0 }} />
             </div>
@@ -82,8 +82,8 @@ export default function SitePage() {
             {state === "scanning" ? <>Scanning… <span className="mg-thinking"><i /><i /><i /></span></> : <><Icon.scan size={15} /> Scan my site</>}
           </button>
         </div>
-        {err && <p className="mt-2.5 text-[12.5px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
-        {res && !res.reachable && <p className="mt-2.5 text-[12.5px]" style={{ color: "var(--signal-warn)" }}>I couldn't load <b>{res.host}</b> (it may block bots or be offline). The checklist below still applies — use it as your setup guide.</p>}
+        {err && <p className="mt-2.5 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
+        {res && !res.reachable && <p className="mt-2.5 text-[13px]" style={{ color: "var(--signal-warn)" }}>I couldn't load <b>{res.host}</b> (it may block bots or be offline). The checklist below still applies — use it as your setup guide.</p>}
       </Card>
 
       {state === "idle" && !res && (
@@ -112,7 +112,7 @@ export default function SitePage() {
               <p className="mg-klabel self-start">Site readiness</p>
               <div className="mt-3"><Ring value={score.pct} /></div>
               <p className="mt-3 text-[15px] font-bold" style={{ color: "var(--fg)" }}>{score.label}</p>
-              <p className="text-[12.5px] text-center mt-1" style={{ color: "var(--fg-muted)" }}>{fixes.length === 0 ? "Your foundations are solid. Genie can rank you faster." : `${fixes.length} fix${fixes.length === 1 ? "" : "es"} to unlock faster ranking.`}</p>
+              <p className="text-[13px] text-center mt-1" style={{ color: "var(--fg-muted)" }}>{fixes.length === 0 ? "Your foundations are solid. Genie can rank you faster." : `${fixes.length} fix${fixes.length === 1 ? "" : "es"} to unlock faster ranking.`}</p>
             </Card>
             {fixes.length > 0 && (
               <Card className="p-5">
@@ -147,10 +147,10 @@ function CheckRow({ c, first }) {
         <span className="flex-1 min-w-0">
           <span className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{c.label}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: S.bg, color: S.c }}>{S.label}</span>
-            {c.impact === "High" && c.status !== "pass" && <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--accent-ink)" }}>· High impact</span>}
+            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ padding: ".12rem .4rem", borderRadius: 5, background: S.bg, color: S.c }}>{S.label}</span>
+            {c.impact === "High" && c.status !== "pass" && <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--accent-ink)" }}>· High impact</span>}
           </span>
-          <span className="block text-[12.5px] mt-1 leading-snug" style={{ color: "var(--fg-muted)" }}>{c.why}</span>
+          <span className="block text-[13px] mt-1 leading-snug" style={{ color: "var(--fg-muted)" }}>{c.why}</span>
           {c.detail && <span className="block text-[12px] mt-1 mg-num" style={{ color: "var(--fg-subtle)" }}>{c.detail}</span>}
         </span>
         {c.snippet && <Icon.chevronRight size={16} style={{ color: "var(--fg-subtle)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s", marginTop: 4 }} />}
@@ -166,8 +166,8 @@ function Snippet({ code, lang = "html" }) {
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface-sunken)" }}>
       <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid var(--hair)" }}>
-        <span className="text-[10.5px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>{lang === "json" ? "Paste before </head>" : "Paste into <head>"}</span>
-        <button onClick={copy} className="mg-btn mg-btn--ghost mg-focus" style={{ fontSize: 11.5, padding: ".3rem .6rem" }}>{copied ? "Copied ✓" : "Copy"}</button>
+        <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>{lang === "json" ? "Paste before </head>" : "Paste into <head>"}</span>
+        <button onClick={copy} className="mg-btn mg-btn--ghost mg-focus" style={{ fontSize: 12, padding: ".3rem .6rem" }}>{copied ? "Copied ✓" : "Copy"}</button>
       </div>
       <pre className="px-3.5 py-3 overflow-x-auto thin-scroll" style={{ margin: 0, fontFamily: "var(--font-mono, monospace)", fontSize: 12, lineHeight: 1.6, color: "var(--fg)", whiteSpace: "pre" }}>{code}</pre>
     </div>
@@ -206,7 +206,7 @@ function IntroPreview() {
         <Card key={i} className="p-5">
           <span className="flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: 11, background: "var(--accent)", color: "var(--on-accent)" }}><it.icon size={19} /></span>
           <p className="mt-3 text-[14px] font-bold" style={{ color: "var(--fg)" }}>{it.t}</p>
-          <p className="mt-1 text-[12.5px] leading-snug" style={{ color: "var(--fg-muted)" }}>{it.d}</p>
+          <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--fg-muted)" }}>{it.d}</p>
         </Card>
       ))}
     </div>

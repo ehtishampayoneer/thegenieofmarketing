@@ -44,7 +44,7 @@ export default function FoundationPage() {
       <div className="max-w-[1000px]">
         <p className="mg-eyebrow"><Icon.link size={14} /> Foundation links</p>
         <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>Plant your brand <span className="dawn-text">everywhere it counts.</span></h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "64ch" }}>Each of these is a free, high-authority profile — a real backlink and a place Google and AI answer engines pick up your brand. Genie wrote your bios below; open each site, create the account, paste the bio, and mark it done. Your progress is saved.</p>
+        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Each of these is a free, high-authority profile — a real backlink and a place Google and AI answer engines pick up your brand. Genie wrote your bios below; open each site, create the account, paste the bio, and mark it done. Your progress is saved.</p>
 
         {/* progress */}
         <div className="mt-5 flex items-center gap-4">
@@ -64,7 +64,7 @@ export default function FoundationPage() {
               <BioRow label="Long bio" text={bios.long} onCopy={() => copy(bios.long, "Long bio")} />
               {bios.website && <BioRow label="Website" text={bios.website} onCopy={() => copy(bios.website, "Website")} mono />}
             </div>
-            <p className="mt-2 text-[11.5px] mg-subtle">Tip: keep your name, bio and link identical across all profiles — consistency is what strengthens your brand entity for Google + AI.</p>
+            <p className="mt-2 text-[12px] mg-subtle">Tip: keep your name, bio and link identical across all profiles — consistency is what strengthens your brand entity for Google + AI.</p>
           </Card>
         )}
 
@@ -107,9 +107,9 @@ export default function FoundationPage() {
                                 <div key={fname}>
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="text-[11px] font-bold" style={{ color: "var(--fg)", fontFamily: "var(--font-mono, monospace)" }}>{fname}</span>
-                                    <button onClick={() => copy(code, fname)} className="mg-btn mg-btn--quiet" style={{ fontSize: 10.5, padding: ".2rem .5rem" }}>Copy</button>
+                                    <button onClick={() => copy(code, fname)} className="mg-btn mg-btn--quiet" style={{ fontSize: 11, padding: ".2rem .5rem" }}>Copy</button>
                                   </div>
-                                  <pre className="mt-1 text-[10.5px] leading-snug" style={{ background: "var(--surface-sunken)", padding: "8px 10px", borderRadius: 8, maxHeight: 150, overflow: "auto", fontFamily: "var(--font-mono, monospace)", color: "var(--fg)" }}>{code}</pre>
+                                  <pre className="mt-1 text-[11px] leading-snug" style={{ background: "var(--surface-sunken)", padding: "8px 10px", borderRadius: 8, maxHeight: 150, overflow: "auto", fontFamily: "var(--font-mono, monospace)", color: "var(--fg)" }}>{code}</pre>
                                 </div>
                               ))}
                             </div>
@@ -134,7 +134,7 @@ function BioRow({ label, text, onCopy, mono }) {
     <div className="flex items-start gap-3">
       <span className="text-[11px] font-bold uppercase tracking-wide mg-subtle shrink-0" style={{ width: 74, paddingTop: 3 }}>{label}</span>
       <p className="flex-1 text-[13px]" style={{ color: "var(--fg)", fontFamily: mono ? "var(--font-mono, monospace)" : undefined }}>{text}</p>
-      <button onClick={onCopy} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 11.5 }}>Copy</button>
+      <button onClick={onCopy} className="mg-btn mg-btn--quiet shrink-0" style={{ fontSize: 12 }}>Copy</button>
     </div>
   );
 }

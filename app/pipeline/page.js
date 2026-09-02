@@ -54,7 +54,7 @@ export default function PipelinePage() {
       <div>
         <p className="mg-eyebrow"><Icon.growth size={14} /> Deal Pipeline</p>
         <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>From reached to <span className="dawn-text">revenue.</span></h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "62ch" }}>Everyone Genie reached across every channel, who replied (each reply read and sorted for you), and the deals you closed. The one place that shows real money earned.</p>
+        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Everyone Genie reached across every channel, who replied (each reply read and sorted for you), and the deals you closed. The one place that shows real money earned.</p>
       </div>
 
       {/* funnel */}
@@ -72,8 +72,8 @@ export default function PipelinePage() {
         <Card className="mt-6 p-10 text-center mg-ambient">
           <span className="mg-tile mx-auto" style={{ width: 46, height: 46, background: "var(--accent-quiet)", color: "var(--accent-ink)" }}><Icon.growth size={22} /></span>
           <p className="mt-4 text-[16px] font-bold" style={{ color: "var(--fg)" }}>No outreach yet</p>
-          <p className="mt-1.5 text-[13.5px] mg-muted max-w-md mx-auto">Send from <b>Find clients</b>, <b>Revenue Recovery</b> or <b>Get featured</b> and everyone you reach shows up here — with their replies read and sorted, ready to close.</p>
-          <a href="/prospects" className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 13.5 }}>Find clients →</a>
+          <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">Send from <b>Find clients</b>, <b>Revenue Recovery</b> or <b>Get featured</b> and everyone you reach shows up here — with their replies read and sorted, ready to close.</p>
+          <a href="/prospects" className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 14 }}>Find clients →</a>
         </Card>
       ) : (
         <>
@@ -93,12 +93,12 @@ export default function PipelinePage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{c.name || c.email}</span>
                             {cl && <Pill tone={cl.tone}>{cl.label}</Pill>}
-                            <span className="text-[11.5px] mg-subtle mg-num">{c.email}</span>
+                            <span className="text-[12px] mg-subtle mg-num">{c.email}</span>
                           </div>
                           {c.replySnippet && <p className="mt-1.5 text-[13px] rounded-lg p-2.5" style={{ background: "var(--signal-live-soft)", border: "1px solid var(--hair)", color: "var(--fg)" }}><span className="font-semibold" style={{ color: "var(--signal-live-ink)" }}>They replied:</span> “{c.replySnippet}”</p>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <button onClick={() => mark(c, "won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 12.5 }}>Won 💰</button>
+                          <button onClick={() => mark(c, "won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Won 💰</button>
                           <button onClick={() => mark(c, "lost")} className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Lost</button>
                           <a href="/inbox" className="mg-btn mg-btn--quiet" style={{ fontSize: 12 }}>Reply</a>
                         </div>
@@ -116,7 +116,7 @@ export default function PipelinePage() {
               <p className="mg-klabel">CLOSED · {won.length} won · {money(data?.recovered || 0)}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {won.map((c) => (
-                  <span key={c.email} className="inline-flex items-center gap-2 text-[12.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
+                  <span key={c.email} className="inline-flex items-center gap-2 text-[13px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
                     <Icon.check size={13} /> {c.name || c.email}{Number(c.value) ? ` · ${money(c.value)}` : ""}
                     <button onClick={() => mark(c, "reopen")} title="Reopen" className="mg-focus" style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", opacity: .6, fontSize: 11 }}>↺</button>
                   </span>
@@ -135,10 +135,10 @@ export default function PipelinePage() {
                   <tbody>
                     {contacts.slice(0, 100).map((c) => (
                       <tr key={c.email} style={{ borderBottom: "1px solid var(--hair)" }}>
-                        <td className="px-4 py-2.5"><div className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{c.name || c.email}</div><div className="text-[11px] mg-subtle mg-num">{c.email}</div></td>
+                        <td className="px-4 py-2.5"><div className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>{c.name || c.email}</div><div className="text-[11px] mg-subtle mg-num">{c.email}</div></td>
                         <td className="px-4 py-2.5">{c.outcome === "won" ? <Pill tone="live">Won</Pill> : c.outcome === "lost" ? <Pill tone="danger">Lost</Pill> : c.replied ? <Pill tone="live">Replied</Pill> : c.status === "opened" ? <Pill tone="info">Opened</Pill> : <Pill tone="neutral">Sent</Pill>}</td>
                         <td className="px-4 py-2.5 text-[12px] mg-subtle mg-num" style={{ whiteSpace: "nowrap" }}>{fmt(c.repliedAt || c.sentAt)}</td>
-                        <td className="px-3 py-2.5 text-right">{c.replied && !c.outcome ? <button onClick={() => mark(c, "won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 11.5 }}>Won</button> : null}</td>
+                        <td className="px-3 py-2.5 text-right">{c.replied && !c.outcome ? <button onClick={() => mark(c, "won")} className="mg-btn mg-btn--dawn" style={{ fontSize: 12 }}>Won</button> : null}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -158,8 +158,8 @@ function FunnelStat({ label, value, tint, big }) {
   const col = tint === "live" ? "var(--signal-live-ink)" : tint === "info" ? "var(--signal-info)" : tint === "dawn" ? "var(--accent-ink)" : "var(--fg)";
   return (
     <Card className="p-4">
-      <div className="mg-num" style={{ fontSize: big ? 26 : 24, fontWeight: 800, lineHeight: 1, color: col }}>{value}</div>
-      <div className="text-[11.5px] mg-subtle mt-1">{label}</div>
+      <div className="mg-num" style={{ fontSize: big ? 26 : 24, fontWeight: 700, lineHeight: 1, color: col }}>{value}</div>
+      <div className="text-[12px] mg-subtle mt-1">{label}</div>
     </Card>
   );
 }

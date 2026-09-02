@@ -85,7 +85,7 @@ export default function SettingsPage() {
           {/* About your business */}
           <Card className="p-5">
             <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>About your business</h2>
-            <p className="text-[12.5px] mg-muted mt-0.5">Genie bakes this into everything it writes. Correct anything it got wrong.</p>
+            <p className="text-[13px] mg-muted mt-0.5">Genie bakes this into everything it writes. Correct anything it got wrong.</p>
             <div className="mt-4 flex flex-col gap-3">
               <Field label="Business name" value={f.company_name} onChange={upd("company_name")} placeholder="HOLOS" />
               <Field label="What you sell (one line)" value={f.company_pitch} onChange={upd("company_pitch")} placeholder="An AR commerce marketplace for immersive product experiences" textarea />
@@ -101,7 +101,7 @@ export default function SettingsPage() {
           {/* Sending identity */}
           <Card className="p-5">
             <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your sending identity</h2>
-            <p className="text-[12.5px] mg-muted mt-0.5">Who your outreach comes from, and where replies go.</p>
+            <p className="text-[13px] mg-muted mt-0.5">Who your outreach comes from, and where replies go.</p>
             <div className="mt-4 flex flex-col gap-3">
               <Field label="Your name / signature" value={f.sender_name} onChange={upd("sender_name")} placeholder="Asim from HOLOS" />
               <Field label="Your email (replies come here)" value={f.sender_email} onChange={upd("sender_email")} placeholder="you@yourbusiness.com" type="email" />
@@ -115,7 +115,7 @@ export default function SettingsPage() {
           </Card>
 
           <div className="lg:col-span-2 flex items-center gap-3">
-            <button onClick={save} disabled={saving} className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>{saving ? "Saving…" : "Save settings"}</button>
+            <button onClick={save} disabled={saving} className="mg-btn mg-btn--dawn" style={{ fontSize: 14 }}>{saving ? "Saving…" : "Save settings"}</button>
             {saved && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved</span>}
             <button onClick={signOut} className="mg-btn mg-btn--ghost ml-auto" style={{ fontSize: 13 }}>Sign out</button>
           </div>
@@ -126,7 +126,7 @@ export default function SettingsPage() {
           {/* Danger zone — start this project completely over */}
           <Card className="lg:col-span-2 p-5" style={{ borderColor: "var(--signal-danger-soft)" }}>
             <h2 className="text-[15px] font-bold" style={{ color: "var(--signal-danger)" }}>Start over</h2>
-            <p className="text-[12.5px] mg-muted mt-0.5" style={{ maxWidth: 560 }}>
+            <p className="text-[13px] mg-muted mt-0.5" style={{ maxWidth: 560 }}>
               Make this project brand-new: permanently delete every connected account (Google, X, WordPress), all scans, keywords, content, outreach, and everything Genie has learned. Your login stays; you’ll go straight to a fresh first scan.
             </p>
             <button onClick={startOver} disabled={resetting} className="mg-btn mg-btn--ghost mt-3" style={{ fontSize: 13, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
@@ -173,7 +173,7 @@ function FirstPartyFacts() {
         <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Make your content genuinely original</h2>
         <span className="text-[11px] mg-subtle mg-num">{filled}/4</span>
       </div>
-      <p className="text-[12.5px] mg-muted mt-0.5" style={{ maxWidth: 620 }}>
+      <p className="text-[13px] mg-muted mt-0.5" style={{ maxWidth: 620 }}>
         Google now buries generic AI content and rewards <b style={{ color: "var(--fg)" }}>real, first-hand value</b>. These are the things an AI can't invent — your data, your process, your proof, your expert opinion. Give Genie even one or two, and every article it writes gets markedly more citable. Optional, but this is the single biggest quality lever you control.
       </p>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -197,9 +197,9 @@ function Field({ label, value, onChange, placeholder, textarea, type = "text" })
     <label className="flex flex-col gap-1.5">
       <span className="text-[12px] font-medium mg-muted">{label}</span>
       {textarea ? (
-        <textarea value={value || ""} onChange={onChange} placeholder={placeholder} rows={2} className="px-3 py-2 rounded-lg text-[13.5px] mg-focus resize-none" style={FIELD} />
+        <textarea value={value || ""} onChange={onChange} placeholder={placeholder} rows={2} className="px-3 py-2 rounded-lg text-[14px] mg-focus resize-none" style={FIELD} />
       ) : (
-        <input type={type} value={value || ""} onChange={onChange} placeholder={placeholder} className="px-3 py-2 rounded-lg text-[13.5px] mg-focus" style={FIELD} />
+        <input type={type} value={value || ""} onChange={onChange} placeholder={placeholder} className="px-3 py-2 rounded-lg text-[14px] mg-focus" style={FIELD} />
       )}
     </label>
   );

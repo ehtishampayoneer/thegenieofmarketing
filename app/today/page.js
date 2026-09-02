@@ -176,7 +176,7 @@ function NextBestActions({ entity, gapCount, buyers, comp }) {
               <p className="mt-3.5 mg-num text-[13px] font-bold" style={{ color: c.ink, letterSpacing: ".02em" }}>{a.n}</p>
               <p className="mt-0.5 text-[16px] font-bold leading-snug" style={{ color: "var(--fg)" }}>{a.title}</p>
               <p className="mt-1.5 text-[13px] leading-snug flex-1" style={{ color: "var(--fg-muted)" }}>{a.body}</p>
-              <span className="mt-3 inline-flex items-center self-start gap-1.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ padding: ".28rem .55rem", borderRadius: 7, background: c.soft, color: c.ink }}>{a.cat === "orange" && <Icon.fire size={11} />}{a.tag}</span>
+              <span className="mt-3 inline-flex items-center self-start gap-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ padding: ".28rem .55rem", borderRadius: 7, background: c.soft, color: c.ink }}>{a.cat === "orange" && <Icon.fire size={11} />}{a.tag}</span>
               <a href={a.href} className="mt-3.5 inline-flex items-center gap-1 text-[13px] font-semibold mg-focus" style={{ color: c.ink }}>{a.cta} →</a>
             </Card>
           );
@@ -199,11 +199,11 @@ function WhatGenieDid({ did }) {
             <li key={i} className="flex items-center gap-3 py-2" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
               <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 10, background: c.soft, color: c.solid }}><m.icon size={16} /></span>
               <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{cap(x.title)}</p>
+                <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{cap(x.title)}</p>
                 {x.sub && <p className="text-[12px] mt-0.5" style={{ color: "var(--fg-subtle)" }}>{x.sub}</p>}
               </div>
-              {x.time && <span className="text-[11.5px] mg-num shrink-0" style={{ color: "var(--fg-subtle)" }}>{x.time}</span>}
-              <a href="/growth" className="text-[11.5px] font-semibold shrink-0 hidden sm:inline-flex items-center gap-0.5 mg-focus" style={{ color: "var(--fg-muted)" }}>Why this matters <Icon.chevronRight size={12} style={{ transform: "rotate(90deg)" }} /></a>
+              {x.time && <span className="text-[12px] mg-num shrink-0" style={{ color: "var(--fg-subtle)" }}>{x.time}</span>}
+              <a href="/growth" className="text-[12px] font-semibold shrink-0 hidden sm:inline-flex items-center gap-0.5 mg-focus" style={{ color: "var(--fg-muted)" }}>Why this matters <Icon.chevronRight size={12} style={{ transform: "rotate(90deg)" }} /></a>
             </li>
           );
         })}
@@ -236,19 +236,19 @@ function GrowthWeek({ citations, buyers, published, revenue, currency }) {
             <div key={i} className="flex items-center gap-3 py-2.5" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
               <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 10, background: c.soft, color: c.solid }}><r.icon size={16} /></span>
               <div className="min-w-0 flex-1">
-                <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{r.label}</p>
-                <p className="text-[11.5px]" style={{ color: "var(--fg-subtle)" }}>{r.sub}</p>
+                <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{r.label}</p>
+                <p className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>{r.sub}</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="mg-num text-[17px] font-bold leading-none" style={{ color: "var(--fg)" }}>{r.value}</p>
-                <p className="mg-num text-[11.5px] font-semibold mt-0.5" style={{ color: c.ink }}>{r.delta}</p>
+                <p className="mg-num text-[12px] font-semibold mt-0.5" style={{ color: c.ink }}>{r.delta}</p>
               </div>
               <div className="shrink-0 hidden sm:block"><Sparkline color={c.solid} data={r.spark} /></div>
             </div>
           );
         })}
       </div>
-      <div className="mt-4 flex items-center gap-2 text-[12.5px] font-medium" style={{ padding: ".6rem .8rem", borderRadius: 11, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
+      <div className="mt-4 flex items-center gap-2 text-[13px] font-medium" style={{ padding: ".6rem .8rem", borderRadius: 11, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
         <Icon.check size={15} /> Genie is improving your growth every day.
       </div>
     </Card>
@@ -285,7 +285,7 @@ function GenieStatus({ score, comp }) {
       <div className="mg-seam my-5" />
       <p className="mg-klabel mb-2">Next milestone</p>
       <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>First AI citation</p>
-      <p className="mt-1 flex items-center gap-1.5 text-[12.5px]" style={{ color: "var(--fg-muted)" }}><Icon.flag size={13} style={{ color: "var(--accent-ink)" }} /> Est. 25 days</p>
+      <p className="mt-1 flex items-center gap-1.5 text-[13px]" style={{ color: "var(--fg-muted)" }}><Icon.flag size={13} style={{ color: "var(--accent-ink)" }} /> Est. 25 days</p>
       <div className="mg-seam my-5" />
       <p className="mg-klabel mb-2">Genie’s focus</p>
       <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</p>
@@ -328,7 +328,7 @@ function PendingFromYou({ approvals, replies, setup }) {
           <a key={i} href={it.href} className="flex items-center gap-3 py-3 mg-focus" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
             <span className="shrink-0 flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: 9, background: "var(--surface-2)", color: "var(--fg-muted)" }}><it.icon size={15} /></span>
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{it.label}</p>
+              <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{it.label}</p>
               <p className="text-[12px]" style={{ color: "var(--fg-subtle)" }}>{it.sub}</p>
             </div>
             <span className="mg-num text-[14px] font-bold" style={{ color: it.n > 0 ? "var(--accent-ink)" : "var(--fg-subtle)" }}>{it.n}</span>
@@ -350,10 +350,10 @@ function GenieFocus({ comp, entity }) {
       <div className="min-w-0 flex-1">
         <p className="mg-klabel flex items-center gap-1.5"><Icon.target size={13} style={{ color: "var(--accent-ink)" }} /> Genie’s focus</p>
         <h3 className="mt-2 text-[22px] font-bold leading-tight" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</h3>
-        <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
           You’re currently not mentioned when buyers ask this question. 8th Wall and Vuforia are. Genie has already prepared the comparison content needed to compete.
         </p>
-        <a href="/ai-search" className="mg-btn mg-btn--dawn mt-4 self-start" style={{ fontSize: 13.5 }}>View plan →</a>
+        <a href="/ai-search" className="mg-btn mg-btn--dawn mt-4 self-start" style={{ fontSize: 14 }}>View plan →</a>
       </div>
       <div className="shrink-0 w-full sm:w-[240px]">
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-1)" }}>
@@ -382,7 +382,7 @@ function WorkingOn() {
         <p className="mg-klabel mb-3">Genie is working on</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5">
           {[...left, ...right].map((t, i) => (
-            <p key={i} className="flex items-center gap-2 text-[13.5px]" style={{ color: "var(--fg)" }}>
+            <p key={i} className="flex items-center gap-2 text-[14px]" style={{ color: "var(--fg)" }}>
               <span className="shrink-0 flex items-center justify-center" style={{ width: 18, height: 18, borderRadius: 999, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={11} /></span>
               {t}
             </p>

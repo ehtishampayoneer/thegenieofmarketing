@@ -32,7 +32,7 @@ export function LoadingState({ rows = 3, children, label = "Gathering your data"
             Genie is working
             <span className="mg-thinking"><i /><i /><i /></span>
           </p>
-          <p className="text-[12.5px] mg-subtle mt-0.5">{label}…</p>
+          <p className="text-[13px] mg-subtle mt-0.5">{label}…</p>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-3">
@@ -64,8 +64,8 @@ export function EmptyState({ state = "empty", icon: IconC = Icon.spark, title, s
       </p>
       <div style={{ marginTop: 18 }}>
         {action || (disconnected
-          ? <a href="/login" className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>Sign in →</a>
-          : <button onClick={() => window.location.reload()} className="mg-btn mg-btn--dawn" style={{ fontSize: 13.5 }}>Refresh</button>
+          ? <a href="/login" className="mg-btn mg-btn--dawn" style={{ fontSize: 14 }}>Sign in →</a>
+          : <button onClick={() => window.location.reload()} className="mg-btn mg-btn--dawn" style={{ fontSize: 14 }}>Refresh</button>
         )}
       </div>
     </div>

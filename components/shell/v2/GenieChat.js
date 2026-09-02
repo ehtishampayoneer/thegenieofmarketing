@@ -79,7 +79,7 @@ export default function GenieChat({ open, onClose }) {
         <header className="flex items-center gap-2.5 px-4 py-3.5" style={{ borderBottom: "1px solid var(--hair)" }}>
           <GenieMark size={26} live />
           <div className="leading-tight flex-1">
-            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Talk to Genie</p>
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Talk to Genie</p>
             <p className="text-[11px]" style={{ color: "var(--signal-live-ink)" }}>your marketing employee</p>
           </div>
           <button onClick={onClose} className="mg-btn mg-btn--quiet" style={{ fontSize: 12, padding: ".35rem .6rem" }}>Esc</button>
@@ -109,7 +109,7 @@ export default function GenieChat({ open, onClose }) {
                 <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Or just ask</p>
                 <div className="mt-2 flex flex-col gap-2">
                   {STARTERS.map((s) => (
-                    <button key={s} onClick={() => send(s)} className="text-left mg-surface-quiet px-3 py-2.5 mg-focus" style={{ fontSize: 12.5, color: "var(--fg)", borderRadius: 12 }}>{s}</button>
+                    <button key={s} onClick={() => send(s)} className="text-left mg-surface-quiet px-3 py-2.5 mg-focus" style={{ fontSize: 13, color: "var(--fg)", borderRadius: 12 }}>{s}</button>
                   ))}
                 </div>
               </div>
@@ -121,7 +121,7 @@ export default function GenieChat({ open, onClose }) {
             ) : (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
               <div className="mg-rise" style={{
-                maxWidth: "86%", padding: "9px 13px", fontSize: 13.5, lineHeight: 1.5, borderRadius: 14,
+                maxWidth: "86%", padding: "9px 13px", fontSize: 14, lineHeight: 1.5, borderRadius: 14,
                 background: m.role === "user" ? "var(--accent-quiet)" : "var(--surface-2)",
                 color: m.role === "user" ? "var(--accent-ink)" : "var(--fg)",
                 border: m.role === "user" ? "none" : "1px solid var(--hair)",
@@ -152,7 +152,7 @@ export default function GenieChat({ open, onClose }) {
             />
             <button onClick={() => send()} disabled={sending || !input.trim()} className="mg-btn mg-btn--dawn disabled:opacity-40" style={{ fontSize: 13, padding: ".5rem .8rem" }}>Send</button>
           </div>
-          <p className="mt-1.5 text-[10.5px] text-center" style={{ color: "var(--fg-subtle)" }}>Genie understands your goal and makes it stronger before acting.</p>
+          <p className="mt-1.5 text-[11px] text-center" style={{ color: "var(--fg-subtle)" }}>Genie understands your goal and makes it stronger before acting.</p>
         </div>
       </aside>
       <style dangerouslySetInnerHTML={{ __html: "@keyframes chat-in{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}@media (prefers-reduced-motion:reduce){[data-chat]{animation:none!important}}" }} />
@@ -168,8 +168,8 @@ function PlanCard({ plan }) {
       <div className="px-3.5 pt-3.5 pb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--accent-ink)" }}>{plan.label}</p>
         <p className="mt-0.5 text-[15px] font-bold" style={{ color: "var(--fg)", lineHeight: 1.25 }}>{plan.title}</p>
-        {plan.goal && <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--fg-muted)", lineHeight: 1.5 }}><b style={{ color: "var(--fg)" }}>Goal.</b> {plan.goal}</p>}
-        {plan.summary && <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--fg-muted)", lineHeight: 1.5 }}>{plan.summary}</p>}
+        {plan.goal && <p className="mt-1.5 text-[13px]" style={{ color: "var(--fg-muted)", lineHeight: 1.5 }}><b style={{ color: "var(--fg)" }}>Goal.</b> {plan.goal}</p>}
+        {plan.summary && <p className="mt-1.5 text-[13px]" style={{ color: "var(--fg-muted)", lineHeight: 1.5 }}>{plan.summary}</p>}
       </div>
 
       {open && (
@@ -178,7 +178,7 @@ function PlanCard({ plan }) {
             <Section title="The plan">
               <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 7 }}>
                 {plan.steps.map((s, i) => (
-                  <li key={i} style={{ fontSize: 12.5, color: "var(--fg-muted)", lineHeight: 1.5 }}>
+                  <li key={i} style={{ fontSize: 13, color: "var(--fg-muted)", lineHeight: 1.5 }}>
                     <b style={{ color: "var(--fg)" }}>{s.title}</b>{s.detail ? ` — ${s.detail}` : ""}
                   </li>
                 ))}
@@ -201,7 +201,7 @@ function PlanCard({ plan }) {
                   <div key={i} className="mg-surface-quiet" style={{ display: "flex", gap: 8, alignItems: "baseline", padding: "7px 10px", borderRadius: 10 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-ink)", flex: "none", minWidth: 62 }}>{r.when}</span>
                     <span style={{ fontSize: 12, color: "var(--fg)", flex: 1, lineHeight: 1.4 }}>{r.task}</span>
-                    {r.channel && <span style={{ fontSize: 10.5, color: "var(--fg-subtle)", flex: "none" }}>{r.channel}</span>}
+                    {r.channel && <span style={{ fontSize: 11, color: "var(--fg-subtle)", flex: "none" }}>{r.channel}</span>}
                   </div>
                 ))}
               </div>
@@ -213,7 +213,7 @@ function PlanCard({ plan }) {
       <div className="flex items-center gap-2 px-3.5 py-3 mt-1" style={{ borderTop: "1px solid var(--hair)" }}>
         <button onClick={() => downloadWord(plan)} className="mg-btn mg-btn--dawn" style={{ fontSize: 12, padding: ".42rem .7rem" }}>Export Word</button>
         <button onClick={() => printPdf(plan)} className="mg-btn mg-btn--ghost" style={{ fontSize: 12, padding: ".42rem .7rem" }}>Save as PDF</button>
-        <button onClick={() => setOpen((v) => !v)} className="mg-btn mg-btn--quiet ml-auto" style={{ fontSize: 11.5, padding: ".42rem .6rem" }}>{open ? "Collapse" : "Expand"}</button>
+        <button onClick={() => setOpen((v) => !v)} className="mg-btn mg-btn--quiet ml-auto" style={{ fontSize: 12, padding: ".42rem .6rem" }}>{open ? "Collapse" : "Expand"}</button>
       </div>
     </div>
   );
@@ -222,7 +222,7 @@ function PlanCard({ plan }) {
 function Section({ title, children }) {
   return (
     <div>
-      <p className="text-[10.5px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: "var(--fg-subtle)" }}>{title}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: "var(--fg-subtle)" }}>{title}</p>
       {children}
     </div>
   );
@@ -234,10 +234,10 @@ function AssetRow({ asset }) {
   return (
     <div className="mg-surface-quiet" style={{ padding: "8px 10px", borderRadius: 10 }}>
       <div className="flex items-center gap-2">
-        <span style={{ flex: 1, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--fg-subtle)" }}>{asset.name}</span>
-        <button onClick={copy} className="mg-btn mg-btn--quiet" style={{ fontSize: 10.5, padding: ".25rem .5rem" }}>{copied ? "✓" : "Copy"}</button>
+        <span style={{ flex: 1, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--fg-subtle)" }}>{asset.name}</span>
+        <button onClick={copy} className="mg-btn mg-btn--quiet" style={{ fontSize: 11, padding: ".25rem .5rem" }}>{copied ? "✓" : "Copy"}</button>
       </div>
-      <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--fg)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{asset.copy}</p>
+      <p style={{ marginTop: 3, fontSize: 13, color: "var(--fg)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{asset.copy}</p>
     </div>
   );
 }

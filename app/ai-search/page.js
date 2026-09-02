@@ -106,7 +106,7 @@ export default function AiSearchPage() {
       {infoOpen && (
         <div className="flex items-center gap-3 px-4 py-2.5 mb-4 rounded-xl" style={{ background: "var(--accent-quiet)", border: "1px solid var(--border)" }}>
           <span style={{ color: "var(--accent-ink)", flexShrink: 0 }}><InfoIcon /></span>
-          <p className="text-[12.5px] leading-snug" style={{ color: "var(--fg-muted)" }}><b style={{ color: "var(--fg)" }}>What is AI Search Visibility?</b> When buyers ask AI (ChatGPT, Perplexity, Gemini, Claude) for recommendations, is your brand named? This page tracks that, and shows you how to win those citations.</p>
+          <p className="text-[13px] leading-snug" style={{ color: "var(--fg-muted)" }}><b style={{ color: "var(--fg)" }}>What is AI Search Visibility?</b> When buyers ask AI (ChatGPT, Perplexity, Gemini, Claude) for recommendations, is your brand named? This page tracks that, and shows you how to win those citations.</p>
           <button onClick={dismissInfo} className="ml-auto shrink-0 mg-focus" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--fg-subtle)", fontSize: 18, lineHeight: 1, padding: "0 4px" }} aria-label="Dismiss">×</button>
         </div>
       )}
@@ -118,7 +118,7 @@ export default function AiSearchPage() {
           <p className="mt-1.5 text-[14px] mg-muted">Track your brand mentions across ChatGPT, Perplexity, Gemini, and Claude.</p>
         </div>
         {state === "real" && (
-          <button onClick={recheck} disabled={checking || !today?.entity?.host} className="mg-btn disabled:opacity-50" style={{ fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
+          <button onClick={recheck} disabled={checking || !today?.entity?.host} className="mg-btn disabled:opacity-50" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
             {checking ? (checkStep || "Re-checking…") : "Re-check all →"}
           </button>
         )}
@@ -168,8 +168,8 @@ function HappeningHero({ total, visible, comps, engines }) {
     <Card className="p-6 mg-rise relative overflow-hidden" style={{ borderLeft: "3px solid var(--accent)" }}>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-[19px] font-bold" style={{ color: "var(--fg)" }}>Here’s what’s happening:</h2>
-          <p className="mt-1.5 text-[13.5px] mg-muted" style={{ maxWidth: 460 }}>When your customers ask AI (ChatGPT, Perplexity, Gemini, Claude) for recommendations in your category, this is what they hear:</p>
+          <h2 className="text-[20px] font-semibold" style={{ color: "var(--fg)" }}>Here’s what’s happening:</h2>
+          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: 460 }}>When your customers ask AI (ChatGPT, Perplexity, Gemini, Claude) for recommendations in your category, this is what they hear:</p>
         </div>
         {engines?.length ? <Provenance kind="verified">Asked {engines.slice(0, 3).map((e) => e.label || e).join(" · ")}</Provenance> : <Provenance kind="modelled">AI-modelled</Provenance>}
       </div>
@@ -182,12 +182,12 @@ function HappeningHero({ total, visible, comps, engines }) {
               <div className="flex-1 h-3.5 rounded-full overflow-hidden" style={{ background: "var(--surface-sunken)" }}>
                 <div className="h-full rounded-full" style={{ width: `${((r.count || 0) / scaleTo) * 100}%`, background: r.you ? "var(--accent)" : "var(--fg-subtle)", opacity: r.you ? 1 : 0.55, transition: "width 1s var(--ease-out)" }} />
               </div>
-              <span className="text-[12.5px] mg-num shrink-0" style={{ width: 92, textAlign: "right", color: r.you ? "var(--accent-ink)" : "var(--fg-muted)", fontWeight: r.you ? 700 : 500 }}>{r.count || 0} out of {total}</span>
+              <span className="text-[13px] mg-num shrink-0" style={{ width: 92, textAlign: "right", color: r.you ? "var(--accent-ink)" : "var(--fg-muted)", fontWeight: r.you ? 700 : 500 }}>{r.count || 0} out of {total}</span>
             </div>
           ))}
         </div>
         <div className="lg:pl-6" style={{ borderLeft: "1px solid var(--hair)" }}>
-          <p className="text-[13.5px] mg-muted lg:pl-0 pl-0" style={{ paddingLeft: 0 }}>Every time AI recommends a competitor instead of <b style={{ color: "var(--fg)" }}>you</b>, you’re losing a potential customer.</p>
+          <p className="text-[14px] mg-muted lg:pl-0 pl-0" style={{ paddingLeft: 0 }}>Every time AI recommends a competitor instead of <b style={{ color: "var(--fg)" }}>you</b>, you’re losing a potential customer.</p>
           <div className="mg-seam my-3.5" />
           <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Genie’s job is to fix this.</p>
         </div>
@@ -207,21 +207,21 @@ function GeniePlan({ count, featured, onStart }) {
   return (
     <Card className="p-6 mg-rise">
       <p className="mg-klabel">GENIE’S PLAN</p>
-      <p className="mt-2 text-[13.5px] mg-muted" style={{ maxWidth: 640 }}>Genie found {count} question{count === 1 ? "" : "s"} your buyers ask AI. For each one, Genie will write content that gets your brand named in the answer.</p>
+      <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: 640 }}>Genie found {count} question{count === 1 ? "" : "s"} your buyers ask AI. For each one, Genie will write content that gets your brand named in the answer.</p>
       <p className="mt-4 text-[12px] font-semibold" style={{ color: "var(--fg)" }}>Here’s what happens next:</p>
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {steps.map((s, i) => (
           <div key={i} className="flex items-start gap-3 lg:flex-col lg:items-start">
             <span className="mg-num shrink-0 flex items-center justify-center" style={{ width: 28, height: 28, borderRadius: 999, border: "1.5px solid var(--accent)", color: "var(--accent-ink)", fontWeight: 700, fontSize: 13 }}>{i + 1}</span>
-            <p className="text-[12.5px] mg-muted leading-snug" style={{ maxWidth: 170 }}>{s}</p>
+            <p className="text-[13px] mg-muted leading-snug" style={{ maxWidth: 170 }}>{s}</p>
           </div>
         ))}
       </div>
       <div className="mg-seam my-4" />
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="flex gap-6 flex-wrap">
-          <div><p className="text-[11.5px] mg-subtle flex items-center gap-1"><Icon.clock size={12} /> Estimated time to first citation</p><p className="mt-0.5 text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>25 days</p></div>
-          <div><p className="text-[11.5px] mg-subtle">Estimated time to match your top competitor</p><p className="mt-0.5 text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>4 months</p></div>
+          <div><p className="text-[12px] mg-subtle flex items-center gap-1"><Icon.clock size={12} /> Estimated time to first citation</p><p className="mt-0.5 text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>25 days</p></div>
+          <div><p className="text-[12px] mg-subtle">Estimated time to match your top competitor</p><p className="mt-0.5 text-[15px] font-bold mg-num" style={{ color: "var(--fg)" }}>4 months</p></div>
         </div>
         <button onClick={onStart} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Start with the highest-impact question →</button>
       </div>
@@ -239,13 +239,13 @@ function StartHere({ o, onApprove, writing }) {
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_1fr] gap-5">
         <div className="rounded-2xl p-4 self-start" style={{ background: "var(--accent-quiet)", border: "1px solid var(--border)" }}>
-          <p className="text-[11.5px] mg-subtle">When buyers ask AI:</p>
+          <p className="text-[12px] mg-subtle">When buyers ask AI:</p>
           <p className="mt-1.5 text-[18px] font-bold leading-snug" style={{ color: "var(--fg)" }}>“{o.question}”</p>
-          {o.vol != null && <p className="mt-3 flex items-center gap-1.5 text-[12.5px] mg-muted"><Icon.conversations size={13} /> {fmt(o.vol)} people ask this every month</p>}
+          {o.vol != null && <p className="mt-3 flex items-center gap-1.5 text-[13px] mg-muted"><Icon.conversations size={13} /> {fmt(o.vol)} people ask this every month</p>}
         </div>
         <Col label="Right now, AI says:">
           {says ? <p className="text-[13px] mg-muted italic">“Try {says}, they offer similar features…”</p> : <p className="text-[13px] mg-muted italic">AI recommends other brands here.</p>}
-          <p className="mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>Your brand isn’t mentioned.</p>
+          <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>Your brand isn’t mentioned.</p>
         </Col>
         <Col label="What Genie will do:">
           <p className="text-[13px] mg-muted">Write a comparison guide that AI will read and cite when someone asks this question.</p>
@@ -263,7 +263,7 @@ function StartHere({ o, onApprove, writing }) {
     </Card>
   );
 }
-function Col({ label, children }) { return (<div><p className="text-[11.5px] font-semibold mg-subtle mb-1.5">{label}</p>{children}</div>); }
+function Col({ label, children }) { return (<div><p className="text-[12px] font-semibold mg-subtle mb-1.5">{label}</p>{children}</div>); }
 
 // ── MORE QUESTIONS ──────────────────────────────────────────────────────────
 function MoreQuestions({ rest, showAll, setShowAll, onFix, writing }) {
@@ -275,10 +275,10 @@ function MoreQuestions({ rest, showAll, setShowAll, onFix, writing }) {
         {shown.map((o, i) => (
           <div key={i} className="flex items-center gap-4 py-3 mg-qrow px-2 rounded-lg" style={{ borderTop: i === 0 ? "none" : "1px solid var(--hair)", cursor: "pointer" }} onClick={() => onFix(o, i)}>
             <div className="flex-1 min-w-0">
-              <p className="text-[13.5px] font-semibold truncate" style={{ color: "var(--fg)" }}>Q: {o.question}</p>
+              <p className="text-[14px] font-semibold truncate" style={{ color: "var(--fg)" }}>Q: {o.question}</p>
               <p className="text-[12px] mg-subtle mt-0.5">{o.vol != null ? `${fmt(o.vol)} people ask this monthly` : "Buyers ask this in your category"} <span className="mx-1">·</span> <span style={{ color: o.impact === "High" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{o.impact} impact</span></p>
             </div>
-            <span className="text-[12.5px] font-semibold shrink-0 flex items-center gap-1" style={{ color: "var(--accent-ink)" }}>{writing === `q${i}` ? "Writing…" : "Fix this"} <Icon.arrowRight size={13} /></span>
+            <span className="text-[13px] font-semibold shrink-0 flex items-center gap-1" style={{ color: "var(--accent-ink)" }}>{writing === `q${i}` ? "Writing…" : "Fix this"} <Icon.arrowRight size={13} /></span>
           </div>
         ))}
       </div>
@@ -303,15 +303,15 @@ function WhereAILearns({ host }) {
   return (
     <Card className="p-6 mg-rise">
       <p className="mg-klabel">WHERE AI LEARNS ABOUT YOUR CATEGORY</p>
-      <p className="mt-2 text-[13.5px] mg-muted" style={{ maxWidth: 640 }}>When AI recommends products like yours, it reads these websites to decide what to suggest. Being listed on them helps you get mentioned.</p>
+      <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: 640 }}>When AI recommends products like yours, it reads these websites to decide what to suggest. Being listed on them helps you get mentioned.</p>
       {shown.length > 0 ? (
         <div className="mt-4 flex flex-col">
           {shown.map((t, i) => (
             <a key={i} href={t.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 py-2.5 mg-qrow px-2 rounded-lg" style={{ borderTop: i === 0 ? "none" : "1px solid var(--hair)" }}>
               <span className="shrink-0" style={{ color: t.mentioned ? "var(--signal-live-ink)" : "var(--fg-subtle)" }}>{t.mentioned ? <Icon.check size={16} /> : <Icon.x size={15} />}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-semibold truncate" style={{ color: "var(--fg)" }}>{t.title || t.domain}</p>
-                <p className="text-[11.5px] mg-subtle">{KIND_LABEL[t.kind] || "Discovery"}</p>
+                <p className="text-[14px] font-semibold truncate" style={{ color: "var(--fg)" }}>{t.title || t.domain}</p>
+                <p className="text-[12px] mg-subtle">{KIND_LABEL[t.kind] || "Discovery"}</p>
               </div>
               <span className="text-[12px] shrink-0" style={{ color: t.mentioned ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{t.mentioned ? "You’re listed" : "You’re missing"}</span>
             </a>
@@ -321,7 +321,7 @@ function WhereAILearns({ host }) {
       ) : (
         <div className="mt-4">
           <p className="text-[13px] mg-muted">I map the sites AI reads for your category, then find the ones you’re missing from.</p>
-          <button onClick={run} disabled={busy} className="mg-btn mg-btn--ghost mt-3 disabled:opacity-60" style={{ fontSize: 12.5 }}>{busy ? "Checking the lists…" : "Find where AI learns about you →"}</button>
+          <button onClick={run} disabled={busy} className="mg-btn mg-btn--ghost mt-3 disabled:opacity-60" style={{ fontSize: 13 }}>{busy ? "Checking the lists…" : "Find where AI learns about you →"}</button>
         </div>
       )}
     </Card>
@@ -334,7 +334,7 @@ function AdvancedMetrics({ open, setOpen, d }) {
     <Card className="p-0 overflow-hidden mg-rise">
       <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center gap-2 px-6 py-4 mg-focus" style={{ background: "none", border: "none", cursor: "pointer" }}>
         <Icon.chevronRight size={16} style={{ color: "var(--fg-subtle)", transform: open ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
-        <span className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>See detailed metrics and progress charts</span>
+        <span className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>See detailed metrics and progress charts</span>
       </button>
       {open && (
         <div className="px-6 pb-6 flex flex-col gap-5" style={{ borderTop: "1px solid var(--hair)", paddingTop: 20 }}>
@@ -351,7 +351,7 @@ function ProgressCard({ health, delta }) {
   return (
     <Card className="p-5 mg-rise">
       <p className="mg-klabel">YOUR PROGRESS</p>
-      <p className="mt-3 text-[12.5px] mg-muted">Health score</p>
+      <p className="mt-3 text-[13px] mg-muted">Health score</p>
       <div className="mt-2 flex justify-center"><Ring value={health == null ? null : Math.round(health)} /></div>
       {delta != null && (
         <p className="mt-3 text-center flex items-center justify-center gap-1.5 text-[13px] font-semibold" style={{ color: delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>
@@ -373,7 +373,7 @@ function Ring({ value, size = 132 }) {
         <defs><linearGradient id="aiRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="var(--mg-dawn-500)" /><stop offset="100%" stopColor="var(--mg-dawn-600)" /></linearGradient></defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="mg-num" style={{ fontSize: 38, fontWeight: 800, lineHeight: 1, color: "var(--fg)" }}>{value == null ? "—" : value}</span>
+        <span className="mg-num" style={{ fontSize: 38, fontWeight: 700, lineHeight: 1, color: "var(--fg)" }}>{value == null ? "—" : value}</span>
         <span className="text-[12px] mg-subtle mg-num">/100</span>
       </div>
     </div>
@@ -393,7 +393,7 @@ function SpeedUpCard({ approvals }) {
     <Card className="p-5 mg-rise">
       <p className="mg-klabel">HOW TO SPEED THIS UP</p>
       <p className="mt-3 text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Approve pending drafts ({approvals})</p>
-      <p className="mt-1 text-[12.5px] mg-muted">This helps Genie publish faster.</p>
+      <p className="mt-1 text-[13px] mg-muted">This helps Genie publish faster.</p>
       <a href="/approvals" className="mg-btn mg-btn--dawn w-full mt-3" style={{ fontSize: 13 }}>See pending drafts →</a>
     </Card>
   );
@@ -435,15 +435,15 @@ function VisibilityProof({ history = [], newlyCited = [], engines = [] }) {
       <div className="mt-3 flex items-end gap-5 flex-wrap">
         <div>
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="mg-num" style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-.03em", color: cur > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{cur}%</span>
+            <span className="mg-num" style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-.03em", color: cur > 0 ? "var(--signal-live-ink)" : "var(--fg)" }}>{cur}%</span>
             {!single && <span className="text-[13px] font-semibold" style={{ color: delta >= 0 ? "var(--signal-live-ink)" : "var(--signal-danger)" }}>{delta >= 0 ? "+" : ""}{delta} since first check</span>}
           </div>
-          <p className="mt-0.5 text-[12.5px] mg-muted">of buyer questions where AI now names you</p>
+          <p className="mt-0.5 text-[13px] mg-muted">of buyer questions where AI now names you</p>
         </div>
         <div className="flex-1 min-w-[200px]"><Sparkline points={scores} /></div>
       </div>
       {single ? (
-        <p className="mt-3 text-[12.5px] mg-subtle">First check recorded. As Genie publishes answer pages, come back to watch this line climb.</p>
+        <p className="mt-3 text-[13px] mg-subtle">First check recorded. As Genie publishes answer pages, come back to watch this line climb.</p>
       ) : newlyCited.length > 0 ? (
         <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--hair)" }}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--signal-live-ink)" }}>Newly won since last check</p>
@@ -480,7 +480,7 @@ function CitationGap() {
     <div>
       <div className="flex items-center gap-2 flex-wrap">
         <h3 className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>The lists AI reads</h3>
-        <button onClick={run} disabled={busy} className="ml-auto text-[12.5px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)", background: "none", border: "none", cursor: "pointer" }}>{busy ? "Checking…" : d ? "Re-check" : "Check now →"}</button>
+        <button onClick={run} disabled={busy} className="ml-auto text-[13px] font-semibold mg-focus disabled:opacity-50" style={{ color: "var(--accent-ink)", background: "none", border: "none", cursor: "pointer" }}>{busy ? "Checking…" : d ? "Re-check" : "Check now →"}</button>
       </div>
       {s && (
         <div className="mg-statstrip mt-3">
