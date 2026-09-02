@@ -15,10 +15,19 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
   );
 }
 
-// The full "Marketing Genie" logo (the user's artwork). size = logo height; the image
-// aspect (~3:1) sets the width. Inverted to light in Night via .genie-logo.
-export function GenieLockup({ size = 42, live = false, className = "" }) {
-  const h = size, w = Math.round(size * 3.0);
+// The full "Marketing Genie" logo (the user's artwork).
+//
+// Sized by WIDTH, not height, which is the fix for "MARKETING is unreadable".
+// In the source PNG that word is only ~7.5% of the image height, so at the old
+// 42px height it rendered about 3px tall — far below anything legible. The file
+// also carries ~16% blank padding on each side, so the real content aspect is
+// 2.27:1, not the 3:1 the box was using.
+//
+// Cropping that padding (see .genie-logo background-size) and driving the size
+// from the width the container actually has lets the artwork render much larger
+// in the same slot, which takes "MARKETING" to a readable size.
+export function GenieLockup({ width = 190, live = false, className = "" }) {
+  const w = width, h = Math.round(width / 2.27);
   return (
     <span className={`genie-logo ${className}`} style={{ width: w, height: h }} role="img" aria-label="Marketing Genie" />
   );

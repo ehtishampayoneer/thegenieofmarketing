@@ -391,7 +391,11 @@ html, body {
    The floating mascot, the small face avatar, and the wordmark. */
 /* Logo — the full "Marketing Genie" mark (image). Inverted to light in Night so it reads
    on the dark chrome. */
-.genie-logo { display:inline-block; background:url(/logo.png) left center/contain no-repeat; }
+/* The artwork carries ~16% blank padding each side. background-size:147% scales
+   past it and center-position keeps the mark centred, so the logo fills its box
+   instead of floating in whitespace. Paired with the 2.27:1 box in GenieLockup,
+   this is an exact crop of the padding — nothing of the mark is cut. */
+.genie-logo { display:inline-block; background:url(/logo.png) center/138% auto no-repeat; }
 [data-theme="night"] .genie-logo { filter:brightness(0) invert(1); }
 /* Small circular genie-face avatar — the bust cropped into a soft ring. */
 .genie-avatar { position:relative; display:inline-block; border-radius:50%; overflow:hidden; line-height:0;
@@ -629,15 +633,24 @@ html, body {
    contained tokens so it's guaranteed premium regardless of the app theme.
    ============================================================================ */
 .onb {
-  /* Apple dark stage: true black with the iOS elevation ladder and systemBlue.
-     No gradient wash — the flat black is what makes the panels read as surfaces. */
-  --onb-ink:#000000; --onb-panel:#1C1C1E; --onb-panel-2:#2C2C2E;
-  --onb-dawn:#0A84FF; --onb-dawn-deep:#0071E3; --onb-live:#30D158; --onb-live-soft:rgba(48,209,88,.16);
-  --onb-fg:#F5F5F7; --onb-muted:#AEAEB2; --onb-subtle:#8E8E93;
-  --onb-hair:#38383A; --onb-hair2:#2C2C2E;
+  /* Apple LIGHT stage. This world used to be a dark one, but the Genie wordmark
+     and the mascot artwork are both black, so on a black ground they simply
+     disappeared. Light is the honest fix: the brand art reads as drawn, and the
+     first thing a new owner sees is legible.
+     Same palette as the app's Light theme so onboarding and the product match. */
+  --onb-ink:#F2F2F7; --onb-panel:#FFFFFF; --onb-panel-2:#F2F2F7;
+  --onb-dawn:#0071E3; --onb-dawn-deep:#0040DD;
+  /* Two greens: a vivid one for fills, an accessible one for text on white. */
+  --onb-live:#1F7A35; --onb-live-fill:#34C759; --onb-live-soft:#E7F8EC;
+  --onb-fg:#1D1D1F; --onb-muted:#424245; --onb-subtle:#6E6E73;
+  --onb-hair:#D2D2D7; --onb-hair2:#E5E5EA;
   position:relative; min-height:100vh; width:100%; overflow-x:hidden; color:var(--onb-fg); font-family:var(--font-ui);
   background:var(--onb-ink);
 }
+/* Panels on the light stage need a hairline and a whisper of lift, the same way
+   cards do in the app. The old dark stage leaned on white overlay gradients,
+   which are invisible on white — those are neutralised here. */
+.onb .onb-panel { background:var(--onb-panel); border:1px solid var(--onb-hair); border-radius:16px; }
 .onb-input { background:var(--onb-panel); border:1px solid var(--onb-hair); color:var(--onb-fg); border-radius:14px; font-family:var(--font-ui); }
 .onb-input::placeholder { color:var(--onb-subtle); }
 .onb-input:focus { outline:none; border-color:#0A84FF; box-shadow:0 0 0 4px rgba(10,132,255,.25); }
