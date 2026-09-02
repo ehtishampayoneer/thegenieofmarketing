@@ -13,7 +13,8 @@
 
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/Icon";
-import { GenieMark, GenieLockup } from "@/components/brand/GenieMark";
+import { GenieMark } from "@/components/brand/GenieMark";
+import { GenieWordmark } from "@/components/brand/GenieWordmark";
 import { Kbd } from "@/components/ui/v2/primitives";
 import { fetchLive, relTime } from "@/lib/live";
 import GenieChat from "@/components/shell/v2/GenieChat";
@@ -152,7 +153,7 @@ export default function OperatorShell({ active = "today", children }) {
   const railInner = (
     <>
       <div className="px-4 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--hair)" }}>
-        <GenieLockup width={186} live />
+        <GenieWordmark size={21} />
         <button onClick={() => setNavOpen(false)} className="md:hidden mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 4 }} aria-label="Close menu"><Icon.x size={18} /></button>
       </div>
       <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">

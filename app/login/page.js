@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { GenieLockup } from "@/components/brand/GenieMark";
+import { GenieWordmark } from "@/components/brand/GenieWordmark";
 import GenieAperture from "@/components/brand/GenieAperture";
 
 const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)", borderRadius: 12, height: 46, padding: "0 14px", fontSize: 14, width: "100%", outline: "none" };
@@ -71,7 +71,7 @@ export default function LoginPage() {
   return (
     <main className="mg mg-ambient mg-aura-field" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <header className="px-6 py-5">
-        <a href="/" className="inline-flex"><GenieLockup width={200} live /></a>
+        <a href="/" className="inline-flex"><GenieWordmark size={23} /></a>
       </header>
 
       <section className="flex-1 flex items-center justify-center px-6 pb-16">

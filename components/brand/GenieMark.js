@@ -15,7 +15,13 @@ export function GenieMark({ size = 40, live = false, className = "" }) {
   );
 }
 
-// The full "Marketing Genie" logo (the user's artwork).
+// RETIRED — superseded by components/brand/GenieWordmark.js.
+//
+// Kept, not deleted, so the image lockup is one import away if the drawn one is
+// ever not wanted. It is no longer used anywhere: "MARKETING" is only ~7.5% of
+// the source PNG's height, so it could not be made readable at any size that fit
+// a sidebar, and the word being baked in as black meant it vanished on dark
+// surfaces unless a CSS invert reached it.
 //
 // Sized by WIDTH, not height, which is the fix for "MARKETING is unreadable".
 // In the source PNG that word is only ~7.5% of the image height, so at the old
