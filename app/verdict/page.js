@@ -66,7 +66,7 @@ export default function VerdictPage() {
           <section className="onb-rise" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <h1 style={{ fontSize: "clamp(28px,5vw,44px)", lineHeight: 1.05, letterSpacing: "-.03em", fontWeight: 800, textWrap: "balance" }}>
               When your buyers ask AI what to buy,<br />
-              <span style={{ background: "linear-gradient(100deg,var(--onb-dawn),#FFE1AE)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+              <span style={{ background: "linear-gradient(100deg,var(--onb-dawn),#64D2FF)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
                 does it name you — or your competitor?
               </span>
             </h1>
@@ -118,7 +118,7 @@ function Reveal({ result, onReset }) {
   const { business, score, visible, total, engines = [], topCompetitors = [], questions = [] } = result;
   const eng = engines.length ? joinNames(engines) : "AI";
   const headline =
-    score === 0 ? <>Right now, {eng} <span style={{ color: "#FF8A7A" }}>never</span> names {business}.</>
+    score === 0 ? <>Right now, {eng} <span style={{ color: "#FF453A" }}>never</span> names {business}.</>
     : score < 40 ? <>{eng} <span style={{ color: "var(--onb-dawn)" }}>barely</span> mentions {business}.</>
     : score < 70 ? <>{eng} mentions {business} <span style={{ color: "var(--onb-dawn)" }}>sometimes</span>.</>
     : <>{eng} already <span style={{ color: "var(--onb-live)" }}>recommends</span> {business}.</>;
@@ -131,14 +131,14 @@ function Reveal({ result, onReset }) {
         </p>
         <h2 style={{ fontSize: "clamp(24px,4.4vw,36px)", lineHeight: 1.08, letterSpacing: "-.025em", fontWeight: 800, textWrap: "balance" }}>{headline}</h2>
         <p style={{ marginTop: 12, fontSize: 15.5, color: "var(--onb-muted)", lineHeight: 1.55 }}>
-          Of <b style={{ color: "var(--onb-fg)" }}>{total}</b> question{total === 1 ? "" : "s"} your buyers ask AI, you were named in <b style={{ color: visible ? "var(--onb-live)" : "#FF8A7A" }}>{visible}</b>.
+          Of <b style={{ color: "var(--onb-fg)" }}>{total}</b> question{total === 1 ? "" : "s"} your buyers ask AI, you were named in <b style={{ color: visible ? "var(--onb-live)" : "#FF453A" }}>{visible}</b>.
         </p>
       </div>
 
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, fontWeight: 600, color: "var(--onb-subtle)", marginBottom: 8 }}>
           <span>Share of AI answers that name you</span>
-          <span style={{ color: score ? "var(--onb-live)" : "#FF8A7A", fontVariantNumeric: "tabular-nums" }}>{score}%</span>
+          <span style={{ color: score ? "var(--onb-live)" : "#FF453A", fontVariantNumeric: "tabular-nums" }}>{score}%</span>
         </div>
         <WarBar score={score} />
       </div>
@@ -157,7 +157,7 @@ function Reveal({ result, onReset }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {questions.map((q, i) => (
           <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", borderRadius: 12, background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-            <span style={{ flex: "none", marginTop: 1, color: q.named ? "var(--onb-live)" : "#FF8A7A", fontWeight: 800 }}>{q.named ? "✓" : "✗"}</span>
+            <span style={{ flex: "none", marginTop: 1, color: q.named ? "var(--onb-live)" : "#FF453A", fontWeight: 800 }}>{q.named ? "✓" : "✗"}</span>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: 14, color: "var(--onb-fg)", lineHeight: 1.35 }}>“{q.question}”</p>
               <p style={{ marginTop: 3, fontSize: 12.5, color: "var(--onb-subtle)" }}>
@@ -172,7 +172,7 @@ function Reveal({ result, onReset }) {
         ))}
       </div>
 
-      <div style={{ padding: "22px", borderRadius: 18, background: "linear-gradient(135deg, rgba(255,200,118,.12), rgba(255,200,118,.04))", border: "1px solid rgba(255,200,118,.22)" }}>
+      <div style={{ padding: "22px", borderRadius: 18, background: "linear-gradient(135deg, rgba(10,132,255,.12), rgba(10,132,255,.04))", border: "1px solid rgba(10,132,255,.22)" }}>
         <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.35 }}>This is the gap Marketing Genie closes.</p>
         <p style={{ marginTop: 8, fontSize: 14.5, color: "var(--onb-muted)", lineHeight: 1.55 }}>
           Genie writes the answer pages and gets you into the lists these AI models read — automatically, organically, with no ad spend — then tracks every buyer question it wins back for you.
@@ -191,7 +191,7 @@ function WarBar({ score }) {
   useEffect(() => { const t = setTimeout(() => setW(Math.max(0, Math.min(100, score))), 90); return () => clearTimeout(t); }, [score]);
   return (
     <div style={{ position: "relative", height: 14, borderRadius: 999, background: "var(--onb-ink)", overflow: "hidden", border: "1px solid var(--onb-hair)" }}>
-      <div style={{ height: "100%", width: `${w}%`, borderRadius: 999, background: "linear-gradient(90deg, var(--onb-dawn-deep), var(--onb-live))", transition: "width 1.1s cubic-bezier(.2,.8,.2,1)", boxShadow: "0 0 20px rgba(255,200,118,.4)" }} />
+      <div style={{ height: "100%", width: `${w}%`, borderRadius: 999, background: "linear-gradient(90deg, var(--onb-dawn-deep), var(--onb-live))", transition: "width 1.1s cubic-bezier(.2,.8,.2,1)", boxShadow: "0 0 20px rgba(10,132,255,.4)" }} />
     </div>
   );
 }

@@ -21,14 +21,17 @@ const num = (n) => Number(String(n ?? "").replace(/[^\d.-]/g, "")) || 0;
 const money = (n, cur = "USD") => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); } catch { return `$${n}`; } };
 const clockTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch { return ""; } };
 
-// Category colours — each metric / action / activity carries its own hue so the
-// dashboard reads at a glance. Soft tile background + solid icon + readable ink.
+// Category colours — Apple's system palette, so each metric / action / activity
+// carries its own hue and the dashboard reads at a glance. `ink` uses Apple's
+// accessible variants (safe for text on white); `soft` is the tinted tile.
+// Driven by CSS custom properties set per theme just below, so these no longer
+// burn a light-mode tint onto a black card in Dark.
 const CAT = {
-  orange: { ink: "#C2410C", solid: "#E9682B", soft: "#FBEADF" },
-  green:  { ink: "#127A54", solid: "#1E9E6A", soft: "#E3F3EB" },
-  blue:   { ink: "#2A54BE", solid: "#3B6ED0", soft: "#E8EEFC" },
-  purple: { ink: "#6A31CE", solid: "#8257E6", soft: "#EFE9FB" },
-  amber:  { ink: "#9A5E0A", solid: "#E0932A", soft: "#FBEFD8" },
+  orange: { ink: "var(--cat-orange-ink)", solid: "var(--cat-orange)", soft: "var(--cat-orange-soft)" },
+  green:  { ink: "var(--cat-green-ink)",  solid: "var(--cat-green)",  soft: "var(--cat-green-soft)" },
+  blue:   { ink: "var(--cat-blue-ink)",   solid: "var(--cat-blue)",   soft: "var(--cat-blue-soft)" },
+  purple: { ink: "var(--cat-purple-ink)", solid: "var(--cat-purple)", soft: "var(--cat-purple-soft)" },
+  amber:  { ink: "var(--cat-amber-ink)",  solid: "var(--cat-amber)",  soft: "var(--cat-amber-soft)" },
 };
 const TIERS = [
   { min: 0, label: "Starting out" }, { min: 40, label: "Fair" }, { min: 55, label: "Good" },

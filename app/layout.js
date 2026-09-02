@@ -6,6 +6,19 @@ export const metadata = {
     "An AI marketing operator that finds what to fix, writes your content, and grows your business — you just approve.",
 };
 
+// Mobile browser chrome (the status/address bar) is the one surface CSS can't
+// reach, so it's set here — Apple's systemGray6 in light, true black in dark —
+// otherwise the notch area stays white above a black app and the illusion breaks.
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F2F2F7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">

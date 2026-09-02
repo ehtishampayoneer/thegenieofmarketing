@@ -31,10 +31,12 @@ function heat(n) {
   // Buying-intent as a cohesive BLUE intensity ramp (deep royal = strongest intent ->
   // light slate = weakest). No warm colours — the number carries the value, the depth of
   // blue and the label carry the tier. White number on every tile.
-  if (n >= 85) return { color: "#16244E", soft: "rgba(22,36,78,.28)", label: "Top intent" };
-  if (n >= 70) return { color: "#2A407F", soft: "rgba(42,64,127,.26)", label: "High intent" };
-  if (n >= 55) return { color: "#4A6699", soft: "rgba(74,102,153,.22)", label: "Medium" };
-  return { color: "#7A889E", soft: "rgba(122,136,158,.20)", label: "Low" };
+  // Apple's own urgency ramp — systemRed for the hottest, then orange, then the
+  // neutral systemGray scale as intent cools. Same ladder iOS uses for severity.
+  if (n >= 85) return { color: "#FF3B30", soft: "rgba(255,59,48,.26)", label: "Top intent" };
+  if (n >= 70) return { color: "#FF9500", soft: "rgba(255,149,0,.24)", label: "High intent" };
+  if (n >= 55) return { color: "#007AFF", soft: "rgba(0,122,255,.22)", label: "Medium" };
+  return { color: "#8E8E93", soft: "rgba(142,142,147,.22)", label: "Low" };
 }
 
 export default function HuntPage() {

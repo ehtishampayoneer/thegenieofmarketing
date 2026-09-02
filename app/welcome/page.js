@@ -266,7 +266,7 @@ export default function WelcomePage() {
             <div className="text-center onb-rise">
               <div className="flex justify-center"><ApertureMark size={92} live /></div>
               <h1 className="mt-9 font-extrabold tracking-tight" style={{ fontSize: "clamp(32px,5vw,50px)", lineHeight: 1.04, letterSpacing: "-.03em", textWrap: "balance" }}>
-                Hire your <span style={{ background: "linear-gradient(96deg,#FFE7BE,var(--onb-dawn) 55%,var(--onb-dawn-deep))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>AI marketing employee.</span>
+                Hire your <span style={{ background: "linear-gradient(96deg,#64D2FF,var(--onb-dawn) 55%,var(--onb-dawn-deep))", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>AI marketing employee.</span>
               </h1>
               <p className="mt-4 text-[16px]" style={{ color: "var(--onb-muted)", maxWidth: 440, margin: "16px auto 0", lineHeight: 1.5 }}>
                 Give me your website. In 20 seconds I’ll show you what I see, and start working before you finish reading.
@@ -276,7 +276,7 @@ export default function WelcomePage() {
                   placeholder="yourwebsite.com" className="onb-input flex-1 px-4 text-[15.5px]" style={{ height: 52 }} aria-label="Your website" />
                 <button onClick={go} className="onb-cta px-6 text-[15px]" style={{ height: 52 }}>Show me →</button>
               </div>
-              {err && <p className="mt-3 text-[13px]" style={{ color: "#FF8A7E" }}>{err}</p>}
+              {err && <p className="mt-3 text-[13px]" style={{ color: "#FF453A" }}>{err}</p>}
               <p className="mt-5 text-[12px]" style={{ color: "var(--onb-subtle)" }}>Free · no setup · nothing to configure</p>
             </div>
           )}
@@ -297,7 +297,7 @@ export default function WelcomePage() {
                   const active = i === revealed - 1 && !(revealed >= lines.length && data);
                   return (
                     <div key={i} className="flex items-start gap-3.5 onb-rise" style={{ padding: "12px 2px", borderBottom: i < revealed - 1 ? "1px solid var(--onb-hair2)" : "none" }}>
-                      <span className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, flex: "none", marginTop: 1, background: active ? "rgba(203,174,112,.14)" : "var(--onb-live-soft)", color: active ? "var(--onb-dawn)" : "var(--onb-live)" }}>
+                      <span className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, flex: "none", marginTop: 1, background: active ? "rgba(10,132,255,.14)" : "var(--onb-live-soft)", color: active ? "var(--onb-dawn)" : "var(--onb-live)" }}>
                         {active ? <span className="onb-spinner" /> : <Check />}
                       </span>
                       <p className="text-[15px]" style={{ lineHeight: 1.45, color: active ? "var(--onb-muted)" : "var(--onb-fg)" }}>
@@ -335,7 +335,7 @@ export default function WelcomePage() {
               </div>
 
               {/* what I already started — real kickoff */}
-              <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(203,174,112,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
+              <div className="mt-10 lg:mt-0" style={{ borderRadius: 22, padding: "28px", background: "linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01) 40%),var(--onb-panel)", border: "1px solid rgba(10,132,255,.24)", boxShadow: "0 1px 0 rgba(255,255,255,.05) inset, 0 22px 54px rgba(0,0,0,.5)" }}>
                 <p className="text-[12px] font-semibold flex items-center gap-2" style={{ textTransform: "uppercase", letterSpacing: ".14em", color: "var(--onb-subtle)" }}><span className="mg-live-dot" style={{ background: "var(--onb-live)" }} /> Already working, right now</p>
                 {/* Real findings resolve the spinners. A spinner that never finishes
                     is a lie about work being done — each row flips to what was
@@ -388,7 +388,7 @@ export default function WelcomePage() {
 
               <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                 {/* LEFT — what Genie found */}
-                <div style={{ borderRadius: 18, border: "1px solid rgba(203,174,112,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ borderRadius: 18, border: "1px solid rgba(10,132,255,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)" }}>
                     <p className="text-[11.5px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
                     <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", marginTop: 2, letterSpacing: "-.01em" }}>{cap(understanding?.businessName || host || "your business")}</p>
@@ -419,7 +419,7 @@ export default function WelcomePage() {
                         <div style={{
                           padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.5,
                           background: m.role === "owner" ? "var(--onb-dawn)" : "var(--onb-panel)",
-                          color: m.role === "owner" ? "#1a1206" : "var(--onb-fg)",
+                          color: m.role === "owner" ? "#FFFFFF" : "var(--onb-fg)",
                           border: m.role === "owner" ? "none" : "1px solid var(--onb-hair)",
                         }}>{m.content}</div>
                       </div>
@@ -548,8 +548,8 @@ export default function WelcomePage() {
                     ))}
 
                     {/* the payoff */}
-                    <div className="flex items-center gap-4 mt-1" style={{ marginLeft: 46, borderRadius: 16, padding: "18px 20px", background: "linear-gradient(100deg, rgba(203,174,112,.10), rgba(255,255,255,.02))", border: "1px solid rgba(203,174,112,.28)" }}>
-                      <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(203,174,112,.12)", color: "var(--onb-dawn)" }}>
+                    <div className="flex items-center gap-4 mt-1" style={{ marginLeft: 46, borderRadius: 16, padding: "18px 20px", background: "linear-gradient(100deg, rgba(10,132,255,.10), rgba(255,255,255,.02))", border: "1px solid rgba(10,132,255,.28)" }}>
+                      <span className="flex items-center justify-center shrink-0" style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(10,132,255,.12)", color: "var(--onb-dawn)" }}>
                         <Icon.spark size={20} />
                       </span>
                       <div className="min-w-0">
@@ -571,8 +571,8 @@ export default function WelcomePage() {
 
 const rowBox = (connected) => ({
   display: "flex", alignItems: "center", gap: 15, padding: "16px 18px", borderRadius: 16,
-  background: connected ? "rgba(79,224,166,.06)" : "var(--onb-panel)",
-  border: `1px solid ${connected ? "rgba(79,224,166,.4)" : "var(--onb-hair)"}`, textDecoration: "none",
+  background: connected ? "rgba(48,209,88,.06)" : "var(--onb-panel)",
+  border: `1px solid ${connected ? "rgba(48,209,88,.4)" : "var(--onb-hair)"}`, textDecoration: "none",
 });
 
 function RowBody({ brand, label, sub }) {
@@ -632,7 +632,7 @@ function WordPressInline({ connected, onConnected }) {
           ))}
           <div className="flex items-center gap-3">
             <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
-            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF8A7E" }}>Couldn’t connect. Check your details.</span>}
+            {state === "error" && <span className="text-[12.5px]" style={{ color: "#FF453A" }}>Couldn’t connect. Check your details.</span>}
           </div>
           <p className="text-[11.5px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
         </div>
@@ -662,7 +662,7 @@ function StepDots({ step }) {
           <div key={l} className="flex items-center gap-2">
             <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 999, fontSize: 10.5, fontWeight: 700,
               background: active ? "var(--onb-dawn)" : done ? "var(--onb-live-soft)" : "var(--onb-panel)",
-              color: active ? "#1a1206" : done ? "var(--onb-live)" : "var(--onb-subtle)",
+              color: active ? "#FFFFFF" : done ? "var(--onb-live)" : "var(--onb-subtle)",
               border: active ? "none" : "1px solid var(--onb-hair)" }}>{done ? "✓" : n}</span>
             {i < labels.length - 1 && <span style={{ width: 16, height: 1, background: "var(--onb-hair)" }} />}
           </div>

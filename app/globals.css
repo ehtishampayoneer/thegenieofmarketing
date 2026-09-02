@@ -6,6 +6,7 @@
    single source of truth. There is no V1 layer — every surface, shadow, and state
    flows from the tokens in the :root block further down. */
 :root { color-scheme: light; }
+[data-theme="night"] { color-scheme: dark; }
 
 html, body {
   background: var(--bg);
@@ -21,65 +22,86 @@ html, body {
 .font-mono { font-variant-numeric: tabular-nums; }
 
 /* ============================================================================
-   MARKETING GENIE V2 — "APERTURE / DAWN" DESIGN LANGUAGE
+   MARKETING GENIE — APPLE COLOR SYSTEM
    ----------------------------------------------------------------------------
-   The soul: an intelligent presence that works in the dark while you're away,
-   and reveals finished work in the warm light of morning. Ink & Paper are the
-   canvas; DAWN (warm amber-gold) is the light the Aperture casts; EMERALD is
-   reserved strictly for live / winning / done / verified.
-   Three token layers (primitive -> semantic -> component). DAY is the default
-   theme; NIGHT is the world Genie works in. Additive: every V1 rule above is
-   untouched so no existing surface breaks during migration.
+   The palette is Apple's, used the way Apple uses it: a near-neutral gray field
+   with pure-white cards in Light, pure black with raised gray cards in Dark, a
+   three-tier text ramp, hairline separators, almost no shadow, and ONE accent
+   (systemBlue) that carries every interactive affordance. Color is never
+   decoration here — it is state. Green/red/orange are reserved strictly for
+   live, failing and pending.
+
+   Values are Apple's published system colors (iOS/macOS system palette + the
+   apple.com web text ramp). Accessible variants are used wherever a color has
+   to carry TEXT, so every tier clears WCAG AA.
+
+   Three token layers (primitive -> semantic -> component). LIGHT is default;
+   DARK is [data-theme="night"]. The --mg-* primitive names are unchanged so
+   every existing surface repoints automatically.
    ============================================================================ */
 
 :root {
-  /* ---- Layer 1: PRIMITIVES (raw values, no meaning) ---- */
-  --mg-ink-900:#0B141C; --mg-ink-800:#11202E; --mg-ink-700:#1C2E3D;
-  --mg-ink-600:#33475A; --mg-ink-500:#5A6B7B; --mg-ink-400:#8A98A5;
-  --mg-ink-300:#B7C1C9; --mg-ink-200:#D8DEE3; --mg-ink-100:#E9EDF0; --mg-ink-50:#F2F4F5;
-  --mg-paper:#F6F5F1; --mg-paper-raised:#FBFAF7; --mg-white:#FFFFFF;
-  --mg-night-950:#070C11; --mg-night-900:#0B141C; --mg-night-850:#0F1B25;
-  --mg-night-800:#13212C; --mg-night-700:#1B2C39;
-  /* THE ACCENT — deep royal blue + champagne gold (the "genie" palette). Royal blue is
-     the rich fill (buttons, tiles, chips, the mark); champagne gold is the pop that sits
-     ON the blue (text, numbers, icons, the spark) — gold only ever on a dark/blue ground,
-     never on white. Together: premium, warm-cool, unmistakably genie. */
-  --mg-royal-500:#2A407F; --mg-royal-600:#1E2F63; --mg-royal-700:#16244E; --mg-royal-glow:#3A5DA8;
-  --mg-gold-100:#F1E7CC; --mg-gold:#CBAE70; --mg-gold-deep:#A8863C;
-  /* legacy warm ramp — kept only for the semantic HEAT scale (red=hot) on Buyer Hunt. */
-  --mg-dawn-100:#F6E5DD; --mg-dawn-300:#EDB49A; --mg-dawn-500:#E0592B;
-  --mg-dawn-600:#D4471E; --mg-dawn-700:#B93C15; --mg-dawn-glow:#EC7B50;
-  --mg-emerald:#1E9E6A; --mg-emerald-soft:#E4F3EC; --mg-emerald-ink:#0F6B45;
-  --mg-red:#D6483B; --mg-red-soft:#FBEAE8;
-  --mg-blue:#3E7CC2; --mg-blue-soft:#E9F0F8;
-  --mg-amber:#C98A16; --mg-amber-soft:#FAF0DA;
+  /* ---- Layer 1: PRIMITIVES — Apple system colors (raw values, no meaning) ---- */
+  /* apple.com text ramp + iOS systemGray scale. */
+  --mg-ink-900:#000000; --mg-ink-800:#1D1D1F; --mg-ink-700:#424245;
+  --mg-ink-600:#6E6E73; --mg-ink-500:#8E8E93; --mg-ink-400:#AEAEB2;
+  --mg-ink-300:#C7C7CC; --mg-ink-200:#D2D2D7; --mg-ink-100:#E5E5EA; --mg-ink-50:#F2F2F7;
+  --mg-paper:#F5F5F7; --mg-paper-raised:#FFFFFF; --mg-white:#FFFFFF;
+  /* iOS dark elevation ladder — black base, each step lighter. */
+  --mg-night-950:#000000; --mg-night-900:#1C1C1E; --mg-night-850:#2C2C2E;
+  --mg-night-800:#3A3A3C; --mg-night-700:#48484A;
+  /* THE ACCENT — systemBlue, and nothing else. Apple carries an entire OS on one
+     accent hue; every button, link, selected state and focus ring is this blue.
+     "royal" = the web button blue (#0071E3), "glow"/"500" = iOS systemBlue,
+     "ink" tiers are the accessible variants safe for text on white. */
+  --mg-royal-500:#007AFF; --mg-royal-600:#0071E3; --mg-royal-700:#0040DD; --mg-royal-glow:#409CFF;
+  /* Kept for API compatibility — repointed off gold onto the blue ramp so any
+     surface still referencing them stays on-system. */
+  --mg-gold-100:#E8F2FD; --mg-gold:#0A84FF; --mg-gold-deep:#0071E3;
+  /* Semantic HEAT scale (Buyer Hunt) — Apple orange->red, the OS's own urgency ramp. */
+  --mg-dawn-100:#FFF3E0; --mg-dawn-300:#FFB340; --mg-dawn-500:#FF9500;
+  --mg-dawn-600:#FF3B30; --mg-dawn-700:#D70015; --mg-dawn-glow:#FF9F0A;
+  --mg-emerald:#34C759; --mg-emerald-soft:#E7F8EC; --mg-emerald-ink:#1F7A35; /* systemGreen darkened to clear AA on the gray field too */
+  --mg-red:#FF3B30; --mg-red-soft:#FFEBEA;
+  --mg-blue:#007AFF; --mg-blue-soft:#E8F2FF;
+  --mg-amber:#FF9500; --mg-amber-soft:#FFF3E0;
 
-  /* ---- Layer 2: SEMANTIC (DAY theme — default) ----
-     A calm, LIGHT cool-gray environment (per the reference): a soft blue-gray canvas
-     one clear step below pure-white cards, so the cards FLOAT on a visible soft
-     shadow. Deep-navy content in three readable tiers. Burnt terracotta is the one
-     restrained accent — the calm base lets the Genie's glow be the moment of magic. */
-  --bg:#dde3ec; --surface:#ffffff; --surface-2:#eef1f7; --surface-sunken:#e4e9f1;
-  --fg:#262a3d; --fg-muted:#4c5570; --fg-subtle:#646e88; --fg-on-dark:#EAF0F4;
-  --border:#d3dae6; --border-strong:#bec7d7; --hair:#e2e7f0;
-  --primary:#262a3d; --on-primary:#ffffff;
-  --accent:var(--mg-royal-600); --accent-strong:var(--mg-royal-700); --accent-quiet:#e7eaf3; --accent-ink:#294C8C; --on-accent:#ffffff;
-  --signal-live:var(--mg-emerald); --signal-live-soft:#e2f2ec; --signal-live-ink:var(--mg-emerald-ink);
-  --signal-danger:var(--mg-red); --signal-danger-soft:#fbeae8;
-  --signal-info:var(--mg-blue); --signal-info-soft:#e8eff9;
-  --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft);
-  --ring:var(--mg-royal-600);
-  /* soft, cool-tinted elevation — a clear but gentle float that lifts white cards
-     off the light-gray field (the separation the washed-out version was missing). */
-  --shadow-1:0 1px 2px rgba(30,41,70,.06);
-  --shadow-2:0 1px 2px rgba(30,41,70,.05), 0 6px 16px rgba(30,41,70,.09), 0 14px 30px rgba(30,41,70,.06);
-  --shadow-3:0 2px 6px rgba(30,41,70,.07), 0 14px 30px rgba(30,41,70,.12), 0 28px 54px rgba(30,41,70,.08);
-  --shadow-dawn:0 8px 24px rgba(22,36,78,.26);
+  /* ---- Layer 2: SEMANTIC (LIGHT theme — default) ----
+     Apple's grouped-content model: a neutral systemGray6 field with pure-white
+     cards sitting on it, separated by a hairline rather than a shadow. Text runs
+     apple.com's exact three-tier ramp (#1D1D1F / #424245 / #6E6E73), all of which
+     clear AA on white. Neutrals are true gray, not tinted — Apple lets the single
+     blue accent be the only hue on the screen. */
+  --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:#F2F2F7; --surface-sunken:#E5E5EA;
+  --fg:#1D1D1F; --fg-muted:#424245; --fg-subtle:#6E6E73; --fg-on-dark:#F5F5F7;
+  --border:#D2D2D7; --border-strong:#C7C7CC; --hair:#E5E5EA;
+  --primary:#1D1D1F; --on-primary:#FFFFFF;
+  --accent:var(--mg-royal-600); --accent-strong:var(--mg-royal-700); --accent-quiet:#E8F2FD; --accent-ink:#0066CC; --on-accent:#FFFFFF;
+  --signal-live:var(--mg-emerald); --signal-live-soft:#E7F8EC; --signal-live-ink:var(--mg-emerald-ink);
+  --signal-danger:var(--mg-red); --signal-danger-soft:#FFEBEA; --signal-danger-ink:#D70015;
+  --signal-info:var(--mg-blue); --signal-info-soft:#E8F2FF;
+  --signal-warn:var(--mg-amber); --signal-warn-soft:var(--mg-amber-soft); --signal-warn-ink:#C93400;
+  --ring:var(--mg-royal-500);
+  /* Apple elevation: almost none. Separation comes from the hairline and the
+     white-on-gray value step, not from a drop shadow. Shadows exist only for
+     things that genuinely float (menus, modals, drag states). */
+  --shadow-1:0 1px 2px rgba(0,0,0,.04);
+  --shadow-2:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.06);
+  --shadow-3:0 2px 6px rgba(0,0,0,.05), 0 12px 32px rgba(0,0,0,.11);
+  --shadow-dawn:0 4px 16px rgba(0,113,227,.24);
 
   /* ---- Layer 3: COMPONENT ---- */
-  --card-bg:var(--surface); --card-border:#e0e5ee; --card-radius:18px;
-  --card-shadow:0 1px 2px rgba(30,41,70,.05), 0 8px 22px rgba(30,41,70,.08);
-  --btn-radius:12px;
+  --card-bg:var(--surface); --card-border:#D2D2D7; --card-radius:14px;
+  --card-shadow:0 1px 2px rgba(0,0,0,.03);
+  --btn-radius:10px;
+
+  /* ---- Category hues (Today's bento) — Apple system colors. `-ink` are Apple's
+     accessible variants so category text clears AA on white. ---- */
+  --cat-orange:#FF9500; --cat-orange-ink:#C93400; --cat-orange-soft:#FFF3E0;
+  --cat-green:#34C759;  --cat-green-ink:#248A3D;  --cat-green-soft:#E7F8EC;
+  --cat-blue:#007AFF;   --cat-blue-ink:#0040DD;   --cat-blue-soft:#E8F2FF;
+  --cat-purple:#AF52DE; --cat-purple-ink:#8944AB; --cat-purple-soft:#F6EBFB;
+  --cat-amber:#FFCC00;  --cat-amber-ink:#845F00;  --cat-amber-soft:#FFF8DB;
 
   /* ---- Motion + type ---- */
   --ease-out:cubic-bezier(.2,.8,.2,1); --ease-in:cubic-bezier(.4,0,1,1); --ease-spring:cubic-bezier(.34,1.4,.64,1);
@@ -88,46 +110,52 @@ html, body {
   --font-mono:"Geist Mono","JetBrains Mono",ui-monospace,monospace;
 }
 
-/* ---- NIGHT theme: cinematic, layered — light in the dark, not inverted ----
-   Principle (Linear/Vercel/Cursor): elevation = luminance. The base is near-black
-   and cool; every surface that rises gets LIGHTER, catches a hairline of light on
-   its top edge, and casts a soft shadow. Text lives in three contrast-checked
-   tiers. Accent is used as glow, sparingly, like a real light source. */
+/* ---- DARK theme — Apple Dark Mode ----
+   Apple's dark mode is not an inversion and it is not cinematic: the base is
+   TRUE BLACK (so OLED pixels switch off), and each raised surface steps up the
+   iOS elevation ladder (#1C1C1E -> #2C2C2E -> #3A3A3C). No gradients, no glow,
+   no colored bloom. Separation is a value step plus a separator hairline.
+   Text uses the iOS dark label ramp; accent switches to systemBlue dark
+   (#0A84FF), which Apple brightens specifically to hold up on black. */
 [data-theme="night"] {
-  --bg:#0A0D14;              /* the field — near-black, cool undertone */
-  --surface:#141A26;         /* cards — clearly float above the field */
-  --surface-2:#1C2331;       /* nested / quiet / inputs — one step higher */
-  --surface-sunken:#070A0F;  /* wells & tracks — recede below the field */
-  --fg:#F5F8FC;              /* primary text — ~15:1 */
-  --fg-muted:#B6C2CE;        /* secondary — ~8:1, always readable */
-  --fg-subtle:#8695A2;       /* tertiary — ~4.7:1, passes AA */
-  --fg-on-dark:#F5F8FC;
-  --border:rgba(255,255,255,.09); --border-strong:rgba(255,255,255,.19); --hair:rgba(255,255,255,.06);
-  --primary:var(--mg-gold); --on-primary:#171205;
-  --accent:var(--mg-gold); --accent-strong:var(--mg-gold-deep); --accent-quiet:rgba(203,174,112,.14); --accent-ink:#E7CC8F; --on-accent:#171205;
-  --signal-live:#3FD79A; --signal-live-soft:rgba(45,215,154,.15); --signal-live-ink:#5FE0A6;
-  --signal-danger:#FF6B5E; --signal-danger-soft:rgba(255,107,94,.16);
-  --signal-info:#7FB0EC; --signal-info-soft:rgba(127,176,236,.15);
-  --signal-warn:#E7B85E; --signal-warn-soft:rgba(231,184,94,.15);
-  --ring:var(--mg-gold);
-  --shadow-1:0 1px 2px rgba(0,0,0,.55);
-  --shadow-2:0 6px 22px rgba(0,0,0,.55);
-  --shadow-3:0 28px 70px rgba(0,0,0,.66);
-  --shadow-dawn:0 0 48px rgba(203,174,112,.24);
+  --bg:#000000;              /* systemBackground — true black */
+  --surface:#1C1C1E;         /* secondarySystemBackground — cards */
+  --surface-2:#2C2C2E;       /* tertiarySystemBackground — nested / inputs */
+  --surface-sunken:#000000;  /* wells & tracks recede to the base */
+  --fg:#F5F5F7;              /* label — ~17:1 */
+  --fg-muted:#AEAEB2;        /* secondaryLabel — ~8.5:1 */
+  --fg-subtle:#8E8E93;       /* tertiaryLabel — ~5.6:1, passes AA */
+  --fg-on-dark:#F5F5F7;
+  --border:#38383A; --border-strong:#48484A; --hair:#2C2C2E;
+  --primary:#0A84FF; --on-primary:#FFFFFF;
+  --accent:#0A84FF; --accent-strong:#409CFF; --accent-quiet:rgba(10,132,255,.16); --accent-ink:#409CFF; --on-accent:#FFFFFF;
+  --signal-live:#30D158; --signal-live-soft:rgba(48,209,88,.16); --signal-live-ink:#30D158;
+  --signal-danger:#FF453A; --signal-danger-soft:rgba(255,69,58,.16); --signal-danger-ink:#FF453A;
+  --signal-info:#64D2FF; --signal-info-soft:rgba(100,210,255,.15);
+  --signal-warn:#FF9F0A; --signal-warn-soft:rgba(255,159,10,.16); --signal-warn-ink:#FF9F0A;
+  --ring:#0A84FF;
+  --shadow-1:0 1px 2px rgba(0,0,0,.6);
+  --shadow-2:0 2px 10px rgba(0,0,0,.6);
+  --shadow-3:0 12px 40px rgba(0,0,0,.7);
+  --shadow-dawn:0 4px 16px rgba(10,132,255,.3);
+  --card-border:#38383A;
+  --card-shadow:none;
+  /* Category hues — Apple's dark-mode system colors; tints go translucent so they
+     sit ON black instead of pasting a light swatch onto a dark card. */
+  --cat-orange:#FF9F0A; --cat-orange-ink:#FF9F0A; --cat-orange-soft:rgba(255,159,10,.16);
+  --cat-green:#30D158;  --cat-green-ink:#30D158;  --cat-green-soft:rgba(48,209,88,.16);
+  --cat-blue:#0A84FF;   --cat-blue-ink:#409CFF;   --cat-blue-soft:rgba(10,132,255,.16);
+  --cat-purple:#BF5AF2; --cat-purple-ink:#BF5AF2; --cat-purple-soft:rgba(191,90,242,.16);
+  --cat-amber:#FFD60A;  --cat-amber-ink:#FFD60A;  --cat-amber-soft:rgba(255,214,10,.16);
 }
-/* Atmosphere — a lit field, not a flat black rectangle. A dawn bloom on one
-   horizon, a cool wash on the other, over a soft vertical gradient. */
-[data-theme="night"] .mg {
-  background:
-    radial-gradient(56% 40% at 86% -10%, rgba(255,200,118,.06), transparent 60%),
-    radial-gradient(80% 55% at 8% -8%, rgba(96,150,220,.055), transparent 62%),
-    radial-gradient(150% 100% at 50% -22%, #10151F 0%, var(--bg) 55%);
-}
-/* Cards catch a hairline of light on their top edge and cast a soft shadow —
-   that (plus being lighter than the field) is what makes them float. No milky wash. */
-[data-theme="night"] .mg-surface { box-shadow:var(--card-shadow), inset 0 1px 0 rgba(255,255,255,.06); }
-[data-theme="night"] .mg-surface-quiet { box-shadow:inset 0 1px 0 rgba(255,255,255,.045); }
-[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 68%, transparent); }
+/* Flat black field. Apple dark mode has no atmosphere — the absence of a
+   gradient is the point, and it is what makes the raised grays read as surfaces. */
+[data-theme="night"] .mg { background:var(--bg); }
+/* No inset light edge, no glow. A card is legible because it is #1C1C1E on
+   #000000 and carries a separator, exactly as iOS does it. */
+[data-theme="night"] .mg-surface { box-shadow:none; border-color:var(--border); }
+[data-theme="night"] .mg-surface-quiet { box-shadow:none; }
+[data-theme="night"] .mg-chrome { background:color-mix(in srgb, var(--bg) 82%, transparent); }
 
 /* ============================================================================
    PREMIUM LAYER — editorial type · atmosphere · tactile surfaces
@@ -196,14 +224,14 @@ html, body {
    strongest "premium" cue: light comes from somewhere. Static (reduced-motion safe). */
 .mg-ambient { position:relative; isolation:isolate; }
 .mg-ambient::before { content:""; position:absolute; inset:-24px 0 auto 0; height:280px; pointer-events:none; z-index:-1;
-  background:radial-gradient(50% 100% at 22% 0%, rgba(206,216,236,.55), transparent 72%); opacity:.7; }
-[data-theme="night"] .mg-ambient::before { background:radial-gradient(44% 100% at 18% 0%, rgba(255,200,118,.11), transparent 64%); opacity:1; }
+  background:radial-gradient(50% 100% at 22% 0%, rgba(0,0,0,.035), transparent 72%); opacity:.7; }
+[data-theme="night"] .mg-ambient::before { background:radial-gradient(44% 100% at 18% 0%, rgba(255,255,255,.045), transparent 64%); opacity:1; }
 
 /* Tactile surfaces — cards that acknowledge intent. In Night, the edge catches
    dawn light on hover, so interactive things feel lit from within. */
 .mg-surface--interactive { transition:transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2), border-color var(--dur-2); cursor:pointer; }
 .mg-surface--interactive:hover { transform:translateY(-2px); box-shadow:var(--shadow-3); border-color:color-mix(in srgb, var(--accent) 38%, var(--border-strong)); }
-[data-theme="night"] .mg-surface--interactive:hover { border-color:rgba(255,200,118,.28); box-shadow:var(--shadow-3), inset 0 1px 0 rgba(255,255,255,.05); }
+[data-theme="night"] .mg-surface--interactive:hover { border-color:rgba(10,132,255,.5); box-shadow:var(--shadow-3); }
 
 /* Stat — a number that reads as a stated fact, not a widget in a box. */
 .mg-stat-num { font-size:clamp(24px,2.2vw,30px); font-weight:700; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:var(--fg); }
@@ -251,11 +279,11 @@ html, body {
 .mg-muted { color:var(--fg-muted); } .mg-subtle { color:var(--fg-subtle); }
 .mg-num { font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1; }
 .mg-hairline { height:1px; width:100%; background:var(--hair); }
-/* Hero highlight — royal blue on the light theme (gold can't read on white); champagne
-   gold in Night, where it sits on a dark ground. */
-.dawn-text { background:linear-gradient(100deg,var(--mg-royal-700),var(--mg-royal-500)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-[data-theme="night"] .dawn-text { background:linear-gradient(100deg,var(--mg-gold-deep),var(--mg-gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.dawn-fill { background:linear-gradient(135deg,var(--mg-royal-glow),var(--mg-royal-700)); }
+/* Hero highlight — systemBlue in BOTH themes. Apple keeps one accent hue and
+   only brightens it for dark mode; it never swaps to a different colour. */
+.dawn-text { background:linear-gradient(100deg,#0040DD,#0071E3); -webkit-background-clip:text; background-clip:text; color:transparent; }
+[data-theme="night"] .dawn-text { background:linear-gradient(100deg,#0A84FF,#64D2FF); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.dawn-fill { background:linear-gradient(135deg,#409CFF,#0071E3); }
 
 /* ---- Buttons ---- */
 .mg-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:var(--btn-radius);
@@ -266,8 +294,8 @@ html, body {
 /* ONE button family. PRIMARY = burnt terracotta (the rare, high-emphasis action).
    SECONDARY (ghost) = warm-white + subtle border + navy. TERTIARY (quiet) =
    transparent, muted navy. PRIMARY-DARK (primary) = deep navy, for dark actions. */
-.mg-btn--dawn { background:var(--accent); color:var(--on-accent); font-weight:650; box-shadow:0 1px 2px rgba(22,36,78,.22), 0 5px 14px rgba(22,36,78,.20); }
-.mg-btn--dawn:hover { background:var(--accent-strong); transform:translateY(-1px); box-shadow:0 8px 20px rgba(22,36,78,.30); }
+.mg-btn--dawn { background:var(--accent); color:var(--on-accent); font-weight:600; box-shadow:none; }
+.mg-btn--dawn:hover { background:var(--accent-strong); transform:none; box-shadow:none; }
 .mg-btn--primary { background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-1); }
 .mg-btn--primary:hover { transform:translateY(-1px); box-shadow:var(--shadow-2); }
 .mg-btn--ghost { background:var(--surface); border-color:var(--border-strong); color:var(--fg); box-shadow:var(--shadow-1); }
@@ -411,7 +439,7 @@ html, body {
 /* Elevated hover for interactive surfaces — a lift with a dawn edge, premium + fast. */
 .mg-lift-2 { transition:transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2); will-change:transform; }
 .mg-lift-2:hover { transform:translateY(-3px); box-shadow:var(--shadow-3); border-color:color-mix(in srgb, var(--accent) 45%, var(--border-strong)); }
-[data-theme="night"] .mg-lift-2:hover { border-color:rgba(255,200,118,.34); box-shadow:var(--shadow-3), 0 0 0 1px rgba(255,200,118,.08), inset 0 1px 0 rgba(255,255,255,.05); }
+[data-theme="night"] .mg-lift-2:hover { border-color:rgba(10,132,255,.5); box-shadow:var(--shadow-3); }
 
 @media (prefers-reduced-motion: reduce) {
   .mg-aura-field::before, .mg-scanning::after, .mg-thinking i, .mg-flow { animation:none !important; }
@@ -448,7 +476,7 @@ html, body {
 .mg-rail-item[data-active="true"] svg { color:var(--accent-ink); }
 /* The spine — a short lit dawn bar flush to the rail's left edge. */
 .mg-rail-item[data-active="true"]::before { content:""; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:18px; border-radius:0 3px 3px 0; background:var(--accent); }
-[data-theme="night"] .mg-rail-item[data-active="true"]::before { box-shadow:0 0 10px rgba(255,200,118,.55); }
+[data-theme="night"] .mg-rail-item[data-active="true"]::before { box-shadow:none; }
 .mg-rail-count { margin-left:auto; font-size:12px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--fg-subtle); }
 .mg-rail-item[data-active="true"] .mg-rail-count { color:var(--accent-ink); }
 .mg-activity-row { display:flex; gap:.65rem; padding:.55rem .5rem; border-radius:10px; transition:background var(--dur-2); }
@@ -470,14 +498,14 @@ html, body {
 .mg-presence::before { content:""; position:absolute; inset:-7px; border-radius:50%; pointer-events:none; z-index:0;
   background:radial-gradient(circle, var(--accent-quiet), transparent 68%); animation:mg-aura 4.8s var(--ease-out) infinite; }
 .mg-presence > * { position:relative; z-index:1; }
-[data-theme="night"] .mg-presence::before { background:radial-gradient(circle, rgba(255,200,118,.20), transparent 66%); }
+[data-theme="night"] .mg-presence::before { background:radial-gradient(circle, rgba(10,132,255,.24), transparent 66%); }
 /* working — the stream is live; a steadier, quicker breath. */
 .mg-presence[data-state="working"]::before { animation-duration:2.6s; }
 /* thinking — an active job is running; quicker still (used only when real). */
 .mg-presence[data-state="thinking"]::before { animation-duration:1.8s; }
 /* alerting — approvals are waiting; warmer, brighter, a touch faster. */
-.mg-presence[data-state="alerting"]::before { animation-duration:2.1s; background:radial-gradient(circle, rgba(203,174,112,.34), transparent 66%); }
-[data-theme="night"] .mg-presence[data-state="alerting"]::before { background:radial-gradient(circle, rgba(255,200,118,.36), transparent 64%); }
+.mg-presence[data-state="alerting"]::before { animation-duration:2.1s; background:radial-gradient(circle, rgba(255,149,0,.34), transparent 66%); }
+[data-theme="night"] .mg-presence[data-state="alerting"]::before { background:radial-gradient(circle, rgba(255,159,10,.36), transparent 64%); }
 @keyframes mg-aura { 0%,100%{ opacity:.45; transform:scale(.94);} 50%{ opacity:.85; transform:scale(1.06);} }
 /* Reduced motion: no breathing, but the STATE still reads — alerting keeps its
    brighter warm glow statically, so the meaning survives without animation. */
@@ -513,7 +541,7 @@ html, body {
 
 /* The current journey stage breathes a warm ring; every other stage sits calm. */
 .mg-journey-cur { animation:mg-journey-glow 2.6s var(--ease-out) infinite; }
-@keyframes mg-journey-glow { 0%,100%{ box-shadow:0 0 0 0 rgba(203,174,112,.55);} 60%{ box-shadow:0 0 0 8px rgba(203,174,112,0);} }
+@keyframes mg-journey-glow { 0%,100%{ box-shadow:0 0 0 0 rgba(0,113,227,.5);} 60%{ box-shadow:0 0 0 8px rgba(0,113,227,0);} }
 @media (prefers-reduced-motion: reduce){ .mg-journey-cur{ animation:none; } }
 
 /* A card that lifts a hair on hover — Today's metric + insight surfaces. */
@@ -568,26 +596,24 @@ html, body {
    contained tokens so it's guaranteed premium regardless of the app theme.
    ============================================================================ */
 .onb {
-  /* Royal-blue night stage with champagne-gold accents (matches the brand + Night theme). */
-  --onb-ink:#070C1A; --onb-panel:#0E1626; --onb-panel-2:#172034;
-  --onb-dawn:#CBAE70; --onb-dawn-deep:#A8863C; --onb-live:#4FE0A6; --onb-live-soft:rgba(79,224,166,.14);
-  --onb-fg:#F4F8FC; --onb-muted:#AAB7C4; --onb-subtle:#6C7A88;
-  --onb-hair:rgba(255,255,255,.08); --onb-hair2:rgba(255,255,255,.055);
+  /* Apple dark stage: true black with the iOS elevation ladder and systemBlue.
+     No gradient wash — the flat black is what makes the panels read as surfaces. */
+  --onb-ink:#000000; --onb-panel:#1C1C1E; --onb-panel-2:#2C2C2E;
+  --onb-dawn:#0A84FF; --onb-dawn-deep:#0071E3; --onb-live:#30D158; --onb-live-soft:rgba(48,209,88,.16);
+  --onb-fg:#F5F5F7; --onb-muted:#AEAEB2; --onb-subtle:#8E8E93;
+  --onb-hair:#38383A; --onb-hair2:#2C2C2E;
   position:relative; min-height:100vh; width:100%; overflow-x:hidden; color:var(--onb-fg); font-family:var(--font-ui);
-  background:
-    radial-gradient(44% 30% at 84% -6%, rgba(203,174,112,.11), transparent 62%),
-    radial-gradient(58% 42% at 6% 3%, rgba(58,93,168,.16), transparent 64%),
-    radial-gradient(125% 92% at 50% -14%, #0E1B3A 0%, var(--onb-ink) 58%);
+  background:var(--onb-ink);
 }
 .onb-input { background:var(--onb-panel); border:1px solid var(--onb-hair); color:var(--onb-fg); border-radius:14px; font-family:var(--font-ui); }
 .onb-input::placeholder { color:var(--onb-subtle); }
-.onb-input:focus { outline:none; border-color:rgba(203,174,112,.5); box-shadow:0 0 0 4px rgba(203,174,112,.10); }
-.onb-cta { background:linear-gradient(135deg,#F1E7CC,var(--onb-dawn) 55%,var(--onb-dawn-deep)); color:#171205; border:none; border-radius:14px; font-weight:700; cursor:pointer; box-shadow:0 14px 38px rgba(203,174,112,.28), 0 1px 0 rgba(255,255,255,.4) inset; transition:transform .15s ease, filter .2s ease; }
-.onb-cta:hover { filter:brightness(1.05); transform:translateY(-1px); }
+.onb-input:focus { outline:none; border-color:#0A84FF; box-shadow:0 0 0 4px rgba(10,132,255,.25); }
+.onb-cta { background:var(--onb-dawn); color:#FFFFFF; border:none; border-radius:12px; font-weight:600; cursor:pointer; box-shadow:none; transition:filter .2s ease; }
+.onb-cta:hover { filter:brightness(1.1); }
 .onb-cta:disabled { opacity:.55; cursor:default; transform:none; }
 .onb-ghost { background:transparent; border:1px solid var(--onb-hair); color:var(--onb-muted); border-radius:12px; cursor:pointer; transition:.2s; }
-.onb-ghost:hover { border-color:rgba(255,255,255,.25); color:var(--onb-fg); }
-.onb-spinner { width:13px; height:13px; border-radius:50%; border:2px solid rgba(203,174,112,.3); border-top-color:var(--onb-dawn); animation:onb-spin .8s linear infinite; flex:none; }
+.onb-ghost:hover { border-color:#48484A; color:var(--onb-fg); }
+.onb-spinner { width:13px; height:13px; border-radius:50%; border:2px solid rgba(10,132,255,.3); border-top-color:var(--onb-dawn); animation:onb-spin .8s linear infinite; flex:none; }
 @keyframes onb-spin { to { transform:rotate(360deg); } }
 @keyframes onb-breathe { 0%,100% { opacity:.85; transform:scale(1); } 50% { opacity:1; transform:scale(1.08); } }
 @keyframes onb-rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
