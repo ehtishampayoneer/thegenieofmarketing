@@ -7,7 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const FIELDS = ["sender_name", "sender_email", "company_name", "company_website", "company_phone", "company_address", "company_pitch", "logo_url"];
+// money_page_url is where Genie sends buyers to CLOSE (pricing/packages page,
+// checkout, or contact form). Genie never processes payment; it points at
+// whatever the owner already sells through, UTM-tagged so sales trace back.
+const FIELDS = ["sender_name", "sender_email", "company_name", "company_website", "company_phone", "company_address", "company_pitch", "logo_url", "money_page_url"];
 
 export async function GET() {
   const supabase = createClient();
@@ -15,7 +18,7 @@ export async function GET() {
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
 
   const { data } = await supabase.from("profiles")
-    .select("sender_name, sender_email, company_name, company_website, company_phone, company_address, company_pitch, logo_url, setup_completed")
+    .select("sender_name, sender_email, company_name, company_website, company_phone, company_address, company_pitch, logo_url, money_page_url, setup_completed")
     .eq("id", user.id).maybeSingle();
 
   return json({ ok: true, profile: data || {} });

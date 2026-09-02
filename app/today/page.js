@@ -109,6 +109,7 @@ export default function TodayPage() {
             {/* MAIN COLUMN */}
             <div className="flex flex-col gap-5 min-w-0">
               <NextBestActions entity={entity} gapCount={gapCount} buyers={buyersFound || 4} comp={comp} />
+              <TrafficPanel />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <WhatGenieDid did={did} />
                 <GrowthWeek citations={citations} buyers={buyersFound || 18} published={published || 7} revenue={cust.value || 1240} currency={cust.currency} />
@@ -216,6 +217,112 @@ function WhatGenieDid({ did }) {
 }
 
 // ── YOUR GROWTH, THIS WEEK ──────────────────────────────────────────────────
+// ── TRAFFIC ON YOUR OWN SITE ─────────────────────────────────────────────────
+// How many people visited today, yesterday and across the week. Counted
+// first-party by Genie's own embed, so it works from the moment the snippet is
+// pasted with no Google Analytics connection and nothing to backfill.
+//
+// Honest by construction: until the snippet is installed this shows the install
+// prompt rather than a zeroed chart pretending to be data. "Visitors" is
+// distinct tab-sessions, which is close to people but not identical, and the
+// label says so rather than overclaiming.
+function TrafficPanel() {
+  const [t, setT] = useState(null);
+  const [state, setState] = useState("loading");
+
+  useEffect(() => {
+    (async () => {
+      const r = await fetchLive(`/api/traffic?tz=${new Date().getTimezoneOffset()}`);
+      if (r.live && r.data?.ok) { setT(r.data); setState(r.data.installed ? "ready" : "empty"); }
+      else setState("empty");
+    })();
+  }, []);
+
+  if (state === "loading") {
+    return <Card className="p-6"><div className="mg-skel" style={{ height: 96, borderRadius: 12 }} /></Card>;
+  }
+
+  if (state === "empty") {
+    return (
+      <Card className="p-6">
+        <p className="mg-klabel">Traffic on your website</p>
+        <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+          Paste one line into your site and Genie will count every visitor for you, catch the ones who are not ready to buy, and send the rest to your buy page.
+        </p>
+        <a href="/settings" className="mg-btn mg-btn--dawn mt-3 inline-flex" style={{ fontSize: 13 }}>Get my snippet</a>
+      </Card>
+    );
+  }
+
+  const peak = Math.max(1, ...t.days.map((d) => d.views));
+  const up = t.change != null && t.change >= 0;
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <p className="mg-klabel">Traffic on your website</p>
+        <span className="mg-verified">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
+          Counted by Genie
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <TrafficStat label="Today" views={t.today.views} visitors={t.today.visitors} accent
+          note={t.change == null ? null : `${up ? "↑" : "↓"} ${Math.abs(t.change)}% vs yesterday`} good={up} />
+        <TrafficStat label="Yesterday" views={t.yesterday.views} visitors={t.yesterday.visitors} />
+        <TrafficStat label="Last 7 days" views={t.week.views} visitors={t.week.visitors} />
+      </div>
+
+      {/* Seven-day shape. The bars carry the trend; the numbers above carry the value. */}
+      <div className="mt-5 flex items-end gap-1.5" style={{ height: 56 }} aria-hidden>
+        {t.days.map((d, i) => (
+          <div key={d.date} className="flex-1 rounded-t"
+               title={`${d.date}: ${d.views} views`}
+               style={{
+                 height: `${Math.max(3, (d.views / peak) * 100)}%`,
+                 background: i === t.days.length - 1 ? "var(--cat-blue)" : "var(--cat-blue-soft)",
+                 minWidth: 6,
+               }} />
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[11px] mg-subtle">
+        <span>7 days ago</span><span>Today</span>
+      </div>
+
+      {(t.leads.week > 0 || t.topSources.length > 0) && (
+        <div className="mt-4 pt-4 flex items-center gap-4 flex-wrap" style={{ borderTop: "1px solid var(--hair)" }}>
+          {t.leads.week > 0 && (
+            <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>
+              <b style={{ color: "var(--fg)" }}>{t.leads.week}</b> {t.leads.week === 1 ? "lead" : "leads"} caught this week
+            </span>
+          )}
+          {t.topSources.length > 0 && (
+            <span className="text-[13px] mg-subtle">
+              Mostly from <b style={{ color: "var(--fg-muted)" }}>{t.topSources[0].source}</b>
+            </span>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function TrafficStat({ label, views, visitors, note, good, accent }) {
+  return (
+    <div>
+      <p className="text-[12px] mg-subtle">{label}</p>
+      <p className="mg-num text-[24px] font-bold leading-none mt-1"
+         style={{ color: accent ? "var(--cat-blue-ink)" : "var(--fg)" }}>{views.toLocaleString()}</p>
+      <p className="text-[12px] mg-subtle mt-1">{visitors.toLocaleString()} {visitors === 1 ? "visitor" : "visitors"}</p>
+      {note && (
+        <p className="text-[12px] font-semibold mt-1"
+           style={{ color: good ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{note}</p>
+      )}
+    </div>
+  );
+}
+
 function GrowthWeek({ citations, buyers, published, revenue, currency }) {
   const rows = [
     { cat: "blue", icon: Icon.growth, label: "AI visibility", sub: "Citations earned", value: `0 → ${citations || 1}`, delta: `↑ ${citations || 1}`, spark: [3, 4, 3, 5, 5, 7, 9] },

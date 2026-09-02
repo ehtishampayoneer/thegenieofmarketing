@@ -34,6 +34,9 @@ export async function GET(request) {
     replies: items.filter((n) => n.kind === "reply" && n.status !== "actioned").length,
     opportunities: items.filter((n) => n.kind === "opportunity" && n.status === "unread").length,
     traction: items.filter((n) => n.kind === "traction" && n.status === "unread").length,
+    // Leads caught on the owner's own site by the embed (/api/px/lead). These are
+    // people to reply to, so they count the same way replies do.
+    leads: items.filter((n) => n.kind === "lead" && n.status !== "actioned").length,
   };
   return json({ ok: true, notifications: items, counts });
 }

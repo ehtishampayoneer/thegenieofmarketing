@@ -39,6 +39,23 @@ export async function POST(request) {
 
   // Never email an opt-out or someone already contacted.
   if (await isSuppressed(supabase, userId, to)) return json({ ok: false, error: "This contact opted out — Genie won't email them." }, 200);
+
+  // Does the address actually exist? A bounce is what mailbox providers use to
+  // decide you're a spammer, so one dead address can push your GOOD email into
+  // spam. DNS-level check only (Vercel blocks port 25, so a true SMTP mailbox
+  // probe is impossible here) — it catches dead domains, typos and throwaways.
+  try {
+    const { verifyEmail } = await import("@/lib/email-verify");
+    const v = await verifyEmail(to);
+    if (!v.ok) {
+      const why = v.reason === "likely_typo" && v.suggestion
+        ? `That address looks like a typo. Did you mean ${v.suggestion}?`
+        : v.reason === "disposable"
+          ? "That's a throwaway inbox — sending there would only hurt your sending reputation."
+          : "That address can't receive mail, so sending would bounce and damage your sender reputation.";
+      return json({ ok: false, undeliverable: true, reason: v.reason, suggestion: v.suggestion || null, error: why }, 200);
+    }
+  } catch {} // a resolver hiccup must never block a legitimate send
   try {
     const { data: prev } = await supabase.from("outreach_log").select("id").eq("user_id", userId).eq("contact_email", to).limit(1);
     if (prev?.length) return json({ ok: false, alreadySent: true, error: "You've already emailed this contact." }, 200);

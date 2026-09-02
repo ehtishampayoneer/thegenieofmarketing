@@ -10,13 +10,14 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
+import { fetchLive } from "@/lib/live";
 import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 import { createClient } from "@/lib/supabase/client";
 
 const FIELD = { background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" };
 
 export default function SettingsPage() {
-  const [f, setF] = useState({ company_name: "", company_pitch: "", company_website: "", company_phone: "", company_address: "", sender_name: "", sender_email: "", logo_url: "" });
+  const [f, setF] = useState({ company_name: "", company_pitch: "", company_website: "", company_phone: "", company_address: "", sender_name: "", sender_email: "", logo_url: "", money_page_url: "" });
   const [state, setState] = useState("loading"); // loading | ready | disconnected
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -90,6 +91,13 @@ export default function SettingsPage() {
               <Field label="Business name" value={f.company_name} onChange={upd("company_name")} placeholder="HOLOS" />
               <Field label="What you sell (one line)" value={f.company_pitch} onChange={upd("company_pitch")} placeholder="An AR commerce marketplace for immersive product experiences" textarea />
               <Field label="Website" value={f.company_website} onChange={upd("company_website")} placeholder="holos.com" />
+              <Field
+                label="Where buyers should go to buy"
+                value={f.money_page_url}
+                onChange={upd("money_page_url")}
+                placeholder="yoursite.com/pricing"
+                hint="Your pricing page, packages page, checkout or contact form. Genie sends every buyer here and never handles the payment itself."
+              />
               <Field label="Phone (optional)" value={f.company_phone} onChange={upd("company_phone")} placeholder="+1 …" />
               <div className="flex flex-col gap-1.5">
                 <span className="text-[12px] font-medium mg-muted">Logo (shown at the top of your emails)</span>
@@ -119,6 +127,9 @@ export default function SettingsPage() {
             {saved && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Saved</span>}
             <button onClick={signOut} className="mg-btn mg-btn--ghost ml-auto" style={{ fontSize: 13 }}>Sign out</button>
           </div>
+
+          {/* The one snippet: traffic + lead capture on the owner's own site */}
+          <InstallSnippet />
 
           {/* First-party facts — the real Information Gain input */}
           <FirstPartyFacts />
@@ -192,7 +203,71 @@ function FirstPartyFacts() {
   );
 }
 
-function Field({ label, value, onChange, placeholder, textarea, type = "text" }) {
+// ── THE ONE SNIPPET ──────────────────────────────────────────────────────────
+// One line the owner pastes into their own site, once. It counts real visits
+// (so the traffic panel works with no Google connection), catches visitors who
+// were not ready to buy, and points people at the money page. The token is the
+// same signed ingest key the conversion pixel and commerce webhooks already use,
+// so there is nothing new to configure.
+function InstallSnippet() {
+  const [token, setToken] = useState(null);
+  const [origin, setOrigin] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [traffic, setTraffic] = useState(null);
+
+  useEffect(() => {
+    try { setOrigin(window.location.origin); } catch {}
+    (async () => {
+      // The ingest token is already issued by /api/impact for the revenue setup.
+      const r = await fetchLive("/api/impact");
+      if (r.live && r.data?.token) setToken(r.data.token);
+      const t = await fetchLive(`/api/traffic?tz=${new Date().getTimezoneOffset()}`);
+      if (t.live && t.data) setTraffic(t.data);
+    })();
+  }, []);
+
+  const tag = token && origin
+    ? `<script src="${origin}/api/embed?k=${token}" async></script>`
+    : null;
+
+  async function copy() {
+    if (!tag) return;
+    try { await navigator.clipboard.writeText(tag); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+  }
+
+  const installed = traffic?.installed;
+
+  return (
+    <Card className="lg:col-span-2 p-5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your website snippet</h2>
+        {installed
+          ? <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Installed and counting</span>
+          : <span className="mg-pill">Not installed yet</span>}
+      </div>
+      <p className="text-[13px] mg-muted mt-1" style={{ maxWidth: "var(--measure)" }}>
+        Paste this once into your own website, just before the closing <code style={CODE}>&lt;/body&gt;</code> tag. It does three jobs: counts how many people visit you, catches visitors who are not ready to buy yet, and sends everyone else to your buy page. It never slows your site down and collects no personal data.
+      </p>
+
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <code style={{ ...CODE, flex: 1, minWidth: 260, padding: "10px 12px", borderRadius: 10, display: "block", overflowX: "auto", whiteSpace: "nowrap" }}>
+          {tag || "Sign in to get your snippet."}
+        </code>
+        <button onClick={copy} disabled={!tag} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+
+      <p className="text-[12px] mg-subtle mt-2">
+        Optional: put <code style={CODE}>data-genie=&quot;buy&quot;</code> on any button of your own and Genie will point it at your buy page with tracking attached.
+      </p>
+    </Card>
+  );
+}
+
+const CODE = { fontFamily: "var(--font-mono)", fontSize: 12, background: "var(--surface-2)", border: "1px solid var(--hair)", borderRadius: 6, padding: "1px 5px", color: "var(--fg)" };
+
+function Field({ label, value, onChange, placeholder, textarea, type = "text", hint }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-[12px] font-medium mg-muted">{label}</span>
@@ -201,12 +276,13 @@ function Field({ label, value, onChange, placeholder, textarea, type = "text" })
       ) : (
         <input type={type} value={value || ""} onChange={onChange} placeholder={placeholder} className="px-3 py-2 rounded-lg text-[14px] mg-focus" style={FIELD} />
       )}
+      {hint && <span className="text-[12px] mg-subtle leading-snug">{hint}</span>}
     </label>
   );
 }
 
 function clean(p) {
   const out = {};
-  for (const k of ["company_name", "company_pitch", "company_website", "company_phone", "company_address", "sender_name", "sender_email", "logo_url"]) out[k] = p?.[k] || "";
+  for (const k of ["company_name", "company_pitch", "company_website", "company_phone", "company_address", "sender_name", "sender_email", "logo_url", "money_page_url"]) out[k] = p?.[k] || "";
   return out;
 }

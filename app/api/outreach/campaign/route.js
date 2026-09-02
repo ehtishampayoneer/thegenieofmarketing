@@ -76,8 +76,24 @@ export async function POST(request) {
 
   // Draft + send as a drip. (Serverless: send this batch now; cron handles scale.)
   const base = process.env.APP_URL || "";
+
+  // Drop addresses that cannot receive mail BEFORE the batch goes out. Bounces
+  // are the signal mailbox providers use to classify a sender as spam, so a few
+  // dead addresses in a batch push the deliverable ones into the spam folder.
+  // DNS-level only: Vercel blocks outbound port 25, so a true SMTP mailbox probe
+  // is not possible here. This still removes dead domains, typos and throwaways.
+  let undeliverable = 0;
+  let sendable = contacts;
+  try {
+    const { verifyEmails } = await import("@/lib/email-verify");
+    const { good } = await verifyEmails(contacts.map((c) => c.email));
+    const live = new Set(good.map((g) => g.email));
+    sendable = contacts.filter((c) => live.has(String(c.email || "").toLowerCase()));
+    undeliverable = contacts.length - sendable.length;
+  } catch { sendable = contacts; } // a resolver hiccup must never stop the run
+
   let sent = 0, failed = 0, skipped = 0;
-  for (const c of contacts) {
+  for (const c of sendable) {
     // Compliance: never email someone who opted out.
     if (await isSuppressed(supabase, userId, c.email)) { skipped++; continue; }
     const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name });
@@ -97,7 +113,12 @@ export async function POST(request) {
     });
   }
 
-  return json({ ok: true, sent, failed, remaining: Math.max(0, cap - already - sent), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients. I'll follow up with the ones who don't reply.` : "Couldn't send right now." });
+  // Report what was skipped as undeliverable, so the number is never silently
+  // missing from the batch the owner expected.
+  const protectedNote = undeliverable > 0
+    ? ` Skipped ${undeliverable} dead address${undeliverable > 1 ? "es" : ""} to protect your sender reputation.`
+    : "";
+  return json({ ok: true, sent, failed, undeliverable, remaining: Math.max(0, cap - already - sent), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients. I'll follow up with the ones who don't reply.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
