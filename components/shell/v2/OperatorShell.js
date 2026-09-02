@@ -45,6 +45,7 @@ const NAV = [
   { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "settings", label: "Settings", icon: Icon.settings },
+  { id: "howitworks", label: "How it works", icon: Icon.info },
   { id: "capabilities", label: "What Genie can do", icon: Icon.spark },
 ];
 
@@ -289,7 +290,7 @@ function hrefFor(id) {
   const map = {
     today: "/today", approvals: "/approvals", hunt: "/hunt", recover: "/recover", conversations: "/conversations", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation", site: "/site", markets: "/markets",
-    trust: "/trust", connections: "/connections", settings: "/settings", capabilities: "/capabilities",
+    trust: "/trust", connections: "/connections", settings: "/settings", howitworks: "/how-it-works", capabilities: "/capabilities",
   };
   return map[id] || "/today";
 }

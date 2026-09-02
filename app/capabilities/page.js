@@ -168,6 +168,9 @@ export default function CapabilitiesPage() {
               <a href="/connections" className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}>Reconnect Google</a>
               <a href="/approvals" className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Review &amp; publish →</a>
             </div>
+            <p className="mt-3 text-[12.5px] mg-subtle">
+              New here? <a href="/how-it-works" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>How it works</a> walks through the whole thing end to end: setup, the night shift, your daily review, and what Genie will never do.
+            </p>
           </Card>
         </div>
       </div>
