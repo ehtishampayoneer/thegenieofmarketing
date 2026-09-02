@@ -12,6 +12,7 @@ import { webSearch, redditSearch } from "@/lib/search";
 import { hnSearch, stackExchangeSearch, githubSearch } from "@/lib/intent-sources";
 import { getBrief, recordDecision } from "@/lib/growth-memory";
 import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities } from "@/lib/intent";
+import { verticalsFor } from "@/lib/intent-verticals";
 import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
@@ -50,20 +51,30 @@ export async function POST(request) {
   const queries = buildIntentQueries(entity, ai, keywords);
   if (queries.length === 0) return json({ ok: false, needsContext: true, message: "Genie needs a scan or a keyword to hunt buyers." }, 400);
 
+  // WHERE do THIS business's buyers ask? Buyer Hunt used to send everyone to
+  // Hacker News, GitHub and Stack Exchange's software site, which only ever fit
+  // tech companies. The vertical map picks the Stack Exchange sites that match
+  // this business and says whether the developer surfaces are worth running at
+  // all, so a bakery stops burning its nightly budget on GitHub.
+  const vert = verticalsFor(entity, ai);
   let sources = selectSources(entity);
+  if (!vert.tech) sources = sources.filter((s) => s.key !== "hackernews" && s.key !== "github");
+  // Stack Exchange only earns a slot when we have a site that actually fits.
+  if (!vert.seSites.length) sources = sources.filter((s) => s.key !== "stackexchange");
   // The Learning Loop closes here: re-rank surfaces by what actually wins for you.
   try { sources = applyChannelWeights(sources, await getChannelWeights(supabase, userId, host)); } catch {}
   await logActivity(supabase, userId, {
     host, verb: "scanning", icon: "🎯",
     message: `Hunting buyer intent across ${sources.length} surfaces`,
-    detail: sources.map((s) => s.label).join(", "), meta: { queries: queries.length },
+    detail: [sources.map((s) => s.label).join(", "), vert.labels.length ? `tuned for ${vert.labels.join(" · ").toLowerCase()}` : null].filter(Boolean).join(" — "),
+    meta: { queries: queries.length, verticals: vert.verticalIds, seSites: vert.seSites },
   });
 
   // 3) Hunt — bounded, parallel. The entity playbook already chose the surfaces.
   const competitors = (ai.competitors || []).map((c) => c?.name).filter(Boolean);
   const pairs = [];
   for (const s of sources) for (const q of queries.slice(0, s.key === "reddit" ? 4 : 3)) pairs.push({ s, q });
-  const settled = await Promise.allSettled(pairs.slice(0, 14).map(({ s, q }) => runOne(s, q, ctx)));
+  const settled = await Promise.allSettled(pairs.slice(0, 14).map(({ s, q }) => runOne(s, q, ctx, vert)));
   let candidates = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 
   // 4) Score every candidate for buyer intent, competitor-aware; keep the best.
@@ -152,18 +163,18 @@ export async function POST(request) {
     entity: slim(entity),
     found: opportunities.length,
     staged,
-    summary: { byStage, sources: sources.map((s) => s.label), topIntent: opportunities[0]?.intent ?? null },
+    summary: { byStage, sources: sources.map((s) => s.label), topIntent: opportunities[0]?.intent ?? null, verticals: vert.labels, seSites: vert.seSites },
     opportunities: opportunities.sort((a, b) => b.intent - a.intent),
   });
 }
 
-async function runOne(source, q, ctx) {
+async function runOne(source, q, ctx, vert = {}) {
   try {
     let results;
     switch (source.key) {
       case "reddit": results = await redditSearch(q.query, { limit: 5, ctx }); break;
       case "hackernews": results = await hnSearch(q.query, { limit: 5 }); break;
-      case "stackexchange": results = await stackExchangeSearch(q.query, { site: "softwarerecs", limit: 5 }); break;
+      case "stackexchange": results = await stackExchangeSearch(q.query, { sites: vert.seSites, limit: 5 }); break;
       case "github": results = await githubSearch(q.query, { limit: 5 }); break;
       default: results = await webSearch(q.query, { site: source.site || "", limit: 4, ctx });
     }

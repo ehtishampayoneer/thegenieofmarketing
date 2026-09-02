@@ -92,6 +92,15 @@ export default function HuntPage() {
           <p className="mg-eyebrow"><Icon.crosshair size={14} /> Buyer Hunt</p>
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>People ready to <span className="dawn-text">buy — right now.</span></h1>
           <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Genie hunts the whole internet for people researching, comparing and deciding in your space, ranks them by buying intent, and drafts the perfect helpful reply. You engage in one tap.</p>
+          {/* Where Genie hunts is tuned to THIS business, so say so plainly rather
+              than implying it searches everywhere equally. */}
+          {summary?.hunting?.labels?.length > 0 && (
+            <p className="mt-2 text-[13px] mg-subtle">
+              Tuned for <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b>
+              {summary.hunting.seSites?.length > 0 && <>, also searching {summary.hunting.seSites.join(", ")} on Stack Exchange</>}
+              {!summary.hunting.tech && <>. Developer sites are skipped for you, because your buyers are not there.</>}
+            </p>
+          )}
         </div>
         <button onClick={huntNow} disabled={hunting} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
           <Icon.crosshair size={15} /> {hunting ? "Hunting…" : "Find buyers now"}
@@ -134,7 +143,7 @@ export default function HuntPage() {
           <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">
             {hunting
               ? "Sweeping Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy what you sell. This takes up to a minute."
-              : <>Hit <b style={{ color: "var(--fg)" }}>Find buyers now</b> and Genie sweeps Hacker News, Software Recommendations, GitHub, Reddit and Quora for people actively looking to buy. Connect your Reddit key to unlock the biggest source for your niche.</>}
+              : <>Hit <b style={{ color: "var(--fg)" }}>Find buyers now</b> and Genie sweeps Reddit, Quora and the question sites that match your trade for people actively looking to buy. Connect your Reddit key to unlock the biggest source for your niche.</>}
           </p>
           {!hunting && <button onClick={huntNow} className="mg-btn mg-btn--dawn mt-5 inline-flex" style={{ fontSize: 14 }}><Icon.crosshair size={15} /> Find buyers now</button>}
         </Card>

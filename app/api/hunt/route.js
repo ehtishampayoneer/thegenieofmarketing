@@ -5,6 +5,8 @@
 // summary for the header. Read-only; engaging is done via /api/approvals/act.
 
 import { createClient } from "@/lib/supabase/server";
+import { classifyEntity } from "@/lib/entity";
+import { verticalsFor } from "@/lib/intent-verticals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +14,7 @@ export const dynamic = "force-dynamic";
 const PLAT = {
   reddit: { label: "Reddit", color: "#FF4500" },
   hackernews: { label: "Hacker News", color: "#FF6600" },
-  stackexchange: { label: "Software Recs", color: "#F48024" },
+  stackexchange: { label: "Q&A communities", color: "#F48024" },
   github: { label: "GitHub", color: "#6E5494" },
   quora: { label: "Quora", color: "#B92B27" },
   x: { label: "X", color: "#111827" },
@@ -61,6 +63,18 @@ export async function GET() {
   const byStage = {};
   let sum = 0;
   for (const b of buyers) { if (b.stage) byStage[b.stage] = (byStage[b.stage] || 0) + 1; sum += b.intent; }
+  // Where is Genie hunting FOR THIS BUSINESS? Recomputed from the same inputs the
+  // radar uses, so the board can show it honestly instead of implying Genie
+  // searches everywhere equally. A business with no Stack Exchange home (weddings,
+  // real estate) sees an empty list rather than a site that does not fit.
+  let hunting = { labels: [], seSites: [], tech: false };
+  try {
+    const { data: scan } = await supabase.from("scans").select("ai")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const ai = scan?.ai || {};
+    hunting = verticalsFor(classifyEntity(ai), ai);
+  } catch {}
+
   const summary = {
     total: buyers.length,
     readyToBuy: byStage.ready_to_buy || 0,
@@ -68,6 +82,7 @@ export async function GET() {
     avg: buyers.length ? Math.round(sum / buyers.length) : 0,
     top: buyers[0]?.intent || 0,
     byStage,
+    hunting,
   };
 
   return json({ ok: true, buyers, summary });
