@@ -37,6 +37,14 @@ export async function POST(request) {
     if (scan) { host = hostOf(scan); const ai = scan.ai || {}; business.name = business.name || ai.businessName || ""; business.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; business.pitch = business.pitch || ai.whyChooseYou || ai.whatTheySell || ""; business.website = business.website || (host ? `https://${host}` : ""); }
   } catch {}
 
+  // The video play pitches a specific video, so the link travels with the
+  // business context and every drafted email includes it. Optional: without one
+  // the play still finds the right places, the email just has nothing to link.
+  if (play === "video") {
+    business.videoUrl = String(body?.videoUrl || "").trim().slice(0, 500) || null;
+    business.videoTitle = String(body?.videoTitle || "").trim().slice(0, 200) || null;
+  }
+
   const admin = createAdminClient();
 
   // What this user already has for THIS play — to dedupe.

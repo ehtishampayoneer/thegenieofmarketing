@@ -1,7 +1,7 @@
 "use client";
 
 // ── GET FEATURED — earned-media outreach ──
-// Four separate plays (roundups / guest posts / press / directories). Each play's
+// Separate plays (roundups / guest posts / press / directories / video / partners). Each play's
 // results are SAVED and shown only in its own section — they persist across
 // navigation. Applied sites show "Applied"; the rest wait for you. "Find more"
 // scans again and only adds genuinely new sites (applied ones are held back 60 days).
@@ -16,6 +16,7 @@ const PLAYS = [
   { id: "guest", label: "Publish a guest post", blurb: "Sites in your space that accept guest contributors.", icon: "write" },
   { id: "press", label: "Earn press coverage", blurb: "Publications & journalists who cover your niche.", icon: "spark" },
   { id: "directory", label: "Get a directory listing", blurb: "Directories & “best of” sites to be listed on.", icon: "check" },
+  { id: "video", label: "Place your video", blurb: "Real listings, profiles and reviews where your video can live. Not another social feed.", icon: "post" },
   { id: "partners", label: "Find partners (co-sell)", blurb: "Complementary businesses to cross-promote with — warm referrals close 10× cold.", icon: "conversations" },
 ];
 
@@ -31,6 +32,9 @@ export default function FeaturedPage() {
   const [err, setErr] = useState("");
   const [debug, setDebug] = useState(null);
   const [toast, setToast] = useState("");
+  // The video play pitches a specific video, so its link travels with the
+  // request and ends up inside every drafted email.
+  const [videoUrl, setVideoUrl] = useState("");
 
   const loadList = useCallback(async (pl) => {
     setLoading(true); setRows(null); setErr("");
@@ -49,7 +53,7 @@ export default function FeaturedPage() {
     if (!q || busy) return;
     setBusy(true); setErr(""); setDebug(null);
     try {
-      const j = await fetch("/api/featured/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ play, niche: q }) }).then((r) => r.json());
+      const j = await fetch("/api/featured/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ play, niche: q, videoUrl: play === "video" ? videoUrl.trim() : undefined }) }).then((r) => r.json());
       if (j?.ok) {
         const mapped = (j.opportunities || []).map(mapRow);
         setRows(mapped); setDebug(j.debug || null);
@@ -120,6 +124,16 @@ export default function FeaturedPage() {
           {busy ? "Finding sites…" : (rows && rows.length ? "Find more →" : "Find sites →")}
         </button>
       </div>
+      {play === "video" && (
+        <div className="mt-2.5">
+          <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="Link to the video you want placed (YouTube, Vimeo, or your own page)"
+            className="mg-field mg-focus" style={{ width: "100%", maxWidth: 520, fontSize: 14 }} />
+          <p className="mt-1.5 text-[12px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
+            Genie includes this link in every email it drafts. Leave it blank and it will still find the right places, the email just will not have a video to point at.
+          </p>
+        </div>
+      )}
       {err && <p className="mt-3 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
 
       {busy && (
