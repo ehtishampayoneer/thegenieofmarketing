@@ -29,7 +29,7 @@ const NAV = [
   { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
   { id: "recover", label: "Revenue Recovery", icon: Icon.coins },
   { id: "conversations", label: "Conversations", icon: Icon.conversations },
-  { id: "video", label: "Video to marketing", icon: Icon.post },
+  { id: "video", label: "Video", icon: Icon.post },
   { id: "prospects", label: "Find clients", icon: Icon.target },
   { id: "featured", label: "Get featured", icon: Icon.megaphone },
   { id: "inbox", label: "Inbox", icon: Icon.inbox },

@@ -1,8 +1,12 @@
 "use client";
 
-// ── VIDEO REPURPOSING ──
-// One video in, a dozen pieces of marketing out. Three ways to give Genie the
-// words, because only some of them work everywhere:
+// ── WHAT A VIDEO GIVES GENIE ──
+// Captions, chapters, three clip picks, and the facts the owner says out loud.
+// It does NOT write articles or social posts: the content engine already does
+// that from the keyword strategy, and two engines producing the same shapes
+// would only compete with each other in the same queue.
+//
+// Three ways to give Genie the words, because only some of them work everywhere:
 //   • Upload a file  — Genie transcribes it (Groq Whisper, already configured).
 //   • Paste a link   — Genie reads the public title and thumbnail. It cannot pull
 //                      captions from YouTube, because YouTube blocks servers, and
@@ -61,15 +65,15 @@ export default function VideoPage() {
         if (up.error) { setErr(`Upload failed: ${up.error.message}`); setBusy(false); return; }
 
         payload = { path: signed.path, type: file.type || "video/mp4", title: file.name };
-        setStage("Listening to your video and writing it all up…");
+        setStage("Listening to your video…");
       } else if (mode === "link") {
         if (!url.trim()) { setErr("Paste a YouTube or Vimeo link."); setBusy(false); return; }
         payload = { url: url.trim(), transcript: text.trim() || undefined };
-        setStage(text.trim() ? "Turning your video into marketing…" : "Reading your video…");
+        setStage(text.trim() ? "Reading your transcript…" : "Reading your video…");
       } else {
         if (text.trim().length < 200) { setErr("Paste a bit more of the transcript so Genie has something to work with."); setBusy(false); return; }
         payload = { transcript: text.trim(), url: url.trim() || undefined };
-        setStage("Turning your video into marketing…");
+        setStage("Reading your transcript…");
       }
 
       const r = await fetch("/api/video", {
@@ -96,10 +100,10 @@ export default function VideoPage() {
       <div className="max-w-[1000px]">
         <p className="mg-eyebrow"><Icon.post size={14} /> Video</p>
         <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>
-          One video becomes <span className="dawn-text">a dozen pieces.</span>
+          Get more out of <span className="dawn-text">every video.</span>
         </h1>
         <p className="mt-2 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
-          Give Genie a video and it writes the article, the FAQ, the captions, the chapters, the social posts, and picks your three best clips. It also keeps the facts you said out loud, so everything it writes afterwards sounds more like you.
+          Genie listens to your video and gives you four things: a caption file, chapters, your three strongest clips to cut, and the facts you said out loud. Those facts are the useful part. They get saved, and every article Genie writes afterwards can use them, which is what makes writing sound like you rather than like everyone else.
         </p>
 
         {/* ── INPUT ── */}
@@ -180,7 +184,7 @@ export default function VideoPage() {
 
           <div className="mt-4 flex items-center gap-3 flex-wrap">
             <button onClick={run} disabled={busy} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 14 }}>
-              {busy ? "Working…" : "Turn this into marketing"}
+              {busy ? "Working…" : "Read this video"}
             </button>
             {busy && stage && <span className="text-[13px] mg-muted"><span className="mg-live-dot" /> {stage}</span>}
           </div>
@@ -205,25 +209,24 @@ export default function VideoPage() {
 }
 
 function Results({ out }) {
-  const s = out.social || {};
   return (
     <div className="mt-6 flex flex-col gap-4">
       <Card className="p-5 mg-ambient">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="mg-verified">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
-            Done
+            Listened to your video
           </span>
-          <span className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>
-            {out.staged} piece{out.staged === 1 ? "" : "s"} waiting in Approvals
-          </span>
+          {out.duration > 0 && <span className="text-[12.5px] mg-subtle mg-num">{Math.round(out.duration / 60)} min</span>}
         </div>
         {out.summary && <p className="mt-2 text-[13.5px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{out.summary}</p>}
         <div className="mt-3 flex items-center gap-2.5 flex-wrap">
-          <a href="/approvals" className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>Review and publish →</a>
           {out.vtt && <DownloadBtn text={out.vtt} name="captions.vtt" label="Download captions (.vtt)" />}
           {out.youtubeChapters && <CopyBtn text={out.youtubeChapters} label="Copy YouTube chapters" />}
         </div>
+        <p className="mt-2.5 text-[12px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
+          Upload the caption file to YouTube under Subtitles, and paste the chapters into your video description. Both are free and both help the video get found.
+        </p>
         {out.truncated && (
           <p className="mt-2.5 text-[12px] mg-subtle">
             That video was long, so Genie worked from the opening and the closing rather than every word in the middle.
@@ -264,33 +267,6 @@ function Results({ out }) {
         </Card>
       )}
 
-      {(out.faq || []).length > 0 && (
-        <Card className="p-5">
-          <p className="mg-klabel">Questions it answers</p>
-          <p className="mt-1 text-[13px] mg-muted">These go into the article with FAQ schema, which is exactly what AI answer engines quote.</p>
-          <div className="mt-3 flex flex-col gap-2.5">
-            {out.faq.map((f, i) => (
-              <div key={i}>
-                <p className="text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>{f.q}</p>
-                <p className="mt-0.5 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{f.a}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <Card className="p-5">
-        <p className="mg-klabel">Ready to post</p>
-        <p className="mt-1 text-[13px] mg-muted">Genie never posts to your accounts by itself, so these are drafted and yours to send. They are also waiting in Approvals.</p>
-        <div className="mt-3 flex flex-col gap-3">
-          {s.linkedin && <Draft label="LinkedIn" text={s.linkedin} />}
-          {(s.twitter || []).length > 0 && <Draft label="X thread" text={(s.twitter || []).join("\n\n")} />}
-          {s.instagram && <Draft label="Instagram" text={s.instagram} />}
-          {s.tiktok && <Draft label="TikTok" text={s.tiktok} />}
-          {s.pinterest && <Draft label="Pinterest" text={s.pinterest} />}
-        </div>
-      </Card>
-
       {out.factsSaved > 0 && (
         <Card className="p-5" style={{ borderLeft: "3px solid var(--signal-live)" }}>
           <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>
@@ -308,18 +284,6 @@ function Results({ out }) {
           </ul>
         </Card>
       )}
-    </div>
-  );
-}
-
-function Draft({ label, text }) {
-  return (
-    <div className="p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-      <div className="flex items-center gap-2">
-        <span className="text-[12.5px] font-bold" style={{ color: "var(--fg)" }}>{label}</span>
-        <span className="ml-auto"><CopyBtn text={text} label="Copy" small /></span>
-      </div>
-      <p className="mt-1.5 text-[13px] mg-muted" style={{ whiteSpace: "pre-wrap" }}>{text}</p>
     </div>
   );
 }

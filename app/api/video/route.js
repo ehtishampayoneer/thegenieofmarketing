@@ -1,5 +1,9 @@
 // app/api/video/route.js
-// ── ONE VIDEO IN, A DOZEN PIECES OF MARKETING OUT ──
+// ── WHAT A VIDEO GIVES GENIE ──
+// Captions, chapters, three clip picks, and the first-party facts the owner
+// states out loud. Nothing is written into Approvals: the content engine already
+// writes articles and social from the keyword strategy, and a second engine
+// writing the same shapes from a different starting point only competes with it.
 // Three ways in, because only one of them is reliable everywhere:
 //   • upload  — a file already in private storage. Transcribed by Groq Whisper.
 //   • paste   — the owner pastes a transcript. Always works, needs nothing.
@@ -8,10 +12,7 @@
 //               detection, so a caption scraper works locally and fails the
 //               moment it deploys. Rather than ship that, a link on its own is
 //               answered honestly and paired with a paste box.
-//
-// Everything produced lands in the normal Approvals queue as ordinary article
-// and social_post actions, so it inherits publishing, the content guard and the
-// autonomy rules with no special cases.
+
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,7 +21,7 @@ import { logActivity } from "@/lib/activity";
 import { recordEvent } from "@/lib/events";
 import {
   parseVideoUrl, fetchVideoMeta, transcribeAudio,
-  buildAssets, assetsToActions, toVTT, MEDIA_BUCKET,
+  buildAssets, toVTT, MEDIA_BUCKET,
 } from "@/lib/video";
 
 export const runtime = "nodejs";
@@ -101,18 +102,7 @@ export async function POST(request) {
   if (!built.ok) return json({ ok: false, error: built.error }, 502);
   const data = built.data;
 
-  // ── 4. Stage the publishable pieces ────────────────────────────────────────
-  const rows = assetsToActions({ userId, host, data, meta, scanId });
-  let staged = 0;
-  if (rows.length) {
-    try {
-      const admin = createAdminClient();
-      const { data: ins } = await admin.from("actions").insert(rows).select("id");
-      staged = (ins || []).length;
-    } catch {}
-  }
-
-  // ── 5. Keep the facts ──────────────────────────────────────────────────────
+  // ── 4. Keep the facts ──────────────────────────────────────────────────────
   // The most valuable output. A person talking about their own business states
   // things no competitor's page contains, and Genie's writing is only as
   // original as the facts it holds. Appended, never overwritten.
@@ -145,34 +135,31 @@ export async function POST(request) {
     } catch {}
   }
 
-  // ── 6. Say what happened ───────────────────────────────────────────────────
+  // ── 5. Say what happened ───────────────────────────────────────────────────
   try {
     await logActivity(supabase, userId, {
       host, verb: "discovered",
-      message: `Turned your video into ${staged} publish-ready piece${staged === 1 ? "" : "s"}`,
+      message: factsSaved
+        ? `Learned ${factsSaved} new thing${factsSaved === 1 ? "" : "s"} about your business from your video`
+        : "Read your video and pulled out its captions, chapters and best clips",
       detail: meta.title || "From your upload",
-      meta: { source: "video", staged, facts: factsSaved },
+      meta: { source: "video", facts: factsSaved },
     });
     await recordEvent(supabase, {
       userId, host, type: "activity.video_repurposed", actor: "genie",
       subject: meta.title || "video",
-      data: { staged, facts: factsSaved, clips: (data.clips || []).length, duration },
+      data: { facts: factsSaved, clips: (data.clips || []).length, chapters: (data.chapters || []).length, duration },
     });
   } catch {}
 
   return json({
     ok: true,
-    staged,
     truncated: !!built.truncated,
     meta,
     duration,
     summary: data.summary || null,
-    targetKeyword: data.targetKeyword || null,
-    article: data.article ? { title: data.article.title, metaDescription: data.article.metaDescription } : null,
-    faq: data.faq || [],
     chapters: data.chapters || [],
     clips: data.clips || [],
-    social: data.social || {},
     facts,
     factsSaved,
     // Built from Whisper's own timings, so it is genuinely in sync. Returned as
