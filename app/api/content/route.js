@@ -14,6 +14,7 @@ import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 import { pickPostImage } from "@/lib/media";
 import { classifyEntity } from "@/lib/entity";
 import { deDash, cleanText } from "@/lib/markdown";
+import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,6 +112,17 @@ export async function POST(request) {
     } catch {}
   }
 
+  // ── TWO CALLS, NOT ONE ──
+  // These used to be a single call producing one JSON object with the article AND
+  // every social variant. Two things were wrong with that. The social posts were
+  // generated ALONGSIDE the article rather than from it, so the model was writing
+  // promotion for a piece that did not exist yet. And everything shared one
+  // 3500-token budget, with social last in the schema, so on a long article the
+  // posts were written into whatever tokens happened to be left.
+  //
+  // Split, each gets its own budget and full attention, and the social pass can
+  // quote the real article. Costs one extra call per run, which is nothing
+  // against the router's free daily allowances.
   let data = null;
   let provider = null;
   try {
@@ -123,7 +135,7 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500,
       temperature: 0.7,
-      prompt: buildPrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty }),
+      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty }),
     });
     data = result.json;
     provider = result.provider;
@@ -135,6 +147,35 @@ export async function POST(request) {
   }
 
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
+
+  // The social pass. Deliberately NOT fatal: if it fails, the owner still gets the
+  // article, which is the piece that actually publishes. Before the split a single
+  // failure lost everything, so this is strictly more resilient than what it
+  // replaced. `socialFailed` is reported honestly rather than hidden.
+  let socialFailed = false;
+  if (data.article?.body) {
+    try {
+      const soc = await callAI({
+        system:
+          "You are Genie, writing social posts for a business. You follow each platform's mechanics exactly. You never invent a fact that is not in the article you are given. No em-dashes, no hype. Return ONLY valid JSON, no markdown fences.",
+        json: true,
+        maxTokens: 2600,
+        temperature: 0.75,
+        prompt: buildSocialPrompt({ ai, directives, pick, firstParty, article: data.article }),
+      });
+      const sj = soc.json;
+      if (sj && typeof sj === "object") {
+        // Merge, never overwrite what the article pass already produced.
+        data.social = sj.social || {};
+        data.socialPriority = sj.socialPriority || data.socialPriority;
+        data.cardHeadline = sj.cardHeadline || data.cardHeadline;
+        data.carousel = sj.carousel || data.carousel;
+        data.gbpPost = sj.gbpPost || data.gbpPost;
+        data.reviewRequest = sj.reviewRequest || data.reviewRequest;
+      } else socialFailed = true;
+    } catch { socialFailed = true; }
+  }
+  if (socialFailed) logger.warn("content.social_pass_failed", { host: host || null });
 
   // Strip the "AI tells": em-dashes everywhere, and stray markdown symbols (#, **, -
   // bullets) from any text that is shown/posted AS-IS. The article BODY keeps its
@@ -324,10 +365,10 @@ export async function POST(request) {
 
   // saved = how many drafts actually landed in Approvals. The UI reads this instead
   // of assuming success, so a failed insert is reported honestly, not masked.
-  return json({ ok: true, saved: actionIds.length, content: data, actionIds, meta: { engine: provider } });
+  return json({ ok: true, saved: actionIds.length, content: data, actionIds, socialFailed, meta: { engine: provider } });
 }
 
-function buildPrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null }) {
+function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null }) {
   const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
     ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
     : "";
@@ -418,22 +459,16 @@ TWO of the following, drawn from THIS specific business's real expertise and the
 Never pad with obvious, encyclopedic background an AI already knows. When you lack a hard fact, get
 MORE specific and actionable, not more generic. Original + specific + genuinely useful = cited and ranked. Generic = invisible.
 
-${craftBlock(["twitter", "linkedin", "instagram", "facebook", "reddit", "quora"])}
-Also assign a PRIORITY to the article and to the social posts. Use EXACTLY one of these literal values:
+Also assign a PRIORITY to the article. Use EXACTLY one of these literal values:
 - "high" = high impact AND the user should act soon
 - "quick_win" = easy + fast + still meaningful impact
 - "strategic" = long-term compounding value, not urgent
 - "low" = nice-to-have, no urgency
 Base it on impact + effort.
 
-Write a complete, ready-to-publish blog article AND the social posts derived from it. Return ONLY this JSON:
+Write a complete, ready-to-publish blog article. Return ONLY this JSON:
 {
   "articlePriority": "high | quick_win | strategic | low",
-  "socialPriority": "high | quick_win | strategic | low",
-  "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
-  "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
-  "gbpPost": "a short Google Business Profile update (2 to 3 sentences, friendly and community-rooted, ending with a soft call to action like 'Book now' or 'Stop by'). Only useful for local businesses.",
-  "reviewRequest": "a warm, short message the owner can send to a happy customer asking them to leave a Google review (2 to 3 sentences, grateful and low-pressure, no link — the owner adds theirs). Only useful for local businesses.",
   "article": {
     "title": "click-worthy, SEO-friendly title",
     "targetKeyword": "the main keyword this targets",
@@ -450,7 +485,56 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
       "subtext": "one short sentence that makes them want to act NOW (a concrete benefit or gentle urgency), under 18 words",
       "buttonText": "a 2-4 word button label that fits the stage, e.g. 'Get a free quote', 'Shop the collection', 'Book a call', 'Start free' — action verb first"
     }
-  },
+  }
+}
+Make it genuinely specific to this business — real value, not generic advice.`;
+}
+
+// ── THE SOCIAL PASS ──────────────────────────────────────────────────────────
+// A second call, made only after the article exists, and this is the point of
+// splitting them. Before, both were produced in ONE JSON object, which meant the
+// social posts were written at the same time as the article rather than from it:
+// the model was promoting a piece it had not written yet. It also had to fit
+// everything inside a single 3500-token budget, and social sat LAST in the
+// schema, so on a long article it was written into whatever tokens were left.
+//
+// Now it gets the finished article, the full craft rules, and a budget of its
+// own. One extra call per content run, which is nothing against the router's
+// free daily allowances.
+function buildSocialPrompt({ ai, directives = [], pick = null, firstParty = null, article = {} }) {
+  const voice = ai.brandVoice
+    ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
+    : "Brand voice: clear, warm, professional.";
+  const standing = directives.length
+    ? `OWNER'S STANDING INSTRUCTIONS — these OVERRIDE everything else, follow them exactly:\n${directives.map((d) => `- ${d}`).join("\n")}\n`
+    : "";
+  const fp = firstParty && (firstParty.data || firstParty.proof)
+    ? `\nREAL DETAILS FROM THIS BUSINESS you may reference (never contradict them):${firstParty.data ? `\n- ${firstParty.data}` : ""}${firstParty.proof ? `\n- ${firstParty.proof}` : ""}`
+    : "";
+
+  return `${standing}Business: ${ai.businessName || "the business"} — ${ai.whatTheySell || ""}.
+Target customer: ${ai.targetCustomer || ""}.
+${voice}${fp}
+${ai.avoid ? `NEVER say, claim, or promise: ${ai.avoid}.` : ""}
+
+THE ARTICLE THAT WAS JUST WRITTEN. Everything below must come from THIS piece. Do not invent
+facts, numbers or claims that are not in it.
+Title: ${article.title || ""}
+${pick?.keyword ? `Target search: ${pick.keyword}` : ""}
+
+"""
+${String(article.body || "").slice(0, 7000)}
+"""
+${craftBlock(["twitter", "linkedin", "instagram", "facebook", "reddit", "quora", "gbp"])}
+Assign a PRIORITY to the social posts. Use EXACTLY one of: "high", "quick_win", "strategic", "low".
+
+Return ONLY this JSON:
+{
+  "socialPriority": "high | quick_win | strategic | low",
+  "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
+  "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
+  "gbpPost": "a short Google Business Profile update (2 to 3 sentences, friendly and community-rooted, ending with a soft call to action like 'Book now' or 'Stop by'). Only useful for local businesses.",
+  "reviewRequest": "a warm, short message the owner can send to a happy customer asking them to leave a Google review (2 to 3 sentences, grateful and low-pressure, no link — the owner adds theirs). Only useful for local businesses.",
   "social": {
     "twitter": ["3 standalone posts, each under 280 chars. Each must work on its own without the article, open on a concrete claim or number, and carry NO link and NO hashtags"],
     "linkedin": "1 first-person LinkedIn post. The hook must land inside the first 210 characters, then one or two sentences per paragraph with blank lines between, no link in the body, ending on a real question. 3-5 hashtags at the very end",
@@ -460,7 +544,7 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     "quora": "1 long-form, genuinely useful Quora answer to a real question buyers ask in this space — value first, product mentioned only where it truly helps, never as a pitch."
   }
 }
-Make it genuinely specific to this business — real value, not generic advice.`;
+Every post must be able to stand on its own. Never write one as a trailer for the article.`;
 }
 
 function json(obj, status = 200) {
