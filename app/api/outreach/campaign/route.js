@@ -61,10 +61,29 @@ export async function POST(request) {
   const room = Math.max(0, cap - already);
   if (room === 0) return json({ ok: true, done: true, sent: 0, message: `You've hit today's limit of ${cap}. Fresh batch tomorrow.` });
 
-  // Source contacts (shared directory by industry, excluding already-emailed).
-  const contacts = await sourceContacts(supabase, userId, host, industry || prof.industry, room);
+  // Who to look for. This matters more than it looks: the niche has to describe
+  // the people we are SELLING TO, not what this business is. Seeding on "AR
+  // software" finds other AR companies; seeding on "furniture and rug retailers"
+  // finds actual buyers. The scan's targetCustomer is the right field, with the
+  // industry as a fallback.
+  let niche = String(industry || prof.industry || "").trim();
+  try {
+    const { data: scan } = await supabase.from("scans").select("ai")
+      .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const target = scan?.ai?.targetCustomer || scan?.ai?.idealCustomer;
+    if (target) niche = String(target).slice(0, 120);
+  } catch {}
+
+  // Source contacts. Seeds the shared directory from real published addresses
+  // when it has nothing fresh, which is what makes this run send at all.
+  const contacts = await sourceContacts(supabase, userId, host, industry || prof.industry, room, { niche });
   if (contacts.length === 0) {
-    return json({ ok: true, sent: 0, message: "No fresh contacts to reach today. Genie's directory grows daily, check back tomorrow." });
+    return json({
+      ok: true, sent: 0,
+      message: niche
+        ? "No fresh contacts found this time. Genie looks for more every night, so check back tomorrow."
+        : "Genie needs to know who you sell to before it can find contacts. Add your target customer in Settings.",
+    });
   }
 
   // One tracked link for the signature site → every outreach click is attributable
