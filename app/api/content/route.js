@@ -6,6 +6,7 @@
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
+import { craftBlock } from "@/lib/platform-craft";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
@@ -417,6 +418,7 @@ TWO of the following, drawn from THIS specific business's real expertise and the
 Never pad with obvious, encyclopedic background an AI already knows. When you lack a hard fact, get
 MORE specific and actionable, not more generic. Original + specific + genuinely useful = cited and ranked. Generic = invisible.
 
+${craftBlock(["twitter", "linkedin", "instagram", "facebook", "reddit", "quora"])}
 Also assign a PRIORITY to the article and to the social posts. Use EXACTLY one of these literal values:
 - "high" = high impact AND the user should act soon
 - "quick_win" = easy + fast + still meaningful impact
@@ -450,10 +452,10 @@ Write a complete, ready-to-publish blog article AND the social posts derived fro
     }
   },
   "social": {
-    "twitter": ["3 different tweet-length posts promoting the article, each with 1-2 relevant hashtags"],
-    "linkedin": "1 professional LinkedIn post version",
-    "instagram": ["2 visual-first Instagram captions with hashtags"],
-    "facebook": ["2 community-friendly Facebook posts"],
+    "twitter": ["3 standalone posts, each under 280 chars. Each must work on its own without the article, open on a concrete claim or number, and carry NO link and NO hashtags"],
+    "linkedin": "1 first-person LinkedIn post. The hook must land inside the first 210 characters, then one or two sentences per paragraph with blank lines between, no link in the body, ending on a real question. 3-5 hashtags at the very end",
+    "instagram": ["2 captions whose first 125 characters are the whole hook, written to be saved rather than just liked, ending with 3-5 specific hashtags"],
+    "facebook": ["2 warm, conversational posts that make their point within the first 477 characters and end on a question that invites a comment"],
     "reddit": "1 genuinely helpful, value-first Reddit self-post a knowledgeable human would write — no marketing voice, no 'check out', mention the product ONLY if it truly helps. Start with a suggested subreddit in brackets, e.g. [r/subreddit], then the post.",
     "quora": "1 long-form, genuinely useful Quora answer to a real question buyers ask in this space — value first, product mentioned only where it truly helps, never as a pitch."
   }
