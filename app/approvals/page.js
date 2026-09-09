@@ -74,6 +74,11 @@ export default function ApprovalsPage() {
   const [idx, setIdx] = useState(0);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
+  // Sharpen: a second, narrow AI pass over THIS draft alone. Never automatic,
+  // never saves by itself — the rewrite lands in the edit box so it can be read
+  // and then kept or cancelled.
+  const [sharpening, setSharpening] = useState(false);
+  const [sharpenNotes, setSharpenNotes] = useState(null);
   const [done, setDone] = useState(0);
   const [working, setWorking] = useState(false);
   const [drafting, setDrafting] = useState(false);
@@ -124,7 +129,7 @@ export default function ApprovalsPage() {
   const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, marketFilter]);
   useEffect(() => { setIdx((i) => Math.max(0, Math.min(i, view.length - 1))); }, [view.length]);
   const current = view[idx] || null;
-  useEffect(() => { setExpandReason(false); setEditing(false); }, [current?.id]);
+  useEffect(() => { setExpandReason(false); setEditing(false); setSharpenNotes(null); }, [current?.id]);
 
   const total = done + view.length;
   const estMin = Math.max(1, Math.round(view.length * 0.3));
@@ -252,6 +257,30 @@ export default function ApprovalsPage() {
     } catch { setToast("Couldn’t upload that image."); }
     setSwapLoading(false);
   }
+  // Sharpen the draft in the edit box. Opens edit mode first if it is closed, so
+  // one click always ends with the rewrite visible and reversible.
+  async function sharpen(cur) {
+    if (!cur || sharpening) return;
+    const startText = editing ? editDraft : cur.draft;
+    if (!startText || !String(startText).trim()) { setToast("There is nothing to sharpen yet."); return; }
+    if (!editing) startEdit(cur);
+    setSharpening(true); setSharpenNotes(null);
+    try {
+      const j = await fetch("/api/approvals/sharpen", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: cur.id, source: cur.source, text: startText }),
+      }).then((r) => r.json());
+      if (j?.ok) {
+        setEditDraft(j.text);
+        setSharpenNotes(j);
+        setToast(j.overBy > 0
+          ? `Sharpened, but it is ${j.overBy} characters over the ${j.platform} limit. Trim before posting.`
+          : "Sharpened. Read it, then Save or Cancel.");
+      } else setToast(j?.error || "Could not sharpen that one.");
+    } catch { setToast("Could not sharpen that one."); }
+    setSharpening(false);
+  }
+
   async function persistEdits(cur) {
     try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cur.id, source: cur.source, act: "edit", draft: editDraft, image: editImage, imageRaw: editImageRaw, hook: editHook, imageSource: editSource, imageCredit: editCredit, branded: editBranded, imageFocus: editFocus }) }); } catch {}
     setItems((prev) => prev.map((it) => it.id === cur.id ? { ...it, draft: editDraft, image: editImage, imageRaw: editImageRaw, imageSource: editSource, imageCredit: editCredit, imageBranded: editBranded, imageFocus: editFocus, cardHeadline: editHook } : it));
@@ -337,7 +366,8 @@ export default function ApprovalsPage() {
               key={current.id}
               item={current}
               editing={editing} editDraft={editDraft} setEditDraft={setEditDraft}
-              onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); }}
+              onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); setSharpenNotes(null); }}
+              onSharpen={() => sharpen(current)} sharpening={sharpening} sharpenNotes={sharpenNotes}
               onApprove={approveCurrent} onSkip={skipCurrent} working={working}
               edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, focus: editFocus, setFocus: onSetFocus, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, upload: uploadImage, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
               expandReason={expandReason} setExpandReason={setExpandReason}
@@ -373,7 +403,7 @@ export default function ApprovalsPage() {
 }
 
 // ── THE CURRENT APPROVAL — the dominant card ────────────────────────────────
-function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext, edit }) {
+function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext, edit, onSharpen, sharpening, sharpenNotes }) {
   const im = impactMeta(item.impact);
   const words = approxWords(item.draft);
   const isArticle = item.kind === "article";
@@ -497,6 +527,30 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                   </div>
                 )}
                 <textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus className="mg-field mg-focus" style={{ minHeight: edit.image ? 150 : 280, lineHeight: 1.68, fontSize: 14 }} />
+                {/* What Sharpen actually changed. Genie shows its work everywhere
+                    else, so a rewrite should not be a black box either. */}
+                {sharpenNotes && (
+                  <div className="mt-2.5 p-3 rounded-xl" style={{ background: "var(--accent-quiet)", border: "1px solid color-mix(in srgb, var(--accent) 22%, transparent)" }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>What changed</span>
+                      <span className="text-[11.5px] mg-subtle mg-num">
+                        {sharpenNotes.before} → {sharpenNotes.after} chars
+                        {sharpenNotes.limit ? ` · ${sharpenNotes.platform} limit ${sharpenNotes.limit}` : ""}
+                      </span>
+                      {sharpenNotes.overBy > 0 && (
+                        <span className="mg-pill mg-pill--danger">{sharpenNotes.overBy} over</span>
+                      )}
+                    </div>
+                    {(sharpenNotes.notes || []).length > 0 && (
+                      <ul className="mt-1.5 flex flex-col gap-1" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                        {sharpenNotes.notes.map((n, i) => (
+                          <li key={i} className="text-[12.5px] mg-muted">· {n}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-1.5 text-[11.5px] mg-subtle">Nothing is saved until you press Save.</p>
+                  </div>
+                )}
               </div>
             ) : item.draft ? (
               <div className="mg-article" dangerouslySetInnerHTML={{ __html: markdownToHtml(deDash(item.draft)) }} />
@@ -513,6 +567,9 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
           <>
             <button className="mg-btn mg-btn--dawn" onClick={edit.saveApprove} disabled={working}>Save & approve</button>
             <button className="mg-btn mg-btn--ghost" onClick={edit.save}>Save</button>
+            <button className="mg-btn mg-btn--ghost" onClick={onSharpen} disabled={sharpening} title="Rewrite this draft so it holds attention, using the rules for wherever it is going">
+              {sharpening ? "Sharpening…" : "✦ Sharpen"}
+            </button>
             <button className="mg-btn mg-btn--quiet" onClick={onCancelEdit}>Cancel <span className="mg-kbd" style={{ marginLeft: 4 }}>Esc</span></button>
           </>
         ) : (
