@@ -1,6 +1,12 @@
 # MARKETING GENIE — COMPLETE HANDOVER DOCUMENT
 
-_Last updated: this session. Read this top to bottom before touching anything._
+_Last updated: September 2026. Read this top to bottom before touching anything._
+
+> **A warning about this file.** It went stale once already: it described V1
+> screens (`/setup`, `/dashboard`, `/research`, `/tasks`, `/stories`) months
+> after they became redirect stubs, and listed email compliance as missing
+> after `lib/compliance.js` shipped. If you change what exists, change this
+> file in the same commit. A handover doc nobody trusts is worse than none.
 
 ---
 
@@ -15,9 +21,26 @@ _Last updated: this session. Read this top to bottom before touching anything._
 4. **Own accounts first, then community** → each day Genie posts to the user's own accounts (build credibility), then finds live conversations to join, one channel at a time.
 5. **Email outreach** → Genie finds potential clients, drafts personalized emails (with the user's profile baked in), and sends a daily batch (drip).
 6. **Learn & follow up** → tracks engagement, answers every reply, doubles down on winners, retires losers.
-7. **Show progress** → strength bar, keyword rankings climbing, honest traffic graph.
+7. **Show progress** → Growth Score, rankings climbing, real traffic counted first-party, and revenue traced back to the page that earned it.
 
-**Design language:** Ink (`#11202E`) + Paper (`#F8F8F6`), one muted emerald accent (`#1E9E6A`) only for live/winning/done states. Thin professional line icons (no emoji in UI). Real brand icons for platforms. The MG genie logo. Sweet, restrained animations. Genie has a warm, fun, teaching voice ("SEO is old but gold", "let's charm some future clients"). NO em-dashes in user-facing copy (they read as AI-generated).
+**Design language: Apple's system palette.** The old ink/paper + emerald scheme was
+replaced wholesale (see `app/globals.css`). Light is systemGray6 `#F2F2F7` with white
+cards and the apple.com text ramp (`#1D1D1F` / `#424245` / `#6E6E73`); Dark is true
+black with the iOS elevation ladder (`#1C1C1E` → `#2C2C2E` → `#3A3A3C`). ONE accent,
+systemBlue (`#0071E3` light, `#0A84FF` dark), with green/red/orange reserved strictly
+for state. Separation is a hairline plus a value step, not a drop shadow.
+
+Type is the platform's own face (`-apple-system`, so real SF Pro on Apple hardware);
+there is no webfont, deliberately. The scale is 12 whole steps, 11-24px, with no
+half-pixel sizes and no weight above 700. `lib/platform-craft.js` is the same idea
+for copy: real per-platform limits, folds and mechanics.
+
+The logo is DRAWN, not an image: `components/brand/GenieWordmark.js`. `/public/logo.png`
+is retired because "MARKETING" was ~7.5% of that file's height and unreadable at any
+size that fits a sidebar, and its black wordmark vanished on dark grounds.
+
+Thin line icons (no emoji in UI), real brand marks for platforms, restrained motion.
+Genie has a warm, plain-spoken voice. **NO em-dashes in user-facing copy.**
 
 **Honesty is a core product principle (enforced in code):**
 - Non-owned platforms (Reddit/Quora/LinkedIn/Medium/forums) use **tap-to-post** — Genie writes it and opens the page, the user taps to publish. NO silent auto-posting into strangers' threads (that gets accounts banned). This is deliberate and non-negotiable.
@@ -30,36 +53,75 @@ _Last updated: this session. Read this top to bottom before touching anything._
 
 ## 2. CURRENT STAGE (what's built vs. what's left)
 
-### ✅ BUILT & WORKING (deployed or ready to deploy)
-- **Core engine:** site scan/audit (46 checks + PageSpeed), AI router (Gemini → Groq → OpenRouter fallback), business understanding.
-- **Keyword system:**
-  - Portfolio (derive 20-30 keywords, health grading strong/growing/new/weak/retired, auto-retire losers).
-  - **Keyword Research page** (`/research`) — the merged "Keywords" page. Auto-loads Genie's picked keywords in a pro table (volume, difficulty, CPC, trend sparkline, ranking, view action), tabs (All / High Potential / Easy Wins / Questions), stat cards, "Add Keyword" search. Genie picks best opportunities (traffic rewarded, competition punished). Discovery via **Google Autocomplete** (real, free); volumes/CPC = AI estimates until GSC.
-  - **GSC sync** (`lib/keyword-sync.js`) — pulls real rankings/clicks, marks dead keywords, adds new winning queries, records daily history for climbing bars.
-- **Placement/radar engine:** Reddit, Quora, Web (forums/listicles/guest) radars find live conversations, write value-first posts, stage as taps. Cadence caps + cooldowns per platform.
-- **Daily ritual** (`/tasks`, "Today's taps") — channel-by-channel guided flow: own accounts first (X → LinkedIn → Reddit → blog), then community (Reddit/Quora/forums), then email. Progress spine, Genie narration, completion messages.
-- **Owned-account execution:** WordPress auto-publish (real), email outreach auto-send (real, Resend). X/LinkedIn/Medium/Reddit/Quora = tap-to-post.
-- **Email engine + directory** (`lib/email-engine.js`, `/api/outreach/campaign`) — one-tap daily batch, drip send, daily caps (Free 15/day, Pro 50/day), sources from shared `directory_contacts` by industry, logs to `outreach_log`, daily report. **NOTE: directory starts EMPTY — see "KNOWN GAPS."**
-- **Reply/notification engine** (`/notifications`, "Inbox") — detects new replies on placements (Reddit strong, others best-effort), drafts answers, organized inbox with counts/filters.
-- **Placement Story** (`/stories`, "Conversations") — living timeline of each conversation (found → wrote → posted → traction → replies → watching).
-- **Overnight cron** (`/api/cron/genie`, 1am UTC) — re-runs GSC sync, keyword grading, all radars, engagement tracking, reply scan, outreach drip.
-- **Guided setup wizard** (`/setup`) — after scan, first-time users connect accounts one-by-one (strength bar red→amber→green with %, teaching narration, skippable), then capture company/sender profile. Google/X auto-return to wizard after OAuth.
-- **Company/sender profile** (`/api/profile`, editable in Settings) — name, sending email, company, website, phone, address, pitch. Baked into outreach emails.
-- **Clean daily home** (`/dashboard`) — greeting (time-based), "Welcome to Marketing Genie", strength bar, 4 action buttons (Today's taps / Replies / Find openings / Conversations), honest traffic graph (real GSC data or honest "coming as you grow" placeholder).
-- **Safety:** kill switch, permission levels, $0 spend cap (all in code). Daily brief email. Per-business chat with memory.
-- **Design system:** ink/paper tokens, `components/ui/kit.js`, `Icon.js` (line icons), `BrandIcon.js` (real brand marks), `Logo.js` (uses `/public/logo.png`), `GenieVoice.js` (typewriter narration + strength bar).
+### ✅ BUILT & WORKING
 
-### ❌ NOT BUILT / IN PROGRESS (the roadmap)
-- **Directory seeding / contact discovery** — the email engine works but the directory is EMPTY. Need: Genie discovers 15-50 real, related business contacts daily from public sources (business directories, Google, etc.), emails them, keeps responders / drops non-responders. **Has legal weight (CAN-SPAM/GDPR): needs unsubscribe footer + physical address before sending real cold email.** NOT YET BUILT.
-- **Email compliance** — unsubscribe link + physical address footer. Required before real cold outreach.
-- **Real keyword volume data** — currently AI estimates + free Google Autocomplete discovery. Real volumes need Google Ads API (free-ish, weeks of approval, needs active campaign) or a paid source (DataForSEO/SerpApi ~$50-200/mo). GSC gives real data only for the user's OWN connected site.
-- **Ads** — Meta + Google Ads login and campaign management. NOT built (Genie only drafts ad ideas). Needs weeks of platform approval.
-- **Stripe / packages** — Free vs Pro is designed into the schema (`profiles.plan`) and caps, but no Stripe integration or paywall yet. Volume-gated model agreed (Free = fewer posts/keywords/emails; Pro = full swing). Blurred-keyword upsell planned.
-- **Launch-gating:** Resend domain verification (currently uses `onboarding@resend.dev` — limited deliverability), Google OAuth verification (consent screen), API-token encryption (tokens stored plaintext + RLS), Vercel Hobby → Pro (for cron frequency).
-- **Visual reskin remaining screens** — most screens are on the new ink/paper system; a few legacy views (some of `/business`, older dashboard sub-views) may still show old styling. Reskin as encountered.
-- **Conversations page** styling still uses the older "aperture" light-premium kit (`kit.js`), not fully ink/paper yet.
+**The shell.** `components/shell/v2/OperatorShell.js` is the app. 23 destinations in
+three groups (Your employee / Growth journey / Settings), a live activity ticker,
+Day/Night themes, `PageGuide` info button per screen, ⌘K chat.
 
----
+**The nightly engine.** `/api/cron/genie` is a thin dispatcher that fans out ONE
+isolated job per (user, host) to `/api/jobs/entity` → `lib/genie-jobs.js`. Each job is
+idempotent (a done-event per day), has its own time budget and retries, so one slow
+business cannot sink the run. Order matters and is documented in the file: pull real
+GSC/GA4 data → re-grade and retire keywords → radars → AI-search → content → unstick
+one stalled keyword → one pillar page → engagement → replies → outreach → learn, then
+stale-page refresh and Gmail reply sync.
+
+**Money layer.**
+- **Buyer Hunt** (`/hunt`) — keyless intent sources (Hacker News via Algolia, Stack
+  Exchange, GitHub) plus Reddit/Quora radars. Scores 0-100, drafts the reply, you post.
+- **Revenue Recovery** (`/recover`) — upload old leads, per-contact win-backs.
+- **Find clients** (`/prospects`) — `lib/prospects.js` names real companies, crawls
+  their sites, and picks an address the company actually published. Never invents one.
+- **Get featured** (`/featured`) — six plays on `lib/earned-media.js`, including
+  "Place your video". Per-play persistence, dedupe, 60-day re-pitch gap.
+- **Deal Pipeline** (`/pipeline`), **Inbox** (`/inbox`), **Proof Sprint** (`/sprint`).
+- **Outreach** — `lib/email-engine.js`. Caps (Free 15/day, Pro 50/day), drip, unsubscribe
+  + physical address in every send (`buildEmailHtml` + `lib/compliance.js`), suppression
+  list, and DNS-level address verification before sending (`lib/email-verify.js`, which
+  fails OPEN so a resolver outage cannot block all mail).
+
+**Growth layer.** Growth Score, **AI Search Presence** (`/ai-search`, the wedge: asks
+the real models whether you get named), Customer Impact, What Genie Learned, Foundation
+links, Website Setup (read-only audit → copy-paste fixes, never edits their site),
+Market Testing.
+
+**Content engine.** `/api/content` now makes TWO calls: the article, then the social
+posts *given the finished article*. They used to share one 3500-token budget with social
+last in the schema, so social was written blind and into leftovers. `lib/platform-craft.js`
+supplies per-platform mechanics. **Sharpen** (`/api/approvals/sharpen`) is an optional
+second pass on one draft, button-only, never automatic, never saves by itself.
+
+**On-site layer.** One snippet (`/api/embed`) the owner pastes into their OWN site:
+counts real visits, catches leads, points at `profiles.money_page_url`. Beacons at
+`/api/px/view` and `/api/px/lead`, rollups at `/api/traffic` (today / yesterday / 7 days,
+in the viewer's timezone). Uploads bypass Vercel's 4.5MB body cap via a signed
+direct-to-storage URL.
+
+**Video** (`/video`) — transcribes (Groq Whisper, already configured) and returns
+captions, chapters, three clip picks with real Whisper timestamps, and the first-party
+facts said out loud. Deliberately does NOT write articles or social; that would duplicate
+the content engine.
+
+**Safety + honesty.** Trust ramp (review → assisted → auto, earned per channel, gated on
+a content guard AND ≥80 confidence, fails closed), kill switch, spend cap, event ledger
+(`lib/events.js`), provenance system (Verified / Estimated / Modelled), SSRF guard,
+54 passing tests (`npx vitest run`).
+
+**Docs in-app.** `/how-it-works` (whole product, plain words) and `/capabilities`
+(flat feature list with honest status). Keep both in sync with reality.
+
+### ❌ NOT BUILT / KNOWN LIMITS
+- **Real keyword volumes** — still AI estimates. Needs Google Ads API approval.
+- **Ads** — Genie drafts ad ideas, runs nothing. Meta/Google need platform approval.
+- **Stripe / paywall** — `profiles.plan` and caps exist; no billing. **Note: Stripe does
+  not operate in Pakistan.** Realistic options are Payoneer, Paddle (pays out via
+  Payoneer), or a local gateway. Dodo Payments does NOT support Pakistani sellers.
+- **Video posting** — Genie never uploads video anywhere. YouTube's API would allow it
+  with a new OAuth scope; nothing else realistically does.
+- **Country-level revenue attribution** — Market Testing tracks search only.
+- **Resend domain verification** — verify a sending domain, or connect Gmail per-user.
+- **Google OAuth verification** + **token encryption at rest** before public launch.
 
 ## 3. TECH STACK
 
@@ -233,10 +295,26 @@ status (queued|sent|opened|replied|bounced|failed), email_id (resend id),
 sent_at, replied_at, is_followup (bool), created_at
 ```
 
+### `events` (THE LEDGER — `db/events.sql`)
+Append-only stream of everything Genie and the user do. `user_id, host, type (dotted
+namespace), actor, subject, data jsonb, dedupe_key, created_at`. Unique on
+`(user_id, dedupe_key)` where present, which is what makes the nightly jobs idempotent.
+Traffic and leads live here too (`traffic.pageview`, `lead.captured`) rather than in new
+tables, with partial indexes from `db/onsite.sql`.
+
 ### Other tables
 - `cadence_plans` — weekly cadence
 - `chat_messages` — per-business Genie chat
 - `safety_settings` — `user_id (PK), permission_level (int 1-4), kill_switch (bool), monthly_spend_cap (default 0)`
+- `growth_memory`, `decisions` — the learning loop + decision ledger
+- `published_pages`, `links`, `citation_targets`, `suppressions`, `keyword_usage`
+
+### Migrations to run (in `db/`, all idempotent)
+| File | Adds | Without it |
+|---|---|---|
+| `setup.sql`, `rls.sql`, `events.sql` | the base | nothing works |
+| **`onsite.sql`** | `profiles.money_page_url` + pageview/lead indexes | money page + traffic panel + lead capture all dead |
+| **`directory.sql`** | `directory_contacts` + unique email index + RLS | nightly outreach sends nothing, silently |
 
 **If unsure a table/column exists, check Supabase and provide `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS` SQL.**
 
@@ -245,20 +323,22 @@ sent_at, replied_at, is_followup (bool), created_at
 ## 8. FILE INVENTORY (what each thing does)
 
 ### Pages (`app/**/page.js`)
-- `app/page.js` — landing/scan entry. After scan, routes first-time users to `/setup`.
-- `app/login/page.js` — Supabase auth (Google OAuth + email).
-- `app/welcome/page.js` — post-signup welcome.
-- `app/setup/page.js` — **guided connect wizard + profile capture** (strength bar, teaching narration).
-- `app/dashboard/page.js` — **clean home** + Settings/Integrations/History sub-views (via `?view=`). Contains `HomeView`, `SafetyCard`, `ProfileCard`, `ResetCard`, `PlatformGrid`.
-- `app/dashboard/action/[id]/page.js` — single action detail (PostToX tap, TapPost, SendOutreach).
-- `app/dashboard/scan/[id]/page.js` — scan detail.
-- `app/research/page.js` — **THE merged Keywords page** (auto-loads picked keywords, pro table, tabs, research).
-- `app/growth/page.js` — now just **redirects to `/research`** (Growth merged into Keywords).
-- `app/tasks/page.js` — **daily ritual** (channel-by-channel: own → community → email).
-- `app/notifications/page.js` — **Inbox** (replies + opportunities).
-- `app/stories/page.js` — **Conversations** (Placement Story timeline). _Still on older kit styling._
-- `app/business/page.js` — business overview (legacy-ish).
-- `app/chat/page.js` — standalone chat.
+`app/page.js` redirects on the SERVER: signed in → `/today`, else → `/login`. First run
+is `/welcome`.
+
+**Your employee:** `today` · `approvals` · `hunt` · `recover` · `conversations` ·
+`video` · `prospects` (Find clients) · `featured` · `inbox` · `pipeline` · `sprint`
+
+**Growth journey:** `growth` · `ai-search` · `impact` · `learning` · `foundation` ·
+`site` · `markets`
+
+**Settings:** `connections` · `trust` · `settings` · `how-it-works` · `capabilities`
+
+**Public:** `login` · `welcome` (onboarding, LIGHT stage) · `showcase` (pitch, LIGHT) ·
+`verdict` (free AI-visibility check, no login) · `p/[handle]/[slug]` (published pages)
+
+**Retired V1 stubs — redirects only, do not build on them:**
+`research` · `tasks` · `notifications` · `stories` · `setup` · `dashboard` · `business`
 
 ### API routes (`app/api/**/route.js`) — key ones
 - `keywords/route.js` — GET portfolio, POST derive (accepts `productOverride` to fix misreads), PATCH add-own, DELETE remove.
@@ -301,11 +381,14 @@ sent_at, replied_at, is_followup (bool), created_at
 - `components/shell/Rail.js` — left nav (MG logo + line icons). Nav: Home, Today's taps, Conversations, **Keywords**, Inbox, History, Connect, Settings.
 - `components/shell/AppShell.js` — layout shell (rail + content + right Genie panel), minimal top bar.
 - `components/shell/GeniePanel.js` — right-side Genie chat (platform-wide; do not rebuild).
-- `components/ui/Logo.js` — uses `/public/logo.png` (owner uploaded the MG genie logo).
+- `components/brand/GenieWordmark.js` — **the logo**. Drawn, not an image: a geometric G
+  monogram plus real text, so it is legible at any size and follows the theme. Retired:
+  `components/ui/Logo.js` / `/public/logo.png`.
 - `components/ui/Icon.js` — thin line-icon set (home/tasks/growth/search/etc).
 - `components/ui/BrandIcon.js` — real brand marks (reddit/x/linkedin/medium/quora/wordpress/google/shopify/facebook/instagram/blog/mail/ads).
 - `components/ui/GenieVoice.js` — `GenieSays` (typewriter), `GenieLine` (avatar + speech), `StrengthBar` (red→amber→green with %).
-- `components/ui/kit.js` — older light-premium components (Card/Button/Badge/CountUp/Stat/LiveDot/Progress/Skeleton). Used by `/stories`.
+- `components/ui/v2/primitives.js` — **the current vocabulary** (Card, Pill, Button, Stat,
+  Provenance, SectionHead). `components/ui/kit.js` is the retired V1 set.
 - `components/ActivityFeed.js` — "Genie is working" live feed.
 
 **Asset:** `public/logo.png` — the MG genie logo (owner-uploaded). Referenced as `/logo.png`.
@@ -323,14 +406,40 @@ Free = 15 emails/day, Pro = 50/day. Slow drip (spaced sends), never blasted. One
 ---
 
 ## 11. KNOWN GAPS / IMMEDIATE TODOs (priority order)
-1. **Directory is empty** — build contact discovery (find 15-50 real related contacts/day from public sources) OR let user import. Email engine is ready and waiting for data.
-2. **Email compliance** — add unsubscribe footer + physical address before real cold sends (CAN-SPAM/GDPR).
-3. **Resend domain verification** — verify a custom domain + set `BRIEF_FROM` for real deliverability (currently `onboarding@resend.dev`).
-4. **Deploy + test the full flow live** — scan → setup wizard → keywords (research) → daily ritual → email → home. A lot was built rapidly; verify each screen renders and functions.
-5. **Reskin `/stories`** and any legacy views to full ink/paper.
-6. **Stripe + Free/Pro paywall** (schema ready via `profiles.plan` + caps).
-7. **Google OAuth verification** (consent screen) + **token encryption** before public launch.
-8. **Ads (Meta/Google)** — large, needs platform approvals.
+
+**Fixed since the last version of this doc** (do not re-report these): email compliance
+(unsubscribe + physical address ship in `buildEmailHtml`, suppression list in
+`lib/compliance.js`); the empty contact directory (`lib/email-engine.js` now seeds it
+from the prospects engine — see `seedDirectory()`); the V1→V2 screen migration; the
+social-copy craft gap; the content engine's shared token budget.
+
+1. **Run the migrations.** `db/onsite.sql` and `db/directory.sql`. Both are idempotent.
+   Until they are run, the traffic panel, lead capture, the money page and the entire
+   nightly outreach path are inert, and they fail QUIETLY, which is the dangerous part.
+
+2. **Set the target customer.** `sourceContacts()` seeds the directory from the scan's
+   `targetCustomer`. If that field describes what the business IS rather than who it
+   SELLS TO, outreach will discover competitors instead of buyers. Highest-leverage
+   single field in the product.
+
+3. **Resend domain verification.** If still sending from `onboarding@resend.dev`, cold
+   email largely lands in spam regardless of copy quality. Verify a domain, or connect
+   Gmail per-user (which sidesteps it entirely and deliverability is better anyway).
+
+4. **Buyer Hunt's segment skew.** Hacker News, GitHub and Software Recommendations are
+   where developers are. A plumber, baker or rug retailer gets little from them. Reddit
+   and Quora carry those segments; the trade-matched Stack Exchange sites help. This is
+   the biggest remaining product gap for non-tech customers.
+
+5. **Real keyword volumes** — Google Ads API approval.
+
+6. **Payments** — see the Stripe/Pakistan note in section 2.
+
+7. **Google OAuth verification + token encryption at rest** before public launch.
+
+8. **Breadth risk.** 23 destinations, each good, none best-in-world. If adoption is soft,
+   the honest question is whether three screens (find buyers asking now / write the thing
+   / prove it made money) would beat twenty-three.
 
 ---
 
@@ -339,7 +448,8 @@ Free = 15 emails/day, Pro = 50/day. Slow drip (spaced sends), never blasted. One
 - Always `npm run build` (or equivalent reasoning) and confirm "Compiled successfully" before delivering.
 - Provide full SQL blocks (`IF NOT EXISTS`) for any schema change; the owner runs them in Supabase.
 - Keep the honesty rules: tap-to-post for non-owned platforms, labeled estimates vs real data, no fake engagement, no em-dashes in copy.
-- Keep the ink/paper + emerald design system, line icons, MG logo, Genie's warm teaching voice.
+- Keep the Apple palette (`app/globals.css`), the drawn wordmark, line icons, and Genie's
+  plain-spoken voice. No em-dashes in user-facing copy.
 - Do NOT rebuild the right-side Genie chat panel (platform-wide already).
 - Flag scope cuts and honest limitations loudly rather than overclaiming.
 - The owner thinks big and wants each feature to feel like a complete product, not a stub.
