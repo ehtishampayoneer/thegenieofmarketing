@@ -6,7 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
-import { DAILY_CAP, sentToday, sourceContacts, draftEmail, sendOne } from "@/lib/email-engine";
+import { DAILY_CAP, sentToday, sourceContacts, draftEmail, deliverEmail } from "@/lib/email-engine";
 import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { logActivity } from "@/lib/activity";
@@ -116,7 +116,16 @@ export async function POST(request) {
     // Compliance: never email someone who opted out.
     if (await isSuppressed(supabase, userId, c.email)) { skipped++; continue; }
     const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name });
-    const res = await sendOne(prof, c.email, subject, emailBody, { unsubscribeUrl: unsubUrl(base, userId, c.email) });
+    // deliverEmail, not sendOne: it tries the user's OWN Gmail first and only
+    // falls back to the platform sender. sendOne skipped that entirely, which is
+    // why the nightly run ignored a connected Gmail and sent from a shared
+    // address with the deliverability that implies.
+    const res = await deliverEmail(supabase, userId, { to: c.email, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, c.email) });
+    // No usable sender means every send in this batch will fail the same way, so
+    // stop rather than marking the whole day's contacts as failed.
+    if (res.needsSender || res.needsConfig) {
+      return json({ ok: false, needsSender: true, sent, error: res.error }, 200);
+    }
     await supabase.from("outreach_log").insert({
       user_id: userId, host, contact_email: c.email, contact_name: c.name,
       subject, body: emailBody, status: res.ok ? "sent" : "failed",
