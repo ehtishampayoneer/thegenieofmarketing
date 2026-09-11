@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
+import SuggestChips from "@/components/ui/v2/SuggestChips";
 
 const PLAYS = [
   { id: "backlinks", label: "Get listed in roundups", blurb: "Blogs & guides that publish “best of” lists you could be added to.", icon: "growth" },
@@ -61,9 +62,13 @@ export default function FeaturedPage() {
     })();
   }, []);
 
-  async function scan() {
-    const q = niche.trim();
+  // Takes an override so a suggestion chip can fill the box AND run in one tap.
+  // Reading `niche` here instead would run the previous value, because setState
+  // has not landed by the time the click handler continues.
+  async function scan(override) {
+    const q = String(override ?? niche).trim();
     if (!q || busy) return;
+    if (override != null) setNiche(q);
     setBusy(true); setErr(""); setDebug(null);
     try {
       const j = await fetch("/api/featured/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ play, niche: q, videoUrl: play === "video" ? videoUrl.trim() : undefined }) }).then((r) => r.json());
@@ -161,11 +166,20 @@ export default function FeaturedPage() {
       {/* search / find more */}
       <div className="mt-4 flex items-center gap-2 flex-wrap">
         <input value={niche} onChange={(e) => setNiche(e.target.value)} onKeyDown={(e) => e.key === "Enter" && scan()}
-          placeholder="Your niche or topic, e.g. rugs, AR shopping tech, sustainable fashion" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
-        <button onClick={scan} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
+          placeholder="Your niche or topic — the space you want written about" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
+        <button onClick={() => scan()} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
           {busy ? "Finding sites…" : (rows && rows.length ? "Find more →" : "Find sites →")}
         </button>
       </div>
+      {/* Suggestions come from this business's own scan, so a plumber is never
+          shown a rug shop's niche. One tap fills the box and runs. */}
+      <SuggestChips
+        surface="featured"
+        onPick={(t) => scan(t)}
+        label="Search for:"
+        note="Broader wins here. A roundup of “handmade rugs” exists; a roundup of your brand name does not."
+        emptyNote="Scan your website first and Genie will suggest the niches worth searching, taken from your own pages."
+      />
       {play === "video" && (
         <div className="mt-2.5">
           <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}

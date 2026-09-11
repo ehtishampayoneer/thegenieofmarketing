@@ -10,8 +10,7 @@ import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
-
-const EXAMPLES = ["rug e-commerce brands", "boutique furniture stores", "independent jewelry makers", "home-decor Shopify stores"];
+import SuggestChips from "@/components/ui/v2/SuggestChips";
 
 export default function ProspectsPage() {
   const [niche, setNiche] = useState("");
@@ -21,9 +20,13 @@ export default function ProspectsPage() {
   const [debug, setDebug] = useState(null);
   const [toast, setToast] = useState("");
 
-  async function find() {
-    const q = niche.trim();
+  // Takes an override so a suggestion chip can fill the box AND run in one tap.
+  // Reading `niche` here instead would search the previous value, because
+  // setState has not landed by the time the click handler continues.
+  async function find(override) {
+    const q = String(override ?? niche).trim();
     if (!q || busy) return;
+    if (override != null) setNiche(q);
     setBusy(true); setErr(""); setRows(null); setDebug(null);
     try {
       const j = await fetch("/api/prospects/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche: q }) }).then((r) => r.json());
@@ -63,17 +66,21 @@ export default function ProspectsPage() {
       {/* search */}
       <div className="mt-5 flex items-center gap-2 flex-wrap">
         <input value={niche} onChange={(e) => setNiche(e.target.value)} onKeyDown={(e) => e.key === "Enter" && find()}
-          placeholder="Who should I target? e.g. rug e-commerce brands" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
-        <button onClick={find} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
+          placeholder="Who should I target? Name the kind of company you sell to" className="mg-field mg-focus" style={{ flex: 1, minWidth: 260, maxWidth: 520, fontSize: 14 }} />
+        <button onClick={() => find()} disabled={busy || !niche.trim()} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>
           {busy ? "Finding companies…" : "Find prospects →"}
         </button>
       </div>
-      {rows === null && !busy && (
-        <div className="mt-3 flex items-center gap-2 flex-wrap text-[13px] mg-subtle">
-          <span>Try:</span>
-          {EXAMPLES.map((ex) => <button key={ex} onClick={() => setNiche(ex)} className="mg-pill mg-focus" style={{ cursor: "pointer" }}>{ex}</button>)}
-        </div>
-      )}
+      {/* Taken from this user's own scan. The examples that used to live here were
+          written for one furniture business, so every other owner was shown
+          targets that had nothing to do with them. */}
+      <SuggestChips
+        surface="prospects"
+        onPick={(t) => find(t)}
+        label="Target:"
+        note="Name a GROUP of companies, not one company. Genie then finds real firms in that group, the right person at each, and writes to them."
+        emptyNote="Scan your website first and Genie will suggest who to target, taken from what your own pages say you sell."
+      />
       {err && <p className="mt-3 text-[13px]" style={{ color: "var(--signal-danger)" }}>{err}</p>}
 
       {busy && (

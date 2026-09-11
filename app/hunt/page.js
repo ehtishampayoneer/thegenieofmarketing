@@ -11,6 +11,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
 import GenieAperture from "@/components/brand/GenieAperture";
+import SuggestChips from "@/components/ui/v2/SuggestChips";
 
 const STAGE_META = {
   ready_to_buy: { label: "Ready to buy", tone: "live" },
@@ -113,6 +114,17 @@ export default function HuntPage() {
         <input value={rivals} onChange={(e) => setRivals(e.target.value)} placeholder="Poach from rivals — name competitors, comma-separated (optional)" className="mg-field mg-focus" style={{ flex: 1, minWidth: 280, maxWidth: 520, fontSize: 13 }} />
         <span className="text-[12px] mg-subtle">Genie hunts people asking for an alternative to them.</span>
       </div>
+      {/* Rivals Genie named when it read the site. Tapping adds to the list
+          rather than replacing it, because poaching from several at once is the
+          normal case. They are inferred, not verified, so the note says so. */}
+      <SuggestChips
+        surface="hunt"
+        mode="toggle"
+        selected={rivals}
+        onToggle={setRivals}
+        label="Your rivals:"
+        note="Genie worked these out from your website, so check them. Add or remove any — a wrong name just wastes one hunt."
+      />
 
       {/* stat strip */}
       <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
