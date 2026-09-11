@@ -186,7 +186,7 @@ export default function WelcomePage() {
     const ai = data?.ai || {};
     setUnderstanding(ai);
     setPhase("confirm");
-    setConvo([{ role: "genie", content: "Here’s how I read your business. Before I build anything, I want to really understand you. A few quick questions will make everything I do sharper, and you can correct anything I got wrong." }]);
+    setConvo([{ role: "genie", content: "I have read your site properly. Here is what I took from it. Tell me where I am wrong, and fill in the few things a website never says, then I will build everything on that." }]);
     // Fetch Genie's investigation agenda, then open with the first question.
     setChatBusy(true);
     try {
