@@ -16,6 +16,7 @@ const PLAYS = [
   { id: "guest", label: "Publish a guest post", blurb: "Sites in your space that accept guest contributors.", icon: "write" },
   { id: "press", label: "Earn press coverage", blurb: "Publications & journalists who cover your niche.", icon: "spark" },
   { id: "directory", label: "Get a directory listing", blurb: "Directories & “best of” sites to be listed on.", icon: "check" },
+  { id: "broken", label: "Fix their broken links", blurb: "Pages linking to something dead. You report it and offer a replacement. The highest reply rate of any link outreach.", icon: "link" },
   { id: "video", label: "Place your video", blurb: "Real listings, profiles and reviews where your video can live. Not another social feed.", icon: "post" },
   { id: "partners", label: "Find partners (co-sell)", blurb: "Complementary businesses to cross-promote with — warm referrals close 10× cold.", icon: "conversations" },
 ];
