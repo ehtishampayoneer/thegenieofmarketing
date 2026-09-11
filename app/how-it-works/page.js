@@ -21,7 +21,7 @@ import { Card, Pill } from "@/components/ui/v2/primitives";
 // ── 01 · the five jobs ────────────────────────────────────────────────────────
 const JOBS = [
   { icon: "crosshair", t: "Finds people asking to buy right now", p: "Across Reddit, Quora and the question sites that match your trade, then drafts your reply." },
-  { icon: "write", t: "Writes your content", p: "Aimed at the exact phrases your buyers type into Google, using your own facts where you have given them." },
+  { icon: "write", t: "Writes your content", p: "Aimed at the exact phrases your buyers type into Google, using your own facts where you have given them. You can also just tell it what to write about and attach your own photos." },
   { icon: "search", t: "Checks what AI tells your buyers", p: "When someone asks ChatGPT or Perplexity what to buy, Genie checks whether you get named or a rival does, then writes the page that gives you a better shot." },
   { icon: "mail", t: "Runs your outreach", p: "Finds real companies, the right person at each, and a pitch written for that business. Capped, compliant, sent from your own address." },
   { icon: "bolt", t: "Measures everything", p: "Rankings, clicks, replies, and where a payment provider is connected, real revenue traced back to the page that earned it." },
@@ -61,6 +61,7 @@ const DECISIONS = [
   { k: "E", t: "Edit", tone: "info", p: "Change the wording, swap the image, adjust the framing. Your edit is saved and used, and Genie learns from what you changed." },
   { k: "S", t: "Skip", tone: "neutral", p: "Not now. It leaves the queue, and Genie gets sharper about what you actually want." },
   { k: "← →", t: "Move", tone: "neutral", p: "Arrow keys move through the queue without the mouse. The whole review is built to be done from the keyboard in a couple of minutes." },
+  { k: "✦", t: "Sharpen", tone: "info", p: "While editing, this rewrites the draft harder using the rules for wherever it is going, and tells you what it changed. Nothing saves until you press Save, so you can always throw the rewrite away." },
 ];
 
 const ON_APPROVE = [
@@ -79,8 +80,10 @@ const ROOMS = [
     items: [
       { icon: "home", t: "Today", href: "/today", tag: ["live", "Daily"], p: "Home. What Genie did overnight, the next three best moves, this week's growth, and what is waiting on you.", when: "Open every morning" },
       { icon: "tasks", t: "Approvals", href: "/approvals", tag: ["live", "Daily"], p: "The review station. Everything Genie made, one at a time, with a real preview of exactly what goes out. Approve, edit or skip.", when: "The one screen you must not skip" },
+      { icon: "write", t: "Ask Genie to write", href: "/write", tag: ["live", "Active"], p: "Genie picks its own topics from your keyword strategy. This is for when you have news, an announcement or an angle it would never find on its own. Tell it what to write, paste anything it should know, attach your own photos and a video, and choose article, social or both.", when: "When something happens in your business that is worth writing about" },
       { icon: "crosshair", t: "Buyer Hunt", href: "/hunt", tag: ["live", "Money now"], p: "A live board of the hottest buyers Genie found, ranked 0 to 100 by how close they are to buying. It searches Reddit, Quora and the question sites that fit your trade, so a bakery and a software company each get their own buyers. One tap copies Genie's reply and opens the thread. Name your rivals here to catch their unhappy users.", when: "Check when you want customers this week, not this quarter" },
       { icon: "coins", t: "Revenue Recovery", href: "/recover", tag: ["live", "Fast money"], p: "Upload your old leads and past customers. Genie reads each one and writes a specific win-back message, you review and send from your own Gmail. Warm contacts convert in days, which makes this the fastest money in the product.", when: "Do this in week one if you have any old list at all" },
+      { icon: "post", t: "Video", href: "/video", tag: ["live", "Active"], p: "Give Genie a video and it gives you back a caption file for YouTube, chapters for the description, and your three strongest clips to cut, with real timestamps. It also saves the facts you said out loud, which is what makes every later article sound like you.", when: "Any time you record something" },
       { icon: "conversations", t: "Conversations", href: "/conversations", tag: ["live", "Active"], p: "Every conversation Genie is running for you, told as a story: found, wrote, posted, got traction, replies came in, still watching.", when: "Open when you want to feel the work happening" },
       { icon: "target", t: "Find clients", href: "/prospects", tag: ["live", "Active"], p: "Name a niche. Genie finds real companies in it, the decision-maker at each, their best contact address, and a pitch written for that specific business. You review, tweak and send.", when: "For deliberate outbound, not spray and pray" },
       { icon: "megaphone", t: "Get featured", href: "/featured", tag: ["live", "Active"], p: "Four plays: roundups, guest posts, press and directories. Genie finds sites that could feature you and drafts the outreach. Sites you already applied to are held back for 60 days so you never pitch twice. Also holds the partnership finder.", when: "Earned media, plus warm referral partners" },
