@@ -117,7 +117,7 @@ export default function SettingsPage() {
             </div>
             <div className="mt-4 mg-surface-quiet p-3.5">
               <p className="text-[12px]" style={{ color: "var(--fg-muted)", lineHeight: 1.5 }}>
-                <b style={{ color: "var(--fg)" }}>How sending works today:</b> Genie sends from a verified, spam-safe address on your behalf, and every reply lands in <b style={{ color: "var(--fg)" }}>{f.sender_email || "your email"}</b>. To send from your <i>own</i> address (e.g. you@yourbusiness.com) with best deliverability, connect Gmail or verify your domain — coming from the Connections page.
+                <b style={{ color: "var(--fg)" }}>How sending works:</b> outreach goes out through your <i>own</i> connected Gmail, so it arrives with your reputation behind it and replies land where you already read email. You cannot simply type an address here and have Genie send as you: mail providers check that the sender really is who it claims to be, and a message failing that check goes to spam. So if no mailbox is connected, Genie <b style={{ color: "var(--fg)" }}>declines to send</b> rather than burning the contact on an email nobody will see. Connect Gmail on the Connections page.
               </p>
             </div>
           </Card>
@@ -210,55 +210,121 @@ function FirstPartyFacts() {
 // same signed ingest key the conversion pixel and commerce webhooks already use,
 // so there is nothing new to configure.
 function InstallSnippet() {
-  const [token, setToken] = useState(null);
-  const [origin, setOrigin] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [info, setInfo] = useState(null);      // platform, tag, plugin
   const [traffic, setTraffic] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [devEmail, setDevEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState("");
+  const [showDev, setShowDev] = useState(false);
 
   useEffect(() => {
-    try { setOrigin(window.location.origin); } catch {}
     (async () => {
-      // The ingest token is already issued by /api/impact for the revenue setup.
-      const r = await fetchLive("/api/impact");
-      if (r.live && r.data?.token) setToken(r.data.token);
+      const i = await fetchLive("/api/install");
+      if (i.live && i.data?.ok) setInfo(i.data);
       const t = await fetchLive(`/api/traffic?tz=${new Date().getTimezoneOffset()}`);
       if (t.live && t.data) setTraffic(t.data);
     })();
   }, []);
 
-  const tag = token && origin
-    ? `<script src="${origin}/api/embed?k=${token}" async></script>`
-    : null;
-
   async function copy() {
-    if (!tag) return;
-    try { await navigator.clipboard.writeText(tag); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+    if (!info?.tag) return;
+    try { await navigator.clipboard.writeText(info.tag); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+  }
+
+  async function sendToDev() {
+    const to = devEmail.trim();
+    if (!to || sending) return;
+    setSending(true); setSent("");
+    try {
+      const j = await fetch("/api/install", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to }),
+      }).then((r) => r.json());
+      setSent(j?.ok
+        ? `Sent to ${j.sentTo}. They have everything they need.`
+        : (j?.error || "Could not send that just now."));
+      if (j?.ok) setDevEmail("");
+    } catch { setSent("Could not send that just now."); }
+    setSending(false);
   }
 
   const installed = traffic?.installed;
+  const platform = info?.platform;
 
   return (
     <Card className="lg:col-span-2 p-5">
       <div className="flex items-center gap-2 flex-wrap">
-        <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Your website snippet</h2>
+        <h2 className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Turn on visitor tracking</h2>
         {installed
           ? <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> Installed and counting</span>
           : <span className="mg-pill">Not installed yet</span>}
       </div>
       <p className="text-[13px] mg-muted mt-1" style={{ maxWidth: "var(--measure)" }}>
-        Paste this once into your own website, just before the closing <code style={CODE}>&lt;/body&gt;</code> tag. It does three jobs: counts how many people visit you, catches visitors who are not ready to buy yet, and sends everyone else to your buy page. It never slows your site down and collects no personal data.
+        One line on your own website lets Genie count your visitors, catch the ones who are not ready to buy, and send the rest to your buy page. It is the same kind of tag as Google Analytics: it loads last so it cannot slow your site, sets no cookies, and collects nothing unless someone types their email in.
       </p>
 
+      {/* the line itself */}
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <code style={{ ...CODE, flex: 1, minWidth: 260, padding: "10px 12px", borderRadius: 10, display: "block", overflowX: "auto", whiteSpace: "nowrap" }}>
-          {tag || "Sign in to get your snippet."}
+          {info?.tag || "Loading your line…"}
         </code>
-        <button onClick={copy} disabled={!tag} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
+        <button onClick={copy} disabled={!info?.tag} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
 
-      <p className="text-[12px] mg-subtle mt-2">
+      {/* where it goes, named for THEIR platform */}
+      {platform && (
+        <div className="mt-4 p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>
+            {platform.id === "generic"
+              ? "Where it goes"
+              : `Where it goes on ${platform.name}`}
+          </p>
+          <ol className="mt-1.5 flex flex-col gap-1" style={{ margin: 0, paddingLeft: 18 }}>
+            {platform.steps.map((st, i) => (
+              <li key={i} className="text-[12.5px] mg-muted" style={{ lineHeight: 1.5 }}>{st}</li>
+            ))}
+          </ol>
+
+          {info?.plugin && (
+            <a href={info.plugin} className="mg-btn mg-btn--dawn mt-3 inline-flex" style={{ fontSize: 13 }}>
+              Download the plugin
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* hand it to whoever looks after the site */}
+      <div className="mt-3">
+        {!showDev ? (
+          <button onClick={() => setShowDev(true)} className="mg-focus" style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--accent-ink)", fontSize: 13, fontWeight: 600 }}>
+            Someone else manages my website →
+          </button>
+        ) : (
+          <div className="p-3.5 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>Send it to them</p>
+            <p className="text-[12.5px] mg-muted mt-0.5" style={{ maxWidth: "var(--measure)" }}>
+              Genie emails them the line, the exact steps for {platform?.id === "generic" ? "your site" : platform?.name}, and what it does and does not do. It goes from your own email address, so they know it is really you.
+            </p>
+            <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+              <input
+                value={devEmail} onChange={(e) => setDevEmail(e.target.value)} type="email"
+                onKeyDown={(e) => e.key === "Enter" && sendToDev()}
+                placeholder="their@email.com"
+                className="mg-field mg-focus" style={{ flex: 1, minWidth: 220, maxWidth: 320, fontSize: 13 }}
+              />
+              <button onClick={sendToDev} disabled={sending || !devEmail.trim()} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
+                {sending ? "Sending…" : "Send"}
+              </button>
+            </div>
+            {sent && <p className="mt-2 text-[12.5px]" style={{ color: "var(--fg-muted)" }}>{sent}</p>}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[12px] mg-subtle mt-3">
         Optional: put <code style={CODE}>data-genie=&quot;buy&quot;</code> on any button of your own and Genie will point it at your buy page with tracking attached.
       </p>
     </Card>
