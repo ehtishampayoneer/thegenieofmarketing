@@ -41,6 +41,11 @@ export async function POST(request) {
     try { const { refreshStalePage } = await import("@/lib/refresh"); await refreshStalePage(admin, { userId, host, minStaleDays: 30 }); } catch {}
     // Pull any outreach replies into the Genie Inbox and notify (no-op without Gmail read).
     try { const { syncReplies } = await import("@/lib/gmail-read"); await syncReplies(admin, userId); } catch {}
+    // Did any of the outreach actually earn a link? Checks the sites this user
+    // pitched and marked applied, so the learning loop can finally see which
+    // plays produce links instead of only being able to count Reddit upvotes.
+    // Best-effort, bounded, and deduped per domain so counts never inflate.
+    try { const { scanEarnedLinks } = await import("@/lib/backlinks"); await scanEarnedLinks(admin, { userId, host }); } catch {}
     await recordEvent(admin, { userId, host, type: "system.entity.run", actor: "system", data: metrics });
     await recordEvent(admin, { userId, host, type: "system.entity.done", actor: "system", dedupeKey: `entity-done:${userId}:${host}:${day}`, data: { day } });
     logger.info("entity.done", { userId, host, ...metrics });

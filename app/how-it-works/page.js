@@ -52,6 +52,7 @@ const NIGHT = [
   { t: "It scans for replies and drafts answers", p: "New replies on your posts become notifications with a suggested answer already written. With Gmail connected, outreach replies are pulled in and threaded in your Inbox." },
   { t: "It finds people to reach, then reaches them", p: "Genie discovers real businesses matching who you sell to, reads a contact address off each company's own published pages, and checks every address is live before using it. Then it sends a small, spaced batch from your own Gmail. Never a blast, and never from a shared address that would land in spam." },
   { t: "It refreshes pages going stale", p: "A page you already won with, untouched for 30 days, gets an improved version staged for approval at the same address. Rankings you earned do not quietly slip away." },
+  { t: "It checks whether your links landed", p: "For every site you pitched and marked as agreed, Genie goes back and looks for a real link to you. It reports the page, the anchor text, and whether the link passes ranking strength or is nofollow. That is how you find out which outreach was worth doing, instead of guessing." },
   { t: "It writes down what it learned", p: "Every decision, the reason for it, and how confident it was. You can read all of it in What Genie Learned. Nothing about its reasoning is hidden from you." },
 ];
 

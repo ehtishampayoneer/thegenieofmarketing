@@ -36,6 +36,10 @@ export default function FeaturedPage() {
   // The video play pitches a specific video, so its link travels with the
   // request and ends up inside every drafted email.
   const [videoUrl, setVideoUrl] = useState("");
+  // Links the nightly scan has confirmed live on sites we pitched. This is the
+  // only place the outreach loop closes: without it, plays run forever with no
+  // way to tell which ones earn anything.
+  const [earned, setEarned] = useState(null);
 
   const loadList = useCallback(async (pl) => {
     setLoading(true); setRows(null); setErr("");
@@ -48,6 +52,14 @@ export default function FeaturedPage() {
   }, []);
 
   useEffect(() => { loadList(play); }, [play, loadList]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const j = await fetch("/api/backlinks", { cache: "no-store" }).then((r) => r.json());
+        if (j?.ok) setEarned(j);
+      } catch {}
+    })();
+  }, []);
 
   async function scan() {
     const q = niche.trim();
@@ -99,6 +111,35 @@ export default function FeaturedPage() {
         <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Get featured</h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>The most powerful marketing is when <b style={{ color: "var(--fg)" }}>others</b> talk about you. Pick a goal, name your niche, and Genie finds real sites, the right contact, and a genuine pitch. You review and send from your own email. No fake accounts, no bought links.</p>
       </div>
+
+      {/* ── WHAT THE OUTREACH EARNED ── */}
+      {earned && earned.total > 0 && (
+        <Card className="mt-4 p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="mg-verified">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg>
+              {earned.total} link{earned.total === 1 ? "" : "s"} live
+            </span>
+            <span className="text-[13px] mg-muted">
+              <b style={{ color: "var(--fg)" }}>{earned.follow}</b> pass ranking strength
+              {earned.nofollow > 0 ? `, ${earned.nofollow} are nofollow (brand and referral only)` : ""}
+            </span>
+          </div>
+          <div className="mt-2.5 flex flex-col gap-1.5">
+            {earned.links.slice(0, 6).map((l) => (
+              <div key={l.domain} className="flex items-center gap-2 flex-wrap text-[12.5px]">
+                <span className="font-semibold" style={{ color: "var(--fg)" }}>{l.company || l.domain}</span>
+                {l.anchor && <span className="mg-subtle">“{l.anchor}”</span>}
+                {l.nofollow && <span className="mg-pill">nofollow</span>}
+                {l.page && <a href={l.page} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>see it →</a>}
+              </div>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[11.5px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
+            Genie checks the sites you pitched and marked as applied, once a night. This is what your outreach earned, not a full backlink report for your whole domain.
+          </p>
+        </Card>
+      )}
 
       {/* play selector — each keeps its own saved results */}
       <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
