@@ -50,7 +50,7 @@ const NIGHT = [
   { t: "It builds topic hubs", p: "Once several related articles exist, Genie assembles one hub page linking them all together, and links each back. Search engines read that shape as expertise on a subject. One hub per night at most." },
   { t: "It checks how earlier work performed", p: "It reads engagement on everything it posted, sorts it into winning, flat or dud, and feeds that back into what it chooses to do next." },
   { t: "It scans for replies and drafts answers", p: "New replies on your posts become notifications with a suggested answer already written. With Gmail connected, outreach replies are pulled in and threaded in your Inbox." },
-  { t: "It sends the day's outreach", p: "A capped, spaced batch. Never a blast." },
+  { t: "It finds people to reach, then reaches them", p: "Genie discovers real businesses matching who you sell to, reads a contact address off each company's own published pages, and checks every address is live before using it. Then it sends a small, spaced batch from your own Gmail. Never a blast, and never from a shared address that would land in spam." },
   { t: "It refreshes pages going stale", p: "A page you already won with, untouched for 30 days, gets an improved version staged for approval at the same address. Rankings you earned do not quietly slip away." },
   { t: "It writes down what it learned", p: "Every decision, the reason for it, and how confident it was. You can read all of it in What Genie Learned. Nothing about its reasoning is hidden from you." },
 ];
@@ -121,7 +121,7 @@ const ROOMS = [
 const CONNECTIONS = [
   { name: "Google", sub: "Search Console and Analytics", unlocks: "Real rankings, real clicks, real impressions, replacing estimates. Your ranking history chart becomes genuine, keyword retirement gets accurate, and country data for market testing becomes verified rather than projected.", tag: ["live", "Do first"] },
   { name: "Your blog", sub: "WordPress", unlocks: "Approved articles publish straight to your own site instead of a hosted Genie page, so your domain gets the authority rather than ours.", tag: ["live", "Do first"] },
-  { name: "Gmail", sub: "", unlocks: "Outreach sends from your own address, which lands in inboxes far more reliably. Replies are pulled back into your Genie Inbox automatically.", tag: ["info", "Before outreach"] },
+  { name: "Gmail", sub: "", unlocks: "Required for outreach, not optional. Email sent through your own Gmail arrives with your reputation behind it; sent from a shared address it lands in spam, and you only get one first email to a person. Without it Genie declines to send rather than waste the contact. Replies also thread back into your Inbox automatically.", tag: ["info", "Needed to send"] },
   { name: "Payment provider", sub: "Stripe, Shopify and others", unlocks: "Real revenue attribution. A guided three-step setup, then you send a test event and Genie confirms it arrived. After that, every sale traces back to the exact page that drove it.", tag: ["info", "For proof"] },
   { name: "X", sub: "", unlocks: "Links your account so posts are prepared for it. Posting is still your tap, deliberately.", tag: ["draft", "Optional"] },
 ];

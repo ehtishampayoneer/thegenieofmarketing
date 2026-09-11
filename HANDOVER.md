@@ -444,6 +444,37 @@ social-copy craft gap; the content engine's shared token budget.
 ---
 
 ## 12. GROUND RULES FOR THE NEXT ASSISTANT
+
+### ⚠️ THE SHIP CHECKLIST — do every line before calling a feature done
+
+This exists because it has already gone wrong twice. This file described V1
+screens for months after they were deleted, and `/capabilities` was missing six
+shipped features at once. **Code that nobody can find out about is not shipped.**
+
+- [ ] **`app/capabilities/page.js`** — add the feature. Say what it will NOT do as
+      well as what it will, and give it an honest status (`live`, `info` =
+      needs a connection, `pending` = waiting on someone else, `draft` = you post
+      it). The live/total counter is computed, so it updates itself.
+- [ ] **`app/how-it-works/page.js`** — if it is a new screen, add a room card that
+      links to it. If it changes the nightly run, update the night-shift list. If
+      it changes what a connection unlocks, update that table.
+- [ ] **`HANDOVER.md`** — section 2 (built / limits) and section 11 (gaps). If you
+      fixed something listed as a gap, MOVE it to the fixed line so the next
+      reader does not re-report it.
+- [ ] **`db/*.sql`** — any new table or column gets its own idempotent file, and
+      goes in the migrations table in section 7. Never leave a table that the code
+      reads but no file defines: that is exactly how `directory_contacts` ended up
+      being read by the outreach engine and written by nothing.
+- [ ] **`.env.example`** — any new env var, with a comment on what happens when it
+      is unset. If unset means "refuse to act", say so; that is a feature.
+- [ ] **`npx next build`** clean, and **`npx vitest run`** still green.
+- [ ] Say plainly what you could NOT verify. Most of this app cannot be exercised
+      without a signed-in session and live keys, so "it compiles" is not "it works",
+      and claiming otherwise is how trust in this document dies.
+
+---
+
+## 12. GROUND RULES FOR THE NEXT ASSISTANT
 - Deliver **complete paste-ready files** with exact paths. No diffs. No local-terminal assumptions.
 - Always `npm run build` (or equivalent reasoning) and confirm "Compiled successfully" before delivering.
 - Provide full SQL blocks (`IF NOT EXISTS`) for any schema change; the owner runs them in Supabase.
