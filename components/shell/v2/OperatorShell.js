@@ -26,6 +26,7 @@ const NAV = [
   { section: "Your employee" },
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
+  { id: "write", label: "Ask Genie to write", icon: Icon.write },
   { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
   { id: "recover", label: "Revenue Recovery", icon: Icon.coins },
   { id: "conversations", label: "Conversations", icon: Icon.conversations },
@@ -290,7 +291,7 @@ export default function OperatorShell({ active = "today", children }) {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/approvals", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
+    today: "/today", approvals: "/approvals", write: "/write", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation", site: "/site", markets: "/markets",
     trust: "/trust", connections: "/connections", settings: "/settings", howitworks: "/how-it-works", capabilities: "/capabilities",
   };

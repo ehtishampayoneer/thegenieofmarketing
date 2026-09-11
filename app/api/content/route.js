@@ -29,6 +29,17 @@ export async function POST(request) {
   }
 
   let { ai, gsc, topic, scanId, host } = body || {};
+  // ── AN OWNER-DIRECTED BRIEF (from /write) ──
+  // `topic` alone was always supported; these are what make it a real brief.
+  // `context` is the owner's own material: the news, the announcement, the angle.
+  // It outranks everything Genie would infer, because it is the one part of the
+  // prompt that is definitely true and definitely theirs.
+  // `images` / `video` are files they uploaded, used INSTEAD of a stock photo.
+  const context = String(body?.context || "").trim().slice(0, 4000);
+  const attachedImages = Array.isArray(body?.images) ? body.images.filter((u) => typeof u === "string" && /^https?:\/\//.test(u)).slice(0, 8) : [];
+  const attachedVideo = typeof body?.video === "string" && /^https?:\/\//.test(body.video) ? body.video : null;
+  // "article" | "social" | "both". Defaults to both, which is the nightly behaviour.
+  const channels = ["article", "social", "both"].includes(body?.channels) ? body.channels : "both";
 
   // Resolve the caller up front (browser session or trusted cron).
   const { supabase, userId } = await resolveRadarUser(request, body);
@@ -135,7 +146,7 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500,
       temperature: 0.7,
-      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty }),
+      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context }),
     });
     data = result.json;
     provider = result.provider;
@@ -153,7 +164,7 @@ export async function POST(request) {
   // failure lost everything, so this is strictly more resilient than what it
   // replaced. `socialFailed` is reported honestly rather than hidden.
   let socialFailed = false;
-  if (data.article?.body) {
+  if (data.article?.body && channels !== "article") {
     try {
       const soc = await callAI({
         system:
@@ -161,7 +172,7 @@ export async function POST(request) {
         json: true,
         maxTokens: 2600,
         temperature: 0.75,
-        prompt: buildSocialPrompt({ ai, directives, pick, firstParty, article: data.article }),
+        prompt: buildSocialPrompt({ ai, directives, pick, firstParty, article: data.article, context }),
       });
       const sj = soc.json;
       if (sj && typeof sj === "object") {
@@ -218,7 +229,12 @@ export async function POST(request) {
       // preview shows exactly what publishes. Best-effort — text-only if none found.
       let heroPick = null, socialImage = null, pinData = null, carouselData = null;
       try {
-        heroPick = await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
+        // An uploaded photo wins. Substituting it HERE rather than at the end means
+        // the branded card, the Pinterest pin and the carousel all build on the
+        // owner's image automatically, with no separate path to keep in sync.
+        heroPick = attachedImages.length
+          ? { url: attachedImages[0], alt: data.article?.title || topic || "", source: "upload", credit: null }
+          : await pickPostImage({ topic: data.article?.title || primaryKw || topic || "", siteUrl: host });
         if (heroPick && data.article) {
           data.article.heroImage = data.article.heroImage || heroPick.url; // article hero = the raw photo
           data.article.heroImageAlt = data.article.heroImageAlt || heroPick.alt;
@@ -270,6 +286,14 @@ export async function POST(request) {
         }
       } catch {}
 
+      // The owner's own attachments ride along on the draft. The Approvals
+      // normaliser already reads payload.images, so a gallery needs nothing new,
+      // and the published page can embed the video with VideoObject schema.
+      if (data.article) {
+        if (attachedImages.length) data.article.images = attachedImages;
+        if (attachedVideo) data.article.video = attachedVideo;
+      }
+
       const rows = [];
       // Validate AI priorities; reject unknowns → 'medium'.
       const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
@@ -293,7 +317,7 @@ export async function POST(request) {
           status: "proposed",
         });
       }
-      const social = data.social || {};
+      const social = channels === "article" ? {} : (data.social || {});
       const pushSocial = (platform, text) =>
         rows.push({
           user_id: userId,
@@ -368,7 +392,7 @@ export async function POST(request) {
   return json({ ok: true, saved: actionIds.length, content: data, actionIds, socialFailed, meta: { engine: provider } });
 }
 
-function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null }) {
+function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "" }) {
   const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
     ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
     : "";
@@ -429,7 +453,14 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
     ai.tone ? `Owner's preferred tone: ${ai.tone}.` : "",
   ].filter(Boolean).join("\n");
 
-  return `${standing}Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
+  // The owner asked for THIS, and supplied THIS material. It is the only part of
+  // the prompt that is certainly true and certainly theirs, so it goes first and
+  // outranks the inferred business profile below it.
+  const brief = context
+    ? `WHAT THE OWNER ASKED FOR, IN THEIR OWN WORDS. This is the brief. Build the piece around it, use every concrete detail in it, and never contradict it. If it names news, a date, a product or a claim, that is the spine of the article, not a passing mention:\n"""\n${context}\n"""\n`
+    : "";
+
+  return `${brief}${standing}Business: ${ai.businessName || "the business"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}.
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${insight ? insight + "\n" : ""}${voice}
@@ -501,7 +532,7 @@ Make it genuinely specific to this business — real value, not generic advice.`
 // Now it gets the finished article, the full craft rules, and a budget of its
 // own. One extra call per content run, which is nothing against the router's
 // free daily allowances.
-function buildSocialPrompt({ ai, directives = [], pick = null, firstParty = null, article = {} }) {
+function buildSocialPrompt({ ai, directives = [], pick = null, firstParty = null, article = {}, context = "" }) {
   const voice = ai.brandVoice
     ? `Brand voice: ${ai.brandVoice.tone || ""}, ${ai.brandVoice.formality || "balanced"}. ${ai.brandVoice.note || ""}`
     : "Brand voice: clear, warm, professional.";
@@ -512,7 +543,10 @@ function buildSocialPrompt({ ai, directives = [], pick = null, firstParty = null
     ? `\nREAL DETAILS FROM THIS BUSINESS you may reference (never contradict them):${firstParty.data ? `\n- ${firstParty.data}` : ""}${firstParty.proof ? `\n- ${firstParty.proof}` : ""}`
     : "";
 
-  return `${standing}Business: ${ai.businessName || "the business"} — ${ai.whatTheySell || ""}.
+  const brief = context
+    ? `THE OWNER'S BRIEF (their own words, treat every detail as fact):\n"""\n${context}\n"""\n`
+    : "";
+  return `${brief}${standing}Business: ${ai.businessName || "the business"} — ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${voice}${fp}
 ${ai.avoid ? `NEVER say, claim, or promise: ${ai.avoid}.` : ""}
