@@ -145,7 +145,7 @@ export default function WelcomePage() {
       const h = hostOf(json.finalUrl || json.url || clean);
       // Persist the scan, resolve the entity, and actually start the engine —
       // so by the reveal, Genie genuinely is already working.
-      fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: json.url, finalUrl: json.finalUrl, scores: json.scores, accuracy: json.accuracy, checks: json.checks, ai: json.ai, speed: json.speed, gsc: json.gsc }) }).catch(() => {});
+      fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: json.url, finalUrl: json.finalUrl, scores: json.scores, accuracy: json.accuracy, checks: json.checks, ai: json.ai, speed: json.speed, gsc: json.gsc, pageText: json.pageText }) }).catch(() => {});
       try { const e = await fetch(`/api/entity?host=${encodeURIComponent(h)}`).then((r) => r.json()); if (e.ok) setEntity({ ...e.entity, host: h }); } catch {}
       kickoff(h, json.ai || {});
     } catch { setErr("Something interrupted me. Let’s try again."); setPhase("intro"); }
@@ -190,7 +190,7 @@ export default function WelcomePage() {
     // Fetch Genie's investigation agenda, then open with the first question.
     setChatBusy(true);
     try {
-      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai, action: "questions" }) }).then((x) => x.json());
+      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai, action: "questions", pageText: data?.pageText || "" }) }).then((x) => x.json());
       const qs = Array.isArray(r?.questions) ? r.questions : [];
       if (qs.length) setConvo((c) => [...c, { role: "genie", content: qs[0] }]);
     } catch {}

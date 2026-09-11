@@ -24,20 +24,16 @@ async function context(supabase, userId, origin) {
 
   let host = null, site = null;
   try {
-    const { data: scan } = await supabase.from("scans").select("final_url, url, html")
+    const { data: scan } = await supabase.from("scans").select("final_url, url")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (scan) { host = hostOf(scan); site = scan.final_url || scan.url || null; }
   } catch {}
 
-  // Prefer HTML the scan already stored. Only fetch the page when we have none,
-  // so opening this panel does not hit the customer's site every single time.
+  // Platform detection needs raw HTML markers (cdn.shopify.com, wp-content and
+  // so on), which the stored page_text deliberately does not contain, so this
+  // fetches the page. One request when the panel is opened, not per pageview.
   let html = "";
-  try {
-    const { data: scan } = await supabase.from("scans").select("html")
-      .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    html = scan?.html || "";
-  } catch {}
-  if (!html && site) {
+  if (site) {
     try {
       const r = await safeFetch(site, { signal: AbortSignal.timeout(9000) });
       if (r?.ok) html = (await r.text()).slice(0, 200000);

@@ -26,7 +26,7 @@ export async function POST(request) {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
 
-  const { url, finalUrl, scores, accuracy, checks, ai, speed, gsc } = body || {};
+  const { url, finalUrl, scores, accuracy, checks, ai, speed, gsc, pageText } = body || {};
   if (!url || !scores) {
     return json({ ok: false, error: "Missing scan data." }, 400);
   }
@@ -60,6 +60,8 @@ export async function POST(request) {
       ai: ai || null,
       speed: speed || null,
       gsc: gsc || null,
+      // Capped again here: the client sends this, so the size is not ours to trust.
+      page_text: pageText ? String(pageText).slice(0, 4000) : null,
     })
     .select("id, created_at")
     .single();

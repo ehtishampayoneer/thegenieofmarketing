@@ -118,6 +118,10 @@ export async function POST(request) {
     accuracy: computeAccuracy({ speedAvailable: speed.ok, gscVerified: !!gsc }),
     checks,
     signals: publicSignals(audit.signals),
+    // The text the scan actually read. Returned so the understanding check can
+    // CONFIRM what is on the site ("I can see your pricing starts at X") instead
+    // of asking the owner for something printed on their own homepage.
+    pageText: audit.pageText || "",
     ai,
     meta: { engine: aiProvider }, // internal — for your debugging, not shown as a brand
   });

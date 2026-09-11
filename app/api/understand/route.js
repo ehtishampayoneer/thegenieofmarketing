@@ -41,15 +41,43 @@ export async function POST(request) {
   // ── Investigation agenda ── the highest-value questions to ask THIS owner before
   // building anything. Called once when the confirm step opens.
   if (action === "questions") {
+    // The text the scan actually read. Without this the generator only ever saw
+    // a dozen extracted fields, which is why it asked owners for things printed
+    // on their own homepage.
+    const pageText = String(body?.pageText || "").slice(0, 4000);
     try {
       const result = await callAI({
         system:
-          "You are Genie, an AI marketing employee. Before building a business's marketing you interview the owner to learn what a website can't tell you. Ask the FEWEST, highest-value questions that will most sharpen the marketing — only what you genuinely can't infer from the site. Return ONLY valid JSON.",
-        json: true, maxTokens: 700, temperature: 0.5,
-        prompt: `Business as I understand it so far:
+          "You are Genie, an AI marketing employee who has just read this business's website closely. " +
+          "You are talking to the owner. You must sound like someone who READ THE SITE, never like a form. " +
+          "The single worst thing you can do is ask for something that is written on their own page: it tells them you did not really look. " +
+          "Return ONLY valid JSON.",
+        json: true, maxTokens: 800, temperature: 0.5,
+        prompt: `What I worked out about the business:
 ${describe(ai)}
+${pageText ? `
+WHAT I ACTUALLY READ ON THEIR SITE:
+"""
+${pageText}
+"""` : ""}
 
-Give the 4-5 most valuable questions to ask this owner so I market them correctly — the gaps a homepage can't answer: who exactly the ideal customer is, why buyers really choose them over competitors, the #1 action they want a visitor to take, which products/services to push, proof or results worth leading with, anything I must NOT say, and their preferred tone. Each question must be specific to THIS business, short, and plain-spoken. Return ONLY: {"questions":["...","..."]}`,
+Write 4-5 short lines to send the owner. Two rules decide the shape of each one:
+
+1. If the answer IS on their site, do NOT ask for it. Say what you found and ask
+   them to confirm or add to it. Quote the real detail back, with their actual
+   numbers, names or wording:
+     "I can see your plans start at $49 and Pro is $149. Is that current, and which one do you most want people on?"
+     "It looks like you mainly sell to furniture and rug retailers. Is that who you want more of, or is there a better fit?"
+
+2. Only ask an open question when the site genuinely does not answer it. The
+   things a homepage almost never says: why buyers actually choose them over a
+   competitor, their single best type of customer, real results or numbers from
+   happy customers, anything you must never claim, and their preferred tone.
+
+Order them with the confirmations first, so the owner sees you read the site before you ask them for anything.
+Plain-spoken, one line each, no jargon, no em-dashes. Never invent a number or a detail that is not in what I read.
+
+Return ONLY: {"questions":["...","..."]}`,
       });
       const qs = Array.isArray(result.json?.questions) ? result.json.questions.map((q) => String(q || "").trim()).filter(Boolean).slice(0, 5) : [];
       return json({ ok: true, questions: qs.length ? qs : DEFAULT_QUESTIONS });
