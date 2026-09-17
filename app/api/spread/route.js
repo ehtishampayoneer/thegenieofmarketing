@@ -10,6 +10,7 @@
 // Nothing here posts anything anywhere. Genie writes; you paste.
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveRadarUser } from "@/lib/radar-auth";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { recordEvent, getEvents } from "@/lib/events";
 import { spreadPrompt, normalizePack, CHANNEL_INDEX } from "@/lib/spread";
@@ -51,12 +52,13 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
-
   let body = {};
   try { body = await request.json(); } catch {}
+  // The nightly run prepares these too, so the owner opens the page and the
+  // versions are already written.
+  const { supabase, userId } = await resolveRadarUser(request, body);
+  if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
+  const user = { id: userId };
   const pageId = String(body?.pageId || "");
   if (!pageId) return json({ ok: false, error: "Which article?" }, 400);
 
@@ -64,9 +66,11 @@ export async function POST(request) {
     .select("id, title, body_html, handle, slug, host").eq("id", pageId).eq("user_id", user.id).maybeSingle();
   if (!page) return json({ ok: false, error: "Article not found." }, 404);
 
-  // Written once and kept: pressing the button again should cost nothing.
-  const [existing] = await getEvents(supabase, { userId: user.id, types: ["spread.pack"], limit: 200 });
-  const cached = existing?.data?.pageId === pageId ? existing.data.pack : null;
+  // Written once and kept: pressing the button again should cost nothing. Search
+  // the saved packs for THIS article, not just the newest one, or every article
+  // after the first would be rewritten (and paid for) on every press.
+  const saved = await getEvents(supabase, { userId: user.id, types: ["spread.pack"], limit: 200 });
+  const cached = saved.find((e) => e?.data?.pageId === pageId)?.data?.pack || null;
   if (cached?.length) return json({ ok: true, pack: cached, cached: true });
 
   let ai = {};
@@ -76,8 +80,8 @@ export async function POST(request) {
     ai = scan?.ai || {};
   } catch {}
 
-  const [own] = await getEvents(supabase, { userId: user.id, types: ["publish.own_url"], limit: 100 });
-  const ownUrl = own?.data?.pageId === pageId ? own.data.url : null;
+  const owns = await getEvents(supabase, { userId: user.id, types: ["publish.own_url"], limit: 200 });
+  const ownUrl = owns.find((e) => e?.data?.pageId === pageId)?.data?.url || null;
   const article = { title: page.title, body: String(page.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
 
   let pack;
