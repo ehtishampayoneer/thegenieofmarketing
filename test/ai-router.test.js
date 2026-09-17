@@ -51,3 +51,26 @@ describe("AI router and reasoning models", () => {
     expect(second.provider).toBe("gemini");
   });
 });
+
+describe("a spent daily quota", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.GEMINI_API_KEY = "g"; process.env.GROQ_API_KEY = "q";
+    delete process.env.OPENROUTER_API_KEY; delete process.env.PAID_LLM_API_KEY;
+  });
+
+  it("rests the provider instead of retrying it every minute", async () => {
+    const realNow = Date.now;
+    let geminiCalls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      if (String(url).includes("generativelanguage")) { geminiCalls++; return new Response(JSON.stringify({ error: { message: "You exceeded your current quota" } }), { status: 429 }); }
+      return ok({ choices: [{ message: { content: '{"ok":true}' }, finish_reason: "stop" }] });
+    });
+    const { callAI } = await import("@/lib/ai-router");
+    await callAI({ prompt: "a", json: true, maxTokens: 50 });
+    // Two minutes later a per-minute limit would have reset; a daily one has not.
+    Date.now = () => realNow() + 2 * 60 * 1000;
+    try { await callAI({ prompt: "b", json: true, maxTokens: 50 }); } finally { Date.now = realNow; }
+    expect(geminiCalls).toBe(1);
+  });
+});

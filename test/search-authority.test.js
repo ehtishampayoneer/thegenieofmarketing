@@ -11,11 +11,11 @@ describe("Gemini grounded web search", () => {
   beforeEach(() => { vi.resetModules(); process.env.GEMINI_API_KEY = "k"; delete process.env.BRAVE_SEARCH_API_KEY; delete process.env.GEMINI_MODEL; });
 
   it("resolves Google's redirect links, drops invented URLs, and gives Gemini a thinking allowance", async () => {
-    let sentBody = null;
+    let sentBody = null, sentUrl = "";
     globalThis.fetch = vi.fn(async (url, init = {}) => {
       const u = String(url);
       if (u.includes("generativelanguage")) {
-        sentBody = JSON.parse(init.body);
+        sentBody = JSON.parse(init.body); sentUrl = u;
         return json({ candidates: [{ finishReason: "STOP",
           content: { parts: [{ text: JSON.stringify([
             { title: "Design Milk furniture", url: "https://design-milk.com/furniture/", snippet: "s" },
@@ -38,7 +38,9 @@ describe("Gemini grounded web search", () => {
     expect(urls.some((x) => x.includes("invented-site"))).toBe(false);
     expect(urls.some((x) => x.includes("vertexaisearch"))).toBe(false);
     expect(new Set(urls).size).toBe(urls.length);
-    expect(sentBody.generationConfig.thinkingConfig.thinkingBudget).toBe(1024);
+    // Searches on Flash-Lite first (its own daily allowance), which does not think.
+    expect(sentUrl).toContain("gemini-2.5-flash-lite");
+    expect(sentBody.generationConfig.thinkingConfig).toBeUndefined();
     expect(groundedSearchLastError()).toBeNull();
   });
 
@@ -49,6 +51,48 @@ describe("Gemini grounded web search", () => {
     const { webSearch, groundedSearchLastError } = await import("@/lib/search");
     await webSearch("anything unique 123", { limit: 3 });
     expect(groundedSearchLastError()).toMatch(/429.*exhausted/i);
+  });
+});
+
+describe("search when Gemini's quota is spent", () => {
+  beforeEach(() => { vi.resetModules(); process.env.GEMINI_API_KEY = "k"; delete process.env.GEMINI_MODEL; delete process.env.GEMINI_SEARCH_MODEL; delete process.env.BRAVE_SEARCH_API_KEY; delete process.env.TAVILY_API_KEY; });
+
+  it("tries the next Gemini model when one is out of quota, with thinking for 2.5 Flash", async () => {
+    const tried = [];
+    globalThis.fetch = vi.fn(async (url, init = {}) => {
+      const u = String(url);
+      if (u.includes("generativelanguage")) {
+        tried.push(u.match(/models\/([^:]+)/)[1]);
+        if (u.includes("flash-lite")) return json({ error: { message: "You exceeded your current quota" } }, 429);
+        expect(JSON.parse(init.body).generationConfig.thinkingConfig.thinkingBudget).toBe(1024);
+        return json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ title: "A", url: "https://a.example/x" }]) }] } }] });
+      }
+      return new Response("", { status: 500 });
+    });
+    const { webSearch } = await import("@/lib/search");
+    const out = await webSearch("quota fallback q", { limit: 3 });
+    expect(tried).toEqual(["gemini-2.5-flash-lite", "gemini-2.5-flash"]);
+    expect(out[0].url).toBe("https://a.example/x");
+  });
+
+  it("falls back to Tavily when every Gemini model is out of quota", async () => {
+    process.env.TAVILY_API_KEY = "tvly-x";
+    let tavilyBody = null;
+    globalThis.fetch = vi.fn(async (url, init = {}) => {
+      const u = String(url);
+      if (u.includes("generativelanguage")) return json({ error: { message: "You exceeded your current quota" } }, 429);
+      if (u.includes("api.tavily.com")) {
+        tavilyBody = JSON.parse(init.body);
+        expect(init.headers.Authorization).toBe("Bearer tvly-x");
+        return json({ results: [{ title: "Rug shop", url: "https://rugs.example/", content: "snippet" }] });
+      }
+      return new Response("", { status: 500 });
+    });
+    const { webSearch } = await import("@/lib/search");
+    const out = await webSearch("rugs site:reddit.com", { limit: 3 });
+    expect(out[0].url).toBe("https://rugs.example/");
+    expect(tavilyBody.query).toBe("rugs");
+    expect(tavilyBody.include_domains).toEqual(["reddit.com"]);
   });
 });
 
@@ -69,6 +113,15 @@ describe("OpenPageRank", () => {
     expect(m.get("wikipedia.org").score).toBe(9.7);
     expect(m.has("nowhere-xyz.example")).toBe(false);
     expect(body.include_history).toBe(false);
+  });
+
+  it("ignores spaces and quotes pasted around the key", async () => {
+    process.env.OPENPAGERANK_API_KEY = `  "opr_live_abc"${String.fromCharCode(10)}`;
+    let auth;
+    globalThis.fetch = vi.fn(async (_u, init) => { auth = init.headers.Authorization; return json({ results: [] }); });
+    const { scoreDomains } = await import("@/lib/authority");
+    await scoreDomains(["x.org"]);
+    expect(auth).toBe("Bearer opr_live_abc");
   });
 
   it("keeps the API's refusal for the self-test", async () => {
