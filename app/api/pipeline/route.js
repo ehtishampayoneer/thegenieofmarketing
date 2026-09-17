@@ -7,7 +7,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getEvents } from "@/lib/events";
-import { aiList } from "@/lib/prospects";
+import { classifyReply } from "@/lib/reply-classify";
 import { dealNum } from "@/lib/recovery";
 
 export const runtime = "nodejs";
@@ -47,11 +47,14 @@ export async function GET() {
     });
   }
 
-  // Classify the replies that still need a decision (best-effort, one batched call).
+  // Classify the replies that still need a decision.
   const toClassify = contacts.filter((c) => c.replied && c.replySnippet && !c.outcome);
-  if (toClassify.length) {
-    const cls = await classifyReplies(toClassify);
-    for (const c of contacts) { const k = c.email.toLowerCase(); if (cls[k]) c.replyClass = cls[k]; }
+  // Labelled in code (lib/reply-classify.js), never by an AI provider: the text is
+  // from the owner's Gmail and Google's Limited Use rules forbid handing it to a
+  // service that may train on it, which the free AI tiers reserve the right to do.
+  for (const c of toClassify) {
+    const label = classifyReply(c.replySnippet);
+    if (label) c.replyClass = label;
   }
 
   const funnel = {
@@ -63,22 +66,6 @@ export async function GET() {
   const recovered = contacts.filter((c) => c.outcome === "won").reduce((s, c) => s + dealNum(c.value), 0);
 
   return json({ ok: true, contacts, funnel, recovered });
-}
-
-async function classifyReplies(items) {
-  const compact = items.map((c, i) => ({ i, from: c.name || c.email, text: String(c.replySnippet || "").slice(0, 240) }));
-  let arr = [];
-  try {
-    arr = await aiList({
-      system: "You classify sales-email replies. For EACH reply choose ONE label: interested, question, objection, not_now, wrong_person, unsubscribe, or auto (an out-of-office/auto-reply). Return ONLY a JSON array, one object per reply, same order.",
-      json: true, maxTokens: 900, temperature: 0.2,
-      prompt: `Replies (JSON): ${JSON.stringify(compact)}\nReturn ONLY: [{ "i": 0, "label": "interested" }]`,
-    });
-  } catch { arr = []; }
-  const byIdx = new Map((arr || []).map((p) => [Number(p.i), String(p.label || "").toLowerCase()]));
-  const out = {};
-  items.forEach((c, i) => { const l = byIdx.get(i); if (l) out[c.email.toLowerCase()] = l; });
-  return out;
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

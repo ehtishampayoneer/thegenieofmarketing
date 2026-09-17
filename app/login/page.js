@@ -122,6 +122,12 @@ export default function LoginPage() {
               {mode === "signin" ? "Create an account" : "Sign in"}
             </button>
           </p>
+          {/* Google requires the privacy policy to be reachable from the app's home. */}
+          <p className="mt-6 text-center" style={{ fontSize: 12.5, color: "var(--fg-subtle)" }}>
+            <a href="/privacy" style={{ color: "inherit" }}>Privacy</a>
+            <span aria-hidden style={{ margin: "0 8px" }}>·</span>
+            <a href="/terms" style={{ color: "inherit" }}>Terms</a>
+          </p>
         </div>
       </section>
     </main>
