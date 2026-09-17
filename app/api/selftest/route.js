@@ -16,7 +16,14 @@ export async function GET() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
-  return json({ ok: true, checks: CHECKS.map(({ id, group, label }) => ({ id, group, label })) });
+  // Which account is being tested. Owners often have more than one login, and a
+  // test run on the empty one reports "no scan" for a business that is set up.
+  let business = null;
+  try {
+    const { data } = await supabase.from("scans").select("final_url, url, ai").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (data) business = data.ai?.businessName || data.final_url || data.url;
+  } catch {}
+  return json({ ok: true, account: user.email || user.id, business, checks: CHECKS.map(({ id, group, label }) => ({ id, group, label })) });
 }
 
 export async function POST(request) {

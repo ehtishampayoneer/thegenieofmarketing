@@ -28,10 +28,11 @@ export default function SelfTestPage() {
   const [sendTestEmail, setSendTestEmail] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
+  const [who, setWho] = useState(null);
 
   useEffect(() => {
     fetch("/api/selftest", { cache: "no-store" }).then((r) => r.json())
-      .then((j) => (j?.ok ? setChecks(j.checks) : setErr("Sign in to run the self-test.")))
+      .then((j) => { if (j?.ok) { setChecks(j.checks); setWho({ account: j.account, business: j.business }); } else setErr("Sign in to run the self-test."); })
       .catch(() => setErr("Could not load the checks."));
   }, []);
 
@@ -68,7 +69,7 @@ export default function SelfTestPage() {
   const done = Object.values(results).filter((r) => r.status !== "running").length;
 
   function report() {
-    const lines = [`Marketing Genie self-test · ${new Date().toLocaleString()}`, `Pass ${counts.pass} · Check ${counts.warn} · Fail ${counts.fail} · Skipped ${counts.skip}`, ""];
+    const lines = [`Marketing Genie self-test · ${new Date().toLocaleString()}`, `Account: ${who?.account || "?"} · Business: ${who?.business || "none scanned"}`,`Pass ${counts.pass} · Check ${counts.warn} · Fail ${counts.fail} · Skipped ${counts.skip}`, ""];
     for (const g of groups) {
       lines.push(`## ${g.name}`);
       for (const c of g.items) {
@@ -103,6 +104,13 @@ export default function SelfTestPage() {
           </button>
         </div>
       </div>
+
+      {who && (
+        <p className="mt-3 text-[13px]" style={{ color: "var(--fg-muted)" }}>
+          Testing account <b style={{ color: "var(--fg)" }}>{who.account}</b>
+          {who.business ? <> · business <b style={{ color: "var(--fg)" }}>{who.business}</b></> : <span style={{ color: "var(--signal-warn-ink)" }}> · no business scanned on this account</span>}
+        </p>
+      )}
 
       <label className="mt-4 flex items-center gap-2 text-[13px]" style={{ color: "var(--fg-muted)", cursor: "pointer", width: "fit-content" }}>
         <input type="checkbox" checked={sendTestEmail} onChange={(e) => setSendTestEmail(e.target.checked)} disabled={running} />
