@@ -47,9 +47,7 @@ export async function POST(request) {
     // comparison is best-effort
   }
 
-  const { data, error } = await supabase
-    .from("scans")
-    .insert({
+  const row = {
       user_id: user.id,
       url,
       final_url: finalUrl || null,
@@ -61,10 +59,16 @@ export async function POST(request) {
       speed: speed || null,
       gsc: gsc || null,
       // Capped again here: the client sends this, so the size is not ours to trust.
-      page_text: pageText ? String(pageText).slice(0, 4000) : null,
-    })
-    .select("id, created_at")
-    .single();
+      page_text: pageText ? String(pageText).slice(0, 9000) : null,
+  };
+  let { data, error } = await supabase.from("scans").insert(row).select("id, created_at").single();
+  // A database that has not run db/scan-text.sql has no page_text column, and the
+  // whole insert failed: no scan saved means no hunts, content or outreach at all.
+  // Losing the stored text is a much smaller cost than losing the scan.
+  if (error && /page_text/i.test(error.message || "")) {
+    const { page_text, ...withoutText } = row;
+    ({ data, error } = await supabase.from("scans").insert(withoutText).select("id, created_at").single());
+  }
 
   if (error) return json({ ok: false, error: error.message }, 500);
   return json({ ok: true, id: data.id, createdAt: data.created_at, comparison });

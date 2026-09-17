@@ -15,6 +15,7 @@ import { redditSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor, nextEligible } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
+import { briefBlock } from "@/lib/business-brief";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +78,7 @@ export async function POST(request) {
       system:
         "You are Genie, doing authentic Reddit community marketing. For each thread, write a GENUINELY helpful reply that a knowledgeable human would post. Value first — actually answer or add insight. Mention the product ONLY if it truly helps the reader, and never as a pitch — no marketing voice, no links unless natural, no 'check out'. Redditors instantly smell ads and ban them; the goal is to be helpful and let the product surface naturally. If a thread doesn't fit the product at all, set fit:false. Return ONLY valid JSON.",
       json: true,
-      maxTokens: 3000,
+      maxTokens: 4500, timeoutMs: 45000,
       temperature: 0.75,
       prompt: buildPrompt(candidates, ai, host),
     });
@@ -134,6 +135,8 @@ context: ${c.snippet || "(none)"}`
 
   return `Product: ${ai?.businessName || host} — ${ai?.whatTheySell || ai?.industry || ""}
 Who it helps: ${ai?.targetCustomer || "(infer)"}
+${briefBlock(ai || {}, { max: 1500 })}
+Only count a thread as a fit when the person is one of the owner's target customers. Builders of the same thing, developers asking how to make it, and anyone in who-not-to-target are not fits.
 
 Threads Genie found (write a placement for each that fits):
 ${list}

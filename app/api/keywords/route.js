@@ -13,11 +13,11 @@ import { expandSeeds } from "@/lib/autocomplete";
 import { enrichWithVolumes } from "@/lib/google-ads";
 import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
-
+import { resolveRadarUser } from "@/lib/radar-auth";
 import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const VALID_INTENT = new Set(["informational", "commercial", "transactional", "community"]);
 
@@ -45,12 +45,15 @@ export async function GET(request) {
 
 // POST { host, ai } → Genie derives + stores the keyword strategy
 export async function POST(request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
-
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
+  // Accepts the nightly job as well as a signed-in owner. The nightly engine only
+  // runs for businesses that HAVE keywords, so when the first derivation failed a
+  // business was skipped every night with nothing to recover it. The job now
+  // calls this to rebuild them (lib/genie-jobs.js).
+  const { supabase, userId } = await resolveRadarUser(request, body);
+  if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
+  const user = { id: userId };
   const { host, ai, productOverride, rebuild } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
 
@@ -68,7 +71,7 @@ export async function POST(request) {
       system:
         "You are Genie, an elite SEO strategist. From a business profile, you derive the keyword strategy YOURSELF — the user gives you nothing. Think like someone who will rank this product across Google, Reddit, Quora, and forums. Produce a focused, high-intent keyword set: a mix of informational (blog-rankable), commercial/transactional (buyer intent), and community (how people phrase it in discussions). Prioritize by rankability × buyer value. Return ONLY valid JSON.",
       json: true,
-      maxTokens: 1800,
+      maxTokens: 5000, timeoutMs: 50000,
       temperature: 0.5,
       prompt: buildPrompt(host, ai, productOverride, realSearches),
     });

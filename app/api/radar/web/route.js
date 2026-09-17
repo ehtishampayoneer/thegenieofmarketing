@@ -11,6 +11,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor } from "@/lib/cadence";
+import { briefBlock } from "@/lib/business-brief";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ export async function POST(request) {
   const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", userId).eq("host", host);
   if (!kwRows?.length) return json({ ok: false, needsKeywords: true, error: "Genie needs keywords first." }, 400);
   const { graded } = gradePortfolio(kwRows);
-  const pool = (graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 5)) || graded.slice(0, 5);
+  // An empty array is truthy, so `strong.slice() || graded.slice()` never fell back:
+  // when every keyword graded weak this radar searched nothing at all.
+  const strong = graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 5);
+  const pool = strong.length ? strong : graded.filter((k) => k.health !== "retired").slice(0, 5);
 
   const { data: existing } = await supabase.from("placements").select("target_url, status, next_eligible_at")
     .eq("user_id", userId).eq("host", host).in("platform", ["forum", "guest"]);
@@ -59,7 +63,7 @@ export async function POST(request) {
   try {
     const result = await callAI({
       system: "You are Genie finding off-site marketing openings. Classify each result and write the right placement: a forum reply (value-first), a pitch to be added to a 'best X' listicle, or a guest-post pitch to a blog that accepts contributors. Never spammy. If a result is irrelevant or not actually one of these, set fit:false. Return ONLY valid JSON.",
-      json: true, maxTokens: 3500, temperature: 0.7,
+      json: true, maxTokens: 4500, timeoutMs: 45000, temperature: 0.7,
       prompt: buildPrompt(candidates, ai, host),
     });
     drafted = result.json;
@@ -94,6 +98,8 @@ function buildPrompt(candidates, ai, host) {
   const list = candidates.map((c, i) => `[${i}] keyword: "${c.keyword}" | likely type: ${c.hint}\ntitle: ${c.title}\nurl: ${c.url}\ncontext: ${c.snippet || "(none)"}`).join("\n\n");
   return `Product: ${ai?.businessName || host} — ${ai?.whatTheySell || ai?.industry || ""}
 Who it helps: ${ai?.targetCustomer || "(infer)"}
+${briefBlock(ai || {}, { max: 1500 })}
+Only count a thread as a fit when the person is one of the owner's target customers. Builders of the same thing, developers asking how to make it, and anyone in who-not-to-target are not fits.
 
 Web results Genie found (classify + write a placement for real fits):
 ${list}

@@ -11,6 +11,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor } from "@/lib/cadence";
+import { briefBlock } from "@/lib/business-brief";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ export async function POST(request) {
   const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", userId).eq("host", host);
   if (!kwRows?.length) return json({ ok: false, needsKeywords: true, error: "Genie needs keywords first." }, 400);
   const { graded } = gradePortfolio(kwRows);
-  const pool = (graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 6)) || graded.slice(0, 6);
+  // An empty array is truthy, so `strong.slice() || graded.slice()` never fell back:
+  // when every keyword graded weak this radar searched nothing at all.
+  const strong = graded.filter((k) => k.health === "strong" || k.health === "growing").slice(0, 6);
+  const pool = strong.length ? strong : graded.filter((k) => k.health !== "retired").slice(0, 6);
 
   const { data: existing } = await supabase.from("placements").select("target_url, status, next_eligible_at")
     .eq("user_id", userId).eq("host", host).eq("platform", "quora");
@@ -50,7 +54,7 @@ export async function POST(request) {
   try {
     const result = await callAI({
       system: "You are Genie doing authentic Quora marketing. For each question, write a long-form, genuinely useful answer that would rank and be upvoted. Value first; mention the product only where it truly helps, never as a pitch. If a question doesn't fit, set fit:false. Return ONLY valid JSON.",
-      json: true, maxTokens: 3200, temperature: 0.7,
+      json: true, maxTokens: 7000, timeoutMs: 55000, temperature: 0.7,
       prompt: buildPrompt(candidates, ai, host),
     });
     drafted = result.json;
@@ -82,6 +86,8 @@ function buildPrompt(candidates, ai, host) {
   const list = candidates.map((c, i) => `[${i}] keyword: "${c.keyword}"\nquestion: ${c.title}\ncontext: ${c.snippet || "(none)"}`).join("\n\n");
   return `Product: ${ai?.businessName || host} — ${ai?.whatTheySell || ai?.industry || ""}
 Who it helps: ${ai?.targetCustomer || "(infer)"}
+${briefBlock(ai || {}, { max: 1500 })}
+Only count a thread as a fit when the person is one of the owner's target customers. Builders of the same thing, developers asking how to make it, and anyone in who-not-to-target are not fits.
 
 Quora questions Genie found:
 ${list}

@@ -11,7 +11,7 @@ import { getGscData } from "@/lib/gsc";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request) {
   let body;
@@ -88,7 +88,7 @@ export async function POST(request) {
       system:
         "You are Genie, an expert business growth advisor. Plain English, 7th-grade reading level, no jargon. When you give a number that is an estimate (potential revenue, lost customers, impact), phrase it clearly as an estimate ('likely', 'roughly', 'an estimated'). Competitors, keyword suggestions, and primary market are your INFERENCES from the page — treat them as informed guesses, not facts. If real Search Console keywords are provided, treat those as VERIFIED fact. Never state estimates as measured facts. Be honest, not flattering. Return ONLY valid JSON, no markdown.",
       json: true,
-      maxTokens: 1800,
+      maxTokens: 3000, timeoutMs: 35000,
       temperature: 0.6,
       prompt: buildPrompt({ ...audit, scores }, speedMetrics, gsc),
     });
@@ -157,7 +157,7 @@ Issues found:
 ${failing || "(no major issues)"}
 
 Page text excerpt:
-"""${audit.pageText.slice(0, 2500)}"""
+"""${audit.pageText.slice(0, 6000)}"""
 
 Return ONLY this JSON shape (fill every field; use best inference where data is thin):
 {

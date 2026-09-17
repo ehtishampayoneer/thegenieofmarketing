@@ -6,6 +6,7 @@
 // counts come straight from the tables; API status from env presence. Auth-gated.
 
 import { createClient } from "@/lib/supabase/server";
+import { SCHEMA_MANIFEST } from "@/lib/schema-manifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +63,26 @@ export async function GET() {
     schema.ok = false;
     schema.missing.push({ kind: "function", name: "increment_keyword_coverage", why: "coverage counts that can't be lost" });
   }
-  if (!schema.ok) schema.fix = "Run db/setup.sql in Supabase → SQL Editor. It only adds what's missing and never deletes data.";
+  // Everything else the code reads, generated from the code (lib/schema-manifest.js).
+  // One probe per table with all its columns; only when that fails, one per column
+  // to name exactly which is missing. `limit(0)` reads no rows, just the shape.
+  const known = new Set(schema.missing.map((m) => m.name));
+  const manifest = { ...SCHEMA_MANIFEST, scans: [...new Set([...(SCHEMA_MANIFEST.scans || []), "page_text"])] };
+  for (const [table, cols] of Object.entries(manifest)) {
+    const list = cols.length ? cols.join(",") : "*";
+    const { error } = await supabase.from(table).select(list).limit(0);
+    if (!error) continue;
+    const { error: tableErr } = await supabase.from(table).select("*").limit(0);
+    if (tableErr) {
+      if (!known.has(table)) { schema.ok = false; schema.missing.push({ kind: "table", name: table, why: "used by the code, not found in the database" }); }
+      continue;
+    }
+    for (const c of cols) {
+      const { error: colErr } = await supabase.from(table).select(c).limit(0);
+      if (colErr && !known.has(`${table}.${c}`)) { schema.ok = false; schema.missing.push({ kind: "column", name: `${table}.${c}`, why: "used by the code, not found in the database" }); }
+    }
+  }
+  if (!schema.ok) schema.fix = "Run db/setup.sql in Supabase → SQL Editor. It only adds what's missing and never deletes data. Anything still listed after that needs its own migration: send this list to your developer.";
 
   let activity = [];
   try {

@@ -447,6 +447,10 @@ social-copy craft gap; the content engine's shared token budget.
 
 ### ⚠️ THE SHIP CHECKLIST — do every line before calling a feature done
 
+- **Added or changed a database query?** Run `node scripts/gen-schema-manifest.mjs`. `/diagnostics` checks the live database against `lib/schema-manifest.js`, and it can only catch a missing column it knows about.
+- **Added an AI call?** Size `maxTokens` for the whole answer you ask for (a list of 30 items with reasons is ~3000 tokens), and pass `timeoutMs` when it writes a lot. The router already adds a thinking allowance for Gemini 2.5 and gpt-oss.
+- **Added a step to the nightly job?** It runs in parallel waves inside a 300s limit (`lib/genie-jobs.js`). Never add a long sequential `await` there.
+
 This exists because it has already gone wrong twice. This file described V1
 screens for months after they were deleted, and `/capabilities` was missing six
 shipped features at once. **Code that nobody can find out about is not shipped.**

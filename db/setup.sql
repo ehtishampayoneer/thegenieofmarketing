@@ -219,6 +219,15 @@ begin
   end if;
 end $$;
 
+-- ── The text a scan read (db/scan-text.sql), so onboarding can quote the owner's
+--    own site back to them. Added here too so a fresh setup is not missing it.
+do $$
+begin
+  if to_regclass('public.scans') is not null then
+    execute 'alter table public.scans add column if not exists page_text text';
+  end if;
+end $$;
+
 
 -- ── DONE. Re-run STEP 1 (the SELECT at the top) to confirm no CORE table is
 --    MISSING. If one is, that's the only thing left to create — send the list

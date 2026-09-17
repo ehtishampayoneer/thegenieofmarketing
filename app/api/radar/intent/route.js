@@ -16,6 +16,7 @@ import { verticalsFor } from "@/lib/intent-verticals";
 import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
+import { briefBlock } from "@/lib/business-brief";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,10 +100,13 @@ export async function POST(request) {
   try {
     const result = await callAI({
       system:
-        `You are Genie, a buyer-intent specialist. ${brief}\n` +
+        `You are Genie, a buyer-intent specialist. ${brief}\n${briefBlock(ai, { max: 2000 })}\n` +
         "For each candidate, decide if this is a GENUINE buyer actively researching/comparing/deciding (fit:true) or noise (fit:false). " +
+        // Without this, a thread was judged on intent alone, so a developer asking how
+        // to build AR scored as a hot buyer for a company that sells AR to retailers.
+        "A buyer must be one of the owner's target customers above. Someone who would build or resell the same thing, a developer asking how to make it, or anyone matching who-not-to-target is fit:false, however strong their intent. " +
         "Rate intent 0-100 and name the journey stage. Write the RIGHT move for the platform, in the entity's voice — value-first, genuinely helpful, product mentioned only where it truly helps. Never spammy. Return ONLY JSON.",
-      json: true, maxTokens: 3200, temperature: 0.6,
+      json: true, maxTokens: 4500, timeoutMs: 45000, temperature: 0.6,
       prompt: buildPrompt(top, entity),
       ctx,
     });

@@ -46,7 +46,7 @@ export async function POST(request) {
     // The text the scan actually read. Without this the generator only ever saw
     // a dozen extracted fields, which is why it asked owners for things printed
     // on their own homepage.
-    const pageText = String(body?.pageText || "").slice(0, 4000);
+    const pageText = String(body?.pageText || "").slice(0, 9000);
     try {
       const result = await callAI({
         system:

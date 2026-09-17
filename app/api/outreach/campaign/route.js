@@ -47,14 +47,26 @@ export async function POST(request) {
   const { supabase, userId } = await resolveRadarUser(request, body);
   if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
 
-  if (!process.env.RESEND_API_KEY) return json({ ok: false, needsConfig: true, error: "Email isn't configured yet." }, 400);
-
   // Kill switch respected.
   const { data: safety } = await supabase.from("safety_settings").select("kill_switch").eq("user_id", userId).maybeSingle();
   if (safety?.kill_switch) return json({ ok: false, error: "Kill switch is on." }, 403);
 
-  const { data: prof } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-  if (!prof?.sender_email) return json({ ok: false, needsProfile: true, error: "Add your sending email in your profile first." }, 400);
+  const { data: profRow } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  const prof = profRow || {};
+
+  // Is there any way to send at all? This used to demand RESEND_API_KEY and a
+  // profile sender_email before doing anything, yet the real sender
+  // (deliverEmail) sends through the owner's connected Gmail and needs neither.
+  // An owner who connected Gmail but never typed a sending email, or a deployment
+  // without Resend, got no outreach at all. Check what deliverEmail actually uses.
+  let canSend = !!(process.env.RESEND_API_KEY && process.env.OUTREACH_FROM);
+  if (!canSend) {
+    try {
+      const { data: conn } = await supabase.from("connections").select("scope").eq("user_id", userId).eq("provider", "google").maybeSingle();
+      canSend = String(conn?.scope || "").includes("gmail.send");
+    } catch {}
+  }
+  if (!canSend) return json({ ok: false, needsSender: true, error: "Connect Gmail on the Connections page so outreach sends from your own address." }, 200);
   const plan = prof?.plan === "pro" ? "pro" : "free";
   const cap = DAILY_CAP[plan];
 
@@ -120,10 +132,25 @@ export async function POST(request) {
   } catch { sendable = contacts; } // a resolver hiccup must never stop the run
 
   let sent = 0, failed = 0, skipped = 0;
+  // Compliance: never email someone who opted out.
+  const queue = [];
   for (const c of sendable) {
-    // Compliance: never email someone who opted out.
     if (await isSuppressed(supabase, userId, c.email)) { skipped++; continue; }
-    const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name, brief: briefForDrafts });
+    queue.push(c);
+  }
+  // Draft four at a time. One by one, at several seconds each, a full daily batch
+  // ran past this route's time limit and the rest of the day's sends never happened.
+  const drafts = new Map();
+  for (let i = 0; i < queue.length; i += 4) {
+    const chunk = queue.slice(i, i + 4);
+    const out = await Promise.all(chunk.map((c) => draftEmail(draftProf, c, { name: prof.company_name, brief: briefForDrafts })));
+    chunk.forEach((c, k) => drafts.set(c.email, out[k]));
+  }
+
+  for (const c of queue) {
+    const { subject, body: emailBody } = drafts.get(c.email) || {};
+    // Could not write a proper email for this one: skip it rather than send filler.
+    if (!subject || !emailBody) { skipped++; continue; }
     // deliverEmail, not sendOne: it tries the user's OWN Gmail first and only
     // falls back to the platform sender. sendOne skipped that entirely, which is
     // why the nightly run ignored a connected Gmail and sent from a shared

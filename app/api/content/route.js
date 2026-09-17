@@ -19,7 +19,7 @@ import { logger } from "@/lib/log";
 import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request) {
   let body;
@@ -145,7 +145,7 @@ export async function POST(request) {
       system:
         "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given, and follow the owner's standing instructions exactly. Return ONLY valid JSON, no markdown fences.",
       json: true,
-      maxTokens: aeo ? 4200 : 3500,
+      maxTokens: aeo ? 4200 : 3500, timeoutMs: 50000,
       temperature: 0.7,
       prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context }),
     });
@@ -171,7 +171,7 @@ export async function POST(request) {
         system:
           "You are Genie, writing social posts for a business. You follow each platform's mechanics exactly. You never invent a fact that is not in the article you are given. No em-dashes, no hype. Return ONLY valid JSON, no markdown fences.",
         json: true,
-        maxTokens: 2600,
+        maxTokens: 2600, timeoutMs: 40000,
         temperature: 0.75,
         prompt: buildSocialPrompt({ ai, directives, pick, firstParty, article: data.article, context }),
       });

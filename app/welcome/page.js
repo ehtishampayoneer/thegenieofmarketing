@@ -196,8 +196,20 @@ export default function WelcomePage() {
     const head = { "Content-Type": "application/json" };
     setDetails((d) => ({ ...d, company_name: ai.businessName || d.company_name || "" }));
     try { await fetch("/api/understand", { method: "PUT", headers: head, body: JSON.stringify({ host: h, ai }) }); } catch {}
-    try { await fetch("/api/keywords", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai, productOverride: overrideFrom(ai) }) }); } catch {}
+    // The keyword strategy is what every article, hunt and outreach search runs on,
+    // and a failure here used to be swallowed without a trace. One retry covers a
+    // provider that was briefly rate limited; the nightly run rebuilds after that.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch("/api/keywords", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai, productOverride: overrideFrom(ai) }) });
+        if (r.ok) break;
+      } catch {}
+    }
     fetch("/api/content", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai }) }).catch(() => {});
+    // The hunt that ran during the scan used Genie's first guess from the website.
+    // Re-run it on the owner's corrected brief (and the keywords just rebuilt), so
+    // Buyer Hunt is right today instead of after tonight's run.
+    fetch("/api/radar/intent", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai }) }).catch(() => {});
     setBusy(false);
     await toConnect();
   }
