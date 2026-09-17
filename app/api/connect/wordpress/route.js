@@ -8,6 +8,7 @@
 // (WordPress.com free plans don't support them).
 
 import { createClient } from "@/lib/supabase/server";
+import { safeFetch } from "@/lib/ssrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,7 +56,11 @@ export async function POST(request) {
   const auth = "Basic " + Buffer.from(`${username}:${appPassword}`).toString("base64");
   let me;
   try {
-    const res = await fetch(`${siteUrl}/wp-json/wp/v2/users/me`, {
+    // context=edit: WordPress only returns `capabilities` in the edit context. The
+    // default "view" context omits them, so the publish check below always saw an
+    // empty object and rejected every account, admins included, as unable to post.
+    // Through the SSRF guard, because the site URL is whatever the user typed.
+    const { res } = await safeFetch(`${siteUrl}/wp-json/wp/v2/users/me?context=edit`, {
       headers: { Authorization: auth },
       signal: AbortSignal.timeout(15000),
     });

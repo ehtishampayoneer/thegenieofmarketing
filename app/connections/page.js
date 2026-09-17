@@ -25,6 +25,16 @@ const CONNECT_ERRORS = {
   access_denied: "You declined the permissions, so Genie can't read your data. Connect again and approve access.",
 };
 
+// X errors were sent back as ?x_error=… and never shown at all, so a failed X
+// connect looked like nothing had happened.
+const X_ERRORS = {
+  access_denied: "X refused to give access. This is almost always the app's setup in the X developer portal: open your app → User authentication settings, and check OAuth 2.0 is on, Type of App is \"Web App, Automated App or Bot\", App permissions is \"Read and write\", and the Callback URI is exactly {ORIGIN}/api/connect/x/callback. The app must also sit inside a Project. Then connect again.",
+  state_mismatch: "Security check failed: the sign-in took too long, or cookies were blocked. Please try connecting again.",
+  token_exchange: "X approved you, but rejected Genie's app credentials. Check X_CLIENT_ID and X_CLIENT_SECRET in Vercel match the OAuth 2.0 Client ID and Client Secret in the X portal (regenerate the secret if unsure), redeploy, then reconnect.",
+  save: "X approved you, but Genie couldn't save the connection. Open /diagnostics to see what the database is missing.",
+  not_configured: "X isn't set up on the server: X_CLIENT_ID and X_REDIRECT_URI are missing in Vercel.",
+};
+
 // "Google connected" and "we found your Search Console property" are DIFFERENT
 // things. gsc_site is only filled in later, once an audit finds a verified property
 // for this domain — so judging the Google row by it made a working connection read
@@ -63,9 +73,13 @@ export default function ConnectionsPage() {
     try {
       const p = new URLSearchParams(window.location.search);
       const err = p.get("connect_error");
+      const xErr = p.get("x_error");
+      const xOk = p.get("x_connected");
       if (err) setNotice({ tone: "error", text: CONNECT_ERRORS[err] || `Couldn't connect (${err}). Please try again.` });
+      else if (xErr) setNotice({ tone: "error", text: `${(X_ERRORS[xErr] || `X connection failed (${xErr}).`).replace("{ORIGIN}", window.location.origin)}${p.get("x_detail") ? ` (X said: ${p.get("x_detail")})` : ""}` });
+      else if (xOk) setNotice({ tone: "ok", text: xOk === "1" ? "X connected." : `X connected as @${xOk}.` });
       else if (p.get("connected")) setNotice({ tone: "ok", text: "Connected. Genie can now read your real data." });
-      if (err || p.get("connected")) window.history.replaceState({}, "", window.location.pathname);
+      if (err || xErr || xOk || p.get("connected")) window.history.replaceState({}, "", window.location.pathname);
     } catch {}
   }, []);
 

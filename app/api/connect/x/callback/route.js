@@ -27,6 +27,10 @@ export async function GET(request) {
     return r;
   };
 
+  // X says why it refused (access_denied, invalid_request…). This used to be read
+  // as "state_mismatch", which sent the owner hunting for a cookie problem.
+  const xErr = searchParams.get("error");
+  if (xErr) return back(`&x_error=${encodeURIComponent(xErr)}`);
   if (!code || !state || !verifier || state !== cookieState) {
     return back("&x_error=state_mismatch");
   }
@@ -50,8 +54,12 @@ export async function GET(request) {
         client_id: clientId,
       }),
     });
-    tokens = await res.json();
-    if (!res.ok || !tokens.access_token) return back("&x_error=token_exchange");
+    tokens = await res.json().catch(() => ({}));
+    if (!res.ok || !tokens.access_token) {
+      // unauthorized_client = wrong client secret or a "Native App" type (no secret);
+      // invalid_request with a redirect complaint = callback URL mismatch.
+      return back(`&x_error=token_exchange&x_detail=${encodeURIComponent(String(tokens?.error || res.status))}`);
+    }
   } catch {
     return back("&x_error=token_exchange");
   }
@@ -72,7 +80,7 @@ export async function GET(request) {
   if (!user) return NextResponse.redirect(absolute("/login"));
 
   const expiresAt = new Date(Date.now() + (tokens.expires_in || 7200) * 1000).toISOString();
-  await supabase.from("connections").upsert(
+  const { error: saveErr } = await supabase.from("connections").upsert(
     {
       user_id: user.id,
       provider: "x",
@@ -82,6 +90,9 @@ export async function GET(request) {
     },
     { onConflict: "user_id,provider" }
   );
+  // Same silent failure the Google callback used to have: X approved, the save
+  // failed, and the page just said "not connected".
+  if (saveErr) return back("&x_error=save");
 
   const res = back(handle ? `&x_connected=${encodeURIComponent(handle)}` : "&x_connected=1");
   res.cookies.delete("genie_return");
