@@ -67,7 +67,11 @@ export async function GET() {
   // One probe per table with all its columns; only when that fails, one per column
   // to name exactly which is missing. `limit(0)` reads no rows, just the shape.
   const known = new Set(schema.missing.map((m) => m.name));
-  const manifest = { ...SCHEMA_MANIFEST, scans: [...new Set([...(SCHEMA_MANIFEST.scans || []), "page_text"])] };
+  // Plus columns that are only ever WRITTEN, which the generator cannot see from
+  // selects: saving a Google connection writes these, and fails without them.
+  const writeOnly = { scans: ["page_text"], connections: ["token_expires_at", "updated_at", "scopes", "google_email"] };
+  const manifest = { ...SCHEMA_MANIFEST };
+  for (const [t, cols] of Object.entries(writeOnly)) manifest[t] = [...new Set([...(manifest[t] || []), ...cols])];
   for (const [table, cols] of Object.entries(manifest)) {
     const list = cols.length ? cols.join(",") : "*";
     const { error } = await supabase.from(table).select(list).limit(0);
