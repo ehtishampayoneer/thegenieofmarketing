@@ -149,7 +149,7 @@ export default function ConnectionsPage() {
 
       {/* Publish */}
       <Group title="Optional · publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap, so your accounts stay safe. Skip these and Genie still writes everything: you paste it.">
-        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (your blog)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles" : "About 3 minutes, no technical steps: install Genie's plugin, press one button inside WordPress. Approved articles then publish themselves."}
+        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (only if your own site runs WordPress)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles to your own domain" : "Optional. Articles already publish to your Genie page automatically. Connect this only to publish them on YOUR domain instead. Not a way to post on other people's sites: that is Get featured."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
         {/* X needs no connection: Genie writes the post, you paste it, and pressing
             "Copy & open" in Approvals records that it is done. Kept for anyone who
@@ -324,6 +324,13 @@ function DeliverabilityCheck() {
 function WordPressConnect({ connected }) {
   const [open, setOpen] = useState(false);
   const [manual, setManual] = useState(false);
+  // Only useful if the owner's own site runs WordPress. Genie detects that, so
+  // everyone else is told there is nothing to do rather than being handed steps.
+  const [platform, setPlatform] = useState(null);
+  useEffect(() => {
+    fetch("/api/install", { cache: "no-store" }).then((r) => r.json())
+      .then((j) => { if (j?.ok) setPlatform(j.platform?.id || "generic"); }).catch(() => {});
+  }, []);
   const [f, setF] = useState({ siteUrl: "", username: "", appPassword: "" });
   const [state, setState] = useState("idle");
   const [err, setErr] = useState("");
@@ -352,6 +359,7 @@ function WordPressConnect({ connected }) {
   }
 
   if (connected) return <a href="/api/connect/wordpress" onClick={(e) => e.preventDefault()} className="mg-btn mg-btn--quiet" style={btn}>Connected</a>;
+  if (platform && platform !== "wordpress") return <span className="text-[12px] mg-subtle" style={{ maxWidth: 260, textAlign: "right" }}>Not needed: your site isn&apos;t WordPress.</span>;
   return (
     <div className="w-full">
       <button onClick={() => setOpen((v) => !v)} className="mg-btn mg-btn--ghost" style={btn}>{open ? "Close" : "Connect"}</button>

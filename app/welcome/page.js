@@ -548,6 +548,15 @@ function ConnectRow({ brand, label, sub, href, cta, connected, ready }) {
 function WordPressInline({ connected, onConnected }) {
   const [open, setOpen] = useState(false);
   const [manual, setManual] = useState(false);
+  // WordPress is the software a blog runs on, not a place to post. Owners whose
+  // site is not WordPress were shown upload instructions they could not use, and
+  // reasonably assumed they were missing out. Genie already knows what the site
+  // runs on, so it can simply say "nothing to do here".
+  const [platform, setPlatform] = useState(null);
+  useEffect(() => {
+    fetch("/api/install", { cache: "no-store" }).then((r) => r.json())
+      .then((j) => { if (j?.ok) setPlatform(j.platform?.id || "generic"); }).catch(() => {});
+  }, []);
   const [f, setF] = useState({ siteUrl: "", username: "", appPassword: "" });
   const [state, setState] = useState("idle");
 
@@ -576,6 +585,18 @@ function WordPressInline({ connected, onConnected }) {
   const [err, setErr] = useState("");
 
   if (connected) return <div style={rowBox(true)}><RowBody brand="wordpress" label="WordPress" sub="Genie auto-publishes approved articles to your blog" /><ConnectedTag /></div>;
+
+  // Not a WordPress site: say so plainly and explain where the articles go instead.
+  if (platform && platform !== "wordpress") {
+    return (
+      <div style={{ ...rowBox(false), flexDirection: "column", alignItems: "stretch" }}>
+        <RowBody brand="wordpress" label="WordPress" sub="Your site isn't WordPress, so there's nothing to do here." />
+        <p className="mt-2 text-[13px]" style={{ color: "var(--onb-subtle)", lineHeight: 1.5 }}>
+          I publish every approved article on your own Genie page automatically, live on the web, and hand you the text to paste into your site whenever you want it there too.
+        </p>
+      </div>
+    );
+  }
   return (
     <div style={{ ...rowBox(false), flexDirection: "column", alignItems: "stretch" }}>
       <div className="flex items-center gap-4">
