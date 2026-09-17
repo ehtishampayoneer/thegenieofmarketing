@@ -12,6 +12,7 @@ import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { logActivity } from "@/lib/activity";
 
 import { briefBlock } from "@/lib/business-brief";
+import { connScopes } from "@/lib/gmail";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -62,8 +63,8 @@ export async function POST(request) {
   let canSend = !!(process.env.RESEND_API_KEY && process.env.OUTREACH_FROM);
   if (!canSend) {
     try {
-      const { data: conn } = await supabase.from("connections").select("scope").eq("user_id", userId).eq("provider", "google").maybeSingle();
-      canSend = String(conn?.scope || "").includes("gmail.send");
+      const { data: conn } = await supabase.from("connections").select("*").eq("user_id", userId).eq("provider", "google").maybeSingle();
+      canSend = connScopes(conn).includes("gmail.send");
     } catch {}
   }
   if (!canSend) return json({ ok: false, needsSender: true, error: "Connect Gmail on the Connections page so outreach sends from your own address." }, 200);

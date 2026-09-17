@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { checkDeliverability } from "@/lib/deliverability";
+import { connEmail } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +20,10 @@ export async function GET(request) {
   let email = override || null;
   if (!email) {
     try {
-      const { data: g } = await supabase.from("connections").select("account_email, meta").eq("user_id", user.id).eq("provider", "google").maybeSingle();
-      email = g?.account_email || g?.meta?.email || null;
+      // select("*"): naming account_email, a column that does not exist, failed the
+      // whole query, so this always reported Google as not connected.
+      const { data: g } = await supabase.from("connections").select("*").eq("user_id", user.id).eq("provider", "google").maybeSingle();
+      email = connEmail(g);
     } catch {}
   }
   if (!email) return json({ ok: true, connected: false, message: "Connect Google to send from your Gmail, then Genie can check your deliverability." });

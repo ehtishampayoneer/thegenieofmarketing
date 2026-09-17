@@ -67,3 +67,16 @@ create policy "directory readable by authenticated"
 -- No insert/update/delete policy on purpose. The service role bypasses RLS, so
 -- only Genie's own server code can write here. A signed-in user cannot inject
 -- addresses into everyone else's outreach pool.
+
+-- Catch-up for a directory_contacts table created by an older version: "create
+-- table if not exists" above skips it entirely, so its newer columns would never
+-- be added. Found live; see db/columns-catchup.sql.
+alter table public.directory_contacts add column if not exists name          text;
+alter table public.directory_contacts add column if not exists company       text;
+alter table public.directory_contacts add column if not exists domain        text;
+alter table public.directory_contacts add column if not exists industry      text;
+alter table public.directory_contacts add column if not exists email_type    text default 'role';
+alter table public.directory_contacts add column if not exists is_genie_lead boolean not null default false;
+alter table public.directory_contacts add column if not exists status        text not null default 'new';
+alter table public.directory_contacts add column if not exists source        text default 'discovery';
+alter table public.directory_contacts add column if not exists created_at    timestamptz not null default now();
