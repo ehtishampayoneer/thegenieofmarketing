@@ -14,6 +14,7 @@ import { enrichWithVolumes } from "@/lib/google-ads";
 import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
 
+import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -217,6 +218,7 @@ Website: ${host}
 Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory : ""}
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
 Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
+${briefBlock(ai || {}, { max: 1800 })}
 ${real}
 ════════ HOW TO THINK (read carefully — this is the whole game) ════════
 FIRST, separate two different things:

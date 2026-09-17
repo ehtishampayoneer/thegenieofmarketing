@@ -222,7 +222,7 @@ company_address, company_pitch, setup_completed (bool), plan (text default 'free
 ### `scans` (site audit results)
 ```
 id, user_id, url, final_url, overall_score, scores (jsonb), accuracy, checks (jsonb),
-ai (jsonb — business understanding), speed (jsonb), gsc (jsonb), created_at
+ai (jsonb — business understanding; ai.brief = the owner's strategy from onboarding, see lib/business-brief.js), speed (jsonb), gsc (jsonb), created_at
 ```
 
 ### `connections` (OAuth tokens)

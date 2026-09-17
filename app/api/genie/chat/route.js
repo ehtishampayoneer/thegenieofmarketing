@@ -10,6 +10,7 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 
+import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -64,6 +65,7 @@ export async function POST(request) {
 Return ONLY JSON: { "reply": "your natural reply as Genie", "directive": null or "a concise standing rule, e.g. 'Write casually, no hype'", "memory": null or "a durable business fact worth remembering" }`;
 
   const prompt = `THIS BUSINESS: ${name}${ai.whatTheySell ? ` — ${ai.whatTheySell}` : ""}.
+${briefBlock(ai, { max: 2500 })}
 ${ai.targetCustomer ? `Ideal customer: ${ai.targetCustomer}.` : ""}${ai.competitors?.length ? ` Competitors: ${(ai.competitors || []).map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean).slice(0, 3).join(", ")}.` : ""}
 
 STANDING INSTRUCTIONS I ALREADY FOLLOW:

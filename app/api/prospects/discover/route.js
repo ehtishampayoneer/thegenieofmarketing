@@ -6,6 +6,7 @@
 
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
+import { briefBlock } from "@/lib/business-brief";
 import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies } from "@/lib/prospects";
 
 export const runtime = "nodejs";
@@ -30,7 +31,7 @@ export async function POST(request) {
   let host = null;
   try {
     const { data: scan } = await supabase.from("scans").select("ai, final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; }
+    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; userBusiness.brief = briefBlock(ai); }
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };

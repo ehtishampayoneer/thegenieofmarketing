@@ -11,6 +11,7 @@ import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { logActivity } from "@/lib/activity";
 
+import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -67,11 +68,18 @@ export async function POST(request) {
   // finds actual buyers. The scan's targetCustomer is the right field, with the
   // industry as a fallback.
   let niche = String(industry || prof.industry || "").trim();
+  let briefForDrafts = "";
   try {
     const { data: scan } = await supabase.from("scans").select("ai")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
     const target = scan?.ai?.targetCustomer || scan?.ai?.idealCustomer;
     if (target) niche = String(target).slice(0, 120);
+    // The owner's own segments beat the one-line summary. Rotated by day, so
+    // "furniture retailers; restaurants" is searched as two real groups on
+    // alternate nights instead of one mashed-together query that matches neither.
+    const segs = scan?.ai?.brief?.segments;
+    if (Array.isArray(segs) && segs.length) niche = String(segs[Math.floor(Date.now() / 86400000) % segs.length]).slice(0, 120);
+    briefForDrafts = briefBlock(scan?.ai || {}, { max: 1800 });
   } catch {}
 
   // Source contacts. Seeds the shared directory from real published addresses
@@ -115,7 +123,7 @@ export async function POST(request) {
   for (const c of sendable) {
     // Compliance: never email someone who opted out.
     if (await isSuppressed(supabase, userId, c.email)) { skipped++; continue; }
-    const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name });
+    const { subject, body: emailBody } = await draftEmail(draftProf, c, { name: prof.company_name, brief: briefForDrafts });
     // deliverEmail, not sendOne: it tries the user's OWN Gmail first and only
     // falls back to the platform sender. sendOne skipped that entirely, which is
     // why the nightly run ignored a connected Gmail and sent from a shared

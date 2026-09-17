@@ -668,6 +668,25 @@ html, body {
 .onb-core { animation:onb-breathe 3s ease-in-out infinite; transform-origin:50% 50%; }
 @media (prefers-reduced-motion: reduce) { .onb-rise, .onb-spinner, .onb-blades, .onb-core { animation:none; } }
 
+/* ── Understanding check: two fixed-height panels that scroll inside ──
+   The chat used to grow the whole page with every message. A fixed panel height
+   keeps the composer and the build button in view, the way every chat app does. */
+.uc-grid { display:grid; grid-template-columns:1fr; gap:20px; }
+.uc-panel { display:flex; flex-direction:column; min-height:0; overflow:hidden; border-radius:18px; border:1px solid var(--onb-hair); background:var(--onb-panel); }
+.uc-panel:first-child { height:min(420px, 60vh); }
+.uc-panel:last-child { height:min(640px, 78vh); }
+@media (min-width:1024px) {
+  .uc-grid { grid-template-columns:minmax(0,5fr) minmax(0,6fr); }
+  .uc-panel:first-child, .uc-panel:last-child { height:clamp(520px, calc(100vh - 330px), 760px); }
+}
+.uc-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.uc-row { padding:11px 10px; margin:0 -10px; border-radius:10px; transition:background-color .6s ease; }
+.uc-row + .uc-row { border-top:1px solid var(--onb-hair2); }
+.uc-fresh { background:var(--onb-live-soft); }
+.uc-badge { font-size:10.5px; font-weight:700; letter-spacing:.02em; color:var(--onb-live); background:#fff; border:1px solid rgba(31,122,53,.25); border-radius:99px; padding:1px 7px; }
+.uc-jump { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); font-size:12.5px; font-weight:600; color:#fff; background:var(--onb-dawn); border:0; border-radius:99px; padding:6px 14px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.15); }
+.uc-ready { box-shadow:0 0 0 4px rgba(52,199,89,.28); }
+
 /* ── TOUCH TARGETS (Apple HIG: 44x44pt minimum) ─────────────────────────────
    Scoped to coarse pointers, so a mouse keeps the tighter desktop control sizes
    and only touch gets the larger hit area — which is how Apple ships their own

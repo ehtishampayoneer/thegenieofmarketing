@@ -16,6 +16,7 @@ import { classifyEntity } from "@/lib/entity";
 import { deDash, cleanText } from "@/lib/markdown";
 import { logger } from "@/lib/log";
 
+import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -451,6 +452,7 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
     ai.conversionGoal ? `The action to drive: ${ai.conversionGoal}.` : "",
     ai.avoid ? `NEVER say, claim, or promise: ${ai.avoid}.` : "",
     ai.tone ? `Owner's preferred tone: ${ai.tone}.` : "",
+    briefBlock(ai, { max: 2000 }),
   ].filter(Boolean).join("\n");
 
   // The owner asked for THIS, and supplied THIS material. It is the only part of

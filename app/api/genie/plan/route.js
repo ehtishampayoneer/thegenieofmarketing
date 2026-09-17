@@ -9,6 +9,7 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 
+import { briefBlock } from "@/lib/business-brief";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -91,6 +92,7 @@ Provide 4-7 steps, 3-6 assets, and 5-10 schedule rows. Keep copy tight.`;
 ${extra ? `\nOWNER'S SPECIFIC ASK: ${extra}` : ""}
 
 THE BUSINESS: ${name}${sells ? ` — ${sells}` : ""}.
+${briefBlock(ai, { max: 2500 })}
 ${ai.targetCustomer ? `Ideal customer: ${ai.targetCustomer}.` : ""}${profile.company_website || host ? ` Website: ${profile.company_website || host}.` : ""}
 ${ai.competitors?.length ? `Competitors: ${(ai.competitors || []).map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean).slice(0, 3).join(", ")}.` : ""}
 

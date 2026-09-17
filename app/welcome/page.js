@@ -17,6 +17,7 @@ import { BrandIcon } from "@/components/ui/BrandIcon";
 import Icon from "@/components/ui/Icon";
 import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 import { Showcase } from "@/components/Showcase";
+import UnderstandingCheck from "@/components/onboarding/UnderstandingCheck";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -55,10 +56,8 @@ export default function WelcomePage() {
   const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "" });
   const [conns, setConns] = useState(null); // live connection status for the connect step
   // ── Understanding Check (post-scan "did I get you right?") ──
-  const [understanding, setUnderstanding] = useState(null); // working copy of Genie's read of the business
-  const [convo, setConvo] = useState([]);                   // [{ role:'genie'|'owner', content }]
-  const [chatInput, setChatInput] = useState("");
-  const [chatBusy, setChatBusy] = useState(false);
+  // The conversation itself lives in components/onboarding/UnderstandingCheck.
+  const [understanding, setUnderstanding] = useState(null); // Genie's read of the business, seeded from the scan
 
   async function loadConns() {
     try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
@@ -180,49 +179,20 @@ export default function WelcomePage() {
     try { const supabase = createClient(); const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id); } catch {}
   }
   // ── Understanding Check ──
-  // Enter the confirmation step: seed Genie's working understanding from the scan
-  // and open with a short "does this look right?" message.
+  // Enter the confirmation step, seeded with what the scan found. The interview
+  // itself runs inside <UnderstandingCheck>, which hands back the final brief.
   async function toConfirm() {
-    const ai = data?.ai || {};
-    setUnderstanding(ai);
+    setUnderstanding(data?.ai || {});
     setPhase("confirm");
-    setConvo([{ role: "genie", content: "I have read your site properly. Here is what I took from it. Tell me where I am wrong, and fill in the few things a website never says, then I will build everything on that." }]);
-    // Fetch Genie's investigation agenda, then open with the first question.
-    setChatBusy(true);
-    try {
-      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai, action: "questions", pageText: data?.pageText || "" }) }).then((x) => x.json());
-      const qs = Array.isArray(r?.questions) ? r.questions : [];
-      if (qs.length) setConvo((c) => [...c, { role: "genie", content: qs[0] }]);
-    } catch {}
-    setChatBusy(false);
-  }
-
-  // One turn of the correction chat.
-  async function sendCorrection() {
-    const msg = chatInput.trim();
-    if (!msg || chatBusy) return;
-    setChatInput("");
-    const history = convo.slice(-8);
-    setConvo((c) => [...c, { role: "owner", content: msg }]);
-    setChatBusy(true);
-    try {
-      const r = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai: understanding, message: msg, history }) }).then((x) => x.json());
-      if (r.ok) {
-        setUnderstanding(r.ai);
-        setConvo((c) => [...c, { role: "genie", content: r.reply }]);
-      } else {
-        setConvo((c) => [...c, { role: "genie", content: r.message || "I couldn’t quite get that. Try rephrasing?" }]);
-      }
-    } catch { setConvo((c) => [...c, { role: "genie", content: "Something interrupted me. Say that again?" }]); }
-    setChatBusy(false);
   }
 
   // Confirmed: persist the understanding, then build the strategy on the CORRECT
   // identity (productOverride wipes any earlier guess), and draft content off it.
-  async function confirmUnderstanding() {
+  async function confirmUnderstanding(finalAi) {
     setBusy(true);
     const h = entity?.host || hostOf(data?.finalUrl || data?.url || url);
-    const ai = understanding || data?.ai || {};
+    const ai = finalAi || understanding || data?.ai || {};
+    setUnderstanding(ai);
     const head = { "Content-Type": "application/json" };
     setDetails((d) => ({ ...d, company_name: ai.businessName || d.company_name || "" }));
     try { await fetch("/api/understand", { method: "PUT", headers: head, body: JSON.stringify({ host: h, ai }) }); } catch {}
@@ -386,61 +356,13 @@ export default function WelcomePage() {
                 </p>
               </div>
 
-              <div className="mt-7 grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-                {/* LEFT — what Genie found */}
-                <div style={{ borderRadius: 18, border: "1px solid rgba(10,132,255,.24)", background: "var(--onb-panel)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                  <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)" }}>
-                    <p className="text-[12px] font-semibold" style={{ textTransform: "uppercase", letterSpacing: ".13em", color: "var(--onb-subtle)" }}>What I found about</p>
-                    <p className="text-[17px] font-bold" style={{ color: "var(--onb-fg)", marginTop: 2, letterSpacing: "-.01em" }}>{cap(understanding?.businessName || host || "your business")}</p>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-3.5" style={{ padding: "18px 20px", overflowY: "auto" }}>
-                    <URow label="You are" value={understanding?.businessType} />
-                    <URow label="You sell" value={understanding?.whatTheySell} />
-                    <URow label="Your customers" value={understanding?.targetCustomer} />
-                    {understanding?.idealCustomer && <URow label="Best customer" value={understanding.idealCustomer} />}
-                    <URow label="Your edge" value={understanding?.differentiator || understanding?.summary} />
-                    {understanding?.whyChooseYou && <URow label="Why chosen" value={understanding.whyChooseYou} />}
-                    {understanding?.conversionGoal && <URow label="Main goal" value={understanding.conversionGoal} />}
-                    {understanding?.proof && <URow label="Proof" value={understanding.proof} />}
-                    {understanding?.avoid && <URow label="Never say" value={understanding.avoid} />}
-                  </div>
-                </div>
-
-                {/* RIGHT — chat with Genie */}
-                <div style={{ borderRadius: 18, border: "1px solid var(--onb-hair)", background: "var(--onb-ink)", display: "flex", flexDirection: "column", minHeight: 440, overflow: "hidden" }}>
-                  <div style={{ padding: "15px 20px", borderBottom: "1px solid var(--onb-hair)", display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--onb-live)", display: "inline-block", flex: "none" }} />
-                    <p className="text-[14px] font-semibold" style={{ color: "var(--onb-fg)" }}>Chat with Genie</p>
-                    <span className="ml-auto text-[12px]" style={{ color: "var(--onb-subtle)" }}>Correct or add anything</span>
-                  </div>
-                  <div className="flex-1 flex flex-col gap-3 thin-scroll" style={{ padding: 18, overflowY: "auto" }}>
-                    {convo.map((m, i) => (
-                      <div key={i} className={m.role === "owner" ? "self-end" : "self-start"} style={{ maxWidth: "88%" }}>
-                        <div style={{
-                          padding: "11px 14px", borderRadius: 14, fontSize: 15, lineHeight: 1.5,
-                          background: m.role === "owner" ? "var(--onb-dawn)" : "var(--onb-panel)",
-                          color: m.role === "owner" ? "#FFFFFF" : "var(--onb-fg)",
-                          border: m.role === "owner" ? "none" : "1px solid var(--onb-hair)",
-                        }}>{m.content}</div>
-                      </div>
-                    ))}
-                    {chatBusy && <div className="self-start" style={{ padding: "6px 14px" }}><span className="onb-spinner" /></div>}
-                  </div>
-                  <div style={{ padding: 14, borderTop: "1px solid var(--onb-hair)", display: "flex", gap: 10 }}>
-                    <input value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendCorrection()}
-                      placeholder="e.g. We sell furniture and shoes; AR is just how customers preview"
-                      className="onb-input flex-1 px-4 text-[15px]" style={{ height: 48 }} aria-label="Correct Genie" />
-                    <button onClick={sendCorrection} disabled={chatBusy || !chatInput.trim()} className="onb-cta px-5 text-[14px] disabled:opacity-40" style={{ height: 48, flex: "none" }}>Send</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-7 flex items-center gap-5 flex-wrap">
-                <button onClick={confirmUnderstanding} disabled={busy} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>
-                  {busy ? "Building your plan…" : "Yes, that’s right, build my plan →"}
-                </button>
-                <span className="text-[13px]" style={{ color: "var(--onb-subtle)" }}>I’ll target the right buyers based on this.</span>
-              </div>
+              <UnderstandingCheck
+                initialAi={understanding || data?.ai || {}}
+                pageText={data?.pageText || ""}
+                host={entity?.host || hostOf(data?.finalUrl || data?.url || url)}
+                busy={busy}
+                onConfirm={confirmUnderstanding}
+              />
             </div>
           )}
 
@@ -637,17 +559,6 @@ function WordPressInline({ connected, onConnected }) {
           <p className="text-[12px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
         </div>
       )}
-    </div>
-  );
-}
-
-function URow({ label, value }) {
-  return (
-    <div className="flex gap-3">
-      <span style={{ flex: "none", width: 108, fontSize: 13, color: "var(--onb-subtle)", paddingTop: 1 }}>{label}</span>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: "var(--onb-fg)", lineHeight: 1.45 }}>
-        {value ? cap(value) : <span style={{ color: "var(--onb-subtle)" }}>Tell me in the chat</span>}
-      </span>
     </div>
   );
 }
