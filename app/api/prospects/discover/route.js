@@ -7,7 +7,7 @@
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { briefBlock } from "@/lib/business-brief";
-import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies } from "@/lib/prospects";
+import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies, fitFrom } from "@/lib/prospects";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,13 +29,14 @@ export async function POST(request) {
     if (prof) userBusiness = { name: prof.company_name || "", pitch: prof.company_pitch || "", whatTheySell: "" };
   } catch {}
   let host = null;
+  let fit = null;
   try {
     const { data: scan } = await supabase.from("scans").select("ai, final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; userBusiness.brief = briefBlock(ai); }
+    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; userBusiness.brief = briefBlock(ai); fit = fitFrom(ai); }
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };
-  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx });
+  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit });
 
   // RECOVERY: if the main path came up empty (a transient provider hiccup), run the
   // candidate call once more — it reliably names companies at this calmer moment —

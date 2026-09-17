@@ -47,6 +47,7 @@ export default function DiagnosticsPage() {
         accent="console."
         action={state === "real" ? (
           <div className="text-right">
+            <a href="/selftest" className="mg-btn mg-btn--dawn" style={{ fontSize: 13, marginRight: 8 }}>Run live self-test</a>
             <button onClick={factoryReset} disabled={resetting} className="mg-btn mg-btn--ghost" style={{ fontSize: 13, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
               {resetting ? "Wiping everything…" : "Full reset — wipe everything"}
             </button>

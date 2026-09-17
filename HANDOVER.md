@@ -449,6 +449,7 @@ social-copy craft gap; the content engine's shared token budget.
 
 - **Added or changed a database query?** Run `node scripts/gen-schema-manifest.mjs`. `/diagnostics` checks the live database against `lib/schema-manifest.js`, and it can only catch a missing column it knows about.
 - **Added an AI call?** Size `maxTokens` for the whole answer you ask for (a list of 30 items with reasons is ~3000 tokens), and pass `timeoutMs` when it writes a lot. The router already adds a thinking allowance for Gemini 2.5 and gpt-oss.
+- **Before calling anything launch-ready, run `/selftest` on the live site.** It exercises every engine with the real keys (AI providers, scan, Gmail, Search Console, GA4, Google Ads, search, prospects, sites, snippet) and reports Google's own error text. Unit tests fake these services, which is exactly how features shipped that never worked. Added a new engine or integration? Add a check to `lib/selftest.js`.
 - **Added a step to the nightly job?** It runs in parallel waves inside a 300s limit (`lib/genie-jobs.js`). Never add a long sequential `await` there.
 
 This exists because it has already gone wrong twice. This file described V1
