@@ -108,7 +108,7 @@ const GROUPS = [
       { icon: "mail", t: "Email capture & lead magnet", p: "Published pages carry an opt-in so readers become leads you can follow up — not just anonymous traffic.", href: "/growth", status: ["live", "Active"] },
       { icon: "growth", t: "Per-page results", p: "See exactly what each published page earns — real clicks to your site (via the CTA) and leads captured — first-party, from day one, no analytics connection needed.", href: "/growth", status: ["live", "Active"] },
       { icon: "bolt", t: "Revenue attribution", p: "A guided 3-step setup connects your payment provider (Stripe, Shopify, and more). Send a test event and Genie confirms it received it — then traces every sale back to the exact page that drove it.", href: "/impact", status: ["info", "Connect revenue"] },
-      { icon: "growth", t: "Growth Score & impact", p: "One honest score for your organic growth, plus what Genie did each night and the customers it earned.", href: "/growth", status: ["live", "Active"] },
+      { icon: "growth", t: "Growth Score & impact", p: "One honest score for your organic growth, plus what Genie did each night and the customers it earned. Includes Search health: pages missing from Google, pages losing clicks, and your own pages competing for one search.", href: "/growth", status: ["live", "Active"] },
     ],
   },
   {

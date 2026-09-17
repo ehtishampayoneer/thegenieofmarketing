@@ -10,7 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { logActivity } from "@/lib/activity";
 import { expandSeeds } from "@/lib/autocomplete";
-import { enrichWithVolumes } from "@/lib/google-ads";
+// volumeToPotential was used below but never imported. It only runs when Google
+// Ads returns real volumes, i.e. right after the owner connects Google, so every
+// keyword build then threw a ReferenceError and saved nothing.
+import { enrichWithVolumes, volumeToPotential } from "@/lib/google-ads";
 import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
 import { resolveRadarUser } from "@/lib/radar-auth";
@@ -54,8 +57,21 @@ export async function POST(request) {
   const { supabase, userId } = await resolveRadarUser(request, body);
   if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
   const user = { id: userId };
-  const { host, ai, productOverride, rebuild } = body || {};
+  const { host, productOverride, rebuild } = body || {};
+  let { ai } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
+
+  // The Growth page's "Rebuild strategy" sends only the host. Without this, the
+  // model was asked for a keyword strategy knowing nothing but the domain name,
+  // every field read "(infer)", and the owner's onboarding brief was ignored.
+  if (!ai || !Object.keys(ai).length) {
+    try {
+      const { data: s } = await supabase.from("scans").select("ai")
+        .eq("user_id", userId).or(`final_url.ilike.%${host}%,url.ilike.%${host}%`)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      ai = s?.ai || {};
+    } catch { ai = {}; }
+  }
 
   // Layer 0 (free): ground candidates in REAL Google searches via Autocomplete.
   let realSearches = [];

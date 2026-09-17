@@ -35,7 +35,10 @@ async function context(supabase, userId, origin) {
   let html = "";
   if (site) {
     try {
-      const r = await safeFetch(site, { signal: AbortSignal.timeout(9000) });
+      // safeFetch returns { res, finalUrl }, not the response. Reading r.ok here was
+      // always undefined, so the page was never read and every site got the
+      // generic instructions instead of its own platform's.
+      const { res: r } = await safeFetch(site, { signal: AbortSignal.timeout(9000) });
       if (r?.ok) html = (await r.text()).slice(0, 200000);
     } catch {}
   }

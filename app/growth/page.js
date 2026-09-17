@@ -191,6 +191,7 @@ function Growth() {
               <MetricsRow tracked={tracked} avgPosition={avgPosition} improvedBy={improvedBy} inTop20={inTop20} aiCitations={aiCitations} points={windowPoints} />
               <KeywordTable active={active} series={d.series} host={host} onAdded={(j) => setD((prev) => ({ ...prev, keywords: { portfolioScore: j.portfolioScore, graded: j.graded || prev.keywords.graded, counts: j.counts } }))} />
               <PagePerformance host={host} />
+              <SearchHealth host={host} googleOn={conns?.google?.connected === true} />
               <LocalServices host={host} />
               <StrategyPhase active={active} inTop20={inTop20} />
             </div>
@@ -758,3 +759,107 @@ function MiniSelect({ label, value, opts, onChange, prefix = "" }) {
     </span>
   );
 }
+
+// ── SEARCH HEALTH ──────────────────────────────────────────────────────────
+// Three problems Search Console can see and Genie now checks nightly: pages not on
+// Google (and why), pages losing clicks, and searches where two of your own pages
+// compete. Each finding carries the specific fix. Reads the saved result; "Check
+// now" runs it on demand. See lib/search-health.js.
+function SearchHealth({ host, googleOn }) {
+  const [r, setR] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    if (!host) return;
+    let alive = true;
+    fetch(`/api/search-health?host=${encodeURIComponent(host)}`, { cache: "no-store" })
+      .then((x) => x.json()).then((j) => { if (alive && j?.ok) setR(j.result); }).catch(() => {});
+    return () => { alive = false; };
+  }, [host]);
+
+  async function run() {
+    if (busy || !host) return;
+    setBusy(true); setMsg("");
+    try {
+      const j = await fetch("/api/search-health", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host }) }).then((x) => x.json());
+      if (j?.available) setR(j);
+      else if (j?.reason === "no_property") setMsg(`Your Google account has no Search Console property for ${host}. Add and verify the site in Search Console, then check again.`);
+      else if (j?.reason === "not_connected" || j?.reason === "no_token") setMsg("Connect Google on the Connections page first.");
+      else setMsg(j?.error || "Could not check just now.");
+    } catch { setMsg("Could not check just now."); }
+    setBusy(false);
+  }
+
+  const idx = r?.indexing;
+  const total = r ? (idx?.problems?.length || 0) + (r.declining?.length || 0) + (r.cannibalization?.length || 0) : 0;
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>Search health</p>
+          <p className="text-[13px] mg-muted mt-0.5" style={{ maxWidth: "var(--measure)" }}>
+            Pages that are not on Google, pages losing clicks, and searches where your own pages compete. Checked every night from Search Console.
+          </p>
+        </div>
+        <button onClick={run} disabled={busy || !host || !googleOn} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
+          {busy ? "Checking…" : "Check now"}
+        </button>
+      </div>
+
+      {!googleOn && !r && <p className="mt-3 text-[13px] mg-subtle">Connect Google to turn this on. It reads Search Console only and never changes your site.</p>}
+      {msg && <p className="mt-3 text-[13px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+
+      {r && (
+        <>
+          <div className="mt-4 grid grid-cols-3 gap-2.5">
+            <Tile n={idx ? `${idx.indexed}/${idx.checked}` : "—"} l="pages on Google" bad={(idx?.problems?.length || 0) > 0} />
+            <Tile n={r.declining?.length ?? 0} l="losing clicks" bad={(r.declining?.length || 0) > 0} />
+            <Tile n={r.cannibalization?.length ?? 0} l="competing pages" bad={(r.cannibalization?.length || 0) > 0} />
+          </div>
+
+          {total === 0 && <p className="mt-3 text-[13px]" style={{ color: "var(--signal-live-ink)" }}>Nothing to fix. Every page checked is on Google, nothing is losing clicks, and no two pages compete.</p>}
+
+          <Findings title="Not on Google" items={(idx?.problems || []).map((p) => ({ key: p.url, head: pathOf(p.url), body: p.advice }))} />
+          <Findings title="Losing clicks" items={(r.declining || []).map((d) => ({ key: d.page, head: `${pathOf(d.page)} · ${d.clicksBefore} → ${d.clicksNow} clicks (−${d.dropPct}%)`, body: d.advice }))} />
+          <Findings title="Your pages competing" items={(r.cannibalization || []).map((c) => ({ key: c.query, head: `"${c.query}" · ${c.pages.length} pages`, body: c.advice }))} />
+          {(idx?.intentional?.length || 0) > 0 && (
+            <p className="mt-3 text-[12px] mg-subtle">{idx.intentional.length} page{idx.intentional.length > 1 ? "s are" : " is"} deliberately kept off Google with a noindex tag. That is not counted as a problem.</p>
+          )}
+          <p className="mt-3 text-[11.5px] mg-subtle">
+            Checked {new Date(r.checkedAt).toLocaleString()}. Google's separate AI Overviews figures are only in the Search Console website, not its API, so they are not included here.
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function Tile({ n, l, bad }) {
+  return (
+    <div className="mg-surface-quiet py-2.5 px-3">
+      <p className="mg-num text-[18px] font-bold" style={{ color: bad ? "var(--signal-warn)" : "var(--fg)" }}>{n}</p>
+      <p className="text-[11px] mg-subtle mt-0.5">{l}</p>
+    </div>
+  );
+}
+
+function Findings({ title, items }) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-4">
+      <p className="text-[12px] font-semibold uppercase" style={{ letterSpacing: ".08em", color: "var(--fg-subtle)" }}>{title}</p>
+      <div className="mt-1.5 flex flex-col gap-2">
+        {items.slice(0, 6).map((it) => (
+          <div key={it.key} className="p-3 rounded-xl" style={{ border: "1px solid var(--hair)", background: "var(--surface)" }}>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--fg)", overflowWrap: "anywhere" }}>{it.head}</p>
+            <p className="text-[13px] mg-muted mt-1" style={{ lineHeight: 1.5 }}>{it.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function pathOf(u) { try { const x = new URL(u); return x.pathname + (x.search || ""); } catch { return String(u || ""); } }
