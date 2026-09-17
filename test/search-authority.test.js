@@ -137,3 +137,46 @@ describe("OpenPageRank", () => {
     expect(authorityLastError()).toMatch(/401: Invalid API key/);
   });
 });
+
+describe("Reddit and Gemini resting", () => {
+  beforeEach(() => { vi.resetModules(); process.env.GEMINI_API_KEY = "k"; process.env.TAVILY_API_KEY = "tvly"; delete process.env.GEMINI_MODEL; delete process.env.REDDIT_CLIENT_ID; delete process.env.REDDIT_RSS_TOKEN; });
+
+  it("finds threads with a second phrasing when the site-filtered search returns only community pages", async () => {
+    const tavilyQueries = [];
+    globalThis.fetch = vi.fn(async (url, init = {}) => {
+      const u = String(url);
+      if (u.includes("/v1beta/models?")) return json({ models: [] });
+      if (u.includes("generativelanguage")) return json({ error: { message: "You exceeded your current quota" } }, 429);
+      if (u.includes("api.tavily.com")) {
+        const b = JSON.parse(init.body);
+        tavilyQueries.push(b.include_domains ? `${b.query} [site]` : b.query);
+        return b.include_domains
+          ? json({ results: [{ title: "r/furniture", url: "https://www.reddit.com/r/furniture/" }] })
+          : json({ results: [{ title: "Where do you buy sofas?", url: "https://www.reddit.com/r/furniture/comments/abc123/where_do_you_buy/" }] });
+      }
+      return new Response("", { status: 403 });
+    });
+    const { redditSearch } = await import("@/lib/search");
+    const out = await redditSearch("buying a sofa", { limit: 5 });
+    expect(out.map((t) => t.threadId)).toEqual(["abc123"]);
+    expect(tavilyQueries).toEqual(["buying a sofa [site]", "buying a sofa reddit"]);
+  });
+
+  it("stops calling Gemini for search once every model is out of quota", async () => {
+    let geminiCalls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      const u = String(url);
+      if (u.includes("/v1beta/models?")) return json({ models: [{ name: "models/gemini-3.5-flash-lite", supportedGenerationMethods: ["generateContent"] }] });
+      if (u.includes(":generateContent")) { geminiCalls++; return json({ error: { message: "You exceeded your current quota" } }, 429); }
+      if (u.includes("api.tavily.com")) return json({ results: [{ title: "A", url: "https://a.example/" }] });
+      return new Response("", { status: 403 });
+    });
+    const { webSearch } = await import("@/lib/search");
+    await webSearch("first query", { limit: 3 });
+    const afterFirst = geminiCalls;
+    const out = await webSearch("second query", { limit: 3 });
+    expect(afterFirst).toBe(2);           // both models tried once
+    expect(geminiCalls).toBe(afterFirst); // then rested: no more Gemini calls
+    expect(out[0].url).toBe("https://a.example/");
+  });
+});
