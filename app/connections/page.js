@@ -121,8 +121,17 @@ export default function ConnectionsPage() {
         </div>
       )}
 
+      {/* What actually matters, said plainly: an owner should not have to guess
+          which of these they must do before Genie is useful. */}
+      <div className="mb-5 p-4 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+        <p className="text-[14px] font-semibold" style={{ color: "var(--fg)" }}>Only one of these matters to start: Google.</p>
+        <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+          It is one click and takes about a minute: it lets Genie send your outreach from your own Gmail and read your real Google rankings. Everything below it is optional, adds power later, and can be done any time. Genie already writes, hunts buyers and finds prospects without any of them.
+        </p>
+      </div>
+
       {/* Measure */}
-      <Group title="Measure your growth" sub="So Genie’s impact becomes real numbers, not estimates.">
+      <Group title="Needed to start · Google" sub="One click. Sending from your Gmail, plus your real rankings and traffic.">
         <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
           sub={googleSub(I)}
           connected={I.google?.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
@@ -134,21 +143,21 @@ export default function ConnectionsPage() {
       </Group>
 
       {/* Publish */}
-      <Group title="Publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap — so your accounts stay safe.">
-        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (your blog)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles" : "Genie auto-publishes approved articles here. Safe — it's your own site."}
+      <Group title="Optional · publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap, so your accounts stay safe. Skip these and Genie still writes everything: you paste it.">
+        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (your blog)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles" : "About 3 minutes, no technical steps: install Genie's plugin, press one button inside WordPress. Approved articles then publish themselves."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
         <Row icon={<BrandIcon brand="x" size={18} />} label="X (Twitter)" sub={I.x.connected ? "Connected · Genie drafts, opens X, you tap post" : "Genie writes your tweets and threads and opens X with them ready — you tap post. It never auto-posts, to keep your account safe."}
           connected={I.x.connected} action={<a href="/api/connect/x/start" className="mg-btn mg-btn--ghost" style={btn}>{I.x.connected ? "Reconnect" : "Connect X"}</a>} />
       </Group>
 
       {/* Reach */}
-      <Group title="Reach buyers" sub="So Genie can run outreach — compliantly, and actually land in the inbox.">
+      <Group title="Reach buyers" sub="Already working. Outreach sends from your own Gmail once Google is connected.">
         <Row icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" connectedLabel="Built-in · ready" sub={I.email.connected ? "Built in — every email is CAN-SPAM compliant (unsubscribe + address). Nothing to connect." : "Email sending is configured for you at the platform level"}
           connected={I.email.connected} action={null} />
         <DeliverabilityCheck />
       </Group>
 
-      <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie stays useful even with nothing connected — but each connection makes its results more real and more automated.</p>
+      <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie stays useful even with nothing connected. Each connection just makes its results more real and more automated.</p>
     </OperatorShell>
   );
 }
@@ -300,32 +309,67 @@ function DeliverabilityCheck() {
   );
 }
 
+// WordPress, without asking a business owner to create an application password.
+// The plugin Genie builds for the visitor counter now carries a Connect button:
+// WordPress makes the password itself and sends it here. The manual form is kept
+// for anyone who prefers it or whose host blocks plugin uploads.
 function WordPressConnect({ connected }) {
   const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
   const [f, setF] = useState({ siteUrl: "", username: "", appPassword: "" });
   const [state, setState] = useState("idle");
+  const [err, setErr] = useState("");
+
+  // The plugin connects from inside WordPress, so this page just watches for it.
+  useEffect(() => {
+    if (!open || connected) return;
+    const t = setInterval(async () => {
+      try {
+        const j = await fetch("/api/connections/status", { cache: "no-store" }).then((r) => r.json());
+        if (j?.integrations?.wordpress?.connected) window.location.reload();
+      } catch {}
+    }, 5000);
+    return () => clearInterval(t);
+  }, [open, connected]);
+
   async function connect() {
-    setState("saving");
+    setState("saving"); setErr("");
     try {
       const r = await fetch("/api/connect/wordpress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
       const j = await r.json();
       setState(j.ok ? "done" : "error");
       if (j.ok) setTimeout(() => window.location.reload(), 800);
+      else setErr(j.error || "");
     } catch { setState("error"); }
   }
+
   if (connected) return <a href="/api/connect/wordpress" onClick={(e) => e.preventDefault()} className="mg-btn mg-btn--quiet" style={btn}>Connected</a>;
   return (
     <div className="w-full">
       <button onClick={() => setOpen((v) => !v)} className="mg-btn mg-btn--ghost" style={btn}>{open ? "Close" : "Connect"}</button>
       {open && (
-        <div className="mt-3 space-y-2 w-full">
-          {[["siteUrl", "Site URL — https://yourblog.com"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
-            <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
-              className="w-full px-3 py-2 rounded-lg text-[13px] mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }} />
-          ))}
-          <Button variant="dawn" onClick={connect} disabled={state === "saving"} style={btn}>{state === "saving" ? "Checking…" : "Connect WordPress"}</Button>
-          {state === "error" && <p className="text-[12px]" style={{ color: "var(--signal-danger)" }}>Couldn’t connect — check your details.</p>}
-          <p className="text-[11px] mg-subtle">Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+        <div className="mt-3 w-full">
+          <ol className="text-[13px] mg-muted" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
+            <li><a href="/api/install/plugin" className="font-semibold" style={{ color: "var(--accent-ink)" }}>Download the Genie plugin</a> (made for your site).</li>
+            <li>In WordPress: <b style={{ color: "var(--fg)" }}>Plugins → Add New Plugin → Upload Plugin</b> → choose the file → <b style={{ color: "var(--fg)" }}>Install Now</b> → <b style={{ color: "var(--fg)" }}>Activate</b>.</li>
+            <li>Open <b style={{ color: "var(--fg)" }}>Marketing Genie</b> in the WordPress menu and press <b style={{ color: "var(--fg)" }}>Connect to Marketing Genie</b>.</li>
+            <li>Come back here. This page notices within a few seconds.</li>
+          </ol>
+          <p className="mt-2 text-[11.5px] mg-subtle">The same plugin adds the visitor counter, so this covers both.</p>
+          <button onClick={() => setManual((v) => !v)} className="mt-2 text-[12px] font-semibold" style={{ color: "var(--accent-ink)", background: "none", border: 0, padding: 0, cursor: "pointer" }}>
+            {manual ? "Hide the manual way" : "Or connect manually instead"}
+          </button>
+          {manual && (
+            <div className="mt-2 space-y-2 w-full">
+              {[["siteUrl", "Site URL — https://yourblog.com"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
+                <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
+                  className="w-full px-3 py-2 rounded-lg text-[13px] mg-focus" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--fg)" }} />
+              ))}
+              <Button variant="dawn" onClick={connect} disabled={state === "saving"} style={btn}>{state === "saving" ? "Checking…" : "Connect WordPress"}</Button>
+              {state === "error" && <p className="text-[12px]" style={{ color: "var(--signal-danger)" }}>{err || "Couldn’t connect — check your details."}</p>}
+              <p className="text-[11px] mg-subtle">Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

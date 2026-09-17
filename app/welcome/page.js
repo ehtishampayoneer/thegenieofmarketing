@@ -538,19 +538,43 @@ function ConnectRow({ brand, label, sub, href, cta, connected, ready }) {
 }
 
 // WordPress — inline app-password form so you never leave the flow.
+// WordPress, the way a non-technical owner can actually do it.
+// The old form asked for a "site URL, username and application password". Most
+// owners have never heard of an application password, and the instructions sent
+// them digging through wp-admin. The plugin Genie already builds for the tracking
+// snippet now also carries a Connect button: WordPress creates the password
+// itself and hands it to Genie. Install, press one button, done. The manual form
+// stays for anyone who prefers it, or whose host blocks plugin uploads.
 function WordPressInline({ connected, onConnected }) {
   const [open, setOpen] = useState(false);
+  const [manual, setManual] = useState(false);
   const [f, setF] = useState({ siteUrl: "", username: "", appPassword: "" });
   const [state, setState] = useState("idle");
+
+  // The plugin posts the connection to Genie from inside WordPress, so this page
+  // only needs to watch for it to arrive.
+  useEffect(() => {
+    if (!open || connected) return;
+    const t = setInterval(async () => {
+      try {
+        const j = await fetch("/api/connections/status", { cache: "no-store" }).then((r) => r.json());
+        if (j?.integrations?.wordpress?.connected) { setOpen(false); onConnected?.(); }
+      } catch {}
+    }, 5000);
+    return () => clearInterval(t);
+  }, [open, connected, onConnected]);
+
   async function connect() {
     setState("saving");
     try {
       const r = await fetch("/api/connect/wordpress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
       const j = await r.json();
       if (j.ok) { setState("done"); setOpen(false); onConnected?.(); }
-      else setState("error");
+      else { setState("error"); setErr(j.error || ""); }
     } catch { setState("error"); }
   }
+  const [err, setErr] = useState("");
+
   if (connected) return <div style={rowBox(true)}><RowBody brand="wordpress" label="WordPress" sub="Genie auto-publishes approved articles to your blog" /><ConnectedTag /></div>;
   return (
     <div style={{ ...rowBox(false), flexDirection: "column", alignItems: "stretch" }}>
@@ -559,16 +583,34 @@ function WordPressInline({ connected, onConnected }) {
         <button onClick={() => setOpen((v) => !v)} className={open ? "onb-ghost" : "onb-cta"} style={{ padding: ".55rem 1.1rem", fontSize: 14, fontWeight: 700, flex: "none" }}>{open ? "Close" : "Set up"}</button>
       </div>
       {open && (
-        <div className="mt-4 flex flex-col gap-2.5">
-          {[["siteUrl", "Site URL (https://yourblog.com)"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
-            <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
-              className="onb-input px-3.5 text-[14px]" style={{ height: 46 }} />
-          ))}
-          <div className="flex items-center gap-3">
-            <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
-            {state === "error" && <span className="text-[13px]" style={{ color: "#D70015" }}>Couldn’t connect. Check your details.</span>}
-          </div>
-          <p className="text-[12px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+        <div className="mt-4">
+          <ol className="flex flex-col gap-2.5" style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: "var(--onb-muted)", lineHeight: 1.5 }}>
+            <li>
+              <a href="/api/install/plugin" className="font-semibold" style={{ color: "var(--onb-dawn)" }}>Download the Genie plugin</a> (a small file, made for your site).
+            </li>
+            <li>In WordPress: <b style={{ color: "var(--onb-fg)" }}>Plugins → Add New Plugin → Upload Plugin</b>, choose that file, <b style={{ color: "var(--onb-fg)" }}>Install Now</b>, then <b style={{ color: "var(--onb-fg)" }}>Activate</b>.</li>
+            <li>In the menu on the left, open <b style={{ color: "var(--onb-fg)" }}>Marketing Genie</b> and press <b style={{ color: "var(--onb-fg)" }}>Connect to Marketing Genie</b>.</li>
+            <li>Come back here. This page notices within a few seconds.</li>
+          </ol>
+          <p className="mt-3 text-[12.5px]" style={{ color: "var(--onb-subtle)" }}>
+            The plugin also adds the visitor counter, so this covers both. Nothing publishes without your approval.
+          </p>
+          <button onClick={() => setManual((v) => !v)} className="mt-3 text-[13px] font-semibold" style={{ color: "var(--onb-dawn)", background: "none", border: 0, padding: 0, cursor: "pointer" }}>
+            {manual ? "Hide the manual way" : "Or connect manually instead"}
+          </button>
+          {manual && (
+            <div className="mt-3 flex flex-col gap-2.5">
+              {[["siteUrl", "Site URL (https://yourblog.com)"], ["username", "WordPress username"], ["appPassword", "Application password"]].map(([k, ph]) => (
+                <input key={k} type={k === "appPassword" ? "password" : "text"} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph}
+                  className="onb-input px-3.5 text-[14px]" style={{ height: 46 }} />
+              ))}
+              <div className="flex items-center gap-3 flex-wrap">
+                <button onClick={connect} disabled={state === "saving"} className="onb-cta px-5 text-[14px]" style={{ height: 44 }}>{state === "saving" ? "Checking…" : "Connect WordPress"}</button>
+                {state === "error" && <span className="text-[13px]" style={{ color: "#D70015" }}>{err || "Couldn’t connect. Check your details."}</span>}
+              </div>
+              <p className="text-[12px]" style={{ color: "var(--onb-subtle)" }}>Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

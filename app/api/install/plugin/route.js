@@ -36,7 +36,10 @@ export async function GET(request) {
 
   // A .zip, not the raw .php: WordPress's plugin uploader accepts nothing else,
   // and the file must sit inside a folder for WordPress to read it as a plugin.
-  const zip = zipSingleFile("marketing-genie/marketing-genie.php", wordpressPlugin({ src, site }));
+  // The same signed token the snippet uses travels inside the plugin, so its
+  // "Connect to Marketing Genie" button can link the blog to this account without
+  // the owner creating an application password by hand.
+  const zip = zipSingleFile("marketing-genie/marketing-genie.php", wordpressPlugin({ src, site, token: makeIngestToken(user.id), appUrl: origin }));
 
   return new Response(zip, {
     status: 200,
