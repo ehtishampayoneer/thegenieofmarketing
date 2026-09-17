@@ -14,6 +14,8 @@ describe("Gemini grounded web search", () => {
     let sentBody = null, sentUrl = "";
     globalThis.fetch = vi.fn(async (url, init = {}) => {
       const u = String(url);
+      const MODELS = [{ name: "models/gemini-3.5-flash-lite", supportedGenerationMethods: ["generateContent"] }, { name: "models/gemini-3.5-flash", supportedGenerationMethods: ["generateContent"] }];
+      if (u.includes("/v1beta/models?")) return json({ models: MODELS });
       if (u.includes("generativelanguage")) {
         sentBody = JSON.parse(init.body); sentUrl = u;
         return json({ candidates: [{ finishReason: "STOP",
@@ -38,9 +40,11 @@ describe("Gemini grounded web search", () => {
     expect(urls.some((x) => x.includes("invented-site"))).toBe(false);
     expect(urls.some((x) => x.includes("vertexaisearch"))).toBe(false);
     expect(new Set(urls).size).toBe(urls.length);
-    // Searches on Flash-Lite first (its own daily allowance), which does not think.
-    expect(sentUrl).toContain("gemini-2.5-flash-lite");
+    // Searches on the newest Lite model the key can use (found by asking Google),
+    // with extra output room for Gemini 3 thinking but no 2.5-only setting.
+    expect(sentUrl).toContain("gemini-3.5-flash-lite");
     expect(sentBody.generationConfig.thinkingConfig).toBeUndefined();
+    expect(sentBody.generationConfig.maxOutputTokens).toBe(3024);
     expect(groundedSearchLastError()).toBeNull();
   });
 
@@ -61,6 +65,8 @@ describe("search when Gemini's quota is spent", () => {
     const tried = [];
     globalThis.fetch = vi.fn(async (url, init = {}) => {
       const u = String(url);
+      const MODELS = [{ name: "models/gemini-3.5-flash-lite", supportedGenerationMethods: ["generateContent"] }];
+      if (u.includes("/v1beta/models?")) return json({ models: MODELS });
       if (u.includes("generativelanguage")) {
         tried.push(u.match(/models\/([^:]+)/)[1]);
         if (u.includes("flash-lite")) return json({ error: { message: "You exceeded your current quota" } }, 429);
@@ -71,7 +77,7 @@ describe("search when Gemini's quota is spent", () => {
     });
     const { webSearch } = await import("@/lib/search");
     const out = await webSearch("quota fallback q", { limit: 3 });
-    expect(tried).toEqual(["gemini-2.5-flash-lite", "gemini-2.5-flash"]);
+    expect(tried).toEqual(["gemini-3.5-flash-lite", "gemini-2.5-flash"]);
     expect(out[0].url).toBe("https://a.example/x");
   });
 
