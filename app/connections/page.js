@@ -135,6 +135,11 @@ export default function ConnectionsPage() {
         <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
           sub={googleSub(I)}
           connected={I.google?.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
+        <Row icon={<span className="mg-tile" style={tile}><Icon.growth size={17} /></span>} label="Real Google rankings (Search Console)"
+          sub={I.search_console?.connected ? "Connected · Genie reads your real positions every night" : "Genie sets this up for you: it verifies your site with Google and adds it. No Search Console account needed."}
+          connected={I.search_console?.connected} action={null}>
+          {!I.search_console?.connected && <GscSetup googleConnected={I.google?.connected} />}
+        </Row>
         <Row icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
           sub={I.commerce.connected ? "Receiving real revenue events" : "Point your payment provider’s webhook here so Genie proves the dollars it earns you"}
           connected={I.commerce.connected} action={null}>
@@ -146,8 +151,11 @@ export default function ConnectionsPage() {
       <Group title="Optional · publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap, so your accounts stay safe. Skip these and Genie still writes everything: you paste it.">
         <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (your blog)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles" : "About 3 minutes, no technical steps: install Genie's plugin, press one button inside WordPress. Approved articles then publish themselves."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
-        <Row icon={<BrandIcon brand="x" size={18} />} label="X (Twitter)" sub={I.x.connected ? "Connected · Genie drafts, opens X, you tap post" : "Genie writes your tweets and threads and opens X with them ready — you tap post. It never auto-posts, to keep your account safe."}
-          connected={I.x.connected} action={<a href="/api/connect/x/start" className="mg-btn mg-btn--ghost" style={btn}>{I.x.connected ? "Reconnect" : "Connect X"}</a>} />
+        {/* X needs no connection: Genie writes the post, you paste it, and pressing
+            "Copy & open" in Approvals records that it is done. Kept for anyone who
+            already connected it. */}
+        <Row icon={<BrandIcon brand="x" size={18} />} label="X, LinkedIn, Reddit and the rest" sub={I.x.connected ? "X connected · Genie drafts, opens X, you tap post" : "Nothing to connect. Genie writes each post, you press Copy & open in Approvals, paste, and Genie marks it done so it never repeats itself."}
+          connected={I.x.connected} connectedLabel="Connected" action={null} />
       </Group>
 
       {/* Reach */}
@@ -370,6 +378,56 @@ function WordPressConnect({ connected }) {
               <p className="text-[11px] mg-subtle">Create an application password in wp-admin → Users → Profile → Application Passwords.</p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SEARCH CONSOLE, SET UP BY GENIE ──
+// Rankings are the one thing Genie cannot estimate honestly, and they only exist
+// once the site is a verified Search Console property. Rather than sending the
+// owner to Google with instructions, Genie asks Google for the verification tag,
+// installs it itself where it can (its WordPress plugin), verifies, and adds the
+// property. When it cannot reach the site, it hands over exactly one line.
+function GscSetup({ googleConnected }) {
+  const [state, setState] = useState("idle");
+  const [msg, setMsg] = useState("");
+  const [tag, setTag] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function run(method) {
+    setState("working"); setMsg("");
+    try {
+      const j = await fetch("/api/connect/gsc", { method }).then((r) => r.json());
+      if (j.done) { setState("done"); setMsg(j.message || "Connected."); setTimeout(() => window.location.reload(), 1500); return; }
+      if (j.tag) { setState("tag"); setTag(j.tag); setMsg(j.message || j.error || ""); return; }
+      setState("error");
+      setMsg(j.error || "Couldn't set that up just now.");
+    } catch { setState("error"); setMsg("Couldn't reach Genie just now. Try again."); }
+  }
+
+  if (!googleConnected) return <p className="mt-2 text-[12px] mg-subtle">Connect Google first and Genie can set this up for you.</p>;
+
+  return (
+    <div className="mt-3 w-full">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="dawn" onClick={() => run("POST")} disabled={state === "working"} style={btn}>
+          {state === "working" ? "Setting up…" : state === "tag" ? "Try again" : "Set it up for me"}
+        </Button>
+        {state === "tag" && (
+          <Button variant="ghost" onClick={() => run("PUT")} style={btn}>I&apos;ve added it — verify</Button>
+        )}
+      </div>
+      {msg && <p className="mt-2 text-[12.5px]" style={{ color: state === "error" ? "var(--signal-danger)" : state === "done" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{msg}</p>}
+      {state === "tag" && (
+        <div className="mt-2">
+          <code className="block p-2.5 rounded-lg text-[11.5px]" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", color: "var(--fg)", overflowWrap: "anywhere" }}>{tag}</code>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <button onClick={async () => { try { await navigator.clipboard.writeText(tag); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {} }}
+              className="mg-btn mg-btn--ghost" style={btn}>{copied ? "Copied" : "Copy the line"}</button>
+            <span className="text-[12px] mg-subtle">Paste it in your site&apos;s &lt;head&gt;, or send it to whoever looks after the site. Then press Verify.</span>
+          </div>
         </div>
       )}
     </div>

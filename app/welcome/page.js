@@ -394,7 +394,7 @@ export default function WelcomePage() {
                 <div className="mt-8 lg:mt-0 flex flex-col gap-3">
                   <ConnectRow brand="google" label="Google" sub="Real rankings, traffic, and send outreach from your Gmail" href="/api/connect/google/start?from=welcome" cta="Connect" connected={conns?.google?.connected} />
                   <WordPressInline connected={conns?.wordpress?.connected} onConnected={loadConns} />
-                  <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads and open X ready, you tap post" href="/api/connect/x/start?from=welcome" cta="Connect" connected={conns?.x?.connected} />
+                  <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads, you paste them. Nothing to connect." ready />
                   <ConnectRow brand="linkedin" label="LinkedIn" sub="I draft posts for you, you post them, no login needed" ready />
                   <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies, you post" ready />
                 </div>
