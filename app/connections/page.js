@@ -14,6 +14,7 @@ import { Card, Button } from "@/components/ui/v2/primitives";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
+import OwnBlogConnect from "@/components/connections/OwnBlogConnect";
 
 // Plain-language reasons a Google connect can fail. Before this existed, the OAuth
 // callback redirected back with ?connect_error=… and the page showed NOTHING — the
@@ -148,9 +149,19 @@ export default function ConnectionsPage() {
       </Group>
 
       {/* Publish */}
-      <Group title="Optional · publish for you" sub="Genie auto-publishes only to your OWN site. On social it drafts and YOU post, one tap, so your accounts stay safe. Skip these and Genie still writes everything: you paste it.">
-        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (only if your own site runs WordPress)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles to your own domain" : "Optional. Articles already publish to your Genie page automatically. Connect this only to publish them on YOUR domain instead. Not a way to post on other people's sites: that is Get featured."}
+      <Group title="Put articles on your own website" sub="This is what builds YOUR Google ranking. Articles on your Genie page help people and AI find you, but only articles on your own domain move your site up. Set it up once and every article after that goes there by itself.">
+        {!I.wordpress.connected && (
+          <Row icon={<span className="mg-tile" style={tile}><Icon.write size={17} /></span>} label="Your blog on your own website (any site that isn't WordPress)"
+            sub={I.own_blog?.connected ? "Live · every approved article publishes to your own domain automatically" : "One rule on your site, added once by you or your developer. Works with Next.js, Vercel, Netlify, Cloudflare, Nginx and Apache."}
+            connected={I.own_blog?.connected} action={null}>
+            <OwnBlogConnect />
+          </Row>
+        )}
+        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (only if your own site runs WordPress)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles to your own domain" : "If your site runs WordPress, this is the one-click way to publish articles on your own domain. Not a way to post on other people's sites: that is Get featured."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
+      </Group>
+
+      <Group title="Social posts" sub="On social Genie drafts and YOU post, one tap, so your accounts stay safe.">
         {/* X needs no connection: Genie writes the post, you paste it, and pressing
             "Copy & open" in Approvals records that it is done. Kept for anyone who
             already connected it. */}

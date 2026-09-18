@@ -8,6 +8,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublishedPage, pageUrl } from "@/lib/pages";
+import { blogBaseFor, ownArticleUrl } from "@/lib/own-blog";
 import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
 import SubscribeBox from "@/components/p/SubscribeBox";
 
@@ -25,12 +26,16 @@ export async function generateMetadata({ params }) {
   const page = await load(params.handle, params.slug);
   if (!page) return { title: "Article not found", robots: { index: false } };
   const url = pageUrl(page.handle, page.slug);
+  // When the owner's own blog serves this article, that copy is the original:
+  // this one defers to it, so Google credits the owner's domain, not Genie's.
+  const own = await ownBase(page);
+  const canonical = own ? ownArticleUrl(own, page.slug) : url;
   return {
     title: page.title,
     description: page.meta_description || undefined,
     // Advertise the clean markdown mirror so AI crawlers can grab the noise-free
     // version (rel="alternate" type="text/markdown").
-    alternates: { canonical: url, types: { "text/markdown": `${url}/md` } },
+    alternates: { canonical, types: { "text/markdown": `${canonical}/md` } },
     openGraph: {
       title: page.title, description: page.meta_description || "", url, type: "article",
       publishedTime: page.published_at, siteName: page.business_name || page.host,
@@ -40,6 +45,10 @@ export async function generateMetadata({ params }) {
     robots: { index: true, follow: true },
   };
 }
+
+const ownBase = cache(async (page) => {
+  try { return await blogBaseFor(createAdminClient(), page.user_id, page.handle); } catch { return null; }
+});
 
 // Only treat a page as a HowTo when the title clearly says so AND the body has real
 // step sections. Steps come from the H2 headings (FAQ section excluded).

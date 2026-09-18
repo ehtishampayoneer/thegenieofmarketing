@@ -17,6 +17,7 @@ import OperatorShell from "@/components/shell/v2/OperatorShell";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
+import OwnBlogConnect from "@/components/connections/OwnBlogConnect";
 
 export default function SpreadPage() {
   const [articles, setArticles] = useState(null);
@@ -60,6 +61,7 @@ function ArticleRow({ a, open, onToggle, onChanged }) {
   const [err, setErr] = useState("");
   const [ownUrl, setOwnUrl] = useState(a.ownUrl || "");
   const [ownMsg, setOwnMsg] = useState("");
+  const [auto, setAuto] = useState(false);
   const posted = new Set(a.posted || []);
   const done = posted.size + (a.ownUrl ? 1 : 0);
 
@@ -112,6 +114,14 @@ function ArticleRow({ a, open, onToggle, onChanged }) {
             </div>
             {ownMsg && <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--signal-live-ink)" }}>{ownMsg}</p>}
             {a.ownUrl && !ownMsg && <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--signal-live-ink)" }}>Live on your site: {a.ownUrl}</p>}
+            {!a.ownUrl && (
+              <>
+                <button onClick={() => setAuto((v) => !v)} className="mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)", background: "none", border: 0, padding: 0, cursor: "pointer" }}>
+                  {auto ? "Hide" : "Stop pasting: publish every article on your site automatically →"}
+                </button>
+                {auto && <OwnBlogConnect compact onLive={() => onChanged?.()} />}
+              </>
+            )}
           </div>
 
           <p className="mt-4 text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>2. Then put it where people and AI read</p>

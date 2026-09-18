@@ -5,6 +5,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appBase } from "@/lib/pages";
+import { verifiedBlogs } from "@/lib/own-blog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,11 +15,15 @@ export async function GET() {
   try {
     const admin = createAdminClient();
     const { data } = await admin.from("published_pages")
-      .select("handle, slug, updated_at, published_at")
+      .select("user_id, handle, slug, updated_at, published_at")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(5000);
-    rows = data || [];
+    // Articles whose owner serves them on their own blog are listed in THAT
+    // sitemap (yoursite.com/blog/sitemap.xml); listing the Genie copy here would
+    // ask Google to index the duplicate.
+    const own = await verifiedBlogs(admin);
+    rows = (data || []).filter((r) => !own.has(`${r.user_id}:${r.handle}`));
   } catch {}
 
   const base = appBase();

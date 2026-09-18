@@ -49,6 +49,8 @@ export async function GET() {
     search_console: { label: "Google Search Console", connected: !!google?.gsc_site, category: "measure" },
     ga4: { label: "Google Analytics (GA4)", connected: ga4, category: "measure", needs: google ? null : "connect_google" },
     wordpress: { label: "WordPress", connected: !!byProvider.wordpress, category: "publish" },
+    // Any other site: /blog served by Genie through one rewrite rule (lib/own-blog.js).
+    own_blog: { label: "Your own blog", connected: !!byProvider.ownblog?.meta?.verifiedAt, category: "publish" },
     x: { label: "X (Twitter)", connected: !!byProvider.x, category: "publish" },
     email: { label: "Outreach email (Resend)", connected: !!process.env.RESEND_API_KEY, category: "reach", system: true },
     commerce: { label: "Revenue (any provider webhook)", connected: commerce, category: "measure" },

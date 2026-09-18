@@ -7,6 +7,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appBase } from "@/lib/pages";
+import { verifiedBlogs, ownArticleUrl } from "@/lib/own-blog";
 import { htmlToMarkdown } from "@/lib/markdown";
 
 export const runtime = "nodejs";
@@ -17,14 +18,16 @@ const MAX_BYTES = 900_000; // keep the file a sane size for a single fetch
 
 export async function GET() {
   let rows = [];
+  let own = new Map();
   try {
     const admin = createAdminClient();
     const { data } = await admin.from("published_pages")
-      .select("handle, slug, title, meta_description, body_html, business_name, target_keyword, published_at")
+      .select("user_id, handle, slug, title, meta_description, body_html, business_name, target_keyword, published_at")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(MAX_PAGES);
     rows = data || [];
+    own = await verifiedBlogs(admin);
   } catch {}
 
   const base = appBase();
@@ -38,7 +41,8 @@ export async function GET() {
   let out = head.join("\n") + "\n";
   let n = 0;
   for (const r of rows) {
-    const url = `${base}/p/${enc(r.handle)}/${enc(r.slug)}`;
+    const ownBase = own.get(`${r.user_id}:${r.handle}`);
+    const url = ownBase ? ownArticleUrl(ownBase, enc(r.slug)) : `${base}/p/${enc(r.handle)}/${enc(r.slug)}`;
     const body = htmlToMarkdown(r.body_html || "");
     const block =
       `\n\n---\n\n# ${clean(r.title) || r.slug}\n` +

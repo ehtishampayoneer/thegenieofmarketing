@@ -8,11 +8,16 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublishedPage } from "@/lib/pages";
 import { recordEvent } from "@/lib/events";
+import { CORS } from "@/lib/onsite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Articles served on the owner's own domain (/b, behind their /blog rewrite)
+// post here from that domain, so the endpoint answers cross-origin.
+export function OPTIONS() { return new Response(null, { status: 204, headers: CORS }); }
 
 export async function POST(request) {
   let body;
@@ -36,4 +41,4 @@ export async function POST(request) {
   } catch { return json({ ok: false, error: "failed" }, 500); }
 }
 
-function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
+function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", ...CORS } }); }

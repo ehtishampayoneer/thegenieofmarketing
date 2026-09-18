@@ -180,14 +180,35 @@ export async function POST(_request, { params }) {
         slug: p.slug || null,
         faq: Array.isArray(p.faq) ? p.faq : null,
       });
-      const result = { url: page.url, pageId: page.id, publishedAt: new Date().toISOString(), channel: "genie_pages", hosted: true };
+      // Owner's own blog connected (non-WordPress sites, see lib/own-blog.js)? Then the
+      // article's real address is yoursite.com/blog/<slug>: report, index and track
+      // that one. The Genie Page copy points its canonical there.
+      const { blogBaseFor, ownArticleUrl, toOwnUrl, indexNowOptsFor } = await import("@/lib/own-blog");
+      const blogBase = await blogBaseFor(supabase, user.id, page.handle);
+      const publicUrl = blogBase ? ownArticleUrl(blogBase, page.slug) : page.url;
+      const pub = (u) => (blogBase ? toOwnUrl(u, page.handle, blogBase) : u);
+      const inOpts = indexNowOptsFor(blogBase);
+      const result = {
+        url: publicUrl, pageId: page.id, publishedAt: new Date().toISOString(),
+        channel: blogBase ? "own_blog" : "genie_pages", hosted: true,
+        ...(blogBase ? { geniePage: page.url } : {}),
+      };
+      if (blogBase) {
+        try {
+          const { recordEvent } = await import("@/lib/events");
+          await recordEvent(supabase, {
+            userId: user.id, host, type: "publish.own_url", actor: "genie", subject: p.title || action.title || null,
+            data: { pageId: page.id, url: publicUrl, via: "own_blog" }, dedupeKey: `ownurl:${page.id}:${publicUrl}`,
+          });
+        } catch {}
+      }
       await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
       try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
       // Instant-index it (free) so Bing/Yandex — and the engines AI search reads —
       // pick it up in hours, not weeks. No-op if INDEXNOW_KEY isn't set.
-      try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
+      try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(publicUrl, inOpts); } catch {}
       // Nudge Google to crawl it now (via the owner's Google connection + indexing scope).
-      try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
+      try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, publicUrl); } catch {}
       // PILLAR publish → back-link every member page to the new hub (hub-and-spoke).
       // Otherwise → internal-link acceleration: point 2-3 older related pages at the
       // new one. Either way, re-index the pages we edited so Google follows the links.
@@ -195,8 +216,8 @@ export async function POST(_request, { params }) {
         if (p.isPillar && Array.isArray(p.pillarMembers) && p.pillarMembers.length) {
           const { linkMembersToPillar } = await import("@/lib/pillars");
           const res = await linkMembersToPillar(supabase, user.id, { pillarUrl: page.url, pillarTitle: p.title || action.title, members: p.pillarMembers });
-          for (const u of res.linked) {
-            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(u); } catch {}
+          for (const u of res.linked.map(pub)) {
+            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(u, inOpts); } catch {}
             try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, u); } catch {}
           }
           if (res.linked.length) {
@@ -218,8 +239,9 @@ export async function POST(_request, { params }) {
             newPage: { id: page.id, handle: page.handle, slug: page.slug, title: p.title || action.title, keyword: p.targetKeyword || null },
           });
           for (const l of accel.linked) {
-            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(l.url); } catch {}
-            try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, l.url); } catch {}
+            const u = pub(l.url);
+            try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(u, inOpts); } catch {}
+            try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, u); } catch {}
           }
           if (accel.linked.length) {
             result.accelerated = accel.linked.length;

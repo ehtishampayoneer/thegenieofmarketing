@@ -7,20 +7,23 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appBase } from "@/lib/pages";
+import { verifiedBlogs, ownArticleUrl } from "@/lib/own-blog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   let rows = [];
+  let own = new Map();
   try {
     const admin = createAdminClient();
     const { data } = await admin.from("published_pages")
-      .select("handle, slug, title, meta_description, business_name, published_at")
+      .select("user_id, handle, slug, title, meta_description, business_name, published_at")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(1000);
     rows = data || [];
+    own = await verifiedBlogs(admin);
   } catch {}
 
   const base = appBase();
@@ -45,7 +48,9 @@ export async function GET() {
   for (const [biz, list] of groups) {
     out.push(`## ${biz}`, "");
     for (const r of list.slice(0, 200)) {
-      const url = `${base}/p/${enc(r.handle)}/${enc(r.slug)}`;
+      // Point AI at the owner's own copy when their blog serves it.
+      const ownBase = own.get(`${r.user_id}:${r.handle}`);
+      const url = ownBase ? ownArticleUrl(ownBase, enc(r.slug)) : `${base}/p/${enc(r.handle)}/${enc(r.slug)}`;
       const desc = clean(r.meta_description);
       out.push(`- [${clean(r.title) || r.slug}](${url})${desc ? `: ${desc}` : ""} (markdown: ${url}/md)`);
     }
