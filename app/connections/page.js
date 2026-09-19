@@ -438,7 +438,7 @@ function GscSetup({ googleConnected }) {
           <Button variant="ghost" onClick={() => run("PUT")} style={btn}>I&apos;ve added it — verify</Button>
         )}
       </div>
-      {msg && <p className="mt-2 text-[12.5px]" style={{ color: state === "error" ? "var(--signal-danger)" : state === "done" ? "var(--signal-live-ink)" : "var(--fg-muted)" }}>{msg}</p>}
+      {msg && <GoogleMessage msg={msg} tone={state} onRetry={() => run("POST")} />}
       {state === "tag" && (
         <div className="mt-2">
           <code className="block p-2.5 rounded-lg text-[11.5px]" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", color: "var(--fg)", overflowWrap: "anywhere" }}>{tag}</code>
@@ -449,6 +449,30 @@ function GscSetup({ googleConnected }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── GOOGLE'S OWN WORDS, MADE ACTIONABLE ──
+// When a Google API is switched off, Google's error carries the exact console
+// link to switch it on. Buried in a paragraph that reads like a wall of text and
+// gets ignored, so the link becomes a button and the rest is said plainly.
+function GoogleMessage({ msg, tone, onRetry }) {
+  const url = (String(msg).match(/https?:\/\/[^\s)]+/) || [])[0] || null;
+  const api = (String(msg).match(/\/api\/([a-z.]+)\.googleapis\.com/) || [])[1] || null;
+  const disabled = /has not been used in project|is disabled|SERVICE_DISABLED/i.test(String(msg));
+  const color = tone === "error" ? "var(--signal-danger)" : tone === "done" ? "var(--signal-live-ink)" : "var(--fg-muted)";
+  if (!disabled || !url) return <p className="mt-2 text-[12.5px]" style={{ color }}>{msg}</p>;
+  return (
+    <div className="mt-2 p-3 rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+      <p className="text-[12.5px]" style={{ color: "var(--fg)" }}>
+        One switch is off in your Google account{api ? <>: the <b>{api}</b> service</> : null}. Google turns these off by default, so it needs one click, then Genie can finish on its own.
+      </p>
+      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="mg-btn mg-btn--dawn" style={btn}>Turn it on in Google →</a>
+        <button onClick={onRetry} className="mg-btn mg-btn--ghost" style={btn}>I turned it on, try again</button>
+      </div>
+      <p className="mt-2 text-[11.5px] mg-subtle">On Google&apos;s page press <b>Enable</b>, wait a minute, then press try again. Google&apos;s own words: “{String(msg).slice(0, 180)}…”</p>
     </div>
   );
 }
