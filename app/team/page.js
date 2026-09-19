@@ -14,10 +14,18 @@ import { useEffect, useRef, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import SwarmGlobe, { TEAM_COLORS } from "@/components/team/SwarmGlobe";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import LaunchTest from "@/components/team/LaunchTest";
 import Icon from "@/components/ui/Icon";
 
 export default function TeamPage() {
   const [s, setS] = useState(null);
+  // Two views of the same crowd: what it is doing on its own, and the same crowd
+  // pointed at one thing on demand. Deep links (/team?tab=test, and the old
+  // /test-launch address) land straight on the right one.
+  const [tab, setTab] = useState("live");
+  useEffect(() => {
+    try { if (new URLSearchParams(window.location.search).get("tab") === "test") setTab("test"); } catch {}
+  }, []);
   useEffect(() => {
     let alive = true;
     const load = async () => {
@@ -40,9 +48,11 @@ export default function TeamPage() {
       <OperatorHeader
         icon={Icon.globe}
         label="Your team"
-        title="Nothing reaches you untested."
-        kicker="1,000 simulated customers, 7 improvers and 9 engines. Every number counted from real work."
-        action={s && (
+        title={tab === "test" ? "Try it on 1,000 customers first." : "Nothing reaches you untested."}
+        kicker={tab === "test"
+          ? "The same crowd that reads every draft overnight, pointed at one thing on demand."
+          : "1,000 simulated customers, 7 improvers and 9 engines. Every number counted from real work."}
+        action={s && tab === "live" && (
           <span className="text-[12.5px] mg-muted flex items-center gap-2">
             <span style={{ width: 8, height: 8, borderRadius: 99, background: s.ai ? "#2EE6C5" : "#FFB347", display: "inline-block" }} />
             {s.ai ? "Full crowd testing" : "AI busy: quick checks now"}
@@ -51,6 +61,19 @@ export default function TeamPage() {
         )}
       />
 
+      {/* The two views of the crowd. */}
+      <div className="mt-5 flex items-center gap-1" style={{ borderBottom: "1px solid var(--hair)" }}>
+        {[["live", "What it is doing"], ["test", "Test something"]].map(([id, label]) => (
+          <button key={id} onClick={() => { setTab(id); try { history.replaceState(null, "", id === "test" ? "/team?tab=test" : "/team"); } catch {} }}
+            className="mg-focus" style={{
+              background: "none", border: 0, cursor: "pointer", padding: "9px 14px", fontSize: 13.5, fontWeight: 600,
+              color: tab === id ? "var(--fg)" : "var(--fg-subtle)",
+              borderBottom: `2px solid ${tab === id ? "var(--accent)" : "transparent"}`, marginBottom: -1,
+            }}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "test" ? <LaunchTest /> : (
       <div className="mt-6 tm-layout">
       <div className="tm-main min-w-0">
       <div><SwarmGlobe height="clamp(360px, 46vh, 540px)" rates={rates} counts={s?.live ? { testers: s.live.testers.active, improvers: s.live.improvers.active, doers: s.live.doers.active } : null} /></div>
@@ -107,6 +130,7 @@ export default function TeamPage() {
       </div>
       <LivePanel live={s?.live} />
       </div>
+      )}
 
       <p className="mt-6 mb-2 text-center text-[12px] mg-subtle">The crowd is a prediction, not real people. Genie checks its predictions against real replies, clicks and rankings.</p>
       <style>{`.tm-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media (min-width:1180px){.tm-layout{grid-template-columns:minmax(0,1fr) 300px}.tm-live{position:sticky;top:84px}}`}</style>

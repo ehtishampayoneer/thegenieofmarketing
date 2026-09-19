@@ -23,35 +23,46 @@ import PageGuide from "@/components/shell/v2/PageGuide";
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
 // where it's growing you (the journey), and how you stay in control (settings).
 const NAV = [
-  { section: "Your employee" },
+  // ── THE ORDER IS THE JOURNEY ──
+  // Twenty-nine entries in one flat list read as a pile of features, and an owner
+  // cannot tell what to do first. They are now stages, numbered in the order the
+  // work actually happens: the daily loop, then being found, then winning
+  // customers, then proving it paid, then widening. Control sits last because it
+  // is where you go on purpose, not on the way through.
+  { section: "Every day" },
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
-  // The testers, improvers and doers, live on a globe (lib/swarm).
+  // The testers, improvers and doers, live on a globe, plus testing anything on
+  // demand — one crowd, one page (lib/swarm).
   { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
-  // Anything the owner is about to put out, tested by the same 1,000-person crowd.
-  { id: "test-launch", label: "Test before launch", icon: Icon.spark },
-  { id: "write", label: "Ask Genie to write", icon: Icon.write },
-  // Publishing to one hosted page every night is not a strategy; this is where an
-  // article gets put where it counts, starting with the owner's own site.
-  { id: "spread", label: "Spread your articles", icon: Icon.megaphone },
-  { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
-  { id: "recover", label: "Revenue Recovery", icon: Icon.coins },
-  { id: "conversations", label: "Conversations", icon: Icon.conversations },
-  { id: "video", label: "Video", icon: Icon.post },
-  { id: "prospects", label: "Find clients", icon: Icon.target },
-  { id: "featured", label: "Get featured", icon: Icon.megaphone },
   { id: "inbox", label: "Inbox", icon: Icon.inbox },
-  { id: "pipeline", label: "Deal Pipeline", icon: Icon.board },
-  { id: "sprint", label: "Proof Sprint", icon: Icon.flag },
-  { section: "Growth journey" },
+
+  { section: "1 · Get found" },
   { id: "growth", label: "Growth Score", icon: Icon.growth },
   { id: "aisearch", label: "AI Search Presence", icon: Icon.search },
-  { id: "impact", label: "Customer Impact", icon: Icon.bolt },
-  { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
-  { id: "foundation", label: "Foundation links", icon: Icon.link },
+  { id: "spread", label: "Spread your articles", icon: Icon.megaphone },
   { id: "site", label: "Website Setup", icon: Icon.globe },
+  { id: "foundation", label: "Foundation links", icon: Icon.link },
+
+  { section: "2 · Win customers" },
+  { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
+  { id: "prospects", label: "Find clients", icon: Icon.target },
+  { id: "featured", label: "Get featured", icon: Icon.megaphone },
+  { id: "conversations", label: "Conversations", icon: Icon.conversations },
+  { id: "pipeline", label: "Deal Pipeline", icon: Icon.board },
+  { id: "recover", label: "Revenue Recovery", icon: Icon.coins },
+
+  { section: "3 · Prove it pays" },
+  { id: "impact", label: "Customer Impact", icon: Icon.bolt },
+  { id: "sprint", label: "Proof Sprint", icon: Icon.flag },
+  { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
+
+  { section: "4 · Go wider" },
   { id: "markets", label: "Market Testing", icon: Icon.megaphone },
-  { section: "Settings" },
+  { id: "write", label: "Ask Genie to write", icon: Icon.write },
+  { id: "video", label: "Video", icon: Icon.post },
+
+  { section: "Control" },
   { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "settings", label: "Settings", icon: Icon.settings },
