@@ -7,6 +7,7 @@
 // (with sensible representative fallbacks so the preview always renders).
 
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import FirstResults from "@/components/today/FirstResults";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
@@ -117,6 +118,7 @@ export default function TodayPage() {
             </div>
             {/* RIGHT SIDEBAR */}
             <div className="flex flex-col gap-5">
+              <FirstResults />
               <GenieStatus score={score} comp={comp} />
               <PendingFromYou approvals={approvals} replies={buyersFound || 4} setup={connsPending(conns)} />
             </div>
