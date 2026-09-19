@@ -320,6 +320,8 @@ function MarketRow({ r, exp, open, onToggle, onTarget, onAddLang, targeting, err
                   <li key={i} className="text-[13px] flex items-start gap-2" style={{ color: "var(--fg-muted)" }}><span style={{ width: 5, height: 5, borderRadius: 999, background: "var(--accent)", marginTop: 6, flexShrink: 0 }} /> {t}</li>
                 ))}
               </ul>
+              <a href={`/test-launch?kind=offer&market=${encodeURIComponent(r.name)}&question=${encodeURIComponent(`Would people in ${r.name} buy this?`)}`}
+                className="mt-2 inline-block text-[12px] font-semibold" style={{ color: "var(--accent-ink)" }}>Test your offer with 1,000 simulated buyers in {r.name} first →</a>
               <p className="text-[12px] mt-2.5" style={{ color: "var(--fg-subtle)" }}>All tagged <b style={{ color: "var(--fg-muted)" }}>{r.name}</b> and grouped on their own tab in Approvals. Your everyday global marketing keeps running — this is an extra, country-specific track.</p>
             </div>
           )}

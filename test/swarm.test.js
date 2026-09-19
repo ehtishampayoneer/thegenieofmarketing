@@ -209,3 +209,34 @@ describe("the reality check", async () => {
     expect(crowdLift(bad).verdict).toBe("wrong");
   });
 });
+
+describe("test it before you launch", () => {
+  it("has a crowd, with gatekeepers, for every kind the page offers", async () => {
+    const { KINDS: K, crowdFor: cf, fallbackCrowd: fb } = await import("@/lib/swarm/crowd");
+    for (const k of ["ad", "launch", "offer", "landing", "product", "email", "social", "reddit", "pitch", "article"]) {
+      expect(K[k], k).toBeTruthy();
+      const people = cf(fb({}), k);
+      expect(people.length).toBeGreaterThan(12);
+    }
+  });
+
+  it("aims the crowd at one country and asks the owner's question", async () => {
+    const { crowdPrompt } = await import("@/lib/swarm/crowd");
+    const { judgePrompt } = await import("@/lib/swarm/judge");
+    expect(crowdPrompt({}, "arqr360.com", [], [], "Germany")).toContain("live in Germany");
+    const p = judgePrompt({ text: "Try ARQR for $29", kind: "offer", title: "", business: "ARQR", people: [], question: "Is the price too high?", market: "Germany" });
+    expect(p).toContain("THE OWNER WANTS TO KNOW: Is the price too high?");
+    expect(p).toContain("THE PEOPLE ARE IN: Germany");
+  });
+
+  it("runs a full test and improvement through the shared engine", async () => {
+    calls.down = false;
+    store.events = []; store.scans = [{ user_id: "u1", final_url: "https://arqr360.com", ai: { businessName: "ARQR" } }];
+    const { runCrowd, newContext } = await import("@/lib/swarm/engine");
+    const admin = fakeAdmin();
+    const r = await runCrowd(admin, newContext(admin), { userId: "u1", host: "arqr360.com", kind: "ad", text: "AMAZING revolutionary AR!!! Buy now", improve: true });
+    expect(r.crowd.size).toBe(1000);
+    expect(r.improvement).toBeTruthy();
+    expect(r.crowd.score).toBeGreaterThan(r.before.score);
+  });
+});

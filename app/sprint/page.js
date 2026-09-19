@@ -74,6 +74,11 @@ function Setup({ onStart }) {
             <L label="Goal: conversations"><input type="number" min="1" value={f.goalConvos} onChange={upd("goalConvos")} className="mg-field mg-focus" /></L>
           </div>
         </div>
+        {f.offer.trim() && (
+          <a href={`/test-launch?kind=offer&question=${encodeURIComponent(`Would ${f.icp.trim() || "you"} buy this${f.price ? " at this price" : ""}?`)}&text=${encodeURIComponent(`${f.offer}${f.price ? `\nPrice: ${f.price}` : ""}`)}`}
+            className="mt-4 inline-block text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>Not sure it's the right offer? Test it with 1,000 simulated buyers first →</a>
+        )}
+        <br />
         <button onClick={start} disabled={busy || !canStart} className="mt-6 mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 14 }}>{busy ? "Starting…" : "Start my 30-day sprint →"}</button>
       </Card>
 
@@ -134,6 +139,10 @@ function Dashboard({ d, onChange }) {
             <p className="mg-eyebrow"><Icon.flag size={13} /> Day {dayNum} of {length} · {daysLeft} left</p>
             <p className="mt-1 text-[14px]" style={{ color: "var(--fg)" }}><b>Target:</b> {c.icp || "—"}</p>
             <p className="text-[14px] mg-muted"><b style={{ color: "var(--fg)" }}>Offer:</b> {c.offer || "—"}{c.price ? ` · ${c.price}` : ""}</p>
+            {c.offer && (
+              <a href={`/test-launch?kind=offer&question=${encodeURIComponent(`Would ${c.icp || "you"} buy this at this price?`)}&text=${encodeURIComponent(`${c.offer}${c.price ? `\nPrice: ${c.price}` : ""}`)}`}
+                className="mt-1 inline-block text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>Test this offer with 1,000 simulated buyers →</a>
+            )}
           </div>
           <button onClick={endSprint} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12 }}>End sprint</button>
         </div>
