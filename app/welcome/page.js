@@ -54,7 +54,7 @@ export default function WelcomePage() {
   const [busy, setBusy] = useState(false);
   const [secs, setSecs] = useState(0);
   const startRef = useRef(0);
-  const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "" });
+  const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "", sender_name: "", money_page_url: "" });
   const [conns, setConns] = useState(null); // live connection status for the connect step
   // ── Understanding Check (post-scan "did I get you right?") ──
   // The conversation itself lives in components/onboarding/UnderstandingCheck.
@@ -143,6 +143,7 @@ export default function WelcomePage() {
       if (!res.ok || json.ok === false) { setErr(json.message || "I couldn’t read that site. Try another URL."); setPhase("intro"); return; }
       setData(json);
       const h = hostOf(json.finalUrl || json.url || clean);
+      setDetails((d) => ({ ...d, money_page_url: d.money_page_url || `https://${h}` }));
       // Persist the scan, resolve the entity, and actually start the engine —
       // so by the reveal, Genie genuinely is already working.
       fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: json.url, finalUrl: json.finalUrl, scores: json.scores, accuracy: json.accuracy, checks: json.checks, ai: json.ai, speed: json.speed, gsc: json.gsc, pageText: json.pageText }) }).catch(() => {});
@@ -397,6 +398,17 @@ export default function WelcomePage() {
                 <div className="mt-8 lg:mt-0 flex flex-col gap-3">
                   <ConnectRow brand="google" label="Google" sub="Real rankings, traffic, and send outreach from your Gmail" href="/api/connect/google/start?from=welcome" cta="Connect" connected={conns?.google?.connected} />
                   <WordPressInline connected={conns?.wordpress?.connected} onConnected={loadConns} />
+                  {/* For every site that is not WordPress — the one thing that makes
+                      articles build THEIR ranking instead of Genie's. */}
+                  {!conns?.wordpress?.connected && (
+                    <div style={{ borderRadius: 16, padding: "16px 18px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
+                      <p className="text-[15px] font-semibold" style={{ color: "var(--onb-fg)" }}>Your blog, on your own domain</p>
+                      <p className="mt-1 text-[13px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>
+                        Not on WordPress? One rule added once to {host || "your site"} lets me publish every article at your own address, so it builds your ranking and not mine. It takes your developer about five minutes, and I check it works.
+                      </p>
+                      <a href="/connections" className="onb-ghost mt-3 inline-flex items-center" style={{ fontSize: 13, padding: ".5rem .9rem", borderRadius: 10 }}>Set it up →</a>
+                    </div>
+                  )}
                   <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads, you paste them. Nothing to connect." ready />
                   <ConnectRow brand="linkedin" label="LinkedIn" sub="I draft posts for you, you post them, no login needed" ready />
                   <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies, you post" ready />
@@ -424,7 +436,12 @@ export default function WelcomePage() {
                 </div>
                 <div className="mt-8 lg:mt-0 flex flex-col gap-4">
                   <OnbField label="Business name" value={details.company_name} onChange={(v) => setDetails((d) => ({ ...d, company_name: v }))} placeholder="Your business" />
+                  <OnbField label="Your name (emails are signed by you, not by a robot)" value={details.sender_name} onChange={(v) => setDetails((d) => ({ ...d, sender_name: v }))} placeholder="Sam Rivera" />
                   <OnbField label="Your email (replies come here)" value={details.sender_email} onChange={(v) => setDetails((d) => ({ ...d, sender_email: v }))} placeholder="you@yourbusiness.com" type="email" />
+                  <OnbField label="Where buyers go to buy" value={details.money_page_url} onChange={(v) => setDetails((d) => ({ ...d, money_page_url: v }))} placeholder={host ? `https://${host}/pricing` : "https://yoursite.com/pricing"} />
+                  <p style={{ fontSize: 12, color: "var(--onb-subtle)", marginTop: -6, lineHeight: 1.5 }}>
+                    Your pricing, packages or contact page. Every article, email and post I write points here, tagged so a sale traces back. I never take the payment myself.
+                  </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <span style={{ fontSize: 12, fontWeight: 500, color: "var(--onb-subtle)" }}>Logo (shown at the top of your emails)</span>
                     <LogoUpload value={details.logo_url} onChange={(url) => setDetails((d) => ({ ...d, logo_url: url }))} buttonClassName="onb-ghost" mutedColor="var(--onb-subtle)" />
