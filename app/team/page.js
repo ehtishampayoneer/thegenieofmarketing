@@ -77,6 +77,17 @@ export default function TeamPage() {
         />
       </div>
 
+      {/* The reality check: the crowd's predictions against what really happened. */}
+      <div className="mt-4 rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}>
+        <span style={{ marginTop: 4, width: 10, height: 10, borderRadius: 99, background: s?.reality?.verdict === "predictive" ? "var(--signal-live)" : s?.reality?.verdict === "wrong" ? "var(--signal-danger)" : "var(--fg-subtle)", flexShrink: 0 }} />
+        <div>
+          <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Reality check</p>
+          <p className="text-[13px] mg-muted mt-0.5">
+            {s?.reality?.text || "Every night Genie compares what the crowd predicted with real replies and real post results, and gives more say to the kinds of people who called it right. The first check runs after tonight's run."}
+          </p>
+        </div>
+      </div>
+
       <p className="mt-6 mb-2 text-center text-[12px] mg-subtle">The crowd is a prediction, not real people. Genie checks its predictions against real replies, clicks and rankings.</p>
     </OperatorShell>
   );

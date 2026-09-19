@@ -175,3 +175,37 @@ describe("a swarm pass", () => {
     expect(calls.n).toBe(0);
   });
 });
+
+describe("the reality check", async () => {
+  const { learnWeights, crowdLift, outcomeOfEmail, outcomeOfPlacement } = await import("@/lib/swarm/calibrate");
+
+  it("reads real results", () => {
+    expect(outcomeOfPlacement({ performance: "winning" })).toBe(1);
+    expect(outcomeOfPlacement({ performance: "pending" })).toBe(null);
+    expect(outcomeOfEmail({ status: "replied" })).toBe(1);
+    expect(outcomeOfEmail({ status: "sent", sent_at: new Date(Date.now() - 20 * 864e5).toISOString() })).toBe(0);
+    expect(outcomeOfEmail({ status: "sent", sent_at: new Date().toISOString() })).toBe(null); // still waiting
+  });
+
+  it("gives more say to people who liked what worked, less to those who liked the flops", () => {
+    const outcomes = [
+      { y: 1, am: { a1: 4.6, a2: 1.8 } },
+      { y: 1, am: { a1: 4.2, a2: 2.0 } },
+      { y: 0, am: { a1: 2.1, a2: 4.5 } },
+      { y: 0, am: { a1: 1.9, a2: 4.4 } },
+    ];
+    const w = learnWeights(outcomes);
+    expect(w.a1).toBeGreaterThan(1);
+    expect(w.a2).toBeLessThan(1);
+    expect(w.a1).toBeLessThanOrEqual(2);
+    expect(w.a2).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("says plainly whether the crowd is predicting well", () => {
+    expect(crowdLift([{ score: 80, y: 1 }]).verdict).toBe("learning");
+    const good = [90, 85, 80, 30, 25, 20].map((score, i) => ({ score, y: i < 3 ? 1 : 0 }));
+    expect(crowdLift(good).verdict).toBe("predictive");
+    const bad = [90, 85, 80, 30, 25, 20].map((score, i) => ({ score, y: i < 3 ? 0 : 1 }));
+    expect(crowdLift(bad).verdict).toBe("wrong");
+  });
+});

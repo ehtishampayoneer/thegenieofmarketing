@@ -21,6 +21,8 @@ export async function GET() {
 
   const day = Date.now() - 864e5;
   const events = await getEvents(supabase, { userId: user.id, types: ["swarm.tested", "swarm.improved"], limit: 3000 });
+  // The reality check: how the crowd's predictions compared with real results.
+  const cal = (await getEvents(supabase, { userId: user.id, types: ["swarm.calibration"], limit: 1 }))[0] || null;
   const tested = events.filter((e) => e.type === "swarm.tested");
   const improved = events.filter((e) => e.type === "swarm.improved");
   const recent = (xs) => xs.filter((e) => Date.parse(e.created_at) > day);
@@ -56,6 +58,7 @@ export async function GET() {
       feed: improved.slice(0, 6).map((e) => ({ text: `${e.subject}: ${e.data?.from} → ${e.data?.to}${e.data?.changed ? ` · ${e.data.changed}` : ""}`, at: e.created_at })),
     },
     doers: { jobs: doneAll, today: done24, feed: doerFeed },
+    reality: cal ? { n: cal.data?.n || 0, verdict: cal.data?.lift?.verdict || "learning", text: cal.data?.lift?.text || "", at: cal.created_at } : null,
   });
 }
 
