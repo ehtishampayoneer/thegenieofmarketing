@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
 
@@ -43,15 +44,17 @@ export default function InboxPage() {
 
   return (
     <OperatorShell active="inbox">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Inbox</h1>
-          <p className="mt-1.5 text-[14px] mg-muted">Everyone Genie emailed for you, threaded with their reply. {threads.length > 0 && <span><b style={{ color: "var(--fg)" }}>{threads.length}</b> sent · <b style={{ color: "var(--signal-live-ink)" }}>{replied}</b> replied</span>}</p>
-        </div>
-        <button onClick={checkReplies} disabled={syncing} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
-          <Icon.reply size={14} /> {syncing ? "Checking…" : "Check for replies"}
-        </button>
-      </div>
+      <OperatorHeader
+        icon={Icon.inbox}
+        label="Inbox"
+        title="Everyone Genie emailed, and who replied."
+        kicker={threads.length > 0 ? `${threads.length} sent · ${replied} replied` : "Replies land here automatically."}
+        action={(
+          <button onClick={checkReplies} disabled={syncing} className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13 }}>
+            <Icon.reply size={14} /> {syncing ? "Checking…" : "Check for replies"}
+          </button>
+        )}
+      />
       {msg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
 
       {state === "loading" ? (

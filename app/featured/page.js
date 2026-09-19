@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
 import SuggestChips from "@/components/ui/v2/SuggestChips";
@@ -112,10 +113,12 @@ export default function FeaturedPage() {
 
   return (
     <OperatorShell active="featured">
-      <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Get featured</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>The most powerful marketing is when <b style={{ color: "var(--fg)" }}>others</b> talk about you. Pick a goal, name your niche, and Genie finds real sites, the right contact, and a genuine pitch. You review and send from your own email. No fake accounts, no bought links.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.megaphone}
+        label="Earned media"
+        title="The strongest marketing is others talking about you."
+        kicker="Genie finds real sites, the right contact and a genuine pitch. You review and send from your own email."
+      />
 
       {/* ── WHAT THE OUTREACH EARNED ── */}
       {earned && earned.total > 0 && (

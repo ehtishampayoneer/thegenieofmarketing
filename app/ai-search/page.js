@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card, Provenance } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
@@ -112,17 +113,17 @@ export default function AiSearchPage() {
       )}
 
       {/* ── HEADER ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>AI Search Visibility</h1>
-          <p className="mt-1.5 text-[14px] mg-muted">Track your brand mentions across ChatGPT, Perplexity, Gemini, and Claude.</p>
-        </div>
-        {state === "real" && (
+      <OperatorHeader
+        icon={Icon.search}
+        label="AI search"
+        title="Does AI recommend you?"
+        kicker="What ChatGPT, Perplexity, Gemini and Claude answer when your buyers ask."
+        action={state === "real" && (
           <button onClick={recheck} disabled={checking || !today?.entity?.host} className="mg-btn disabled:opacity-50" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
             {checking ? (checkStep || "Re-checking…") : "Re-check all →"}
           </button>
         )}
-      </div>
+      />
 
       {state === "disconnected" ? (
         <div className="mt-8"><EmptyState state="disconnected" icon={Icon.spark} title="I can’t reach AI search" sub="Sign in and I’ll show whether AI recommends you." /></div>

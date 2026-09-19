@@ -8,6 +8,7 @@
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card, Pill } from "@/components/ui/v2/primitives";
 import SuggestChips from "@/components/ui/v2/SuggestChips";
@@ -58,10 +59,12 @@ export default function ProspectsPage() {
 
   return (
     <OperatorShell active="prospects">
-      <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Find clients</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Name who you want to sell to. Genie finds real companies, the right person at each, their contact, and a pitch written for them. You review and send, from your own email, capped and compliant.</p>
-      </div>
+      <OperatorHeader
+        icon={Icon.target}
+        label="Find clients"
+        title="Name who you want to sell to."
+        kicker="Genie finds real companies, the right person at each, and a pitch written for them. You review and send."
+      />
 
       {/* search */}
       <div className="mt-5 flex items-center gap-2 flex-wrap">

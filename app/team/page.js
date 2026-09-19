@@ -13,6 +13,8 @@
 import { useEffect, useRef, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
 import SwarmGlobe, { TEAM_COLORS } from "@/components/team/SwarmGlobe";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import Icon from "@/components/ui/Icon";
 
 export default function TeamPage() {
   const [s, setS] = useState(null);
@@ -35,25 +37,23 @@ export default function TeamPage() {
 
   return (
     <OperatorShell active="team">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Your team</h1>
-          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure-wide)" }}>
-            Before anything reaches you, 1,000 simulated customers test it, the improvers fix what they didn&apos;t like, and the doers get the work done. Every number here is counted from real work.
-          </p>
-        </div>
-        {s && (
-          <p className="text-[12.5px] mg-muted flex items-center gap-2">
+      <OperatorHeader
+        icon={Icon.globe}
+        label="Your team"
+        title="Nothing reaches you untested."
+        kicker="1,000 simulated customers, 7 improvers and 9 engines. Every number counted from real work."
+        action={s && (
+          <span className="text-[12.5px] mg-muted flex items-center gap-2">
             <span style={{ width: 8, height: 8, borderRadius: 99, background: s.ai ? "#2EE6C5" : "#FFB347", display: "inline-block" }} />
-            {s.ai ? "Full crowd testing" : "AI busy: quick checks now, full tests when it's back"}
+            {s.ai ? "Full crowd testing" : "AI busy: quick checks now"}
             {s.waiting ? <> · {s.waiting} waiting</> : null}
-          </p>
+          </span>
         )}
-      </div>
+      />
 
-      <div className="mt-5 tm-layout">
+      <div className="mt-6 tm-layout">
       <div className="tm-main min-w-0">
-      <div><SwarmGlobe rates={rates} counts={s?.live ? { testers: s.live.testers.active, improvers: s.live.improvers.active, doers: s.live.doers.active } : null} /></div>
+      <div><SwarmGlobe height="clamp(360px, 46vh, 540px)" rates={rates} counts={s?.live ? { testers: s.live.testers.active, improvers: s.live.improvers.active, doers: s.live.doers.active } : null} /></div>
 
       <div className="mt-5 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <TeamCard

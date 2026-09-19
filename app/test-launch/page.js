@@ -10,6 +10,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import Icon from "@/components/ui/Icon";
 import { TEAM_COLORS } from "@/components/team/SwarmGlobe";
 
 const KINDS = [
@@ -78,12 +80,12 @@ export default function TestLaunchPage() {
 
   return (
     <OperatorShell active="test-launch">
-      <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Test it before you launch</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure-wide)" }}>
-          Test your own website in one click, or paste something new before it goes out: an ad, a launch post, a price, an email. <b style={{ color: "var(--fg)" }}>1,000 simulated customers of your business</b> react and argue it out, the improvers hand back a better version tested again, and you can ask anyone in the crowd why.
-        </p>
-      </div>
+      <OperatorHeader
+        icon={Icon.spark}
+        label="Test before launch"
+        title="Try it on 1,000 customers first."
+        kicker="Your own pages in one click, or paste an ad, a price or an email. They react, argue, and hand back a better version."
+      />
 
       {/* ── What to test ── */}
       <div className="mt-5 rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}>

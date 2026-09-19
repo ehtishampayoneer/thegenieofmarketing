@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useMemo, Suspense } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
@@ -133,12 +134,12 @@ function Growth() {
   return (
     <OperatorShell active="growth">
       {/* ── HEADER ── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Growth</h1>
-          <p className="mt-1.5 text-[14px] mg-muted">Track your keyword rankings and organic growth over time.</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+      <OperatorHeader
+        icon={Icon.growth}
+        label="Growth"
+        title="Your real positions, and where Genie is pushing next."
+        kicker="Rankings from Search Console, not estimates."
+        action={<div className="flex items-center gap-2 flex-wrap">
           <button onClick={refreshRankings} disabled={ranksBusy || !host} className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13 }} title="Pull your latest Google positions from Search Console">
             <Icon.growth size={14} /> {ranksBusy ? "Refreshing…" : "Refresh rankings"}
           </button>
@@ -151,8 +152,8 @@ function Growth() {
           <button onClick={() => derive({ rebuild: true })} disabled={busy === "derive" || !host} className="mg-btn disabled:opacity-50" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--accent-ink)" }}>
             <Icon.scan size={14} /> {busy === "derive" ? (step ? "Rebuilding…" : "Rebuilding…") : "Rebuild strategy"}
           </button>
-        </div>
-      </div>
+        </div>}
+      />
       {refreshMsg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{refreshMsg}</p>}
 
       {state === "disconnected" ? (

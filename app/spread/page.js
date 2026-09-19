@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
@@ -33,12 +34,12 @@ export default function SpreadPage() {
 
   return (
     <OperatorShell active="spread">
-      <div>
-        <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Spread it</h1>
-        <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure-wide)" }}>
-          One article, put where it counts. <b style={{ color: "var(--fg)" }}>Your own site first</b>, because that is the only copy that builds your own ranking. Then the places buyers and AI assistants read. Genie writes each version for that place; you paste it and tick it off.
-        </p>
-      </div>
+      <OperatorHeader
+        icon={Icon.megaphone}
+        label="Spread"
+        title="One article, put where it counts."
+        kicker="Your own site first, because that is the only copy that builds your ranking. Then the places buyers and AI read."
+      />
 
       {articles === null ? (
         <div className="mt-6 mg-surface p-10 text-center text-[13px] mg-subtle">Loading your articles…</div>

@@ -7,6 +7,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import OperatorHeader from "@/components/shell/v2/OperatorHeader";
+import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 
 const TONE = {
@@ -90,20 +92,20 @@ export default function SelfTestPage() {
 
   return (
     <OperatorShell active="diagnostics">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Self-test</h1>
-          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
-            Runs every part of Genie for real, on the live site, with your real keys and your Google connection. It never emails anyone, publishes or posts anything. Takes a few minutes.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {done > 0 && <button onClick={copy} className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}>{copied ? "Copied" : "Copy report"}</button>}
-          <button onClick={runAll} disabled={running || !checks.length} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
-            {running ? `Running… ${done}/${checks.length}` : done ? "Run again" : "Run all checks"}
-          </button>
-        </div>
-      </div>
+      <OperatorHeader
+        icon={Icon.check}
+        label="Self-test"
+        title="Every part of Genie, tested for real."
+        kicker="On the live site, with your real keys. It never emails, publishes or posts anything."
+        action={(
+          <div className="flex items-center gap-2 flex-wrap">
+            {done > 0 && <button onClick={copy} className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}>{copied ? "Copied" : "Copy report"}</button>}
+            <button onClick={runAll} disabled={running || !checks.length} className="mg-btn mg-btn--dawn disabled:opacity-60" style={{ fontSize: 13 }}>
+              {running ? `Running… ${done}/${checks.length}` : done ? "Run again" : "Run all checks"}
+            </button>
+          </div>
+        )}
+      />
 
       {who && (
         <p className="mt-3 text-[13px]" style={{ color: "var(--fg-muted)" }}>
