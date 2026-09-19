@@ -90,6 +90,13 @@ export default function ApprovalsPage() {
   const [expandReason, setExpandReason] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [saved, setSaved] = useState(() => new Set());
+  // First run: a queue of forty items is a wall, not a to-do list. The band
+  // below picks three to start with and disappears for good once dismissed or
+  // once anything has been approved.
+  const [startHidden, setStartHidden] = useState(true);
+  useEffect(() => {
+    try { setStartHidden(localStorage.getItem("mg-approvals-start") === "done"); } catch { setStartHidden(false); }
+  }, []);
   // ── editing image + text ──
   const [editHook, setEditHook] = useState("");
   const [editImage, setEditImage] = useState(null);
@@ -366,6 +373,14 @@ export default function ApprovalsPage() {
           </div>
         )}
       </div>
+
+      {state === "real" && !startHidden && done === 0 && view.length > 4 && (
+        <StartHere
+          items={view}
+          onPick={(id) => { const i = view.findIndex((x) => x.id === id); if (i >= 0) setIdx(i); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onDismiss={() => { setStartHidden(true); try { localStorage.setItem("mg-approvals-start", "done"); } catch {} }}
+        />
+      )}
 
       {state === "real" && markets.length > 0 && (
         <div className="mt-4 flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
@@ -822,6 +837,60 @@ function CrowdVerdict({ crowd }) {
       {crowd.gate?.blocked && <p className="mt-1 text-[12px]" style={{ color: "var(--signal-danger)" }}>{crowd.gate.name || "The gatekeeper"} would likely block this. Edit before posting.</p>}
       {crowd.quotes?.[0] && <p className="mt-1 text-[12px] mg-subtle">“{crowd.quotes[0].q}” — {crowd.quotes[0].who}</p>}
       <p className="mt-1 text-[11px] mg-subtle">A prediction, not real people. Genie checks it against what really happens.</p>
+    </div>
+  );
+}
+
+// ── START WITH THESE THREE ──
+// The first time an owner opens Approvals there can be forty items, and a wall
+// of work reads as a chore rather than a queue. This picks three to start with —
+// the highest-impact piece that publishes to their own site, the best way to
+// reach a buyer, and the best pitch — and says in one line why each is worth
+// doing first. It is not a separate mode: pressing one simply jumps the queue to
+// that item, and the band never returns once anything has been approved.
+function StartHere({ items, onPick, onDismiss }) {
+  const byImpact = (a, b) => (Number(b.impact) || 0) - (Number(a.impact) || 0);
+  const pickOne = (test, used) => items.filter((i) => !used.has(i.id) && test(i)).sort(byImpact)[0] || null;
+  const used = new Set();
+  const chosen = [];
+  const wants = [
+    { test: (i) => i.kind === "article" || i.owned, why: "Publishes on your own site, so it builds your ranking, not Genie's." },
+    { test: (i) => i.source === "placement" || /community|reply/.test(i.kind || "") || i.kind === "social_post", why: "Reaches a real person who is already asking about what you sell." },
+    { test: (i) => i.kind === "media_pitch" || i.kind === "outreach_email" || i.kind === "directory_submission", why: "Earns a link or a reply from someone else's audience. This is the slow compounding part." },
+  ];
+  for (const w of wants) {
+    const hit = pickOne(w.test, used);
+    if (hit) { used.add(hit.id); chosen.push({ ...hit, why: w.why }); }
+  }
+  // Fill up to three with whatever is strongest, so the band is never half empty.
+  for (const i of items.slice().sort(byImpact)) {
+    if (chosen.length >= 3) break;
+    if (!used.has(i.id)) { used.add(i.id); chosen.push({ ...i, why: "The strongest remaining piece in your queue." }); }
+  }
+  if (chosen.length < 2) return null;
+
+  return (
+    <div className="mt-5 rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--accent)" }}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>New here? Start with these {chosen.length}.</p>
+          <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+            {items.length} pieces are waiting, which is a lot to face at once. These {chosen.length} move the needle first: one for your own site, one to reach a buyer, one to earn a link. Everything else can wait for tomorrow.
+          </p>
+        </div>
+        <button onClick={onDismiss} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12.5 }}>Hide this</button>
+      </div>
+      <div className="mt-4 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))" }}>
+        {chosen.map((c, i) => (
+          <button key={c.id} onClick={() => onPick(c.id)} className="text-left rounded-xl p-3.5 mg-focus"
+            style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", cursor: "pointer" }}>
+            <p className="mg-num text-[12px] font-bold" style={{ color: "var(--accent-ink)" }}>{String(i + 1).padStart(2, "0")}</p>
+            <p className="mt-1 text-[13.5px] font-semibold leading-snug" style={{ color: "var(--fg)" }}>{queueTitle(c)}</p>
+            <p className="mt-1 text-[12px] mg-muted leading-snug">{c.why}</p>
+            <p className="mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent-ink)" }}>Review this one →</p>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
