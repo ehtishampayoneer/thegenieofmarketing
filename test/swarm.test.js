@@ -240,3 +240,39 @@ describe("test it before you launch", () => {
     expect(r.crowd.score).toBeGreaterThan(r.before.score);
   });
 });
+
+describe("who is live, and the learning period", async () => {
+  const { liveView, learningPeriod, IMPROVERS, DOERS } = await import("@/lib/swarm/live");
+  const now = Date.parse("2026-09-19T12:00:00Z");
+  const ago = (min) => new Date(now - min * 60000).toISOString();
+
+  it("counts only real work in the last 15 minutes", () => {
+    const v = liveView({
+      now,
+      tested: [{ created_at: ago(3), data: { size: 1000 } }],
+      improved: [{ created_at: ago(5), data: { tickets: ["no proof"] } }, { created_at: ago(90), data: { tickets: ["too pushy"] } }],
+      activity: [{ verb: "writing", message: "Drafting an article", created_at: ago(2) }, { verb: "published", message: "Published", created_at: ago(300) }],
+      people: [{ name: "Busy buyer", weight: 8 }, { name: "Sceptic", weight: 2 }],
+    });
+    expect(v.testers.active).toBe(1000);
+    expect(v.testers.kinds[0]).toMatchObject({ name: "Busy buyer", count: 800, active: true });
+    expect(v.improvers.list.find((r) => r.id === "proof").active).toBe(true);
+    expect(v.improvers.list.find((r) => r.id === "voice").active).toBe(false);   // 90 min ago
+    expect(v.doers.list.find((d) => d.id === "writer")).toMatchObject({ active: true, doing: "Drafting an article" });
+    expect(v.doers.list.find((d) => d.id === "publisher").active).toBe(false);
+    expect(v.activeBots).toBe(1000 + 1 + 1);
+    expect(v.improvers.total).toBe(IMPROVERS.length);
+    expect(v.doers.total).toBe(DOERS.length);
+  });
+
+  it("is quiet when nothing has happened", () => {
+    expect(liveView({ now }).activeBots).toBe(0);
+  });
+
+  it("needs both days and real results before the crowd is trusted", () => {
+    expect(learningPeriod({ firstTestAt: null, now }).done).toBe(false);
+    expect(learningPeriod({ firstTestAt: ago(3 * 24 * 60), results: 9, now })).toMatchObject({ day: 4, done: false });
+    expect(learningPeriod({ firstTestAt: ago(20 * 24 * 60), results: 2, now }).done).toBe(false);
+    expect(learningPeriod({ firstTestAt: ago(20 * 24 * 60), results: 6, now }).done).toBe(true);
+  });
+});

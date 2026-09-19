@@ -24,6 +24,7 @@ import { hostOf } from "@/lib/business";
 import { recordEvent } from "@/lib/events";
 import { runCrowd, newContext, ai_ } from "@/lib/swarm/engine";
 import { KINDS } from "@/lib/swarm/crowd";
+import { learningPeriod } from "@/lib/swarm/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,10 +48,14 @@ async function context() {
 }
 
 export async function GET(request) {
-  const { supabase, user } = await context();
+  const { supabase, user, host } = await context();
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
+  const params = new URL(request.url).searchParams;
+  // ?site=1 -> the owner's own site and its key pages, so testing their website is
+  // one click: Genie already knows the site from the scan at the very start.
+  if (params.get("site")) return json({ ok: true, ...(await sitePages(host)) });
   // ?id= -> one past test in full, to reopen it.
-  const id = new URL(request.url).searchParams.get("id");
+  const id = params.get("id");
   if (id) {
     const { data: ev } = await supabase.from("events").select("id, data").eq("id", id).eq("user_id", user.id).eq("type", "launch.test").maybeSingle();
     if (!ev) return json({ ok: false, error: "Not found." }, 404);
@@ -142,7 +147,15 @@ async function run(supabase, user, host, body) {
     });
   }
 
-  return json({ ok: true, id: testId, input: { kind, text, question, market, url }, ...result });
+  // How far the crowd is through its learning period, so the score is read right.
+  let learning = null;
+  try {
+    const { data: first } = await supabase.from("events").select("created_at").eq("user_id", user.id).eq("type", "swarm.tested").order("created_at", { ascending: true }).limit(1).maybeSingle();
+    const { data: cal } = await supabase.from("events").select("data").eq("user_id", user.id).eq("type", "swarm.calibration").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    learning = learningPeriod({ firstTestAt: first?.created_at || null, results: cal?.data?.n || 0, verdict: cal?.data?.lift?.verdict });
+  } catch {}
+
+  return json({ ok: true, id: testId, input: { kind, text, question, market, url }, learning, ...result });
 }
 
 async function ask(supabase, user, host, body) {
@@ -174,6 +187,30 @@ Return ONLY: {"answer":"..."}`,
   const answer = String(r?.json?.answer || "").trim();
   if (!answer) return json({ ok: false, retryable: true, error: "Every free AI is busy right now. Ask again in a minute." }, 503);
   return json({ ok: true, answer, person: { id: person.id, name: person.name } });
+}
+
+const KEY_PAGE = /(pric|plan|package|rates|about|services|features|how-it-works|product|shop|store|solutions|demo|book)/i;
+
+async function sitePages(host) {
+  if (!host) return { host: "", pages: [] };
+  const home = `https://${host}`;
+  const pages = [{ label: "Homepage", url: home, kind: "landing" }];
+  try {
+    const { res, finalUrl } = await safeFetch(home, { headers: { "User-Agent": "MarketingGenie/1.0 (+launch test)" }, signal: AbortSignal.timeout(10000) });
+    const $ = cheerio.load(await res.text());
+    const origin = new URL(finalUrl || home).origin;
+    const seen = new Set([new URL(finalUrl || home).pathname.replace(/\/$/, "")]);
+    $("a[href]").each((_, a) => {
+      let u;
+      try { u = new URL(String($(a).attr("href") || ""), origin); } catch { return; }
+      const path = u.pathname.replace(/\/$/, "");
+      if (u.origin !== origin || seen.has(path) || !KEY_PAGE.test(path) || pages.length >= 7) return;
+      seen.add(path);
+      const label = path.split("/").filter(Boolean).pop().replace(/[-_]+/g, " ").replace(/\.html?$/, "");
+      pages.push({ label: label.charAt(0).toUpperCase() + label.slice(1), url: origin + u.pathname, kind: /pric|plan|package|rates/i.test(path) ? "offer" : /product|shop|store/i.test(path) ? "product" : "landing" });
+    });
+  } catch {}
+  return { host, pages };
 }
 
 function json(obj, status = 200) {

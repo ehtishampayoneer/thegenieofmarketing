@@ -27,7 +27,7 @@ const NAV = [
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
   // The testers, improvers and doers, live on a globe (lib/swarm).
-  { id: "team", label: "Your team", icon: Icon.globe },
+  { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
   // Anything the owner is about to put out, tested by the same 1,000-person crowd.
   { id: "test-launch", label: "Test before launch", icon: Icon.spark },
   { id: "write", label: "Ask Genie to write", icon: Icon.write },
@@ -124,6 +124,7 @@ export default function OperatorShell({ active = "today", children }) {
       if (today.live && today.data) {
         const data = today.data;
         if (data.approvalsCount != null) setCounts((c) => ({ ...c, approvals: data.approvalsCount }));
+        if (data.teamLive != null) setCounts((c) => ({ ...c, team: data.teamLive }));
         if (data.entity || data.greetingName) setUser({ name: data.greetingName || "You", entity: data.entity?.name || "" });
       }
       if (conns.live && conns.data?.integrations) {

@@ -104,6 +104,15 @@ export async function GET() {
       .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(20);
     const list = actions || [];
     out.approvalsCount = list.length;
+    // How many of the team's bots worked in the last 15 minutes (lib/swarm/live.js),
+    // for the live count beside "Your team" in the menu.
+    try {
+      const { liveView } = await import("@/lib/swarm/live");
+      const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const ev = await getEvents(supabase, { userId: user.id, types: ["swarm.tested", "swarm.improved"], since, limit: 50 });
+      const { data: act } = await supabase.from("activity").select("verb, message, created_at").eq("user_id", user.id).gte("created_at", since).limit(50);
+      out.teamLive = liveView({ tested: ev.filter((e) => e.type === "swarm.tested"), improved: ev.filter((e) => e.type === "swarm.improved"), activity: act || [] }).activeBots;
+    } catch {}
     // Get featured pitches waiting to be sent are in Approvals too (see /api/approvals).
     try {
       const { MEDIA_TYPE, isPendingPitch } = await import("@/lib/media-store");

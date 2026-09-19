@@ -21,7 +21,7 @@ const STEPS = ["Gathering your crowd", "1,000 people reading it", "Arguing it ou
 
 export default function TestLaunchPage() {
   const [kind, setKind] = useState("launch");
-  const [mode, setMode] = useState("text");
+  const [mode, setMode] = useState("site");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [market, setMarket] = useState("");
@@ -32,18 +32,26 @@ export default function TestLaunchPage() {
   const [err, setErr] = useState("");
   const [res, setRes] = useState(null);
   const [history, setHistory] = useState([]);
+  // The client's own site, known since the scan at the very start.
+  const [site, setSite] = useState(null);
 
   // Arrive with something to test (from Proof Sprint, Markets or elsewhere).
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
       if (q.get("kind")) setKind(q.get("kind"));
-      if (q.get("text")) setText(q.get("text"));
+      if (q.get("text")) { setText(q.get("text")); setMode("text"); }
       if (q.get("market")) setMarket(q.get("market"));
       if (q.get("question")) setQuestion(q.get("question"));
-      if (q.get("url")) { setMode("url"); setUrl(q.get("url")); }
+      if (q.get("url")) { setMode("site"); setUrl(q.get("url")); }
     } catch {}
     loadHistory();
+    fetch("/api/launch-test?site=1", { cache: "no-store" }).then((r) => r.json()).then((j) => {
+      if (!j?.ok) return;
+      setSite(j);
+      if (!j.pages?.length) setMode("text");
+      else setUrl((u) => u || j.pages[0].url);
+    }).catch(() => setMode("text"));
   }, []);
 
   async function loadHistory() {
@@ -54,7 +62,7 @@ export default function TestLaunchPage() {
     setErr(""); setBusy(true); setStep(0); setRes(null);
     const t = setInterval(() => setStep((s) => Math.min(STEPS.length - 1, s + 1)), 7000);
     try {
-      const body = { action: "run", kind, question, market, improve, ...(override || (mode === "url" ? { url } : { text })) };
+      const body = { action: "run", kind, question, market, improve, ...(override || (mode === "site" ? { url } : { text })) };
       const j = await fetch("/api/launch-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
       if (j?.ok) { setRes(j); loadHistory(); } else setErr(j?.error || "The test didn't finish. Try again.");
     } catch { setErr("The test didn't finish. Try again."); }
@@ -66,14 +74,14 @@ export default function TestLaunchPage() {
     try { const j = await fetch(`/api/launch-test?id=${encodeURIComponent(id)}`, { cache: "no-store" }).then((r) => r.json()); if (j?.ok) { setRes(j); window.scrollTo({ top: 0, behavior: "smooth" }); } } catch {}
   }
 
-  const canRun = !busy && (mode === "url" ? url.trim().length > 4 : text.trim().length >= 15);
+  const canRun = !busy && (mode === "site" ? url.trim().length > 4 : text.trim().length >= 15);
 
   return (
     <OperatorShell active="test-launch">
       <div>
         <h1 className="mg-display" style={{ fontSize: "clamp(28px,3vw,37px)" }}>Test it before you launch</h1>
         <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure-wide)" }}>
-          Paste an ad, a launch post, a price, a page or an email. <b style={{ color: "var(--fg)" }}>1,000 simulated customers</b> react and argue it out, the improvers hand back a better version tested again, and you can ask anyone in the crowd why.
+          Test your own website in one click, or paste something new before it goes out: an ad, a launch post, a price, an email. <b style={{ color: "var(--fg)" }}>1,000 simulated customers of your business</b> react and argue it out, the improvers hand back a better version tested again, and you can ask anyone in the crowd why.
         </p>
       </div>
 
@@ -87,13 +95,20 @@ export default function TestLaunchPage() {
         </div>
 
         <div className="mt-4 flex items-center gap-3 text-[12.5px]">
-          <button onClick={() => setMode("text")} style={tab(mode === "text")}>Paste text</button>
-          <button onClick={() => setMode("url")} style={tab(mode === "url")}>Test a web page</button>
+          {site?.pages?.length > 0 && <button onClick={() => setMode("site")} style={tab(mode === "site")}>My website</button>}
+          <button onClick={() => setMode("text")} style={tab(mode === "text")}>Something new (paste it)</button>
         </div>
         {mode === "text" ? (
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={7} placeholder="Paste exactly what people will see…" className="mg-field mg-focus mt-2 w-full" style={{ fontSize: 14, resize: "vertical" }} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={7} placeholder="Paste exactly what people will see: a new ad, post, price or email…" className="mg-field mg-focus mt-2 w-full" style={{ fontSize: 14, resize: "vertical" }} />
         ) : (
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://yoursite.com/pricing" className="mg-field mg-focus mt-2 w-full" style={{ fontSize: 14 }} />
+          <div className="mt-2">
+            <p className="text-[12.5px] mg-muted">Genie already knows <b style={{ color: "var(--fg)" }}>{site?.host}</b>. Pick the page the crowd should visit:</p>
+            <div className="mt-2 flex gap-1.5 flex-wrap">
+              {(site?.pages || []).map((p) => (
+                <button key={p.url} onClick={() => { setUrl(p.url); setKind(p.kind); }} className="mg-btn" style={{ fontSize: 12.5, padding: ".4rem .8rem", background: url === p.url ? "var(--accent-quiet)" : "var(--surface-2)", border: `1px solid ${url === p.url ? "var(--accent)" : "var(--hair)"}`, color: "var(--fg)" }}>{p.label}</button>
+              ))}
+            </div>
+          </div>
         )}
 
         <div className="mt-3 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
@@ -173,6 +188,9 @@ function Result({ res, onRetest }) {
           <p className="text-[13px] mg-muted mt-0.5">
             {quick ? "Quick check with Genie's rules (every free AI was busy). Run it again in a few minutes for the full crowd." : `${Number(c.size || 1000).toLocaleString()} people from ${c.kinds} kinds of customer${res.input?.market ? ` in ${res.input.market}` : ""}, 12 rounds of discussion.`}
           </p>
+          {res.learning && !res.learning.done && (
+            <p className="mt-1.5 text-[12px]" style={{ color: "var(--accent-ink)" }}>Crowd still learning your market (day {Math.min(res.learning.day, res.learning.days)} of {res.learning.days}, {res.learning.results} of {res.learning.need} real results): treat this as a strong first opinion.</p>
+          )}
           <div className="mt-3 flex gap-6 flex-wrap">
             <Stat n={pct(c.positive)} l="liked it" color="var(--signal-live-ink)" />
             <Stat n={pct(c.act)} l="would act" color="var(--fg)" />

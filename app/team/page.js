@@ -51,7 +51,9 @@ export default function TeamPage() {
         )}
       </div>
 
-      <div className="mt-5"><SwarmGlobe rates={rates} /></div>
+      <div className="mt-5 tm-layout">
+      <div className="tm-main min-w-0">
+      <div><SwarmGlobe rates={rates} /></div>
 
       <div className="mt-5 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <TeamCard
@@ -77,6 +79,20 @@ export default function TeamPage() {
         />
       </div>
 
+      {/* The learning period: how long before the crowd's scores can be trusted. */}
+      {s?.learning && (
+        <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{s.learning.done ? "Crowd calibrated" : "Learning period"}</p>
+            <p className="text-[12.5px] mg-subtle mg-num">Day {Math.min(s.learning.day, s.learning.days)} of {s.learning.days} · {s.learning.results} of {s.learning.need} real results</p>
+          </div>
+          <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+            <div className="h-2 rounded-full" style={{ width: `${s.learning.pct}%`, background: s.learning.done ? "var(--signal-live)" : "linear-gradient(90deg,#2EE6C5,#FFB347,#A78BFA)" }} />
+          </div>
+          <p className="mt-2 text-[13px] mg-muted">{s.learning.text}</p>
+        </div>
+      )}
+
       {/* The reality check: the crowd's predictions against what really happened. */}
       <div className="mt-4 rounded-2xl p-4 flex items-start gap-3" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}>
         <span style={{ marginTop: 4, width: 10, height: 10, borderRadius: 99, background: s?.reality?.verdict === "predictive" ? "var(--signal-live)" : s?.reality?.verdict === "wrong" ? "var(--signal-danger)" : "var(--fg-subtle)", flexShrink: 0 }} />
@@ -88,7 +104,12 @@ export default function TeamPage() {
         </div>
       </div>
 
+      </div>
+      <LivePanel live={s?.live} />
+      </div>
+
       <p className="mt-6 mb-2 text-center text-[12px] mg-subtle">The crowd is a prediction, not real people. Genie checks its predictions against real replies, clicks and rankings.</p>
+      <style>{`.tm-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}@media (min-width:1180px){.tm-layout{grid-template-columns:minmax(0,1fr) 300px}.tm-live{position:sticky;top:84px}}`}</style>
     </OperatorShell>
   );
 }
@@ -161,4 +182,57 @@ function ago(iso) {
   if (s < 3600) return `${Math.round(s / 60)}m ago`;
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;
   return `${Math.round(s / 86400)}d ago`;
+}
+
+// ── LIVE NOW ──
+// The three teams as a contact list: who is working right now (green dot),
+// who is on standby, and how many bots each team has active. "Active" means it
+// did real work in the last 15 minutes.
+function LivePanel({ live }) {
+  const [open, setOpen] = useState({ testers: false, improvers: true, doers: true });
+  if (!live) return <aside className="tm-live rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}><p className="text-[13px] mg-subtle">Loading the team…</p></aside>;
+  const groups = [
+    { key: "testers", name: "Testers", color: TEAM_COLORS.testers, active: live.testers.active, total: live.testers.total,
+      rows: live.testers.kinds.map((k) => ({ name: k.name, sub: `${k.count} in the crowd`, on: k.active })) },
+    { key: "improvers", name: "Improvers", color: TEAM_COLORS.improvers, active: live.improvers.active, total: live.improvers.total,
+      rows: live.improvers.list.map((r) => ({ name: r.name, sub: r.active ? "Fixing a draft now" : r.last ? `Last fix ${ago(r.last)}` : r.does, on: r.active })) },
+    { key: "doers", name: "Doers", color: TEAM_COLORS.doers, active: live.doers.active, total: live.doers.total,
+      rows: live.doers.list.map((d) => ({ name: d.name, sub: d.active ? d.doing : d.last ? `Last: ${ago(d.last)}` : d.does, on: d.active })) },
+  ];
+  return (
+    <aside className="tm-live rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--hair)", overflow: "hidden" }}>
+      <div className="p-4" style={{ borderBottom: "1px solid var(--hair)" }}>
+        <p className="text-[14px] font-bold flex items-center gap-2" style={{ color: "var(--fg)" }}>
+          <span className={live.activeBots ? "tm-pulse" : ""} style={{ width: 9, height: 9, borderRadius: 99, background: live.activeBots ? "var(--signal-live)" : "var(--fg-subtle)", color: "var(--signal-live)" }} />
+          Live now
+        </p>
+        <p className="mg-num mt-1" style={{ fontSize: 30, fontWeight: 700, lineHeight: 1, color: "var(--fg)" }}>{live.activeBots.toLocaleString()}</p>
+        <p className="text-[12px] mg-subtle">bots working right now</p>
+      </div>
+      <div style={{ maxHeight: 560, overflowY: "auto" }}>
+        {groups.map((g) => (
+          <div key={g.key} style={{ borderBottom: "1px solid var(--hair)" }}>
+            <button onClick={() => setOpen((o) => ({ ...o, [g.key]: !o[g.key] }))} className="w-full flex items-center gap-2 px-4 py-3" style={{ background: "none", border: 0, cursor: "pointer", textAlign: "left" }}>
+              <span style={{ width: 10, height: 10, borderRadius: 99, background: g.color, boxShadow: g.active ? `0 0 10px ${g.color}` : "none", opacity: g.active ? 1 : 0.45 }} />
+              <span className="text-[13.5px] font-semibold flex-1" style={{ color: "var(--fg)" }}>{g.name}</span>
+              <span className="mg-num text-[12px]" style={{ color: g.active ? "var(--fg)" : "var(--fg-subtle)" }}>{g.active.toLocaleString()} / {g.total.toLocaleString()} active</span>
+            </button>
+            {open[g.key] && (
+              <ul className="pb-2">
+                {g.rows.length ? g.rows.map((r, i) => (
+                  <li key={i} className="px-4 py-1.5 flex items-start gap-2.5">
+                    <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: r.on ? "var(--signal-live)" : "var(--hair)" }} />
+                    <span className="min-w-0">
+                      <span className="block text-[12.5px] font-medium" style={{ color: "var(--fg)" }}>{r.name}</span>
+                      {r.sub && <span className="block text-[11.5px] mg-subtle" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 230 }}>{r.sub}</span>}
+                    </span>
+                  </li>
+                )) : <li className="px-4 py-1.5 text-[12px] mg-subtle">The crowd is built with the first test.</li>}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
 }

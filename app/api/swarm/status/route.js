@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getEvents } from "@/lib/events";
 import { pendingItems } from "@/lib/swarm/engine";
 import { freeProvidersReady } from "@/lib/ai-router";
+import { liveView, learningPeriod } from "@/lib/swarm/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,14 +28,15 @@ export async function GET() {
   const improved = events.filter((e) => e.type === "swarm.improved");
   const recent = (xs) => xs.filter((e) => Date.parse(e.created_at) > day);
 
-  let doneAll = 0, done24 = 0, doerFeed = [];
+  let doneAll = 0, done24 = 0, doerFeed = [], recentActivity = [];
   try {
     const { count } = await supabase.from("activity").select("id", { count: "exact", head: true }).eq("user_id", user.id);
     doneAll = count || 0;
     const { count: c24 } = await supabase.from("activity").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", new Date(day).toISOString());
     done24 = c24 || 0;
-    const { data } = await supabase.from("activity").select("message, icon, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(6);
-    doerFeed = (data || []).map((a) => ({ text: a.message, at: a.created_at }));
+    const { data } = await supabase.from("activity").select("verb, message, icon, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
+    recentActivity = data || [];
+    doerFeed = recentActivity.slice(0, 6).map((a) => ({ text: a.message, at: a.created_at }));
   } catch {}
 
   let waiting = 0;
@@ -45,8 +47,21 @@ export async function GET() {
   const gain = improved.length ? Math.round(improved.reduce((s, e) => s + ((e.data?.to || 0) - (e.data?.from || 0)), 0) / improved.length) : 0;
   const quick = tested.filter((e) => e.data?.mode === "rules").length;
 
+  // The crowd's kinds of people, for the live contacts view.
+  let people = [];
+  try {
+    const crowd = (await getEvents(supabase, { userId: user.id, types: ["swarm.crowd"], limit: 1 }))[0];
+    people = crowd?.data?.people || [];
+  } catch {}
+  const live = liveView({ tested, improved, activity: recentActivity, people });
+  const learning = learningPeriod({
+    firstTestAt: tested.length ? tested[tested.length - 1].created_at : null,
+    results: cal?.data?.n || 0, verdict: cal?.data?.lift?.verdict || "learning",
+  });
+
   return json({
     ok: true,
+    live, learning,
     ai: freeProvidersReady().length > 0,
     waiting,
     testers: {
