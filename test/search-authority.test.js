@@ -46,7 +46,10 @@ describe("Gemini grounded web search", () => {
     expect(sentBody.generationConfig.thinkingConfig).toBeUndefined();
     expect(sentBody.generationConfig.maxOutputTokens).toBe(3024);
     expect(groundedSearchLastError()).toBeNull();
-  });
+    // 20s, not the 5s default: this test re-imports the whole search module graph
+    // after resetModules(), which takes several seconds when the full suite is
+    // running in parallel. It is module loading, not the code under test.
+  }, 20000);
 
   it("records Gemini's real error instead of silently returning nothing", async () => {
     globalThis.fetch = vi.fn(async (url) => String(url).includes("generativelanguage")
