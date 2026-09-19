@@ -59,12 +59,26 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!mq) return;
-    const apply = () => { setReduced(mq.matches); setPlaying(!mq.matches); };
+    let saved = null;
+    try { saved = localStorage.getItem("mg-globe-motion"); } catch {}
+    const apply = () => {
+      const r = !!mq?.matches;
+      setReduced(r);
+      // A choice, once made, sticks across pages and sessions. Otherwise the globe
+      // looks like it stopped working every time the owner navigates away.
+      setPlaying(saved ? saved === "on" : !r);
+    };
     apply();
-    mq.addEventListener?.("change", apply);
-    return () => mq.removeEventListener?.("change", apply);
+    mq?.addEventListener?.("change", apply);
+    return () => mq?.removeEventListener?.("change", apply);
   }, []);
+
+  function setMotion(on) {
+    setPlaying(on);
+    playRef.current = on;
+    try { localStorage.setItem("mg-globe-motion", on ? "on" : "off"); } catch {}
+    if (on) ref.current?.__sgPlay?.();
+  }
 
   useEffect(() => {
     const canvas = ref.current;
@@ -316,8 +330,9 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
       {/* The play control: visible whenever motion is off, quiet otherwise. */}
       <button
-        onClick={() => { const next = !playing; setPlaying(next); playRef.current = next; if (next) ref.current?.__sgPlay?.(); }}
-        aria-label={playing ? "Pause the globe" : "Play the globe"}
+        onClick={() => setMotion(!playing)}
+        title="This only changes the picture. Your team works on Genie's servers either way."
+        aria-label={playing ? "Pause this animation" : "Play this animation"}
         style={{
           position: "absolute", left: 26, top: 56, display: "inline-flex", alignItems: "center", gap: 7,
           padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 600,
@@ -326,13 +341,13 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
           border: `1px solid ${playing ? "rgba(255,255,255,0.14)" : "#2EE6C5"}`,
         }}
       >
-        {playing ? "❚❚ Pause" : "▶ Play the team"}
+        {playing ? "❚❚ Pause animation" : "▶ Play animation"}
       </button>
-      {reduced && playing && (
-        <p style={{ position: "absolute", left: 26, top: 92, margin: 0, fontSize: 11, color: "rgba(226,236,250,0.5)", pointerEvents: "none" }}>
-          Your system asks for reduced motion; this is on because you pressed play.
-        </p>
-      )}
+      <p style={{ position: "absolute", left: 26, top: 92, margin: 0, maxWidth: 260, fontSize: 11, lineHeight: 1.45, color: "rgba(226,236,250,0.5)", pointerEvents: "none" }}>
+        {playing
+          ? (reduced ? "Your system asks for reduced motion; you switched this on." : "Picture only. Your team works on Genie's servers either way.")
+          : "Animation paused. Your team is still working — the counts beside it are live."}
+      </p>
 
       {/* Bottom right: what it is. */}
       <p className="sg-desc" style={{ position: "absolute", right: 26, bottom: 24, margin: 0, maxWidth: 330, color: "rgba(226,236,250,0.78)", fontSize: 14, lineHeight: 1.55, pointerEvents: "none" }}>
