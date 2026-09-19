@@ -104,6 +104,12 @@ export async function GET() {
       .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(20);
     const list = actions || [];
     out.approvalsCount = list.length;
+    // Get featured pitches waiting to be sent are in Approvals too (see /api/approvals).
+    try {
+      const { MEDIA_TYPE, isPendingPitch } = await import("@/lib/media-store");
+      const { data: pitches } = await supabase.from("actions").select("payload").eq("user_id", user.id).eq("type", MEDIA_TYPE).order("created_at", { ascending: false }).limit(60);
+      out.approvalsCount += Math.min(20, (pitches || []).filter(isPendingPitch).length);
+    } catch {}
     if (list.length) out.approvals = list.slice(0, 3).map(approvalView);
   } catch {}
 

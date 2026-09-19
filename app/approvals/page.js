@@ -57,8 +57,8 @@ function matchesType(it, f) {
   if (f === "all") return true;
   if (f === "blog") return it.kind === "article";
   if (f === "social") return it.kind === "social_post" || it.source === "placement" || /community|reply/.test(it.kind || "");
-  if (f === "email") return it.kind === "outreach_email";
-  return !(it.kind === "article" || it.kind === "social_post" || it.kind === "outreach_email" || it.source === "placement");
+  if (f === "email") return it.kind === "outreach_email" || it.kind === "media_pitch";
+  return !(it.kind === "article" || it.kind === "social_post" || it.kind === "outreach_email" || it.kind === "media_pitch" || it.source === "placement");
 }
 function matchesImpact(it, f) { return f === "all" || impactMeta(it.impact).tier === f; }
 function matchesMarket(it, f) { if (f === "all") return true; if (f === "global") return !it.market; return it.market === f; }
@@ -159,6 +159,32 @@ export default function ApprovalsPage() {
     const item = current;
     const draft = editing ? editDraft : current.draft;
 
+    // A Get featured pitch: sent from the owner's Gmail through the same route the
+    // Get featured page uses (daily cap, opt-outs, address check), or, when the
+    // site only has a contact form, copied and the form opened.
+    if (item.kind === "media_pitch") {
+      const pz = item.pitch || {};
+      if (!pz.email) {
+        try { await navigator.clipboard.writeText(`${pz.subject ? `${pz.subject}\n\n` : ""}${draft || ""}`); } catch {}
+        if (item.target_url) window.open(item.target_url, "_blank");
+        fetch("/api/featured/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, act: "apply" }) }).catch(() => {});
+        setToast("Pitch copied and their contact form opened. Paste it in and send.");
+        setDone((d) => d + 1); removeById(item.id);
+        return;
+      }
+      setWorking(true); setToast(`Sending to ${pz.name || pz.company}…`);
+      try {
+        const j = await fetch("/api/prospects/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: pz.email, subject: pz.subject, body: draft, name: pz.name, company: pz.company }) }).then((r) => r.json());
+        if (j?.ok) {
+          await fetch("/api/featured/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, act: "apply" }) }).catch(() => {});
+          setToast(`Sent to ${pz.name || pz.company}. Replies land in your Inbox.`);
+          setDone((d) => d + 1); removeById(item.id);
+        } else setToast(j?.error || "Couldn't send that one. Try again.");
+      } catch { setToast("Couldn't send that one. Try again."); }
+      setWorking(false);
+      return;
+    }
+
     // Not on your own site (X, Reddit, Quora…) → draft-and-you-post: copy it +
     // open the platform's own composer; YOU tap post. Keeps your accounts safe.
     if (!item.owned) {
@@ -195,6 +221,12 @@ export default function ApprovalsPage() {
 
   function skipCurrent() {
     if (!current) return;
+    // Pitches are skipped the Get featured way, so both screens agree.
+    if (current.kind === "media_pitch") {
+      try { fetch("/api/featured/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: current.id, act: "skip" }) }); } catch {}
+      removeById(current.id);
+      return;
+    }
     try { fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: current.id, source: current.source, act: "skip" }) }); } catch {}
     removeById(current.id);
   }
@@ -691,6 +723,7 @@ function queueTitle(it) {
   if (it.platform === "review_request") return "Ask for a review";
   if (it.platform === "pinterest") return "Pin to Pinterest";
   if (it.platform === "listing") return it.title || "Get listed";
+  if (it.kind === "media_pitch") return it.title || "Send a pitch";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `Reply on ${plat(it.platform || "community")}`;
   if (it.kind === "outreach_email") return "Send an outreach email";
   if (it.platform) return `Post to ${plat(it.platform)}`;

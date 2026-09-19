@@ -8,6 +8,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { toOutcome } from "@/lib/outcomes";
+import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,15 @@ export async function GET() {
       .from("actions").select("id, type, title, priority, payload, target, status")
       .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
     for (const a of actions || []) items.push(normalizeAction(a));
+  } catch {}
+
+  // Get featured pitches waiting to be sent, newest first, so the day's list is
+  // one list. They live on as the same rows the Get featured page shows.
+  try {
+    const { data: pitches } = await supabase
+      .from("actions").select("id, payload, created_at")
+      .eq("user_id", user.id).eq("type", MEDIA_TYPE).order("created_at", { ascending: false }).limit(60);
+    for (const a of (pitches || []).filter(isPendingPitch).slice(0, 20)) items.push(pitchToApproval(a));
   } catch {}
 
   try {
