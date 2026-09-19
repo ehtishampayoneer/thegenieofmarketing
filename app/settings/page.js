@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import StartFresh from "@/components/settings/StartFresh";
 import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
@@ -134,11 +135,14 @@ export default function SettingsPage() {
           {/* First-party facts — the real Information Gain input */}
           <FirstPartyFacts />
 
+          {/* Clear the results, keep the setup — the one an owner actually wants. */}
+          <StartFresh />
+
           {/* Danger zone — start this project completely over */}
           <Card className="lg:col-span-2 p-5" style={{ borderColor: "var(--signal-danger-soft)" }}>
             <h2 className="text-[15px] font-bold" style={{ color: "var(--signal-danger)" }}>Start over</h2>
             <p className="text-[13px] mg-muted mt-0.5" style={{ maxWidth: 560 }}>
-              Make this project brand-new: permanently delete every connected account (Google, X, WordPress), all scans, keywords, content, outreach, and everything Genie has learned. Your login stays; you’ll go straight to a fresh first scan.
+              The nuclear option: everything above, <b style={{ color: "var(--fg)" }}>plus</b> disconnecting Google, your blog and WordPress, so Search Console and publishing must be set up again from scratch. Use "Start fresh" above unless you really want that.
             </p>
             <button onClick={startOver} disabled={resetting} className="mg-btn mg-btn--ghost mt-3" style={{ fontSize: 13, color: "var(--signal-danger)", borderColor: "var(--signal-danger-soft)" }}>
               {resetting ? "Wiping everything…" : "Delete everything & start over"}

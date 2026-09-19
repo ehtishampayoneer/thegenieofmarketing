@@ -14,7 +14,7 @@ import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
 import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
-import { fetchLive } from "@/lib/live";
+import { fetchLive, relTime } from "@/lib/live";
 import { useEffect, useMemo, useState } from "react";
 
 const cap = (s) => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
@@ -71,12 +71,13 @@ export default function TodayPage() {
   const approvals = d?.approvalsCount || 0;
   const score = d?.growth?.score != null ? Math.round(d.growth.score) : null;
   const cust = d?.customers || {};
-  const comp = ai.topCompetitor || "Threekit";
+  // Real or nothing: an invented competitor name is a lie on the first screen.
+  const comp = ai.topCompetitor || null;
 
   const buyersFound = num(stats.find((s) => /conversation|buyer|prospect/i.test(s.label))?.n);
   const published = num(stats.find((s) => /publish|article|content/i.test(s.label))?.n);
   const citations = ai.won ?? 0;
-  const gapCount = ai.gaps ?? ai.working ?? 6;
+  const gapCount = ai.gaps ?? ai.working ?? 0;
 
   // Overnight activity — real events when present, else the representative stat lines.
   const did = useMemo(() => {
@@ -100,8 +101,12 @@ export default function TodayPage() {
             <h1 className="mt-1 mg-display-lg">Genie is working on your growth.</h1>
             <p className="mt-2.5 flex items-center gap-2.5 text-[13px]" style={{ color: "var(--fg-muted)" }}>
               <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live — Working now</span>
-              <span style={{ color: "var(--border-strong)" }}>•</span>
-              <span>Last action 2 min ago</span>
+              {activity?.[0]?.created_at && (
+                <>
+                  <span style={{ color: "var(--border-strong)" }}>•</span>
+                  <span>Last action {relTime(activity[0].created_at)}</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -109,18 +114,18 @@ export default function TodayPage() {
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
             {/* MAIN COLUMN */}
             <div className="flex flex-col gap-5 min-w-0">
-              <NextBestActions entity={entity} gapCount={gapCount} buyers={buyersFound || 4} comp={comp} />
+              <NextBestActions entity={entity} gapCount={gapCount} buyers={buyersFound} comp={comp} approvals={approvals} />
               <TrafficPanel />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <WhatGenieDid did={did} />
-                <GrowthWeek citations={citations} buyers={buyersFound || 18} published={published || 7} revenue={cust.value || 1240} currency={cust.currency} />
+                <GrowthWeek citations={citations} buyers={buyersFound} published={published} revenue={cust.value || 0} currency={cust.currency} />
               </div>
             </div>
             {/* RIGHT SIDEBAR */}
             <div className="flex flex-col gap-5">
               <FirstResults />
               <GenieStatus score={score} comp={comp} />
-              <PendingFromYou approvals={approvals} replies={buyersFound || 4} setup={connsPending(conns)} />
+              <PendingFromYou approvals={approvals} replies={buyersFound} setup={connsPending(conns)} />
             </div>
           </div>
 
@@ -140,30 +145,40 @@ export default function TodayPage() {
 }
 
 const connsPending = (conns) => {
-  if (!conns) return 2;
+  if (!conns) return 0;
   let n = 0; if (!conns.google?.connected) n++; if (!conns.wordpress?.connected) n++;
   return n;
 };
 
 // ── NEXT BEST ACTIONS ───────────────────────────────────────────────────────
-function NextBestActions({ entity, gapCount, buyers, comp }) {
-  const actions = [
-    {
-      cat: "orange", icon: Icon.fire, n: "01", title: "Get your first AI citation",
-      body: `Genie found ${gapCount} buyer questions where competitors are being recommended and ${entity} isn’t.`,
-      tag: "HIGH IMPACT", cta: "Approve comparison article", href: "/approvals",
-    },
-    {
-      cat: "green", icon: Icon.conversations, n: "02", title: `Reach ${buyers} buyers showing intent`,
-      body: "Genie found people actively discussing solutions related to what you sell.",
-      tag: `${buyers} BUYERS FOUND`, cta: "Review prospects", href: "/hunt",
-    },
-    {
-      cat: "blue", icon: Icon.search, n: "03", title: "Publish the strongest answer",
-      body: `A buyer question with 2,500 monthly searches is currently dominated by ${comp}.`,
-      tag: "AI SEARCH", cta: "Approve draft", href: "/approvals",
-    },
-  ];
+// Every card here must be backed by something Genie really found. A card with no
+// real number behind it is an advert for itself, and the first screen is exactly
+// where that costs the owner's trust.
+function NextBestActions({ entity, gapCount, buyers, comp, approvals }) {
+  const actions = [];
+  if (approvals > 0) actions.push({
+    cat: "orange", icon: Icon.fire, n: String(actions.length + 1).padStart(2, "0"),
+    title: `Approve ${approvals} ${approvals === 1 ? "draft" : "drafts"}`,
+    body: "Each one was tested by 1,000 simulated customers and improved before it reached you. Nothing goes out until you approve it.",
+    tag: "WAITING FOR YOU", cta: "Open Approvals", href: "/approvals",
+  });
+  if (buyers > 0) actions.push({
+    cat: "green", icon: Icon.conversations, n: String(actions.length + 1).padStart(2, "0"),
+    title: `Reach ${buyers} ${buyers === 1 ? "buyer" : "buyers"} showing intent`,
+    body: "Real people discussing what you sell, with your reply already drafted.",
+    tag: `${buyers} FOUND`, cta: "Open Buyer Hunt", href: "/hunt",
+  });
+  if (gapCount > 0) actions.push({
+    cat: "blue", icon: Icon.search, n: String(actions.length + 1).padStart(2, "0"),
+    title: "Win the answers AI gives",
+    body: `${gapCount} buyer ${gapCount === 1 ? "question where AI recommends someone else" : "questions where AI recommends someone else"}${comp ? `, usually ${comp}` : ""}, and not ${entity}.`,
+    tag: "AI SEARCH", cta: "See the gaps", href: "/ai-search",
+  });
+  if (!actions.length) actions.push({
+    cat: "green", icon: Icon.check, n: "01", title: "Nothing needs you right now",
+    body: "Genie is working. New drafts, buyers and places to get featured arrive overnight.",
+    tag: "ALL CLEAR", cta: "See what it is doing", href: "/team",
+  });
   return (
     <div>
       <p className="mg-klabel mb-3"><Icon.spark size={13} style={{ color: "var(--accent-ink)" }} /> Your next best actions</p>
@@ -325,12 +340,15 @@ function TrafficStat({ label, views, visitors, note, good, accent }) {
   );
 }
 
+// Real counts only. Where a number is zero it says zero and why, because a
+// decorated zero is the fastest way to lose an owner's trust in every other
+// number on the page. No invented trend arrows, no drawn-from-nowhere charts.
 function GrowthWeek({ citations, buyers, published, revenue, currency }) {
   const rows = [
-    { cat: "blue", icon: Icon.growth, label: "AI visibility", sub: "Citations earned", value: `0 → ${citations || 1}`, delta: `↑ ${citations || 1}`, spark: [3, 4, 3, 5, 5, 7, 9] },
-    { cat: "green", icon: Icon.conversations, label: "Buyers found", sub: "Across all channels", value: `${buyers}`, delta: "↑ 8", spark: [4, 6, 5, 8, 10, 13, 18] },
-    { cat: "purple", icon: Icon.post, label: "Content published", sub: "Articles + pages", value: `${published}`, delta: "↑ 3", spark: [1, 2, 2, 4, 4, 6, 7] },
-    { cat: "orange", icon: Icon.coins, label: "Revenue influenced", sub: "From Genie activities", value: money(revenue, currency), delta: "↑ 42%", spark: [2, 3, 5, 4, 7, 9, 12] },
+    { cat: "blue", icon: Icon.growth, label: "AI answers naming you", sub: citations ? "Buyer questions won" : "None yet: Genie is writing the answers", value: `${citations}` },
+    { cat: "green", icon: Icon.conversations, label: "Buyers found", sub: buyers ? "Across Reddit, Quora and the web" : "None this week", value: `${buyers}` },
+    { cat: "purple", icon: Icon.post, label: "Content published", sub: published ? "Articles and pages live" : "Approve a draft to publish the first", value: `${published}` },
+    { cat: "orange", icon: Icon.coins, label: "Revenue traced to Genie", sub: revenue ? "From connected payments" : "Connect payments to trace sales", value: money(revenue, currency) },
   ];
   return (
     <Card className="p-6 flex flex-col">
@@ -350,35 +368,18 @@ function GrowthWeek({ citations, buyers, published, revenue, currency }) {
               </div>
               <div className="text-right shrink-0">
                 <p className="mg-num text-[17px] font-bold leading-none" style={{ color: "var(--fg)" }}>{r.value}</p>
-                <p className="mg-num text-[12px] font-semibold mt-0.5" style={{ color: c.ink }}>{r.delta}</p>
               </div>
-              <div className="shrink-0 hidden sm:block"><Sparkline color={c.solid} data={r.spark} /></div>
             </div>
           );
         })}
       </div>
       <div className="mt-4 flex items-center gap-2 text-[13px] font-medium" style={{ padding: ".6rem .8rem", borderRadius: 11, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}>
-        <Icon.check size={15} /> Genie is improving your growth every day.
+        <Icon.check size={15} /> Counted from real work. Nothing here is estimated.
       </div>
     </Card>
   );
 }
 
-function Sparkline({ color, data }) {
-  const w = 62, h = 26, pad = 3;
-  const max = Math.max(...data), min = Math.min(...data);
-  const pts = data.map((v, i) => {
-    const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
-    const y = h - pad - ((v - min) / (max - min || 1)) * (h - 2 * pad);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  return (
-    <svg width={w} height={h} aria-hidden>
-      <polyline points={`${pad},${h - pad} ${pts.join(" ")} ${w - pad},${h - pad}`} fill={color} opacity="0.1" />
-      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // ── GENIE'S STATUS ──────────────────────────────────────────────────────────
 function GenieStatus({ score, comp }) {
