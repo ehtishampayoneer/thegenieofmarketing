@@ -7,6 +7,7 @@
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { craftBlock } from "@/lib/platform-craft";
+import { hookBlock, isSeriousBusiness } from "@/lib/hooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
@@ -468,6 +469,8 @@ Target customer: ${ai.targetCustomer || ""}.
 ${insight ? insight + "\n" : ""}${voice}
 ${targetBlock}${internalLinks}${paaBlock}${fp}
 
+${hookBlock({ seed: pick?.keyword || topic || ai.businessName || "", serious: isSeriousBusiness(ai) })}
+
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
 knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.
 "you found the perfect couch online, but will it actually fit — and look right — in
@@ -510,7 +513,7 @@ Write a complete, ready-to-publish blog article. Return ONLY this JSON:
     "slug": "url-friendly-slug",
     "body": "the full article in markdown, 600-900 words, opening with the reader's problem, then bridging to the solution, with ## H2 subheadings, specific useful content, and a short ## FAQ section with 2-3 Q&As. No em-dashes anywhere.",
     "wordCount": approximate integer,
-    "imagePrompt": "a vivid, specific prompt to generate a photorealistic hero image for this article (describe the scene, style, and mood — no text in the image)",
+    "imagePrompt": "a scroll-stopping, specific prompt for a photorealistic hero image: one clear focal point, a real telling moment or object tied to the subject, slightly unexpected, on-brand — NOT generic stock (no handshakes, lightbulbs, arrows, teams pointing at screens). No text in the image.",
     "heroImageAlt": "descriptive alt text for the hero image",
     "faq": [{ "q": "a real question a buyer asks about this topic", "a": "a concise, quotable 1-3 sentence answer" }],
     "cta": {
@@ -562,12 +565,13 @@ ${pick?.keyword ? `Target search: ${pick.keyword}` : ""}
 ${String(article.body || "").slice(0, 7000)}
 """
 ${craftBlock(["twitter", "linkedin", "instagram", "facebook", "reddit", "quora", "gbp"])}
+${hookBlock({ seed: pick?.keyword || article.title || "", serious: isSeriousBusiness(ai) })}
 Assign a PRIORITY to the social posts. Use EXACTLY one of: "high", "quick_win", "strategic", "low".
 
 Return ONLY this JSON:
 {
   "socialPriority": "high | quick_win | strategic | low",
-  "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image (plain text, no hashtags, no quotes, no emoji)",
+  "cardHeadline": "a punchy 4 to 8 word hook to overlay on the social image — curiosity, a surprising number, or a bold-but-true line that stops the scroll (plain text, no hashtags, no quotes, no emoji, never clickbait)",
   "carousel": [{ "heading": "a punchy 3 to 6 word slide heading", "text": "one short supporting sentence, under 18 words" }],
   "gbpPost": "a short Google Business Profile update (2 to 3 sentences, friendly and community-rooted, ending with a soft call to action like 'Book now' or 'Stop by'). Only useful for local businesses.",
   "reviewRequest": "a warm, short message the owner can send to a happy customer asking them to leave a Google review (2 to 3 sentences, grateful and low-pressure, no link — the owner adds theirs). Only useful for local businesses.",

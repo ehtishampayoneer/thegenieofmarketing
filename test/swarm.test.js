@@ -276,3 +276,33 @@ describe("who is live, and the learning period", async () => {
     expect(learningPeriod({ firstTestAt: ago(20 * 24 * 60), results: 6, now }).done).toBe(true);
   });
 });
+
+describe("the hook engine", async () => {
+  const { hookBlock, hookFor, normalizeHooks, isSeriousBusiness, HOOK_STYLES } = await import("@/lib/hooks");
+
+  it("rotates styles by seed and bans clichés", () => {
+    const b = hookBlock({ seed: "buy sofa online" });
+    expect(b).toMatch(/HOOK/);
+    expect(b).toMatch(/In today's fast-paced world|Imagine if|Are you tired/); // named as banned
+    // Different seeds can suggest different styles; same seed is stable.
+    expect(hookFor("a").id).toBe(hookFor("a").id);
+  });
+
+  it("drops humour for sensitive businesses", () => {
+    expect(isSeriousBusiness({ industry: "mental health clinic" })).toBe(true);
+    expect(isSeriousBusiness({ industry: "furniture retailer" })).toBe(false);
+    expect(hookBlock({ serious: true })).not.toMatch(/Playful \/ funny/);
+    expect(hookBlock({ serious: false })).toMatch(/Playful/);
+  });
+
+  it("describes a scroll-stopping image, not stock", () => {
+    expect(hookBlock({ forImage: true })).toMatch(/stop the scroll|handshakes/);
+  });
+
+  it("keeps only real hook variants", () => {
+    const h = normalizeHooks({ hooks: [{ style: "story", text: "The couch arrived three sizes too big." }, { style: "x", text: "no" }, { text: "" }] });
+    expect(h).toHaveLength(1);
+    expect(h[0].style).toBe("story");
+    expect(HOOK_STYLES.length).toBeGreaterThan(5);
+  });
+});
