@@ -14,9 +14,10 @@
 // team looks follows the real numbers passed in (`rates`). The layout around it
 // follows the reference: wordmark top left, the teams listed top right with live
 // counts, a large headline bottom left, a short description bottom right.
-// Plain canvas, no libraries. Honours reduced motion (a still, assembled globe).
+// Plain canvas, no libraries. It never pauses: the teams work around the clock
+// and this is the picture of that. Reduced motion slows it to a drift.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { isLand } from "@/components/team/landMask";
 
 export const TEAM_COLORS = { testers: "#2EE6C5", improvers: "#FFB347", doers: "#A78BFA" };
@@ -48,46 +49,25 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
   const ref = useRef(null);
   const ratesRef = useRef(rates);
   ratesRef.current = rates;
-  // Windows and macOS both have a system "reduce animations" setting, and plenty
-  // of machines have it on without the owner realising. Honouring it is right,
-  // but silently showing a dead globe is not, so it becomes a control they can
-  // switch on for themselves.
-  const [reduced, setReduced] = useState(false);
-  const [playing, setPlaying] = useState(true);
-  const playRef = useRef(true);
-  playRef.current = playing;
+  // "Reduce animations" is a real need, but a frozen globe would say the teams
+  // had stopped, which is a lie. It slows to a drift instead of stopping.
+  const slowRef = useRef(1);
 
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    let saved = null;
-    try { saved = localStorage.getItem("mg-globe-motion"); } catch {}
-    const apply = () => {
-      const r = !!mq?.matches;
-      setReduced(r);
-      // A choice, once made, sticks across pages and sessions. Otherwise the globe
-      // looks like it stopped working every time the owner navigates away.
-      setPlaying(saved ? saved === "on" : !r);
-    };
+    const apply = () => { slowRef.current = mq?.matches ? 0.25 : 1; };
     apply();
     mq?.addEventListener?.("change", apply);
     return () => mq?.removeEventListener?.("change", apply);
   }, []);
 
-  function setMotion(on) {
-    setPlaying(on);
-    playRef.current = on;
-    try { localStorage.setItem("mg-globe-motion", on ? "on" : "off"); } catch {}
-    if (on) ref.current?.__sgPlay?.();
-  }
-
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    // `reduce` here means "draw one still frame and stop", which is what a paused
-    // globe is too. The play control drives it through playRef.
-    const reduce = () => !playRef.current;
-    let w = 0, h = 0, dpr = 1, raf = 0, last = performance.now(), startedOnce = false;
+    // Never stops: the teams are working around the clock and this is the picture
+    // of that. Reduced motion slows it to a drift rather than freezing it.
+    let w = 0, h = 0, dpr = 1, raf = 0, last = performance.now();
     const born = performance.now();
     let yaw = 0.6, tilt = 0.38, spinV = 0.07, tiltV = 0;
     const pointer = { x: -1e4, y: -1e4, down: false, px: 0, py: 0 };
@@ -133,8 +113,8 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       for (const t of trips) t.trail.length = 0;
-      // Resizing wipes the canvas; with reduced motion there is no next frame
-      // coming, so draw the still picture again.
+      // Resizing wipes the canvas, so draw the next frame immediately rather
+      // than leaving a blank box for a beat.
       if (w) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
     }
     const ro = new ResizeObserver(resize);
@@ -180,13 +160,13 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      const paused = reduce();
-      const age = paused && !startedOnce ? 1e9 : now - born;
-      if (!paused && !pointer.down) {
+      const slow = slowRef.current;
+      const age = now - born;
+      if (!pointer.down) {
         // Spin eases back to a slow drift after a drag.
         spinV += (0.07 - spinV) * Math.min(1, dt * 1.5);
         tiltV *= 0.9;
-        yaw += dt * spinV;
+        yaw += dt * spinV * slow;
         tilt += (0.38 - tilt) * Math.min(1, dt * 0.4);
       }
       const R = Math.min(w * 0.62, h) * 0.4, cx = w * 0.5, cy = h * 0.5 + 4;
@@ -249,7 +229,7 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
         for (let i = trips.length - 1; i >= 0; i--) {
           const tr = trips[i];
-          tr.t += (paused ? 0 : dt) * tr.speed;
+          tr.t += dt * slow * tr.speed;
           if (tr.t >= 1) {
             pulses.push({ v: hubs[tr.b], team: tr.team, age: 0 });
             trips[i] = { ...newTrip(tr.team), a: tr.b, t: 0 };
@@ -258,7 +238,7 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
           const on = slerp(hubs[tr.a], hubs[tr.b], tr.t);
           const lift = 1 + Math.sin(Math.PI * tr.t) * 0.09;
           const q = project([on[0] * lift, on[1] * lift, on[2] * lift], R, cx, cy);
-          if (!paused && Number.isFinite(q.x) && Number.isFinite(q.y)) { tr.trail.push(q); if (tr.trail.length > 10) tr.trail.shift(); }
+          if (Number.isFinite(q.x) && Number.isFinite(q.y)) { tr.trail.push(q); if (tr.trail.length > 10) tr.trail.shift(); }
           const color = TEAM_COLORS[tr.team];
           if (q.z > -0.15) {
             ctx.strokeStyle = color; ctx.lineWidth = 1.2;
@@ -284,14 +264,11 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
         }
       }
       ctx.globalAlpha = 1;
-      startedOnce = true;
-      if (!paused) raf = requestAnimationFrame(frame);
+      raf = requestAnimationFrame(frame);
     }
     // Seed the teams so the globe is busy as soon as it has formed.
     for (const team of TEAMS) for (let i = 0; i < 20; i++) { const tr = newTrip(team); tr.t = Math.random(); trips.push(tr); }
     raf = requestAnimationFrame(frame);
-    // Pressing play restarts the loop; pressing pause lets the current frame stand.
-    canvas.__sgPlay = () => { last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); };
     return () => {
       cancelAnimationFrame(raf); ro.disconnect();
       canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerdown", onDown);
@@ -321,39 +298,23 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
         ))}
       </ul>
 
-      {/* Bottom left: the headline. */}
-      <div className="sg-head" style={{ position: "absolute", left: 26, bottom: 20, pointerEvents: "none" }}>
-        <p style={{ margin: 0, color: txt, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 0.92, fontSize: "clamp(38px,6.2vw,84px)" }}>
+      {/* Along the bottom: the headline, and what this is. One row, so the two can
+          never run into each other however narrow the card gets. */}
+      <div className="sg-foot">
+        <p className="sg-head">
           {total != null ? <>{total.toLocaleString()}<br />at work</> : <>Your team<br />at work</>}
         </p>
+        <p className="sg-desc">
+          Simulated customers, specialists and engines reconstruct your market and work on it around the clock{business ? ` for ${business}` : ""}. Drag the world to spin it.
+        </p>
       </div>
-
-      {/* The play control: visible whenever motion is off, quiet otherwise. */}
-      <button
-        onClick={() => setMotion(!playing)}
-        title="This only changes the picture. Your team works on Genie's servers either way."
-        aria-label={playing ? "Pause this animation" : "Play this animation"}
-        style={{
-          position: "absolute", left: 26, top: 56, display: "inline-flex", alignItems: "center", gap: 7,
-          padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 600,
-          color: playing ? "rgba(236,244,255,0.75)" : "#04060B",
-          background: playing ? "rgba(255,255,255,0.06)" : "#2EE6C5",
-          border: `1px solid ${playing ? "rgba(255,255,255,0.14)" : "#2EE6C5"}`,
-        }}
-      >
-        {playing ? "❚❚ Pause animation" : "▶ Play animation"}
-      </button>
-      <p style={{ position: "absolute", left: 26, top: 92, margin: 0, maxWidth: 260, fontSize: 11, lineHeight: 1.45, color: "rgba(226,236,250,0.5)", pointerEvents: "none" }}>
-        {playing
-          ? (reduced ? "Your system asks for reduced motion; you switched this on." : "Picture only. Your team works on Genie's servers either way.")
-          : "Animation paused. Your team is still working — the counts beside it are live."}
-      </p>
-
-      {/* Bottom right: what it is. */}
-      <p className="sg-desc" style={{ position: "absolute", right: 26, bottom: 24, margin: 0, maxWidth: 330, color: "rgba(226,236,250,0.78)", fontSize: 14, lineHeight: 1.55, pointerEvents: "none" }}>
-        Simulated customers, specialists and engines reconstruct your market and work on it around the clock{business ? ` for ${business}` : ""}. Drag the world to spin it.
-      </p>
-      <style>{`@media (max-width:720px){.sg-desc{display:none}.sg-wrap ul{top:14px!important;right:16px!important}.sg-head{left:16px!important;bottom:14px!important}}`}</style>
+      <style>{`
+        .sg-foot{position:absolute;left:26px;right:26px;bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:26px;pointer-events:none}
+        .sg-head{margin:0;flex:0 0 auto;color:${txt};font-weight:800;letter-spacing:-0.035em;line-height:.92;font-size:clamp(34px,4.6vw,76px)}
+        .sg-desc{margin:0;flex:0 1 330px;min-width:0;color:rgba(226,236,250,0.78);font-size:14px;line-height:1.55;text-align:right}
+        @media (max-width:1000px){.sg-desc{display:none}}
+        @media (max-width:720px){.sg-foot{left:16px;right:16px;bottom:14px}.sg-wrap ul{top:14px!important;right:16px!important}}
+      `}</style>
     </div>
   );
 }

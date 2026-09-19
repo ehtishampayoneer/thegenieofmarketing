@@ -4,13 +4,16 @@
 //   testers   - swarm.tested events: items tested, and people who reacted (1,000 each)
 //   improvers - complaints turned into tickets, and items the improvers made better
 //   doers     - Genie's real work, from the activity log every engine writes to
-// Plus a live line per team (the latest thing it did) and what is still waiting.
+// Plus the live feed: every test broken out into what the crowd argued about and
+// said in its own words, every rewrite, and every job the doers logged, merged
+// newest-first (lib/swarm/ticker.js). That feed is the page, not a sidebar to it.
 
 import { createClient } from "@/lib/supabase/server";
 import { getEvents } from "@/lib/events";
 import { pendingItems } from "@/lib/swarm/engine";
 import { freeProvidersReady } from "@/lib/ai-router";
 import { liveView, learningPeriod } from "@/lib/swarm/live";
+import { tickerFrom, tapeFrom } from "@/lib/swarm/ticker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +37,7 @@ export async function GET() {
     doneAll = count || 0;
     const { count: c24 } = await supabase.from("activity").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", new Date(day).toISOString());
     done24 = c24 || 0;
-    const { data } = await supabase.from("activity").select("verb, message, icon, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
+    const { data } = await supabase.from("activity").select("id, verb, message, icon, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(60);
     recentActivity = data || [];
     doerFeed = recentActivity.slice(0, 6).map((a) => ({ text: a.message, at: a.created_at }));
   } catch {}
@@ -73,6 +76,9 @@ export async function GET() {
       feed: improved.slice(0, 6).map((e) => ({ text: `${e.subject}: ${e.data?.from} → ${e.data?.to}${e.data?.changed ? ` · ${e.data.changed}` : ""}`, at: e.created_at })),
     },
     doers: { jobs: doneAll, today: done24, feed: doerFeed },
+    // The floor: everything the three teams did, in one stream, newest first.
+    ticker: tickerFrom({ tested, improved, activity: recentActivity, limit: 80 }),
+    tape: tapeFrom({ tested, improved }),
     reality: cal ? { n: cal.data?.n || 0, verdict: cal.data?.lift?.verdict || "learning", text: cal.data?.lift?.text || "", at: cal.created_at } : null,
   });
 }

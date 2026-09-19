@@ -6,9 +6,11 @@
 //   Testers   - 1,000 simulated customers who read every draft first
 //   Improvers - who turn the crowd's complaints into better versions
 //   Doers     - Genie's engines doing the actual work
-// The globe shows them moving (busier when they are busier); each card shows a
-// big real number, what the team is doing right now, and its latest work.
-// Reads /api/swarm/status every 20 seconds.
+// The globe shows them moving, and never stops: they work around the clock, so
+// the picture of them does too. Under it, the floor — a live feed of what the
+// crowd argued about, in their own words, what the improvers rewrote because of
+// it, and what the doers shipped. Every line comes from a record.
+// Reads /api/swarm/status every 8 seconds.
 
 import { useEffect, useRef, useState } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
@@ -26,14 +28,23 @@ export default function TeamPage() {
   useEffect(() => {
     try { if (new URLSearchParams(window.location.search).get("tab") === "test") setTab("test"); } catch {}
   }, []);
+  // A live page polls, but only while someone is actually looking at it, and it
+  // gives up if the answer is "not signed in" rather than hammering the server.
   useEffect(() => {
-    let alive = true;
+    let alive = true, stop = false;
     const load = async () => {
-      try { const j = await fetch("/api/swarm/status", { cache: "no-store" }).then((r) => r.json()); if (alive && j?.ok) setS(j); } catch {}
+      if (stop || document.hidden) return;
+      try {
+        const res = await fetch("/api/swarm/status", { cache: "no-store" });
+        if (res.status === 401) { stop = true; return; }
+        const j = await res.json();
+        if (alive && j?.ok) setS(j);
+      } catch {}
     };
     load();
-    const t = setInterval(load, 20000);
-    return () => { alive = false; clearInterval(t); };
+    const t = setInterval(load, 8000);
+    document.addEventListener("visibilitychange", load);
+    return () => { alive = false; stop = true; clearInterval(t); document.removeEventListener("visibilitychange", load); };
   }, []);
 
   // How busy each team looks on the globe follows today's real work.
@@ -73,6 +84,8 @@ export default function TeamPage() {
         ))}
       </div>
 
+      {tab === "live" && <Tape rows={s?.tape} />}
+
       {tab === "test" ? <LaunchTest /> : (
       <div className="mt-6 tm-layout">
       <div className="tm-main min-w-0">
@@ -84,23 +97,25 @@ export default function TeamPage() {
           big={s?.testers.people} bigLabel="customer reactions"
           stats={s ? [[s.testers.items, "items tested"], [s.testers.today, "today"]] : []}
           live={s?.testers.feed?.[0]} verb="Testing"
-          feed={s?.testers.feed} idle={s?.waiting ? `${s.waiting} drafts waiting for the crowd` : "Waiting for the next drafts"}
+          idle={s?.waiting ? `${s.waiting} drafts waiting for the crowd` : "Waiting for the next drafts"}
         />
         <TeamCard
           color={TEAM_COLORS.improvers} name="Improvers" what="Turning complaints into better versions"
           big={s?.improvers.fixed} bigLabel="drafts improved"
           stats={s ? [[s.improvers.tickets, "complaints raised"], [s.improvers.gain ? `+${s.improvers.gain}` : "0", "avg score gain"]] : []}
           live={s?.improvers.feed?.[0]} verb="Improved"
-          feed={s?.improvers.feed} idle="Nothing needed fixing yet"
+          idle="Nothing needed fixing yet"
         />
         <TeamCard
           color={TEAM_COLORS.doers} name="Doers" what="Genie's engines doing the actual work"
           big={s?.doers.jobs} bigLabel="jobs done"
           stats={s ? [[s.doers.today, "in the last 24h"]] : []}
           live={s?.doers.feed?.[0]} verb="Did"
-          feed={s?.doers.feed} idle="Next run tonight"
+          idle="Next run tonight"
         />
       </div>
+
+      <Floor rows={s?.ticker} waiting={s?.waiting} ai={s?.ai} loaded={!!s} />
 
       {/* The learning period: how long before the crowd's scores can be trusted. */}
       {s?.learning && (
@@ -138,7 +153,7 @@ export default function TeamPage() {
   );
 }
 
-function TeamCard({ color, name, what, big, bigLabel, stats, live, verb, feed, idle }) {
+function TeamCard({ color, name, what, big, bigLabel, stats, live, verb, idle }) {
   const fresh = live && Date.now() - Date.parse(live.at) < 15 * 60 * 1000;
   return (
     <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--hair)", boxShadow: `inset 0 3px 0 ${color}` }}>
@@ -167,20 +182,149 @@ function TeamCard({ color, name, what, big, bigLabel, stats, live, verb, feed, i
         </p>
       </div>
 
-      {feed?.length > 1 && (
-        <ul className="mt-3 flex flex-col gap-1.5">
-          {feed.slice(1, 5).map((f, i) => (
-            <li key={i} className="text-[12px] mg-muted flex gap-2">
-              <span className="mg-subtle shrink-0" style={{ width: 52 }}>{ago(f.at)}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.text}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       <style>{`@keyframes tmPulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}.tm-pulse{animation:tmPulse 1.6s infinite}@media (prefers-reduced-motion:reduce){.tm-pulse{animation:none}}`}</style>
     </div>
   );
 }
+
+// ── THE TAPE ──
+// A trading tape along the top: the last things the crowd scored, and what the
+// improvers moved them to. It is the quickest read on the page — glance at it
+// and you know whether today's work is landing.
+function Tape({ rows }) {
+  if (!rows?.length) return null;
+  // Rendered twice so the strip can scroll forever without a seam.
+  const run = rows.concat(rows);
+  return (
+    <div className="mt-4 tk-tape" style={{ background: "var(--surface)", border: "1px solid var(--hair)", borderRadius: 12, overflow: "hidden" }}>
+      <div className="tk-tape-run">
+        {run.map((r, i) => (
+          <span key={`${r.id}-${i}`} className="tk-tape-item">
+            <span className="tk-tape-label">{r.label}</span>
+            <span className="tk-tape-title">{r.title}</span>
+            {r.score != null && <b className="mg-num" style={{ color: toneColor(r.tone) }}>{r.score}</b>}
+            {r.move && <span className="mg-num" style={{ color: "var(--signal-live)", fontSize: 12 }}>▲{r.move}</span>}
+          </span>
+        ))}
+      </div>
+      <style>{`
+        .tk-tape-run{display:flex;width:max-content;animation:tkTape 80s linear infinite}
+        .tk-tape:hover .tk-tape-run{animation-play-state:paused}
+        .tk-tape-item{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;font-size:12.5px;white-space:nowrap;border-right:1px solid var(--hair);color:var(--fg)}
+        .tk-tape-label{font-size:10.5px;letter-spacing:.08em;color:var(--fg-subtle);font-weight:700}
+        .tk-tape-title{color:var(--fg-muted);max-width:280px;overflow:hidden;text-overflow:ellipsis}
+        @keyframes tkTape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+        @media (prefers-reduced-motion:reduce){.tk-tape-run{animation-duration:320s}}
+      `}</style>
+    </div>
+  );
+}
+
+// ── THE FLOOR ──
+// What the three teams are doing, as it happens. A score on its own tells an
+// owner nothing; what their buyers argued about, in the buyers' own words, is
+// the thing worth watching. So every test becomes several lines — the result,
+// the objections that spread, two quotes, and the gatekeeper if it blocked it —
+// interleaved with the improvers' rewrites and the doers' real jobs.
+// New lines arrive highlighted. Nothing here is invented: an empty floor means
+// the teams have not run yet, and it says so.
+function Floor({ rows, waiting, ai, loaded }) {
+  const [team, setTeam] = useState("all");
+  // Anything that was not on screen last poll gets the arrival flash.
+  const seen = useRef(null);
+  const [fresh, setFresh] = useState(() => new Set());
+  useEffect(() => {
+    if (!rows) return;
+    const ids = new Set(rows.map((r) => r.id));
+    if (seen.current) {
+      const added = rows.filter((r) => !seen.current.has(r.id)).map((r) => r.id);
+      if (added.length) {
+        setFresh(new Set(added));
+        seen.current = ids;
+        const t = setTimeout(() => setFresh(new Set()), 2600);
+        return () => clearTimeout(t);
+      }
+    }
+    seen.current = ids;
+  }, [rows]);
+
+  const shown = (rows || []).filter((r) => team === "all" || r.team === team);
+  const tabs = [["all", "Everything"], ["testers", "Testers"], ["improvers", "Improvers"], ["doers", "Doers"]];
+
+  return (
+    <div className="mt-5 rounded-2xl" style={{ background: "var(--surface)", border: "1px solid var(--hair)", overflow: "hidden" }}>
+      <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid var(--hair)" }}>
+        <div>
+          <p className="text-[15px] font-bold flex items-center gap-2" style={{ color: "var(--fg)" }}>
+            <span className="tm-pulse" style={{ width: 9, height: 9, borderRadius: 99, background: "var(--signal-live)", color: "var(--signal-live)" }} />
+            The floor
+          </p>
+          <p className="mt-0.5 text-[12.5px] mg-muted">Everything your teams are saying and doing, newest first.</p>
+        </div>
+        <div className="flex items-center gap-1 flex-wrap">
+          {tabs.map(([id, label]) => (
+            <button key={id} onClick={() => setTeam(id)} className="mg-focus" style={{
+              background: team === id ? "var(--surface-2)" : "none", border: `1px solid ${team === id ? "var(--hair)" : "transparent"}`,
+              borderRadius: 999, padding: "5px 11px", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+              color: team === id ? "var(--fg)" : "var(--fg-subtle)",
+            }}>
+              {id !== "all" && <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 99, background: TEAM_COLORS[id], marginRight: 6 }} />}
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <ul style={{ maxHeight: 520, overflowY: "auto", margin: 0, padding: 0, listStyle: "none" }}>
+        {shown.map((r) => (
+          <li key={r.id} className={fresh.has(r.id) ? "tk-row tk-new" : "tk-row"} style={{ borderLeft: `3px solid ${TEAM_COLORS[r.team]}` }}>
+            <span className="tk-time mg-num">{ago(r.at)}</span>
+            <span className="tk-body">
+              {r.kind === "quote" ? (
+                <>
+                  <i style={{ color: "var(--fg)" }}>{r.text}</i>
+                  {r.who && <span className="mg-subtle"> — {r.who}</span>}
+                </>
+              ) : (
+                <>
+                  {r.who && <b style={{ color: "var(--fg)" }}>{r.who} · </b>}
+                  <span style={{ color: r.kind === "argument" ? "var(--fg-muted)" : "var(--fg)" }}>{r.text}</span>
+                </>
+              )}
+              {r.sub && <span className="block text-[12px] mg-subtle mt-0.5">{r.sub}</span>}
+            </span>
+            {(r.value || r.delta) && (
+              <span className="tk-val mg-num">
+                <b style={{ color: toneColor(r.tone) }}>{r.value}</b>
+                {r.delta && <span style={{ color: "var(--signal-live)", fontSize: 11.5, marginLeft: 6 }}>{r.delta}</span>}
+              </span>
+            )}
+          </li>
+        ))}
+        {!shown.length && (
+          <li className="px-5 py-8 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+            {!loaded ? "Reading the floor…"
+              : waiting ? `Nothing yet today. ${waiting} draft${waiting === 1 ? "" : "s"} are queued — the crowd reads them on tonight's run, and every word of the argument lands here.`
+              : ai ? "Nothing yet. The moment Genie writes something, 1,000 customers read it and you will see exactly what they said, here."
+              : "Every free AI is busy right now, so the testers are running quick rule checks. The full crowd resumes as soon as one frees up."}
+          </li>
+        )}
+      </ul>
+      <style>{`
+        .tk-row{display:flex;align-items:flex-start;gap:12px;padding:10px 16px;border-bottom:1px solid var(--hair);font-size:13px;line-height:1.45}
+        .tk-row:last-child{border-bottom:0}
+        .tk-time{flex:0 0 58px;color:var(--fg-subtle);font-size:11.5px;padding-top:2px}
+        .tk-body{flex:1 1 auto;min-width:0}
+        .tk-val{flex:0 0 auto;font-size:14px;font-weight:700;padding-top:1px;white-space:nowrap}
+        .tk-new{animation:tkIn 2.6s ease-out}
+        @keyframes tkIn{0%{background:color-mix(in srgb, var(--accent) 22%, transparent);transform:translateY(-4px)}100%{background:transparent;transform:none}}
+        @media (prefers-reduced-motion:reduce){.tk-new{animation:none}}
+      `}</style>
+    </div>
+  );
+}
+
+const toneColor = (t) => (t === "up" ? "var(--signal-live)" : t === "down" ? "var(--signal-danger)" : "var(--fg)");
 
 function CountUp({ value }) {
   const [shown, setShown] = useState(0);

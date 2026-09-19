@@ -22,7 +22,7 @@ import { safeFetch } from "@/lib/ssrf";
 import { extractText } from "@/lib/audit";
 import { hostOf } from "@/lib/business";
 import { recordEvent } from "@/lib/events";
-import { runCrowd, newContext, ai_ } from "@/lib/swarm/engine";
+import { runCrowd, newContext, ai_, testedData } from "@/lib/swarm/engine";
 import { KINDS } from "@/lib/swarm/crowd";
 import { learningPeriod } from "@/lib/swarm/live";
 
@@ -138,7 +138,7 @@ async function run(supabase, user, host, body) {
   // Counted with everything else the testers and improvers do.
   await recordEvent(admin, {
     userId: user.id, host, type: "swarm.tested", actor: "genie", subject: `Launch test: ${text.slice(0, 60)}`,
-    data: { itemId: testId, source: "launch-test", kind, score: r.crowd.score, size: r.crowd.size, mode: r.crowd.mode, improved: !!v, tickets: r.before.objections.length },
+    data: testedData(r.crowd, r.before, { itemId: testId, source: "launch-test", improved: !!v }),
   });
   if (v) {
     await recordEvent(admin, {
