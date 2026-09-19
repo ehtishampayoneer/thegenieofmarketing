@@ -4,7 +4,8 @@
 # soon as it is back. Free: GitHub Actions minutes are free on public repos.
 #
 # Setup, once: repo Settings -> Secrets and variables -> Actions
-#   Secret   CRON_SECRET  = the same value as CRON_SECRET in Vercel
+#   Secret   HEARTBEAT_SECRET = the same value as HEARTBEAT_SECRET in Vercel
+#            (its own secret: never reuse CRON_SECRET, which also signs links)
 #   Variable GENIE_URL    = https://thegenieofmarketing.vercel.app
 #
 # This repo is public, so the log shows only the HTTP status, never any data.
@@ -27,15 +28,15 @@ jobs:
     steps:
       - name: Run one swarm pass
         env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          HEARTBEAT_SECRET: ${{ secrets.HEARTBEAT_SECRET }}
           GENIE_URL: ${{ vars.GENIE_URL }}
         run: |
-          if [ -z "$CRON_SECRET" ] || [ -z "$GENIE_URL" ]; then
-            echo "Heartbeat not set up yet (add CRON_SECRET and GENIE_URL). Skipping."
+          if [ -z "$HEARTBEAT_SECRET" ] || [ -z "$GENIE_URL" ]; then
+            echo "Heartbeat not set up yet (add HEARTBEAT_SECRET and GENIE_URL). Skipping."
             exit 0
           fi
           code=$(curl -s -o /dev/null -w "%{http_code}" -m 295 -X POST "$GENIE_URL/api/swarm/tick" \
-            -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json" -d '{}' || echo "000")
+            -H "Authorization: Bearer $HEARTBEAT_SECRET" -H "Content-Type: application/json" -d '{}' || echo "000")
           echo "Genie answered $code"
           # A timeout still means the pass ran; only a refusal is worth failing on.
-          if [ "$code" = "401" ]; then echo "CRON_SECRET does not match Vercel's."; exit 1; fi
+          if [ "$code" = "401" ]; then echo "HEARTBEAT_SECRET does not match Vercel's (or Vercel was not redeployed after adding it)."; exit 1; fi

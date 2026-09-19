@@ -14,12 +14,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+// CRON_SECRET (nightly run, Vercel cron) or HEARTBEAT_SECRET (the GitHub
+// heartbeat). The heartbeat has its own secret because CRON_SECRET also signs
+// unsubscribe links, plugin and webhook tokens, so it can never be rotated or
+// copied around lightly.
 function authorized(request) {
-  const secret = process.env.CRON_SECRET || "";
-  if (!secret) return false;
-  const bearer = request.headers.get("authorization") === `Bearer ${secret}`;
-  const header = request.headers.get("x-genie-cron") === secret;
-  return bearer || header;
+  const auth = request.headers.get("authorization") || "";
+  const header = request.headers.get("x-genie-cron") || "";
+  return [process.env.CRON_SECRET, process.env.HEARTBEAT_SECRET]
+    .filter((s) => s && s.length >= 16)
+    .some((s) => auth === `Bearer ${s}` || header === s);
 }
 
 async function run(request) {
