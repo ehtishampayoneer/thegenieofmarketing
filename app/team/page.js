@@ -53,7 +53,7 @@ export default function TeamPage() {
 
       <div className="mt-5 tm-layout">
       <div className="tm-main min-w-0">
-      <div><SwarmGlobe rates={rates} /></div>
+      <div><SwarmGlobe rates={rates} counts={s?.live ? { testers: s.live.testers.active, improvers: s.live.improvers.active, doers: s.live.doers.active } : null} /></div>
 
       <div className="mt-5 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <TeamCard
