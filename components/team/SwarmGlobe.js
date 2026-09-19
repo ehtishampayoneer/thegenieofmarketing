@@ -45,7 +45,7 @@ function slerp(a, b, t) {
 }
 const easeOut = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
 
-export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers: 0.8 }, counts = null, business = "", height = 580 }) {
+export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers: 0.8 }, counts = null, business = "", height = 580, compact = false }) {
   const ref = useRef(null);
   const ratesRef = useRef(rates);
   ratesRef.current = rates;
@@ -79,7 +79,10 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
       const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u), k = 1.6 + Math.random() * 2.4;
       return [r * Math.cos(th) * k, u * k, r * Math.sin(th) * k];
     };
-    for (let i = 0; i < 20000 && cloud.length < 7200; i++) {
+    // The band on the home page is a fifth of the size, so it carries a fifth of
+    // the detail: the same picture, without the battery cost on a phone.
+    const DOTS = compact ? 2600 : 7200, HALO = compact ? 300 : 900;
+    for (let i = 0; i < 20000 && cloud.length < DOTS; i++) {
       const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u);
       const lat = (Math.asin(u) * 180) / Math.PI, lon = (th * 180) / Math.PI - 180;
       const land = isLand(lat, lon);
@@ -87,7 +90,7 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
       const lo = (lon * Math.PI) / 180;
       cloud.push({ v: [r * Math.sin(lo), u, r * Math.cos(lo)], from: scatter(), delay: Math.random() * 1100, ph: Math.random() * 6.28, lat, land, halo: false });
     }
-    for (let i = 0; i < 900; i++) {
+    for (let i = 0; i < HALO; i++) {
       const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u), k = 1.04 + Math.random() * 0.5;
       cloud.push({ v: [r * Math.cos(th) * k, u * k, r * Math.sin(th) * k], from: scatter(), delay: Math.random() * 1400, ph: Math.random() * 6.28, lat: 0, land: false, halo: true });
     }
@@ -120,6 +123,13 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     resize();
+
+    let onScreen = true;
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      if (onScreen && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+    }, { rootMargin: "120px" });
+    io.observe(canvas);
 
     // ── Pointer: drag to spin, hover to scatter. ──
     const pos = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -264,22 +274,25 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
         }
       }
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(frame);
+      // Scrolled out of view, there is nothing to paint for. Not a pause: the
+      // work carries on, and so does the picture the moment it is seen again.
+      raf = onScreen ? requestAnimationFrame(frame) : 0;
     }
     // Seed the teams so the globe is busy as soon as it has formed.
     for (const team of TEAMS) for (let i = 0; i < 20; i++) { const tr = newTrip(team); tr.t = Math.random(); trips.push(tr); }
     raf = requestAnimationFrame(frame);
     return () => {
-      cancelAnimationFrame(raf); ro.disconnect();
+      cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
       canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointerleave", onLeave);
     };
-  }, []);
+  }, [compact]);
 
   const total = counts ? (counts.testers || 0) + (counts.improvers || 0) + (counts.doers || 0) : null;
   const txt = "rgba(236,244,255,0.95)";
+  const cx = compact ? "sg-sm " : "";
   return (
-    <div className="sg-wrap" style={{ position: "relative", height, borderRadius: 22, overflow: "hidden", background: "radial-gradient(ellipse at 50% 52%, #0B1624 0%, #03050A 68%)", border: "1px solid rgba(120,160,255,0.12)" }}>
+    <div className={`${cx}sg-wrap`} style={{ position: "relative", height, borderRadius: 22, overflow: "hidden", background: "radial-gradient(ellipse at 50% 52%, #0B1624 0%, #03050A 68%)", border: "1px solid rgba(120,160,255,0.12)" }}>
       <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block", cursor: "grab", touchAction: "none" }} aria-label="Genie's three teams at work around the world. Drag to spin." role="img" />
 
       {/* Top left: the wordmark. */}
@@ -313,6 +326,12 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
         .sg-head{margin:0;flex:0 0 auto;color:${txt};font-weight:800;letter-spacing:-0.035em;line-height:.92;font-size:clamp(34px,4.6vw,76px)}
         .sg-desc{margin:0;flex:0 1 330px;min-width:0;color:rgba(226,236,250,0.78);font-size:14px;line-height:1.55;text-align:right}
         @media (max-width:1000px){.sg-desc{display:none}}
+        .sg-sm .sg-desc{display:none}
+        /* On a phone the band is barely wider than the globe, so the team list
+           lands on top of it. The caption under the band names the teams anyway. */
+        @media (max-width:560px){.sg-sm ul{display:none}}
+        .sg-sm .sg-head{font-size:clamp(28px,3.4vw,44px)}
+        .sg-sm .sg-foot{left:20px;right:20px;bottom:14px}
         @media (max-width:720px){.sg-foot{left:16px;right:16px;bottom:14px}.sg-wrap ul{top:14px!important;right:16px!important}}
       `}</style>
     </div>

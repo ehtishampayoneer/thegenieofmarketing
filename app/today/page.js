@@ -1,26 +1,33 @@
 "use client";
 
 // ── TODAY — the home command center ──
-// A bento dashboard: a live greeting, the three next-best actions, what Genie did
-// overnight, this week's growth, Genie's status + what's pending from you, then the
-// current focus and everything Genie is working on. Real data fills every number
-// (with sensible representative fallbacks so the preview always renders).
+// The claim, the proof, the ask, the results, in that order:
+//   • a live greeting
+//   • the work band — the globe, with the teams that are actually working on it
+//   • the three next-best actions, and what is waiting on you
+//   • the floor — what the crowd argued about and what the engines shipped, live
+//   • traffic, this week's growth, the score
+// Two blocks used to sit here restating "Genie is busy" from a hardcoded list and
+// from reformatted stats, plus a focus card with invented competitor copy. The
+// floor does that job from real records, so they are gone: everything on this
+// page is now counted from something that happened.
 
 import OperatorShell from "@/components/shell/v2/OperatorShell";
+import WorkBand from "@/components/today/WorkBand";
+import { Floor } from "@/components/team/Floor";
+import { useSwarm } from "@/lib/useSwarm";
 import FirstResults from "@/components/today/FirstResults";
 import Icon from "@/components/ui/Icon";
 import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState, LoadingState } from "@/components/ui/v2/DataState";
 import { GenieMark } from "@/components/brand/GenieMark";
-import GenieAperture from "@/components/brand/GenieAperture";
 import { useLive } from "@/lib/useLive";
 import { fetchLive, relTime } from "@/lib/live";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const cap = (s) => String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1);
 const num = (n) => Number(String(n ?? "").replace(/[^\d.-]/g, "")) || 0;
 const money = (n, cur = "USD") => { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n); } catch { return `$${n}`; } };
-const clockTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); } catch { return ""; } };
 
 // Category colours — Apple's system palette, so each metric / action / activity
 // carries its own hue and the dashboard reads at a glance. `ink` uses Apple's
@@ -40,17 +47,6 @@ const TIERS = [
 ];
 const tierOf = (s) => { let cur = TIERS[0]; for (const t of TIERS) if (s >= t.min) cur = t; return cur; };
 
-// Map an activity line to a category + icon from its wording.
-function activityMeta(text = "") {
-  const t = text.toLowerCase();
-  if (/publish|article|content|wrote|draft|page/.test(t)) return { cat: "purple", icon: Icon.post };
-  if (/learn|insight|important|opportunit/.test(t)) return { cat: "amber", icon: Icon.brain };
-  if (/gap|ai[- ]?search|citation|answer|rank/.test(t)) return { cat: "green", icon: Icon.search };
-  if (/buyer|conversation|reddit|quora| x |prospect|intent/.test(t)) return { cat: "blue", icon: Icon.conversations };
-  if (/keyword|monitor|scan/.test(t)) return { cat: "blue", icon: Icon.growth };
-  return { cat: "blue", icon: Icon.spark };
-}
-
 export default function TodayPage() {
   const { data: d, state } = useLive("/api/today", (j) => j.needsOnboarding || !j.entity);
   const [conns, setConns] = useState(null);
@@ -64,6 +60,7 @@ export default function TodayPage() {
     })();
   }, []);
 
+  const swarm = useSwarm(15000);
   const name = cap(d?.greetingName || "");
   const entity = d?.entity?.name || "you";
   const ai = d?.aiSearch || {};
@@ -78,14 +75,6 @@ export default function TodayPage() {
   const published = num(stats.find((s) => /publish|article|content/i.test(s.label))?.n);
   const citations = ai.won ?? 0;
   const gapCount = ai.gaps ?? ai.working ?? 0;
-
-  // Overnight activity — real events when present, else the representative stat lines.
-  const did = useMemo(() => {
-    if (activity && activity.length) {
-      return activity.slice(0, 4).map((a) => ({ title: a.message, sub: a.detail || "", time: clockTime(a.created_at) }));
-    }
-    return stats.filter((s) => num(s.n) > 0).slice(0, 4).map((s) => ({ title: `${num(s.n)} ${String(s.label).toLowerCase()}`, sub: "", time: "" }));
-  }, [activity, stats]);
 
   return (
     <OperatorShell active="today">
@@ -110,29 +99,30 @@ export default function TodayPage() {
             </p>
           </div>
 
+          {/* ── THE PROOF: the teams at work, under the claim ── */}
+          <WorkBand s={swarm} business={entity} />
+
           {/* ── MAIN + RIGHT SIDEBAR ── */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
             {/* MAIN COLUMN */}
             <div className="flex flex-col gap-5 min-w-0">
               <NextBestActions entity={entity} gapCount={gapCount} buyers={buyersFound} comp={comp} approvals={approvals} />
+              {/* What the teams are saying and doing, as it happens. The same
+                  component as /team, shortened and without the filters. */}
+              <Floor
+                rows={swarm?.ticker} waiting={swarm?.waiting} ai={swarm?.ai} loaded={!!swarm}
+                limit={14} filters={false} height={420} more="/team"
+                title="What your team is doing" note="Your crowd's own words, your improvers' rewrites, and every job Genie finished."
+              />
               <TrafficPanel />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <WhatGenieDid did={did} />
-                <GrowthWeek citations={citations} buyers={buyersFound} published={published} revenue={cust.value || 0} currency={cust.currency} />
-              </div>
+              <GrowthWeek citations={citations} buyers={buyersFound} published={published} revenue={cust.value || 0} currency={cust.currency} />
             </div>
             {/* RIGHT SIDEBAR */}
             <div className="flex flex-col gap-5">
               <FirstResults />
-              <GenieStatus score={score} comp={comp} />
+              <GenieStatus score={score} comp={comp} won={citations} gaps={gapCount} />
               <PendingFromYou approvals={approvals} replies={buyersFound} setup={connsPending(conns)} />
             </div>
-          </div>
-
-          {/* ── BOTTOM: FOCUS + WORKING ON ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-5">
-            <GenieFocus comp={comp} entity={entity} />
-            <WorkingOn />
           </div>
 
           <p className="mt-1 mb-1 flex items-center justify-center gap-2 text-[13px]" style={{ color: "var(--fg-subtle)" }}>
@@ -201,35 +191,6 @@ function NextBestActions({ entity, gapCount, buyers, comp, approvals }) {
         })}
       </div>
     </div>
-  );
-}
-
-// ── WHAT GENIE DID WHILE YOU WERE AWAY ──────────────────────────────────────
-function WhatGenieDid({ did }) {
-  return (
-    <Card className="p-6 flex flex-col">
-      <p className="mg-klabel mb-4">What Genie did while you were away</p>
-      <ul className="flex flex-col gap-1">
-        {did.map((x, i) => {
-          const m = activityMeta(x.title);
-          const c = CAT[m.cat];
-          return (
-            <li key={i} className="flex items-center gap-3 py-2" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>
-              <span className="shrink-0 flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 10, background: c.soft, color: c.solid }}><m.icon size={16} /></span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--fg)" }}>{cap(x.title)}</p>
-                {x.sub && <p className="text-[12px] mt-0.5" style={{ color: "var(--fg-subtle)" }}>{x.sub}</p>}
-              </div>
-              {x.time && <span className="text-[12px] mg-num shrink-0" style={{ color: "var(--fg-subtle)" }}>{x.time}</span>}
-              <a href="/growth" className="text-[12px] font-semibold shrink-0 hidden sm:inline-flex items-center gap-0.5 mg-focus" style={{ color: "var(--fg-muted)" }}>Why this matters <Icon.chevronRight size={12} style={{ transform: "rotate(90deg)" }} /></a>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="mt-4 pt-3 text-center" style={{ borderTop: "1px solid var(--hair)" }}>
-        <a href="/growth" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>View all activity →</a>
-      </div>
-    </Card>
   );
 }
 
@@ -382,7 +343,13 @@ function GrowthWeek({ citations, buyers, published, revenue, currency }) {
 
 
 // ── GENIE'S STATUS ──────────────────────────────────────────────────────────
-function GenieStatus({ score, comp }) {
+function GenieStatus({ score, comp, won = 0, gaps = 0 }) {
+  // The milestone is read off the real AI-search numbers. It used to say
+  // "First AI citation · Est. 25 days" to everyone, forever — a date Genie had
+  // no way of knowing.
+  const milestone = won > 0
+    ? { title: `${won} AI answer${won === 1 ? "" : "s"} won`, sub: gaps ? `${gaps} more question${gaps === 1 ? "" : "s"} still name someone else.` : "Genie is watching for new questions." }
+    : { title: "First AI citation", sub: gaps ? `${gaps} question${gaps === 1 ? "" : "s"} where AI names someone else. Genie is working on them.` : "Genie is finding the questions your buyers ask." };
   const tier = tierOf(score ?? 0);
   return (
     <Card className="p-6 flex flex-col">
@@ -394,12 +361,17 @@ function GenieStatus({ score, comp }) {
       </div>
       <div className="mg-seam my-5" />
       <p className="mg-klabel mb-2">Next milestone</p>
-      <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>First AI citation</p>
-      <p className="mt-1 flex items-center gap-1.5 text-[13px]" style={{ color: "var(--fg-muted)" }}><Icon.flag size={13} style={{ color: "var(--accent-ink)" }} /> Est. 25 days</p>
-      <div className="mg-seam my-5" />
-      <p className="mg-klabel mb-2">Genie’s focus</p>
-      <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</p>
-      <a href="/ai-search" className="mt-2 text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>View plan →</a>
+      <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>{milestone.title}</p>
+      <p className="mt-1 flex items-start gap-1.5 text-[13px]" style={{ color: "var(--fg-muted)" }}><Icon.flag size={13} style={{ color: "var(--accent-ink)", marginTop: 3, flexShrink: 0 }} /> {milestone.sub}</p>
+      {/* Only shown when Genie actually knows who you are losing to. */}
+      {comp && (
+        <>
+          <div className="mg-seam my-5" />
+          <p className="mg-klabel mb-2">Genie’s focus</p>
+          <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</p>
+          <a href="/ai-search" className="mt-2 text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>View plan →</a>
+        </>
+      )}
     </Card>
   );
 }
@@ -449,57 +421,6 @@ function PendingFromYou({ approvals, replies, setup }) {
       <div className="mt-3 pt-3 text-center" style={{ borderTop: "1px solid var(--hair)" }}>
         <a href="/approvals" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Go to approvals →</a>
       </div>
-    </Card>
-  );
-}
-
-// ── GENIE'S FOCUS ───────────────────────────────────────────────────────────
-function GenieFocus({ comp, entity }) {
-  return (
-    <Card className="p-6 flex flex-col sm:flex-row gap-6" style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--surface)), var(--surface))" }}>
-      <div className="min-w-0 flex-1">
-        <p className="mg-klabel flex items-center gap-1.5"><Icon.target size={13} style={{ color: "var(--accent-ink)" }} /> Genie’s focus</p>
-        <h3 className="mt-2 text-[22px] font-bold leading-tight" style={{ color: "var(--fg)" }}>Win “{comp} alternative”</h3>
-        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-          You’re currently not mentioned when buyers ask this question. 8th Wall and Vuforia are. Genie has already prepared the comparison content needed to compete.
-        </p>
-        <a href="/ai-search" className="mg-btn mg-btn--dawn mt-4 self-start" style={{ fontSize: 14 }}>View plan →</a>
-      </div>
-      <div className="shrink-0 w-full sm:w-[240px]">
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", background: "var(--surface)", boxShadow: "var(--shadow-1)" }}>
-          <p className="text-[11px] font-semibold px-3 py-2" style={{ color: "var(--fg-muted)", borderBottom: "1px solid var(--hair)" }}>{cap(entity)} vs {comp} vs 8th Wall vs Vuforia</p>
-          <div className="p-3 flex flex-col gap-1.5">
-            {[0, 1, 2, 3].map((r) => (
-              <div key={r} className="flex items-center gap-1.5">
-                <span className="mg-skel" style={{ height: 8, flex: 2, borderRadius: 4 }} />
-                {[0, 1, 2, 3].map((cc) => <span key={cc} style={{ height: 8, flex: 1, borderRadius: 4, background: cc === 0 ? "var(--signal-live-soft)" : "var(--surface-sunken)" }} />)}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// ── GENIE IS WORKING ON ─────────────────────────────────────────────────────
-function WorkingOn() {
-  const left = ["Finding buyers", "Monitoring AI answers", "Building authority", "Creating content"];
-  const right = ["Improving rankings", "Social drafts", "Outreach research", "And more…"];
-  return (
-    <Card className="p-6 flex items-center gap-4 overflow-hidden">
-      <div className="min-w-0 flex-1">
-        <p className="mg-klabel mb-3">Genie is working on</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2.5">
-          {[...left, ...right].map((t, i) => (
-            <p key={i} className="flex items-center gap-2 text-[14px]" style={{ color: "var(--fg)" }}>
-              <span className="shrink-0 flex items-center justify-center" style={{ width: 18, height: 18, borderRadius: 999, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={11} /></span>
-              {t}
-            </p>
-          ))}
-        </div>
-      </div>
-      <div className="shrink-0 hidden md:block"><GenieAperture size={104} state="working" /></div>
     </Card>
   );
 }
