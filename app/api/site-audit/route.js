@@ -3,6 +3,13 @@
 // SEO/AEO foundations that help Genie rank them faster. Read-only: it only fetches public
 // pages and reports what's present/missing — the page turns that into copy-paste fixes.
 // It never edits the site.
+//
+// Signed in only, and every fetch goes through the SSRF guard: this route takes
+// a host from the caller, so without it anyone on the internet could point it at
+// a private address and read back what a server inside the network answered.
+
+import { createClient } from "@/lib/supabase/server";
+import { safeFetch } from "@/lib/ssrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +22,8 @@ async function fetchText(url, ms = 8000) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
   try {
-    const r = await fetch(url, {
-      signal: ctl.signal, redirect: "follow",
+    const { res: r, finalUrl } = await safeFetch(url, {
+      signal: ctl.signal,
       // Next patches fetch and stores successful responses in the Data Cache.
       // Without this the first scan of a site is replayed for every scan after
       // it — a customer fixes their SEO, rescans, and is told nothing changed.
@@ -26,7 +33,7 @@ async function fetchText(url, ms = 8000) {
     });
     const text = r.ok ? await r.text() : "";
     return {
-      ok: r.ok, status: r.status, text: text.slice(0, 600000), finalUrl: r.url,
+      ok: r.ok, status: r.status, text: text.slice(0, 600000), finalUrl: r.url || finalUrl,
       // how old the copy we read was, so staleness can never hide again
       age: Number(r.headers.get("age") || 0),
       edgeCache: r.headers.get("x-vercel-cache") || r.headers.get("cf-cache-status") || "",
@@ -39,6 +46,9 @@ async function fetchText(url, ms = 8000) {
 }
 
 export async function GET(req) {
+  const { data: { user } } = await createClient().auth.getUser();
+  if (!user) return Response.json({ ok: false, reason: "not_authenticated" }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const host = normHost(searchParams.get("host") || searchParams.get("url"));
   if (!host || !/\./.test(host)) return Response.json({ ok: false, error: "Enter a valid website address." }, { status: 400 });
