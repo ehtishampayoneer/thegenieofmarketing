@@ -16,7 +16,7 @@
 // counts, a large headline bottom left, a short description bottom right.
 // Plain canvas, no libraries. Honours reduced motion (a still, assembled globe).
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isLand } from "@/components/team/landMask";
 
 export const TEAM_COLORS = { testers: "#2EE6C5", improvers: "#FFB347", doers: "#A78BFA" };
@@ -48,13 +48,32 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
   const ref = useRef(null);
   const ratesRef = useRef(rates);
   ratesRef.current = rates;
+  // Windows and macOS both have a system "reduce animations" setting, and plenty
+  // of machines have it on without the owner realising. Honouring it is right,
+  // but silently showing a dead globe is not, so it becomes a control they can
+  // switch on for themselves.
+  const [reduced, setReduced] = useState(false);
+  const [playing, setPlaying] = useState(true);
+  const playRef = useRef(true);
+  playRef.current = playing;
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!mq) return;
+    const apply = () => { setReduced(mq.matches); setPlaying(!mq.matches); };
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    let w = 0, h = 0, dpr = 1, raf = 0, last = performance.now();
+    // `reduce` here means "draw one still frame and stop", which is what a paused
+    // globe is too. The play control drives it through playRef.
+    const reduce = () => !playRef.current;
+    let w = 0, h = 0, dpr = 1, raf = 0, last = performance.now(), startedOnce = false;
     const born = performance.now();
     let yaw = 0.6, tilt = 0.38, spinV = 0.07, tiltV = 0;
     const pointer = { x: -1e4, y: -1e4, down: false, px: 0, py: 0 };
@@ -99,9 +118,10 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
       w = rect.width; h = rect.height;
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      for (const t of trips) t.trail.length = 0;
       // Resizing wipes the canvas; with reduced motion there is no next frame
       // coming, so draw the still picture again.
-      if (reduce && w) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+      if (w) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
     }
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
@@ -146,8 +166,9 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      const age = reduce ? 1e9 : now - born;
-      if (!reduce && !pointer.down) {
+      const paused = reduce();
+      const age = paused && !startedOnce ? 1e9 : now - born;
+      if (!paused && !pointer.down) {
         // Spin eases back to a slow drift after a drag.
         spinV += (0.07 - spinV) * Math.min(1, dt * 1.5);
         tiltV *= 0.9;
@@ -214,7 +235,7 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
 
         for (let i = trips.length - 1; i >= 0; i--) {
           const tr = trips[i];
-          tr.t += (reduce ? 0 : dt) * tr.speed;
+          tr.t += (paused ? 0 : dt) * tr.speed;
           if (tr.t >= 1) {
             pulses.push({ v: hubs[tr.b], team: tr.team, age: 0 });
             trips[i] = { ...newTrip(tr.team), a: tr.b, t: 0 };
@@ -223,14 +244,16 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
           const on = slerp(hubs[tr.a], hubs[tr.b], tr.t);
           const lift = 1 + Math.sin(Math.PI * tr.t) * 0.09;
           const q = project([on[0] * lift, on[1] * lift, on[2] * lift], R, cx, cy);
-          tr.trail.push(q); if (tr.trail.length > 10) tr.trail.shift();
+          if (!paused && Number.isFinite(q.x) && Number.isFinite(q.y)) { tr.trail.push(q); if (tr.trail.length > 10) tr.trail.shift(); }
           const color = TEAM_COLORS[tr.team];
           if (q.z > -0.15) {
             ctx.strokeStyle = color; ctx.lineWidth = 1.2;
             ctx.globalAlpha = 0.35 * Math.max(0.1, q.z + 0.3) * formed;
-            ctx.beginPath();
-            tr.trail.forEach((p, k) => (k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-            ctx.stroke();
+            if (tr.trail.length > 1) {
+              ctx.beginPath();
+              tr.trail.forEach((p, k) => (k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+              ctx.stroke();
+            }
             figure(q.x, q.y, 2.8 + 2.2 * Math.max(0, q.z), color, (0.55 + 0.45 * Math.max(0, q.z)) * formed);
           }
         }
@@ -247,11 +270,14 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
         }
       }
       ctx.globalAlpha = 1;
-      if (!reduce) raf = requestAnimationFrame(frame);
+      startedOnce = true;
+      if (!paused) raf = requestAnimationFrame(frame);
     }
     // Seed the teams so the globe is busy as soon as it has formed.
     for (const team of TEAMS) for (let i = 0; i < 20; i++) { const tr = newTrip(team); tr.t = Math.random(); trips.push(tr); }
     raf = requestAnimationFrame(frame);
+    // Pressing play restarts the loop; pressing pause lets the current frame stand.
+    canvas.__sgPlay = () => { last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); };
     return () => {
       cancelAnimationFrame(raf); ro.disconnect();
       canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerdown", onDown);
@@ -287,6 +313,26 @@ export default function SwarmGlobe({ rates = { testers: 1, improvers: 0.5, doers
           {total != null ? <>{total.toLocaleString()}<br />at work</> : <>Your team<br />at work</>}
         </p>
       </div>
+
+      {/* The play control: visible whenever motion is off, quiet otherwise. */}
+      <button
+        onClick={() => { const next = !playing; setPlaying(next); playRef.current = next; if (next) ref.current?.__sgPlay?.(); }}
+        aria-label={playing ? "Pause the globe" : "Play the globe"}
+        style={{
+          position: "absolute", left: 26, top: 56, display: "inline-flex", alignItems: "center", gap: 7,
+          padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 600,
+          color: playing ? "rgba(236,244,255,0.75)" : "#04060B",
+          background: playing ? "rgba(255,255,255,0.06)" : "#2EE6C5",
+          border: `1px solid ${playing ? "rgba(255,255,255,0.14)" : "#2EE6C5"}`,
+        }}
+      >
+        {playing ? "❚❚ Pause" : "▶ Play the team"}
+      </button>
+      {reduced && playing && (
+        <p style={{ position: "absolute", left: 26, top: 92, margin: 0, fontSize: 11, color: "rgba(226,236,250,0.5)", pointerEvents: "none" }}>
+          Your system asks for reduced motion; this is on because you pressed play.
+        </p>
+      )}
 
       {/* Bottom right: what it is. */}
       <p className="sg-desc" style={{ position: "absolute", right: 26, bottom: 24, margin: 0, maxWidth: 330, color: "rgba(226,236,250,0.78)", fontSize: 14, lineHeight: 1.55, pointerEvents: "none" }}>

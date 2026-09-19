@@ -306,3 +306,28 @@ describe("the hook engine", async () => {
     expect(HOOK_STYLES.length).toBeGreaterThan(5);
   });
 });
+
+describe("the weekly check of your own site", async () => {
+  const { worthTelling, checkedRecently, EVERY_DAYS } = await import("@/lib/swarm/site-check");
+
+  it("only interrupts when the crowd found something real", () => {
+    expect(worthTelling({ mode: "ai", score: 42 })).toBe(true);
+    expect(worthTelling({ mode: "ai", score: 88, gate: { blocked: true } })).toBe(true);
+    expect(worthTelling({ mode: "ai", score: 88 })).toBe(false);
+    // A rules-only read of a whole page is too crude to bother the owner with.
+    expect(worthTelling({ mode: "rules", score: 20 })).toBe(false);
+    expect(worthTelling(null)).toBe(false);
+  });
+
+  it("runs once a week, not every night", async () => {
+    const now = Date.parse("2026-09-20T00:00:00Z");
+    const admin = (daysAgo) => {
+      const chain = {};
+      for (const k of ["select", "eq", "in", "order", "limit", "gte"]) chain[k] = () => chain;
+      chain.then = (res) => res({ data: [{ created_at: new Date(now - daysAgo * 864e5).toISOString() }] });
+      return { from: () => chain };
+    };
+    expect(await checkedRecently(admin(2), { userId: "u", host: "h", now })).toBe(true);
+    expect(await checkedRecently(admin(EVERY_DAYS + 1), { userId: "u", host: "h", now })).toBe(false);
+  });
+});
