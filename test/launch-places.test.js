@@ -47,3 +47,25 @@ describe("the launch list", () => {
     expect(copyFor(PLACE_INDEX.g2, null)).toBe("");
   });
 });
+
+describe("listings in Approvals", async () => {
+  const { pickListings } = await import("@/lib/launch-queue");
+  const fits = ["software", "b2b", "home", "startup"];
+
+  it("adds a couple a night, best first", () => {
+    const picks = pickListings({ fits });
+    expect(picks).toHaveLength(2);
+    expect(picks.every((p) => p.tier === 1)).toBe(true);
+  });
+
+  it("never lets more than three wait at once", () => {
+    expect(pickListings({ fits, open: 2 })).toHaveLength(1);
+    expect(pickListings({ fits, open: 3 })).toHaveLength(0);
+  });
+
+  it("never offers a place twice", () => {
+    const first = pickListings({ fits }).map((p) => p.id);
+    const next = pickListings({ fits, done: new Set(first) }).map((p) => p.id);
+    expect(next.some((id) => first.includes(id))).toBe(false);
+  });
+});

@@ -36,8 +36,6 @@ const NAV = [
   { id: "video", label: "Video", icon: Icon.post },
   { id: "prospects", label: "Find clients", icon: Icon.target },
   { id: "featured", label: "Get featured", icon: Icon.megaphone },
-  // Launch sites, review sites, AI and local directories: copy, open, tick.
-  { id: "launch", label: "Launch list", icon: Icon.flag },
   { id: "inbox", label: "Inbox", icon: Icon.inbox },
   { id: "pipeline", label: "Deal Pipeline", icon: Icon.board },
   { id: "sprint", label: "Proof Sprint", icon: Icon.flag },
@@ -296,7 +294,7 @@ export default function OperatorShell({ active = "today", children }) {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/approvals", write: "/write", spread: "/spread", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", launch: "/launch", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
+    today: "/today", approvals: "/approvals", write: "/write", spread: "/spread", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation", site: "/site", markets: "/markets",
     trust: "/trust", connections: "/connections", settings: "/settings", howitworks: "/how-it-works", capabilities: "/capabilities",
   };

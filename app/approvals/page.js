@@ -165,7 +165,9 @@ export default function ApprovalsPage() {
       try { await navigator.clipboard.writeText(draft || ""); } catch {}
       if (item.target_url && item.target_url !== "#") window.open(item.target_url, "_blank");
       fireApprove(item, draft);
-      setToast("Opened it with your post ready. Review and tap post. (I never auto-post to your social accounts.)");
+      setToast(item.platform === "listing"
+        ? "Opened the sign-up page and copied your listing text. Sign in, paste it in, and submit."
+        : "Opened it with your post ready. Review and tap post. (I never auto-post to your social accounts.)");
       setDone((d) => d + 1); removeById(item.id);
       return;
     }
@@ -688,6 +690,7 @@ function queueTitle(it) {
   if (it.platform === "gbp") return "Post to Google Business";
   if (it.platform === "review_request") return "Ask for a review";
   if (it.platform === "pinterest") return "Pin to Pinterest";
+  if (it.platform === "listing") return it.title || "Get listed";
   if (it.source === "placement" || /community|reply/.test(it.kind || "")) return `Reply on ${plat(it.platform || "community")}`;
   if (it.kind === "outreach_email") return "Send an outreach email";
   if (it.platform) return `Post to ${plat(it.platform)}`;

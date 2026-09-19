@@ -71,7 +71,19 @@ export async function POST(request) {
     }
     // approve → approved (enters publish queue; owned/executable are published by
     // the queue via the execute route). Learn from the approval.
-    const { data: a } = await supabase.from("actions").select("type, title, target").eq("id", id).eq("user_id", user.id).maybeSingle();
+    const { data: a } = await supabase.from("actions").select("type, title, target, payload").eq("id", id).eq("user_id", user.id).maybeSingle();
+    // A listing approved = the owner opened the page to submit it. Recorded so
+    // the self-test and reports can count listings; the action itself already
+    // stops the place being offered again.
+    if (a?.type === "directory_submission" && a?.payload?.placeId) {
+      try {
+        const { recordEvent } = await import("@/lib/events");
+        await recordEvent(supabase, {
+          userId: user.id, host: a.target?.host || null, type: "launch.place", actor: "human", subject: a.payload.place || a.title,
+          data: { placeId: a.payload.placeId, state: "submitted", kind: a.payload.kind || null }, dedupeKey: `launch:${a.target?.host || ""}:${a.payload.placeId}`,
+        });
+      } catch {}
+    }
     await supabase.from("actions").update({ status: "approved", updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
     await recordDecision(supabase, {
       userId: user.id, host: a?.target?.host || null, kind: "approval",
