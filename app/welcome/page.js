@@ -18,6 +18,7 @@ import Icon from "@/components/ui/Icon";
 import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 import { Showcase } from "@/components/Showcase";
 import UnderstandingCheck from "@/components/onboarding/UnderstandingCheck";
+import TeamBand from "@/components/onboarding/TeamBand";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -351,6 +352,8 @@ export default function WelcomePage() {
                 </div>
                 <p className="mt-6 pt-5 text-[13px]" style={{ borderTop: "1px solid var(--onb-hair)", color: "var(--onb-subtle)" }}>You did nothing. This is every morning from now on.</p>
               </div>
+
+              <TeamBand business={data.ai?.businessName || host} />
             </div>
           )}
 
