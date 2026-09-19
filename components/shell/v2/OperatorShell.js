@@ -26,6 +26,8 @@ const NAV = [
   { section: "Your employee" },
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
+  // The testers, improvers and doers, live on a globe (lib/swarm).
+  { id: "team", label: "Your team", icon: Icon.globe },
   { id: "write", label: "Ask Genie to write", icon: Icon.write },
   // Publishing to one hosted page every night is not a strategy; this is where an
   // article gets put where it counts, starting with the owner's own site.
@@ -294,7 +296,7 @@ export default function OperatorShell({ active = "today", children }) {
 
 function hrefFor(id) {
   const map = {
-    today: "/today", approvals: "/approvals", write: "/write", spread: "/spread", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
+    today: "/today", approvals: "/approvals", team: "/team", write: "/write", spread: "/spread", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation", site: "/site", markets: "/markets",
     trust: "/trust", connections: "/connections", settings: "/settings", howitworks: "/how-it-works", capabilities: "/capabilities",
   };

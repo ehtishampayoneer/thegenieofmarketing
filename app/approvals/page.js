@@ -481,6 +481,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
             <span className="mg-subtle">Impact Score:</span> <span className="mg-num font-bold" style={{ color: "var(--fg)" }}>{Number(item.impact) || 0}/100</span> <span style={{ color: "var(--accent-ink)", fontWeight: 700 }}>({im.label})</span>
           </p>
           <WhyRow item={item} />
+          <CrowdVerdict crowd={item.crowd} />
         </div>
 
         <div className="rounded-2xl p-4" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
@@ -792,4 +793,35 @@ function defaultReasoning(item) {
   const kw = item.keyword ? `“${item.keyword}”` : "this opportunity";
   if (item.kind === "article") return `I found ${kw} is where your buyers are searching and you don’t show up yet. This piece is written to answer that query and rank for it, so the next person looking lands on you instead of a competitor.`;
   return item.outcome || `This puts you in front of buyers who are deciding right now. Approving it does the work; I handle the rest.`;
+}
+
+// ── WHAT THE CROWD SAID ──
+// Every draft is read by 1,000 simulated customers before it gets here, and
+// improved if they did not like it (lib/swarm). This is their verdict, labelled
+// as a prediction because that is what it is.
+function CrowdVerdict({ crowd }) {
+  if (!crowd) return <p className="mt-2 text-[12px] mg-subtle">The crowd hasn&apos;t tested this one yet.</p>;
+  const quick = crowd.mode === "rules";
+  const tone = crowd.score >= 65 ? "var(--signal-live-ink)" : crowd.score >= 45 ? "var(--accent-ink)" : "var(--signal-danger)";
+  const worry = crowd.objections?.[0]?.tag;
+  return (
+    <div className="mt-3 rounded-xl p-3" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+      <p className="text-[12.5px]" style={{ color: "var(--fg)" }}>
+        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "#2EE6C5", marginRight: 6 }} />
+        {quick ? "Quick-checked (AI busy, full crowd test later)" : <>Tested by <b>{Number(crowd.size || 0).toLocaleString()}</b> simulated customers</>}
+        {" · "}<b style={{ color: tone }}>{crowd.score}/100</b>
+        {!quick && <> · {Math.round((crowd.positive || 0) * 100)}% positive</>}
+        {worry && <> · main worry: {worry}</>}
+      </p>
+      {crowd.improved && (
+        <p className="mt-1 text-[12px]" style={{ color: "var(--fg-muted)" }}>
+          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "#FFB347", marginRight: 6 }} />
+          Improved from {crowd.before?.score}/100: {crowd.improved.changed}
+        </p>
+      )}
+      {crowd.gate?.blocked && <p className="mt-1 text-[12px]" style={{ color: "var(--signal-danger)" }}>{crowd.gate.name || "The gatekeeper"} would likely block this. Edit before posting.</p>}
+      {crowd.quotes?.[0] && <p className="mt-1 text-[12px] mg-subtle">“{crowd.quotes[0].q}” — {crowd.quotes[0].who}</p>}
+      <p className="mt-1 text-[11px] mg-subtle">A prediction, not real people. Genie checks it against what really happens.</p>
+    </div>
+  );
 }

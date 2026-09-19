@@ -106,6 +106,7 @@ function normalizeAction(a) {
     marketFlag: p.marketFlag || null,
     impact: clampNum(p.impact, priorityScore(a.priority)),
     tags: tagsFor(a.priority),
+    crowd: p.crowd || null,
   };
 }
 
@@ -127,6 +128,7 @@ function normalizePlacement(p) {
     relatedKeywords: [],
     impact: clampNum(meta.intent_score, 70),
     tags,
+    crowd: meta.crowd || null,
   };
 }
 

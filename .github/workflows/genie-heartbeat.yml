@@ -1,0 +1,41 @@
+# The swarm's heartbeat. Every ten minutes this asks Genie to run one pass of the
+# testers and improvers (app/api/swarm/tick), so drafts are tested all day, not
+# only at night, and work left over when the free AI was busy is picked up as
+# soon as it is back. Free: GitHub Actions minutes are free on public repos.
+#
+# Setup, once: repo Settings -> Secrets and variables -> Actions
+#   Secret   CRON_SECRET  = the same value as CRON_SECRET in Vercel
+#   Variable GENIE_URL    = https://thegenieofmarketing.vercel.app
+#
+# This repo is public, so the log shows only the HTTP status, never any data.
+
+name: Genie heartbeat
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: genie-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Run one swarm pass
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GENIE_URL: ${{ vars.GENIE_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$GENIE_URL" ]; then
+            echo "Heartbeat not set up yet (add CRON_SECRET and GENIE_URL). Skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 295 -X POST "$GENIE_URL/api/swarm/tick" \
+            -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json" -d '{}' || echo "000")
+          echo "Genie answered $code"
+          # A timeout still means the pass ran; only a refusal is worth failing on.
+          if [ "$code" = "401" ]; then echo "CRON_SECRET does not match Vercel's."; exit 1; fi
