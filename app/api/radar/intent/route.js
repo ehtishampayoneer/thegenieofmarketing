@@ -123,12 +123,21 @@ export async function POST(request) {
 
   for (const it of items) {
     const c = top[it.index];
-    if (!c || it.fit === false) continue;
+    // Fail closed. `it.fit === false` alone let a missing or malformed verdict
+    // through as a buyer, and the judge is the only thing standing between a
+    // Lightroom thread and a reply drafted in the owner's name.
+    if (!c || it.fit !== true) continue;
+    // A claimed buyer with no quotable evidence is a guess. The prompt asks for
+    // the words that show it; without them there is nothing to check.
+    if (!String(it.evidence || "").trim() && !String(it.who || "").trim()) continue;
     const reach = reachabilityFor(c.platform);
     const action = it.action || reach.action;
     const intent = clampNum(it.intent, c.intent.score);
     const stage = it.stage || c.intent.stage;
-    const meta = { buyer_intent: true, intent_score: intent, journey_stage: stage, signals: c.intent.signals, source: c.source, reason: it.rationale || null, competitorMention: c.intent.competitorMention, query: c.query };
+    // `who` and `evidence` travel with the card so the owner can check the
+    // judgement instead of taking it on trust: who Genie thinks this is, and the
+    // words on the page that say so.
+    const meta = { buyer_intent: true, intent_score: intent, journey_stage: stage, signals: c.intent.signals, source: c.source, reason: it.rationale || null, who: it.who || null, evidence: it.evidence || null, competitorMention: c.intent.competitorMention, query: c.query };
 
     // Clean the reply of markdown symbols/em-dashes — it gets posted to a real thread
     // as-is, so it must read as a human wrote it.
@@ -187,32 +196,64 @@ async function runOne(source, q, ctx, vert = {}) {
 }
 
 function buildPrompt(candidates, entity) {
-  const list = candidates.map((c, i) =>
-    `[${i}] platform: ${c.platform} | intent(pre): ${c.intent.score} | signals: ${c.intent.signals.join(", ") || "—"} | query: "${c.query}"
+  // What the judge is shown. The search query used to sit at the top of each
+  // candidate, and a weak model read it as a description of the person: a page
+  // about Lightroom alternatives, found by the query "Shopify AR alternative",
+  // came back as "user is actively looking for a Shopify AR alternative". The
+  // query is now labelled as Genie's own search string, and the domain is shown,
+  // because "a marathon of great furniture at ROSS" reads very differently once
+  // you can see it is a shopping video.
+  const list = candidates.map((c, i) => {
+    let domain = "";
+    try { domain = new URL(c.url).hostname.replace(/^www\./, ""); } catch {}
+    return `[${i}] ${c.platform}${domain ? ` · ${domain}` : ""}
 title: ${c.title}
-context: ${(c.snippet || "").slice(0, 220) || "(none)"}`
-  ).join("\n\n");
+what the page says: ${(c.snippet || "").slice(0, 220) || "(nothing — judge on the title alone)"}
+(Genie found this by searching "${c.query}" — that is Genie's search string, NOT this person's words. Ignore it when judging.)`;
+  }).join("\n\n");
 
   return `Entity: ${entity.label} — ${entity.dims.audience} audience, goal: ${entity.playbook.primaryGoal}.
 
-Buyer candidates Genie found (write the move for each genuine buyer):
+Judge each candidate. Most of these are NOT buyers, and saying so is the job.
+
 ${list}
 
-Return ONLY this JSON:
+For each one, first answer "who": who this person is, using only the words in
+the title and the page. If you cannot tell who they are, that is fit:false.
+Then fit: true ONLY if that person is one of the owner's target customers AND
+the title or page shows them researching, comparing or deciding about what the
+owner sells. Everything else is fit:false — including a person asking about a
+different product entirely, a developer or a builder, someone shopping as a
+consumer, a listicle, a news post, or a page that merely mentions a company the
+owner competes with.
+
+Return ONLY this JSON. Two worked examples first, so the shape is clear:
+
 {
   "opportunities": [
     {
       "index": 0,
+      "who": "Someone asking which email tool to use after leaving Shopify",
+      "fit": false,
+      "reason": "Email marketing, nothing to do with what the owner sells"
+    },
+    {
+      "index": 1,
+      "who": "A shop owner asking how to show products better on their product pages",
       "fit": true,
+      "evidence": "quote the words from the title or page that show it",
       "stage": "comparing",
-      "intent": 88,
+      "intent": 0,
       "action": "reply",
-      "rationale": "one line: why this is a real buyer and how to help",
+      "rationale": "one line: what they need and how to help",
       "draft": "the value-first move in the entity's voice — genuinely helpful, product only where it truly fits, no marketing tone"
     }
   ]
 }
-Reject anything that isn't a real person researching/comparing/deciding (fit:false). Never force a pitch.`;
+
+Include every candidate by index. Score intent yourself from 0-100 on the
+evidence; do not copy the number above. Returning nothing but fit:false is a
+good answer when none of them are buyers. Never force a pitch.`;
 }
 
 function slim(e) { return e ? { type: e.type, label: e.label, goal: e.playbook?.primaryGoal } : null; }

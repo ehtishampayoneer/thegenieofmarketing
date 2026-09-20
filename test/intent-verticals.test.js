@@ -77,3 +77,19 @@ describe("where a business's buyers actually ask", () => {
     expect(v.tech).toBe(false);
   });
 });
+
+describe("how many verticals is a real answer", () => {
+  it("does not claim six markets because six words appeared once each", () => {
+    // ARQR360's real scan: furniture everywhere, plus passing mentions of rooms,
+    // photos and a studio. Six verticals matched, which told the owner nothing.
+    const noisy = {
+      whatTheySell: "AR product views for furniture retailers",
+      summary: "Shoppers photograph their room and see the sofa, rug or cabinet in place before buying. Used by furniture and decor stores.",
+      targetCustomer: "furniture stores and rug retailers",
+      keywords: ["ar for furniture", "see sofa in my room", "rug visualiser"],
+    };
+    const v = verticalsFor(entity("saas", "Tech & Product"), noisy);
+    expect(v.labels.length).toBeLessThanOrEqual(2);
+    expect(v.labels[0]).toBe("Furniture, decor & interiors");
+  });
+});

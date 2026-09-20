@@ -210,6 +210,11 @@ function BuyerCard({ b, open, onToggle, onEngage, onDismiss }) {
             {sigs.map((s, i) => <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--surface-2)", color: "var(--fg-muted)" }}>{s}</span>)}
             {b.query && <span className="text-[11px] mg-subtle">· from “{b.query}”</span>}
           </div>
+          {/* Who Genie thinks this is, and the words that say so. A one-line
+              "why" alone was impossible to check, and when the judge was wrong
+              it read exactly as confidently as when it was right. */}
+          {b.who && <p className="mt-1.5 text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Who:</span> {b.who}</p>}
+          {b.evidence && <p className="mt-1 text-[13px] mg-muted" style={{ fontStyle: "italic" }}>“{b.evidence}”</p>}
           {b.reason && <p className="mt-1.5 text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Why:</span> {b.reason}</p>}
         </div>
 

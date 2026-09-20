@@ -51,6 +51,8 @@ export async function GET() {
         stage: m.journey_stage || null,
         signals: Array.isArray(m.signals) ? m.signals : [],
         reason: m.reason || null,
+        who: m.who || null,
+        evidence: m.evidence || null,
         competitor: !!m.competitorMention,
         query: p.keyword || m.query || null,
         createdAt: p.created_at,
