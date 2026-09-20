@@ -32,6 +32,22 @@ export async function GET() {
   }
   const byProvider = Object.fromEntries(conns.map((c) => [c.provider, c]));
 
+  // ── Connected, but no longer working ──
+  // A saved row is not the same as a live connection: Google ends the grant when
+  // the owner revokes it, changes their password, or — while the OAuth app is in
+  // Testing mode — every seven days. lib/google.js records that the moment it
+  // happens, so the UI can say "reconnect" instead of showing a green tick over
+  // something that has been dead for a fortnight.
+  const broken = {};
+  try {
+    const evs = await getEvents(supabase, { userId: user.id, types: ["connection.broken", "connection.restored"], limit: 40 });
+    for (const e of evs) {                    // newest first
+      const p = e.data?.provider;
+      if (!p || p in broken) continue;        // the newest word on this provider wins
+      broken[p] = e.type === "connection.broken";
+    }
+  } catch (e) { swallow("connections.status.broken", e, { userId: user.id }); }
+
   const google = byProvider.google;
   // Has GA4 activated? (property discovered, or a GA4 traffic event recorded)
   let ga4 = false;
@@ -45,10 +61,10 @@ export async function GET() {
   catch (e) { swallow("connections.status.commerce", e, { userId: user.id }); }
 
   const integrations = {
-    google: { label: "Google", connected: !!google, category: "measure" },
-    search_console: { label: "Google Search Console", connected: !!google?.gsc_site, category: "measure" },
+    google: { label: "Google", connected: !!google, broken: !!broken.google, category: "measure" },
+    search_console: { label: "Google Search Console", connected: !!google?.gsc_site, broken: !!broken.google, category: "measure" },
     ga4: { label: "Google Analytics (GA4)", connected: ga4, category: "measure", needs: google ? null : "connect_google" },
-    wordpress: { label: "WordPress", connected: !!byProvider.wordpress, category: "publish" },
+    wordpress: { label: "WordPress", connected: !!byProvider.wordpress, broken: !!broken.wordpress, category: "publish" },
     // Any other site: /blog served by Genie through one rewrite rule (lib/own-blog.js).
     own_blog: { label: "Your own blog", connected: !!byProvider.ownblog?.meta?.verifiedAt, category: "publish" },
     x: { label: "X (Twitter)", connected: !!byProvider.x, category: "publish" },

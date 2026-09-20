@@ -121,7 +121,7 @@ export default function TodayPage() {
             <div className="flex flex-col gap-5">
               <FirstResults />
               <GenieStatus score={score} comp={comp} won={citations} gaps={gapCount} />
-              <PendingFromYou approvals={approvals} replies={buyersFound} setup={connsPending(conns)} />
+              <PendingFromYou approvals={approvals} replies={buyersFound} setup={connsPending(conns)} broken={brokenConns(conns)} />
             </div>
           </div>
 
@@ -137,7 +137,16 @@ export default function TodayPage() {
 const connsPending = (conns) => {
   if (!conns) return 0;
   let n = 0; if (!conns.google?.connected) n++; if (!conns.wordpress?.connected) n++;
-  return n;
+  // A connection that has stopped working needs a human just as much as one that
+  // was never made, and it is the more urgent of the two.
+  return n + brokenConns(conns).length;
+};
+
+// Connected once, dead now. lib/google.js marks these when Google ends the grant.
+const brokenConns = (conns) => {
+  if (!conns) return [];
+  return Object.values(conns).filter((c) => c?.broken && c?.connected).map((c) => c.label)
+    .filter((l, i, a) => a.indexOf(l) === i);
 };
 
 // ── NEXT BEST ACTIONS ───────────────────────────────────────────────────────
@@ -396,7 +405,7 @@ function Gauge({ value, size = 132 }) {
 }
 
 // ── PENDING FROM YOU ────────────────────────────────────────────────────────
-function PendingFromYou({ approvals, replies, setup }) {
+function PendingFromYou({ approvals, replies, setup, broken = [] }) {
   const items = [
     { icon: Icon.check, label: "Approvals", sub: `${approvals} draft${approvals === 1 ? "" : "s"} waiting`, n: approvals, href: "/approvals" },
     { icon: Icon.reply, label: "Replies", sub: `${replies} conversation${replies === 1 ? "" : "s"}`, n: replies, href: "/conversations" },
@@ -405,6 +414,20 @@ function PendingFromYou({ approvals, replies, setup }) {
   return (
     <Card className="p-6 flex flex-col">
       <p className="mg-klabel mb-3">Pending from you</p>
+      {/* A dead connection is not a number in a list. Nothing Genie does with
+          Google works until this is fixed, so it says so, in full. */}
+      {broken.length > 0 && (
+        <a href="/connections" className="mg-focus rounded-xl p-3.5 mb-3 flex items-start gap-3"
+          style={{ background: "var(--signal-danger-soft, var(--surface-2))", border: "1px solid var(--signal-danger)" }}>
+          <span className="shrink-0" style={{ fontSize: 16, lineHeight: 1.2 }}>⚠️</span>
+          <span className="min-w-0">
+            <span className="block text-[14px] font-bold" style={{ color: "var(--fg)" }}>{broken.join(" and ")} stopped working</span>
+            <span className="block text-[12.5px] mt-0.5" style={{ color: "var(--fg-muted)", lineHeight: 1.45 }}>
+              Until you reconnect, Genie can’t read your real rankings, ask Google to index new pages, or send from your address. Reconnect →
+            </span>
+          </span>
+        </a>
+      )}
       <div className="flex flex-col">
         {items.map((it, i) => (
           <a key={i} href={it.href} className="flex items-center gap-3 py-3 mg-focus" style={{ borderTop: i ? "1px solid var(--hair)" : "none" }}>

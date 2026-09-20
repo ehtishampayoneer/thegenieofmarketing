@@ -135,10 +135,11 @@ export default function ConnectionsPage() {
       <Group title="Needed to start · Google" sub="One click. Sending from your Gmail, plus your real rankings and traffic.">
         <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
           sub={googleSub(I)}
-          connected={I.google?.connected} action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
+          connected={I.google?.connected} broken={I.google?.broken}
+          action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
         <Row icon={<span className="mg-tile" style={tile}><Icon.growth size={17} /></span>} label="Real Google rankings (Search Console)"
           sub={I.search_console?.connected ? "Connected · Genie reads your real positions every night" : "Genie sets this up for you: it verifies your site with Google and adds it. No Search Console account needed."}
-          connected={I.search_console?.connected} action={null}>
+          connected={I.search_console?.connected} broken={I.search_console?.broken} action={null}>
           {!I.search_console?.connected && <GscSetup googleConnected={I.google?.connected} />}
         </Row>
         <Row icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
@@ -194,17 +195,21 @@ function Group({ title, sub, children }) {
   );
 }
 
-function Row({ icon, label, sub, connected, connectedLabel = "Connected", action, children }) {
+function Row({ icon, label, sub, connected, broken = false, connectedLabel = "Connected", action, children }) {
   return (
-    <Card className="p-4">
+    <Card className="p-4" style={broken ? { borderColor: "var(--signal-danger)" } : undefined}>
       <div className="flex items-center gap-3 flex-wrap">
         {icon}
         <div className="flex-1 min-w-[160px]">
           <p className="text-[14px] font-semibold flex items-center gap-2" style={{ color: "var(--fg)" }}>
             {label}
-            {connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
+            {/* Saved is not the same as working: once the grant is gone, a tick
+                here would be a lie the owner acts on for weeks. */}
+            {broken
+              ? <span className="inline-flex items-center gap-1 text-[11.5px] font-bold" style={{ color: "var(--signal-danger)" }}>⚠️ Stopped working</span>
+              : connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
           </p>
-          <p className="text-[12px] mg-muted mt-0.5">{sub}</p>
+          <p className="text-[12px] mg-muted mt-0.5">{broken ? "Google ended this connection. Reconnect to restore your real rankings, indexing and sending — nothing else needs redoing." : sub}</p>
         </div>
         {action}
       </div>
