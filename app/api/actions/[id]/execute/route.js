@@ -47,8 +47,10 @@ export async function POST(_request, { params }) {
   const isX = action.type === "social_post" && (platform.includes("twitter") || platform.includes("x"))
     || (action.type === "distribution" && String(p.channel || "").toLowerCase().includes("twitter"));
   const isArticle = action.type === "article";
+  // An outreach email that was held for approval. Approving it is the send.
+  const isEmail = action.type === "outreach_email" && !!p.to && !!p.subject;
 
-  if (!isArticle && !isX) {
+  if (!isArticle && !isX && !isEmail) {
     return json({ ok: false, error: "That action type can't auto-publish yet. More channels are coming." }, 400);
   }
   if (action.status === "done") {
@@ -56,6 +58,47 @@ export async function POST(_request, { params }) {
   }
   if (action.status === "dismissed" || action.status === "rolled_back") {
     return json({ ok: false, error: `This action was ${action.status.replace("_", " ")} — reopen it before publishing.` }, 400);
+  }
+
+  // ── SEND ONE HELD EMAIL ───────────────────────────────────────────────────
+  // The draft was written on the nightly run and held because the email channel
+  // is not on "auto". Everything that protects a send is re-checked HERE rather
+  // than trusted from hours ago: the person may have unsubscribed since, and the
+  // owner may have edited the words in the approval editor.
+  if (isEmail) {
+    const to = String(p.to).toLowerCase();
+    const { isSuppressed, unsubUrl } = await import("@/lib/compliance");
+    if (await isSuppressed(supabase, user.id, to)) {
+      await supabase.from("actions").update({ status: "dismissed", updated_at: new Date().toISOString() }).eq("id", action.id);
+      return json({ ok: false, error: "That person has unsubscribed since this was written, so Genie did not send it." }, 400);
+    }
+    const host = action.target?.host || null;
+    // The editor saves into payload.text; fall back to the body it was drafted with.
+    const bodyText = typeof p.text === "string" && p.text.trim() ? p.text : p.body;
+    const { deliverEmail } = await import("@/lib/email-engine");
+    const res = await deliverEmail(supabase, user.id, {
+      to, subject: p.subject, body: bodyText,
+      unsubscribeUrl: unsubUrl(process.env.APP_URL || "", user.id, to),
+    });
+    if (!res.ok) {
+      return json({ ok: false, error: res.error || "Genie couldn't send that email. Check your Gmail connection." }, 400);
+    }
+    await supabase.from("outreach_log").insert({
+      user_id: user.id, host, contact_email: to, contact_name: p.toName || null,
+      subject: p.subject, body: bodyText, status: "sent",
+      email_id: res.id || null, sent_at: new Date().toISOString(),
+    });
+    const result = { to, subject: p.subject, publishedAt: new Date().toISOString(), channel: "email", emailId: res.id || null };
+    await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+    try {
+      const { logActivity } = await import("@/lib/activity");
+      await logActivity(supabase, user.id, {
+        host, verb: "published", icon: "✉️",
+        message: `Emailed ${p.toName || p.company || to}`,
+        detail: p.subject, meta: { to, approved: true },
+      });
+    } catch {}
+    return json({ ok: true, result });
   }
 
   // GATE 2.5 — brand safety + fact-check. Never publish toxic content or high-risk

@@ -1,9 +1,20 @@
 "use client";
 
 // ── TRUST CENTER ──
-// You are always in control. Genie earns autonomy per channel as it proves itself
-// (review → assisted → auto); you can grant or revoke it anytime. This surface
-// makes autonomy, brand protection, and compliance understandable and adjustable.
+// You are always in control, and this page says exactly how much control is
+// actually being exercised — which is the part it used to get wrong.
+//
+// It offered review/assisted/auto on seven channels. The setting saved, and
+// nothing read it: lib/autonomy.js, the gate it was written for, was imported by
+// no file in the codebase. Every channel behaved as "review" whatever the switch
+// said, so the page overstated what the owner had changed and understated how
+// safe the default was.
+//
+// Now: outreach email genuinely reads it (app/api/outreach/campaign), because
+// that is the one channel where Genie can act on the outside world unattended.
+// The publishing channels always wait for approval — not because a switch is set
+// that way, but because nothing in the product publishes without someone pressing
+// Approve, and a toggle implying otherwise would be a worse lie than no toggle.
 
 import { useState, useEffect } from "react";
 import OperatorShell from "@/components/shell/v2/OperatorShell";
@@ -14,10 +25,13 @@ import OperatorHeader from "@/components/shell/v2/OperatorHeader";
 import { DataStateBadge } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 
+// `live: true` means the level on this channel changes what Genie does. Only
+// outreach email is, and pretending otherwise is what this page did before.
 const CHANNELS = [
+  { id: "email", label: "Outreach email", live: true, note: "The only channel Genie can act on without you. On Auto it sends from your address; on anything else it writes the email and waits in Approvals." },
   { id: "blog", label: "Blog / Articles" }, { id: "x", label: "X (Twitter)" },
   { id: "linkedin", label: "LinkedIn" }, { id: "reddit", label: "Reddit" },
-  { id: "quora", label: "Quora" }, { id: "medium", label: "Medium" }, { id: "email", label: "Outreach email" },
+  { id: "quora", label: "Quora" }, { id: "medium", label: "Medium" },
 ];
 const LEVELS = [
   { id: "review", label: "Review", desc: "You approve everything" },
@@ -76,24 +90,40 @@ export default function TrustCenterPage() {
       {/* Per-channel autonomy */}
       <div className="mt-6">
         <h2 className="text-[16px] font-bold" style={{ color: "var(--fg)" }}>Autonomy by channel</h2>
-        <p className="mt-0.5 text-[13px] mg-muted">Start in Review. Genie earns Assisted after a few approvals, and Auto once it’s consistently winning — or grant it yourself.</p>
+        <p className="mt-0.5 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+          One channel can act without you, and it starts switched off. Genie earns Assisted after a few approvals and Auto once it is consistently winning — or you can grant it here.
+        </p>
         <div className="mt-3 space-y-2.5">
           {CHANNELS.map((c) => (
-            <Card key={c.id} className="p-4 flex items-center gap-3 flex-wrap">
-              <BrandIcon brand={c.id} size={18} />
-              <span className="text-[14px] font-semibold flex-1 min-w-[120px]" style={{ color: "var(--fg)" }}>{c.label}</span>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
-                {LEVELS.map((lv) => (
-                  <button key={lv.id} onClick={() => setLevel(c.id, lv.id)} title={lv.desc}
-                    className="text-[12px] font-semibold px-3 py-1.5 rounded-full transition mg-focus"
-                    style={levels[c.id] === lv.id ? { background: lv.id === "auto" ? "var(--accent)" : "var(--primary)", color: lv.id === "auto" ? "#2C1B05" : "var(--on-primary)" } : { color: "var(--fg-muted)" }}>
-                    {lv.label}
-                  </button>
-                ))}
+            <Card key={c.id} className="p-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <BrandIcon brand={c.id} size={18} />
+                <span className="text-[14px] font-semibold flex-1 min-w-[120px]" style={{ color: "var(--fg)" }}>{c.label}</span>
+                {c.live ? (
+                  <div className="flex items-center gap-0.5 p-0.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+                    {LEVELS.map((lv) => (
+                      <button key={lv.id} onClick={() => setLevel(c.id, lv.id)} title={lv.desc}
+                        className="text-[12px] font-semibold px-3 py-1.5 rounded-full transition mg-focus"
+                        style={levels[c.id] === lv.id ? { background: lv.id === "auto" ? "var(--accent)" : "var(--primary)", color: lv.id === "auto" ? "#2C1B05" : "var(--on-primary)" } : { color: "var(--fg-muted)" }}>
+                        {lv.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* No switch, because there is nothing to switch: these publish
+                     only when you press Approve, and always have. */
+                  <span className="text-[12px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)", color: "var(--fg-muted)" }}>
+                    Always waits for you
+                  </span>
+                )}
               </div>
+              {c.note && <p className="mt-2 text-[12.5px] mg-muted leading-snug" style={{ maxWidth: "var(--measure)" }}>{c.note}</p>}
             </Card>
           ))}
         </div>
+        <p className="mt-3 text-[12.5px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
+          Articles, posts and replies have no switch here on purpose. Nothing Genie writes for them reaches the internet until you press Approve, so a control offering anything else would be describing a product you do not have.
+        </p>
       </div>
 
       {/* How Genie protects you */}
@@ -103,7 +133,9 @@ export default function TrustCenterPage() {
         <Protect icon={Icon.mail} title="Outreach compliance" body="Every email includes one-click unsubscribe and your address. Opt-outs are honored instantly and never emailed again (CAN-SPAM / GDPR)." />
       </div>
 
-      <p className="mt-8 mb-2 text-center text-[13px] mg-subtle">Genie only acts autonomously when it’s both trusted and confident. Otherwise, it asks you first — always.</p>
+      <p className="mt-8 mb-2 text-center text-[13px] mg-subtle" style={{ maxWidth: "var(--measure)", marginInline: "auto" }}>
+        Genie only acts autonomously when it is both trusted and confident: the channel must be on Auto, the content must pass the brand-safety check, and the check must be at least 80% confident. Any one of those short and it asks you first.
+      </p>
     </OperatorShell>
   );
 }

@@ -9,6 +9,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { DAILY_CAP, sentToday, sourceContacts, draftEmail, deliverEmail } from "@/lib/email-engine";
 import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
+import { decideExecution } from "@/lib/autonomy";
 import { logActivity } from "@/lib/activity";
 
 import { briefBlock } from "@/lib/business-brief";
@@ -158,10 +159,34 @@ export async function POST(request) {
     chunk.forEach((c, k) => drafts.set(c.email, out[k]));
   }
 
+  // ── DOES THIS SEND, OR DOES IT WAIT FOR YOU? ────────────────────────────────
+  // Everything else Genie writes waits in Approvals. Outreach did not: the
+  // nightly run sent it straight out of the owner's own Gmail, to people they
+  // had never seen, and a bad batch costs them their own sending reputation
+  // rather than Genie's.
+  //
+  // It now asks the same question the rest of the product was built to ask, and
+  // that nothing had ever called: lib/autonomy.js. Email sends unattended only
+  // when the owner has granted the email channel "auto" in the Trust Center (or
+  // earned it: six approvals and a win) AND the content guard passes AND
+  // confidence is at least 80. Anything short of all three and the draft goes to
+  // Approvals instead, which is the safe default for a new account.
+  let staged = 0;
   for (const c of queue) {
     const { subject, body: emailBody } = drafts.get(c.email) || {};
     // Could not write a proper email for this one: skip it rather than send filler.
     if (!subject || !emailBody) { skipped++; continue; }
+
+    const decision = await decideExecution(supabase, {
+      userId, host, channel: "email", content: `${subject}\n\n${emailBody}`,
+    });
+    if (!decision.execute) {
+      await stageForApproval(supabase, {
+        userId, host, contact: c, subject, body: emailBody, reason: decision.reason,
+      });
+      staged++;
+      continue;
+    }
     // deliverEmail, not sendOne: it tries the user's OWN Gmail first and only
     // falls back to the platform sender. sendOne skipped that entirely, which is
     // why the nightly run ignored a connected Gmail and sent from a shared
@@ -186,6 +211,14 @@ export async function POST(request) {
       detail: `${cap - already - sent} more allowed today`, meta: { sent, plan },
     });
   }
+  if (staged > 0) {
+    await logActivity(supabase, userId, {
+      host, verb: "staged", icon: "✉️",
+      message: `${staged} outreach email${staged > 1 ? "s are" : " is"} waiting for you to approve`,
+      detail: "Genie found the people and wrote to each one personally. Nothing sends from your address until you say so — grant the email channel autonomy in the Trust Center if you would rather it sent on its own.",
+      meta: { staged },
+    });
+  }
 
   // Report what was skipped as undeliverable, so the number is never silently
   // missing from the batch the owner expected.
@@ -198,4 +231,36 @@ export async function POST(request) {
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+}
+
+// ── ONE EMAIL, WAITING ──────────────────────────────────────────────────────
+// Staged as an `outreach_email` action, which Approvals already knows how to
+// show and the crowd already knows how to test, so this needs no new surface.
+// The address, the name and the company travel with it: approving is what turns
+// it into a send, in /api/actions/[id]/execute.
+//
+// Nothing is written to outreach_log here. That table is the record of what was
+// actually sent, and a draft nobody has approved has not been sent — counting it
+// there would inflate "emails sent" and, worse, make sourceContacts() treat the
+// person as already contacted and never write to them again.
+async function stageForApproval(supabase, { userId, host, contact, subject, body, reason }) {
+  try {
+    await supabase.from("actions").insert({
+      user_id: userId,
+      type: "outreach_email",
+      title: `Email ${contact.name || contact.company || contact.email}`,
+      status: "proposed",
+      priority: "medium",
+      target: { host, email: contact.email },
+      payload: {
+        to: contact.email,
+        toName: contact.name || null,
+        company: contact.company || null,
+        subject,
+        body,
+        text: body,              // what the Approvals editor reads and edits
+        heldBecause: reason || null,
+      },
+    });
+  } catch {}
 }

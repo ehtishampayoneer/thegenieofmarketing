@@ -66,7 +66,11 @@ function normalizeAction(a) {
   // composer with your text ready and YOU tap post. Automated API posting to
   // social is what gets accounts flagged/suspended — we never do it by default.
   const owned = a.type === "article";
-  const executable = a.type === "article";
+  // Executable = approving it makes something happen in the real world, so the
+  // queue calls /api/actions/[id]/execute rather than only marking it approved.
+  // An outreach_email is one: it was written and held, and approving IS the send.
+  const executable = a.type === "article"
+    || (a.type === "outreach_email" && !!a.payload?.to && !!a.payload?.subject);
   // Pinterest's pin-create URL prefills the image (media), destination link and
   // description — the owner just picks a board and saves. No auto-post, no OAuth.
   const target_url = isX
