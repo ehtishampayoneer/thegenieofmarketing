@@ -47,6 +47,10 @@ export default function HuntPage() {
   const [filter, setFilter] = useState("all"); // all | ready_to_buy | comparing
   const [openId, setOpenId] = useState(null);
   const [rivals, setRivals] = useState("");
+  // Did the last hunt come back with nothing? Kept apart from `buyers`, which
+  // holds everything ever staged and not yet dealt with.
+  const [ranEmpty, setRanEmpty] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [toast, setToast] = useState("");
 
   const load = useCallback(async () => {
@@ -75,7 +79,7 @@ export default function HuntPage() {
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rivals }) }).then((r) => r.json());
       const reddit = j?.reddit?.via === "api" ? "Reddit API ✓" : j?.reddit?.via === "rss" ? "Reddit via RSS ✓" : "Reddit via Google index ✓";
-      if (j?.ok) { setMsg(`${j.buyersFound || 0} buyers found · ${reddit}.`); await load(); }
+      if (j?.ok) { setRanEmpty((j.buyersFound || 0) === 0); setMsg(`${j.buyersFound || 0} buyers found · ${reddit}.`); await load(); }
       else setMsg(j?.error || "Couldn't hunt just now. Try again in a moment.");
     } catch { setMsg("Couldn't hunt just now. Try again in a moment."); }
     setHunting(false);
@@ -87,6 +91,22 @@ export default function HuntPage() {
     try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, source: "placement", act: "approve" }) }); } catch {}
     setBuyers((bs) => (bs || []).filter((x) => x.id !== b.id));
     setToast("Reply copied + thread opened. Paste, tweak, post — you're helping a real buyer.");
+  }
+  // Dismiss everything on the list. Each is a staged placement, so this is the
+  // same call the single dismiss makes, once per card.
+  async function clearAll() {
+    if (clearing || !buyers?.length) return;
+    setClearing(true);
+    const ids = buyers.map((b) => b.id);
+    try {
+      await Promise.all(ids.map((id) =>
+        fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, source: "placement", act: "skip" }) }).catch(() => {})
+      ));
+    } catch {}
+    setBuyers([]);
+    setRanEmpty(false);
+    setClearing(false);
+    setToast("Cleared. Hunt again whenever you like.");
   }
   async function dismiss(b) {
     try { await fetch("/api/approvals/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, source: "placement", act: "skip" }) }); } catch {}
@@ -102,16 +122,11 @@ export default function HuntPage() {
         <div className="min-w-0">
           <p className="mg-eyebrow"><Icon.crosshair size={14} /> Buyer Hunt</p>
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>People ready to <span className="dawn-text">buy — right now.</span></h1>
-          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>Genie hunts the whole internet for people researching, comparing and deciding in your space, ranks them by buying intent, and drafts the perfect helpful reply. You engage in one tap.</p>
-          {/* Where Genie hunts is tuned to THIS business, so say so plainly rather
-              than implying it searches everywhere equally. */}
+          <p className="mt-1.5 text-[14px] mg-muted" style={{ maxWidth: "var(--measure)" }}>People comparing and deciding right now, with your reply already written.</p>
           {summary?.hunting?.labels?.length > 0 && (
-            <p className="mt-2 text-[13px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
-              {summary.hunting.sellsToBusinesses
-                ? <>Hunting the <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b> businesses you sell to — the people running them, not the people buying from them</>
-                : <>Tuned for <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b></>}
-              {summary.hunting.seSites?.length > 0 && <>, searching {summary.hunting.seSites.join(", ")} on Stack Exchange alongside Reddit and Quora</>}
-              {!summary.hunting.tech && <>. Hacker News and GitHub are skipped for you, because your buyers are not there.</>}
+            <p className="mt-1.5 text-[12.5px] mg-subtle" title={whereText(summary.hunting)}>
+              Hunting {summary.hunting.labels.join(" · ").toLowerCase()}
+              {summary.hunting.sellsToBusinesses ? " businesses" : ""}
             </p>
           )}
         </div>
@@ -120,6 +135,22 @@ export default function HuntPage() {
         </button>
       </div>
       {msg && <p className="mt-2 text-[13px]" style={{ color: "var(--accent-ink)" }}>{msg}</p>}
+
+      {/* A hunt that finds nothing leaves whatever was already on the list, which
+          reads as "the hunt found these" when it found none of them. Some of
+          these were staged by a judge that accepted almost anything, and each
+          one carries a reply drafted in the owner's name, so clearing the list
+          is worth one button rather than eight dismissals. */}
+      {ranEmpty && (buyers?.length > 0) && (
+        <div className="mt-3 rounded-xl p-3.5 flex items-start gap-3 flex-wrap" style={{ background: "var(--surface)", border: "1px solid var(--hair)" }}>
+          <p className="text-[13px] mg-muted flex-1" style={{ minWidth: 240, maxWidth: "var(--measure)" }}>
+            This hunt found nobody new. The {buyers.length} below are from earlier runs — check each one is really a buyer before you reply, or clear them and hunt again.
+          </p>
+          <button onClick={clearAll} disabled={clearing} className="mg-btn mg-btn--ghost shrink-0" style={{ fontSize: 12.5 }}>
+            {clearing ? "Clearing…" : `Clear all ${buyers.length}`}
+          </button>
+        </div>
+      )}
 
       {/* competitor-poaching mode */}
       <div className="mt-3 flex items-center gap-2 flex-wrap">
@@ -265,4 +296,14 @@ function Toast({ msg, onDone }) {
       <div className="mg-surface px-4 py-2.5 text-[13px] mg-rise" style={{ boxShadow: "var(--shadow-3)", color: "var(--fg)", borderColor: "var(--border-strong)", maxWidth: "90vw" }}>{msg}</div>
     </div>
   );
+}
+
+// Where Genie is actually searching, for the tooltip on the hunting line. It
+// belongs on hover, not in the page: it answers a question an owner asks once.
+function whereText(h) {
+  const places = ["Reddit", "Quora"];
+  if (h?.tech) places.push("Hacker News", "GitHub");
+  if (h?.seSites?.length) places.push(`${h.seSites.join(", ")} on Stack Exchange`);
+  const skipped = h?.tech ? "" : " Hacker News and GitHub are skipped — your buyers are not there.";
+  return `Searching ${places.join(", ")}.${skipped}`;
 }
