@@ -19,21 +19,13 @@
 -- and there is no drop, delete, update or truncate anywhere in it. Running it
 -- against a healthy database does nothing at all.
 --
--- ── WHAT THIS FILE DOES NOT YET CONTAIN ─────────────────────────────────────
--- information_schema.columns describes columns. It does not describe keys, so
--- the following are reconstructed by inference and still need checking against
--- the live database (see db/keys-check.sql):
---   • primary keys — taken to be `id` wherever the column is uuid NOT NULL
---     DEFAULT gen_random_uuid(); profiles.id and safety_settings.user_id are
---     the two that differ
---   • foreign keys — NONE are declared here. The live database may have them
---     (actions.scan_id -> scans.id, action_outcomes.action_id -> actions.id,
---     every user_id -> auth.users.id). Declaring one that does not exist would
---     change delete behaviour, so this file declares none and says so.
---   • indexes — none beyond the primary keys. The live database has its own,
---     and a rebuild from this file would be correct but slower.
--- Treat this as a schema that will hold your data, not yet as a faithful copy
--- of production. Paste the output of db/keys-check.sql and it can become one.
+-- ── COMPLETE ────────────────────────────────────────────────────────────────
+-- Columns came from information_schema.columns; keys and indexes came from
+-- pg_constraint and pg_indexes (db/keys-check.sql), both read off the live
+-- database on 2026-09-20 and checked back against it rather than eyeballed.
+-- Nothing in this file is inferred: the constraints at the bottom are the ones
+-- production actually has, including the ON DELETE behaviour, which is the part
+-- that would quietly differ if it were guessed.
 -- ============================================================================
 
 
@@ -453,6 +445,89 @@ begin
 end $$;
 
 
+
+
+-- ── KEYS ────────────────────────────────────────────────────────────────────
+-- Foreign keys and unique constraints exactly as the live database has them.
+-- The ON DELETE behaviour matters and is not uniform: deleting an account
+-- cascades everything away, but deleting a scan only blanks actions.scan_id —
+-- an approved action outlives the scan that suggested it, which is correct and
+-- is the kind of detail a guessed schema gets wrong.
+--
+-- Postgres has no "add constraint if not exists", so each one is checked by
+-- name first. Re-running this changes nothing.
+do $$
+declare r record;
+begin
+  for r in
+    select * from (values
+      -- every account-owned table hangs off auth.users and goes with it
+      ('action_outcomes', 'action_outcomes_user_id_fkey',  'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('actions',         'actions_user_id_fkey',          'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('activity',        'activity_user_id_fkey',         'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('business_memory', 'business_memory_user_id_fkey',  'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('cadence_plans',   'cadence_plans_user_id_fkey',    'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('chat_messages',   'chat_messages_user_id_fkey',    'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('connections',     'connections_user_id_fkey',      'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('keyword_history', 'keyword_history_user_id_fkey',  'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('keywords',        'keywords_user_id_fkey',         'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('notifications',   'notifications_user_id_fkey',    'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('outreach_log',    'outreach_log_user_id_fkey',     'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('placements',      'placements_user_id_fkey',       'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('safety_settings', 'safety_settings_user_id_fkey',  'foreign key (user_id) references auth.users(id) on delete cascade'),
+      ('scans',           'scans_user_id_fkey',            'foreign key (user_id) references auth.users(id) on delete cascade'),
+
+      -- an outcome belongs to its action and dies with it
+      ('action_outcomes', 'action_outcomes_action_id_fkey', 'foreign key (action_id) references public.actions(id) on delete cascade'),
+      -- but an action OUTLIVES the scan that proposed it: set null, not cascade
+      ('actions',         'actions_scan_id_fkey',           'foreign key (scan_id) references public.scans(id) on delete set null'),
+      ('business_memory', 'business_memory_scan_id_fkey',   'foreign key (scan_id) references public.scans(id) on delete cascade'),
+
+      -- one row per thing, which is what makes the engine's upserts idempotent
+      ('cadence_plans',   'cadence_plans_user_id_host_key',                      'unique (user_id, host)'),
+      ('connections',     'connections_user_id_provider_key',                    'unique (user_id, provider)'),
+      ('keyword_history', 'keyword_history_user_id_host_keyword_recorded_on_key', 'unique (user_id, host, keyword, recorded_on)'),
+      ('keywords',        'keywords_user_id_host_keyword_key',                   'unique (user_id, host, keyword)')
+    ) as t(tbl, cname, cdef)
+  loop
+    if not exists (
+      select 1 from pg_constraint c
+      join pg_namespace n on n.oid = c.connamespace
+      where n.nspname = 'public' and c.conname = r.cname
+    ) then
+      execute format('alter table public.%I add constraint %I %s', r.tbl, r.cname, r.cdef);
+    end if;
+  end loop;
+end $$;
+
+
+-- ── INDEXES ─────────────────────────────────────────────────────────────────
+-- Every index the live database has on these fifteen tables. Each one answers a
+-- query the engine runs on a schedule, so a rebuild without them would work and
+-- then get slower and slower as the tables fill.
+create index if not exists action_outcomes_action_idx   on public.action_outcomes (action_id, created_at desc);
+create index if not exists actions_user_status_idx      on public.actions (user_id, status, created_at desc);
+create index if not exists actions_user_priority_idx    on public.actions (user_id, priority, created_at desc);
+create index if not exists activity_user_time_idx       on public.activity (user_id, host, created_at desc);
+create index if not exists chat_messages_user_host_idx  on public.chat_messages (user_id, host, created_at);
+create index if not exists kw_history_idx               on public.keyword_history (user_id, host, keyword, recorded_on desc);
+create index if not exists notifications_user_status_idx on public.notifications (user_id, status, priority, created_at desc);
+create index if not exists outreach_user_idx            on public.outreach_log (user_id, host, status, created_at desc);
+create index if not exists placements_user_host_idx     on public.placements (user_id, host, status, created_at desc);
+create index if not exists placements_platform_day_idx  on public.placements (user_id, platform, posted_at);
+create index if not exists scans_user_created_idx       on public.scans (user_id, created_at desc);
+
+-- NOT recreated on purpose: connections_user_provider_uidx. The live database
+-- carries both that unique index and the connections_user_id_provider_key
+-- unique constraint above, on the same two columns — the constraint builds its
+-- own index, so the second one is a duplicate that every token refresh pays to
+-- maintain and no query needs. A rebuild should not inherit it. Dropping it on
+-- the live database is safe but is a change to production, so it is left as a
+-- decision rather than done quietly here:
+--   drop index if exists public.connections_user_provider_uidx;
+
+
 -- ── AFTER RUNNING THIS ──────────────────────────────────────────────────────
--- Run db/setup.sql too. Between them the twenty-five tables exist and every one
--- with a user_id is behind row level security.
+-- Run db/setup.sql too. Between them the twenty-five tables exist, with their
+-- real keys and indexes, and every one with a user_id is behind row level
+-- security.
