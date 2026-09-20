@@ -49,10 +49,11 @@ create unique index if not exists directory_contacts_email_uidx
 -- And one on the plain column, which is a different thing and both are needed.
 -- seedDirectory() upserts with ON CONFLICT (email); Postgres matches that against
 -- an index on the column itself and will NOT accept the lower(email) expression
--- index above, so without this every insert is rejected with "no unique or
--- exclusion constraint matching the ON CONFLICT specification" — the directory
--- stays empty and outreach finds nobody, forever. Every write lowercases the
--- address first, so the two indexes never disagree.
+-- index above. The live database already has this index, so it has never been a
+-- problem there — but the index was not in this file, so anyone rebuilding from
+-- it would get a database where every insert is rejected with "no unique or
+-- exclusion constraint matching the ON CONFLICT specification". Every write
+-- lowercases the address first, so the two indexes never disagree.
 create unique index if not exists directory_contacts_email_plain_uidx
   on public.directory_contacts (email);
 
