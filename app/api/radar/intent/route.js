@@ -11,7 +11,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch, redditSearch } from "@/lib/search";
 import { hnSearch, stackExchangeSearch, githubSearch } from "@/lib/intent-sources";
 import { getBrief, recordDecision } from "@/lib/growth-memory";
-import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities } from "@/lib/intent";
+import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities, emptyRunMessage } from "@/lib/intent";
 import { verticalsFor } from "@/lib/intent-verticals";
 import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
@@ -78,21 +78,38 @@ export async function POST(request) {
   const settled = await Promise.allSettled(pairs.slice(0, 14).map(({ s, q }) => runOne(s, q, ctx, vert)));
   let candidates = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 
+  // ── WHY A RUN FOUND NOTHING ─────────────────────────────────────────────
+  // "0 buyers found" was the same answer whether the searches came back empty,
+  // everything was low intent, or every single page was already on the owner's
+  // list from a previous run — and the last of those is a trap: the same queries
+  // return the same pages, every one of them is filtered as already-seen, and
+  // the hunt reports zero forever while looking broken. Each step is counted so
+  // the run can say which one emptied it.
+  const funnel = { pages: candidates.length, lowIntent: 0, alreadyOnList: 0, notBuyers: 0 };
+
   // 4) Score every candidate for buyer intent, competitor-aware; keep the best.
   candidates = candidates.map((c) => ({ ...c, intent: scoreIntent(`${c.title} ${c.snippet || ""}`, { competitors }) }))
     .filter((c) => c.intent.score >= 45);
+  funnel.lowIntent = funnel.pages - candidates.length;
   candidates = rankOpportunities(candidates);
 
-  // Don't re-surface things already staged.
+  // Don't re-surface things already staged — including ones the owner skipped,
+  // which is the point: "not this one" should stick.
   try {
     const { data: existing } = await supabase.from("placements").select("target_url").eq("user_id", userId).eq("host", host);
     const seen = new Set((existing || []).map((p) => p.target_url));
+    const before = candidates.length;
     candidates = candidates.filter((c) => !seen.has(c.url));
+    funnel.alreadyOnList = before - candidates.length;
   } catch {}
 
   const top = candidates.slice(0, 8);
   if (top.length === 0) {
-    return json({ ok: true, found: 0, staged: 0, message: "No fresh high-intent buyers found this run — Genie will keep hunting.", entity: slim(entity) });
+    return json({
+      ok: true, found: 0, staged: 0, funnel,
+      message: emptyRunMessage(funnel),
+      entity: slim(entity),
+    });
   }
 
   // 5) Genie confirms intent + drafts the right entity-adapted move for each.
@@ -126,10 +143,10 @@ export async function POST(request) {
     // Fail closed. `it.fit === false` alone let a missing or malformed verdict
     // through as a buyer, and the judge is the only thing standing between a
     // Lightroom thread and a reply drafted in the owner's name.
-    if (!c || it.fit !== true) continue;
+    if (!c || it.fit !== true) { funnel.notBuyers++; continue; }
     // A claimed buyer with no quotable evidence is a guess. The prompt asks for
     // the words that show it; without them there is nothing to check.
-    if (!String(it.evidence || "").trim() && !String(it.who || "").trim()) continue;
+    if (!String(it.evidence || "").trim() && !String(it.who || "").trim()) { funnel.notBuyers++; continue; }
     const reach = reachabilityFor(c.platform);
     const action = it.action || reach.action;
     const intent = clampNum(it.intent, c.intent.score);
@@ -171,8 +188,13 @@ export async function POST(request) {
     staged ? { host, verb: "staged", message: `Staged ${staged} high-intent repl${staged !== 1 ? "ies" : "y"} to reach them`, meta: { staged } } : null,
   ].filter(Boolean));
 
+  if (!opportunities.length) {
+    return json({ ok: true, found: 0, staged: 0, funnel, message: emptyRunMessage(funnel), entity: slim(entity) });
+  }
+
   return json({
     ok: true,
+    funnel,
     entity: slim(entity),
     found: opportunities.length,
     staged,

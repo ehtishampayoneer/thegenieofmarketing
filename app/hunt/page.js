@@ -79,7 +79,15 @@ export default function HuntPage() {
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rivals }) }).then((r) => r.json());
       const reddit = j?.reddit?.via === "api" ? "Reddit API ✓" : j?.reddit?.via === "rss" ? "Reddit via RSS ✓" : "Reddit via Google index ✓";
-      if (j?.ok) { setRanEmpty((j.buyersFound || 0) === 0); setMsg(`${j.buyersFound || 0} buyers found · ${reddit}.`); await load(); }
+      if (j?.ok) {
+        const found = j.buyersFound || 0;
+        setRanEmpty(found === 0);
+        // A zero on its own says nothing an owner can act on. The radar knows
+        // whether the searches were empty, everything was already on the list,
+        // or nobody it read was a real buyer — so say that instead.
+        setMsg(found > 0 ? `${found} new buyer${found === 1 ? "" : "s"} found · ${reddit}.` : (j?.intent?.message || `No new buyers this run · ${reddit}.`));
+        await load();
+      }
       else setMsg(j?.error || "Couldn't hunt just now. Try again in a moment.");
     } catch { setMsg("Couldn't hunt just now. Try again in a moment."); }
     setHunting(false);
