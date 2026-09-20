@@ -61,7 +61,17 @@ export default function HuntPage() {
 
   async function huntNow() {
     if (hunting) return;
-    setHunting(true); setMsg("Genie is hunting buyers across Hacker News, Software Recs, GitHub, Reddit and Quora… up to a minute.");
+    // Naming a fixed list here was wrong for most businesses: Hacker News and
+    // GitHub only run when the buyers are technical, and the Stack Exchange sites
+    // differ per vertical. Say what will actually be searched.
+    const se = summary?.hunting?.seSites || [];
+    const places = [
+      "Reddit", "Quora",
+      ...(summary?.hunting?.tech ? ["Hacker News", "GitHub"] : []),
+      ...se.map((x) => `${x} on Stack Exchange`),
+    ];
+    setHunting(true);
+    setMsg(`Genie is hunting buyers across ${places.slice(0, -1).join(", ")} and ${places[places.length - 1]}… up to a minute.`);
     try {
       const j = await fetch("/api/community/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rivals }) }).then((r) => r.json());
       const reddit = j?.reddit?.via === "api" ? "Reddit API ✓" : j?.reddit?.via === "rss" ? "Reddit via RSS ✓" : "Reddit via Google index ✓";
@@ -96,10 +106,12 @@ export default function HuntPage() {
           {/* Where Genie hunts is tuned to THIS business, so say so plainly rather
               than implying it searches everywhere equally. */}
           {summary?.hunting?.labels?.length > 0 && (
-            <p className="mt-2 text-[13px] mg-subtle">
-              Tuned for <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b>
-              {summary.hunting.seSites?.length > 0 && <>, also searching {summary.hunting.seSites.join(", ")} on Stack Exchange</>}
-              {!summary.hunting.tech && <>. Developer sites are skipped for you, because your buyers are not there.</>}
+            <p className="mt-2 text-[13px] mg-subtle" style={{ maxWidth: "var(--measure)" }}>
+              {summary.hunting.sellsToBusinesses
+                ? <>Hunting the <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b> businesses you sell to — the people running them, not the people buying from them</>
+                : <>Tuned for <b style={{ color: "var(--fg-muted)" }}>{summary.hunting.labels.join(" · ").toLowerCase()}</b></>}
+              {summary.hunting.seSites?.length > 0 && <>, searching {summary.hunting.seSites.join(", ")} on Stack Exchange alongside Reddit and Quora</>}
+              {!summary.hunting.tech && <>. Hacker News and GitHub are skipped for you, because your buyers are not there.</>}
             </p>
           )}
         </div>
