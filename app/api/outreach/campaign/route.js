@@ -80,7 +80,10 @@ export async function POST(request) {
   // software" finds other AR companies; seeding on "furniture and rug retailers"
   // finds actual buyers. The scan's targetCustomer is the right field, with the
   // industry as a fallback.
-  let niche = String(industry || prof.industry || "").trim();
+  // `profiles` has no `industry` column — this read was always undefined, so the
+  // niche started empty unless the caller passed one. The scan's targetCustomer
+  // below is where it really comes from.
+  let niche = String(industry || "").trim();
   let briefForDrafts = "";
   try {
     const { data: scan } = await supabase.from("scans").select("ai")
@@ -97,7 +100,14 @@ export async function POST(request) {
 
   // Source contacts. Seeds the shared directory from real published addresses
   // when it has nothing fresh, which is what makes this run send at all.
-  const contacts = await sourceContacts(supabase, userId, host, industry || prof.industry, room, { niche });
+  // Filter the shared pool by the SAME niche that seeds it. This used to pass
+  // `industry || prof.industry`, and since profiles has no industry column that
+  // was usually undefined — which switches the filter off entirely and lets the
+  // nightly run email anyone in the directory, including contacts another
+  // business's run had gone and found for a completely different market. The
+  // emails send from the owner's own Gmail, so a bad match costs them their own
+  // sending reputation, not Genie's.
+  const contacts = await sourceContacts(supabase, userId, host, niche || industry || null, room, { niche });
   if (contacts.length === 0) {
     return json({
       ok: true, sent: 0,
