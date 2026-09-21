@@ -13,11 +13,9 @@
 // the deterministic strategy rather than leaving engines with nothing.
 
 import { createClient } from "@/lib/supabase/server";
-import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
-import { recordEvent, getEvents } from "@/lib/events";
 import { hostOf } from "@/lib/business";
-import { briefText } from "@/lib/business-brief";
-import { strategyPrompt, readStrategy, fallbackStrategy, normalizeStrategy, strategyReady } from "@/lib/strategy";
+import { fallbackStrategy, normalizeStrategy, strategyReady } from "@/lib/strategy";
+import { getStrategy, storedStrategy, saveStrategy } from "@/lib/strategy-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,14 +26,14 @@ export async function GET(request) {
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
   const refresh = new URL(request.url).searchParams.get("refresh") === "1";
 
-  const stored = refresh ? null : await latest(supabase, user.id);
-  if (stored) return json({ ok: true, strategy: stored, drafted: false });
+  const stored = refresh ? null : await storedStrategy(supabase, user.id);
+  if (stored && strategyReady(stored)) return json({ ok: true, strategy: stored, drafted: false });
 
   const { ai, host } = await businessOf(supabase, user.id);
   if (!ai) return json({ ok: true, strategy: null, needsScan: true });
 
-  const { strategy, via } = await draft(supabase, user.id, host, ai);
-  return json({ ok: true, strategy, drafted: true, via });
+  const strategy = await getStrategy(supabase, { userId: user.id, host, ai, draft: true });
+  return json({ ok: true, strategy, drafted: true, via: strategy?.source || "fallback" });
 }
 
 export async function POST(request) {
@@ -44,7 +42,7 @@ export async function POST(request) {
   let body = {};
   try { body = await request.json(); } catch {}
 
-  const current = (await latest(supabase, user.id)) || fallbackStrategy((await businessOf(supabase, user.id)).ai || {});
+  const current = (await storedStrategy(supabase, user.id)) || fallbackStrategy((await businessOf(supabase, user.id)).ai || {});
   // The owner's words win over anything Genie worked out, and confirming is
   // what turns "Genie's read of your business" into "the plan".
   const patch = body?.patch && typeof body.patch === "object" ? body.patch : {};
@@ -59,7 +57,7 @@ export async function POST(request) {
   }
 
   const { host } = await businessOf(supabase, user.id);
-  await save(supabase, user.id, host, next, "human");
+  await saveStrategy(supabase, user.id, host, next, "human");
   return json({ ok: true, strategy: next });
 }
 
@@ -78,43 +76,6 @@ async function businessOf(supabase, userId) {
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
     return { ai: data?.ai || null, host: data ? hostOf(data) : "" };
   } catch { return { ai: null, host: "" }; }
-}
-
-/** The stored strategy, or null. */
-async function latest(supabase, userId) {
-  try {
-    const rows = await getEvents(supabase, { userId, types: ["strategy.set"], limit: 1 });
-    const s = rows?.[0]?.data?.strategy;
-    return s ? normalizeStrategy(s) : null;
-  } catch { return null; }
-}
-
-async function save(supabase, userId, host, strategy, actor) {
-  await recordEvent(supabase, {
-    userId, host, type: "strategy.set", actor,
-    subject: strategy.angle || strategy.who.join(", ") || "strategy",
-    data: { strategy },
-  });
-}
-
-/** Draft one. AI when it can, deterministic when it cannot — never nothing. */
-async function draft(supabase, userId, host, ai) {
-  let strategy = null, via = "fallback";
-  try {
-    const res = await callAI({
-      system: "You resolve a business into one marketing strategy that other systems execute literally. Return only JSON. Never invent proof, numbers or customers.",
-      prompt: strategyPrompt({ ai, briefText: briefText(ai, { max: 2500 }) }),
-      json: true, maxTokens: 900, temperature: 0.4, timeoutMs: 40000, userId, host, tag: "strategy",
-    });
-    strategy = readStrategy(res?.json, ai);
-    via = strategy.source === "ai" ? "ai" : "fallback";
-  } catch (e) {
-    if (!(e instanceof AllProvidersFailedError)) via = "fallback";
-    strategy = fallbackStrategy(ai);
-  }
-  if (!strategy) strategy = fallbackStrategy(ai);
-  if (strategyReady(strategy)) await save(supabase, userId, host, strategy, "genie");
-  return { strategy, via };
 }
 
 function json(obj, status = 200) {

@@ -37,6 +37,10 @@ const NAV = [
   { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
   { id: "inbox", label: "Inbox", icon: Icon.inbox },
 
+  // The plan every other page executes. It sits at the top of the journey
+  // because a wrong assumption here is wrong in eight engines at once.
+  { id: "strategy", label: "The plan", icon: Icon.target },
+
   { section: "1 · Get found" },
   { id: "growth", label: "Growth Score", icon: Icon.growth },
   { id: "aisearch", label: "AI Search Presence", icon: Icon.search },
