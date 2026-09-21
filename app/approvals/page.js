@@ -83,6 +83,10 @@ export default function ApprovalsPage() {
   const [working, setWorking] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [toast, setToast] = useState("");
+  // Everything published in this session, newest first, with its live URL. The
+  // toast used to be the only acknowledgement and it vanished in five seconds,
+  // taking the address of the page with it.
+  const [published, setPublished] = useState([]);
   const [typeFilter, setTypeFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
   const [marketFilter, setMarketFilter] = useState("all");
@@ -213,6 +217,7 @@ export default function ApprovalsPage() {
     const r = await fireApprove(item, draft);
     setWorking(false);
     if (r?.ok && r?.result?.url) {
+      setPublished((p) => [{ id: item.id, title: queueTitle(item), url: r.result.url, channel: r.result.channel }, ...p].slice(0, 6));
       setToast(`Published ✓ ${r.result.channel === "x" ? "on X" : "to your blog"}`);
       setDone((d) => d + 1); removeById(item.id);
     } else if (r?.needsConnection) {
@@ -444,6 +449,27 @@ export default function ApprovalsPage() {
         </Modal>
       )}
 
+      {/* Live, and where. This stays until the page is reloaded, because
+          "Published ✓" that disappears before you can read it is not an
+          acknowledgement of anything. */}
+      {published.length > 0 && (
+        <div className="mt-4 rounded-2xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--signal-live)" }}>
+          <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>
+            {published.length === 1 ? "Published — it's live now" : `Published ${published.length} — they're live now`}
+          </p>
+          <ul className="mt-2 flex flex-col gap-1.5" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {published.map((x) => (
+              <li key={x.id} className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{x.title}</span>
+                <a href={x.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>
+                  {x.url.replace(/^https?:\/\//, "")} ↗
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed left-1/2 z-50" style={{ bottom: 24, transform: "translateX(-50%)" }}>
           <div className="mg-surface px-4 py-2.5 text-[13px] mg-rise" style={{ boxShadow: "var(--shadow-3)", color: "var(--fg)", borderColor: "var(--border-strong)", maxWidth: "90vw" }}>{toast}</div>
@@ -542,7 +568,10 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                 </ul>
               </div>
             )}
-            <p className="mt-1.5 text-[12.5px] mg-muted">Press <b>E</b> to edit it, then approve again. It will be re-checked.</p>
+            <button onClick={onEdit} className="mg-btn mg-btn--dawn mt-2.5" style={{ fontSize: 13 }}>
+              Edit this and try again
+            </button>
+            <p className="mt-1.5 text-[12.5px] mg-subtle">Genie re-checks it when you approve.</p>
           </div>
         )}
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--hair)" }}>

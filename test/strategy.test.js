@@ -119,3 +119,22 @@ describe("every engine works to the plan", () => {
     expect(improve).toMatch(/Never open by naming the product/);
   });
 });
+
+describe("the plan does not re-answer what another section already answered", () => {
+  it("asks the model to leave markets empty", () => {
+    const src = readFileSync(join(process.cwd(), "lib/strategy.js"), "utf8");
+    // Market Testing ranks every country on real demand, competition and the
+    // owner's own Search Console data. A second answer from a model would
+    // contradict it, which is what "every section is different software" means.
+    expect(src).toMatch(/Leave "markets" empty/);
+    expect(src).toMatch(/Genie fills it from Market Testing/);
+  });
+
+  it("fills them from the Market Testing scorer instead", () => {
+    const src = readFileSync(join(process.cwd(), "lib/strategy-store.js"), "utf8");
+    expect(src).toMatch(/scoreMarkets/);
+    expect(src).toMatch(/getGscCountries/);
+    // Only markets it is actually sure about: an estimate is not a recommendation.
+    expect(src).toMatch(/confidence === "verified"/);
+  });
+});
