@@ -1,0 +1,86 @@
+import { describe, it, expect } from "vitest";
+import { normalizeStrategy, strategyReady, fallbackStrategy, readStrategy, strategyBlock } from "@/lib/strategy";
+
+const arqr = {
+  businessName: "ARQR360",
+  whatTheySell: "Augmented reality product views — shoppers see the sofa in their own room before buying",
+  targetCustomer: "furniture stores and rug retailers",
+  competitors: [],
+  brief: {
+    offer: "AR previews and 3D models on your product pages, from a QR code, with no app to install",
+    segments: ["furniture retailers", "rug and carpet shops"],
+    problems: ["Customers can't tell if a sofa will fit their room, so a third of orders come back"],
+    cta: "Book a 10-minute demo",
+    neverSay: ["Never promise a specific conversion uplift"],
+  },
+};
+
+describe("the strategy every engine follows", () => {
+  it("fills every field, so an engine never has to defend against a half-built one", () => {
+    const s = normalizeStrategy({});
+    expect(s.who).toEqual([]);
+    expect(s.angle).toBe("");
+    expect(s.mechanism).toBe("");
+    expect(s.markets).toEqual([]);
+    expect(s.confirmedAt).toBeNull();
+  });
+
+  it("is only ready when it says who, what they want, how we show up and why", () => {
+    expect(strategyReady({})).toBe(false);
+    expect(strategyReady({ who: ["furniture retailer"], theirGoal: ["increase sales"], angle: "a way to grow" })).toBe(false);
+    expect(strategyReady({ who: ["furniture retailer"], theirGoal: ["increase sales"], angle: "a way to grow", mechanism: "because X" })).toBe(true);
+  });
+
+  it("builds a usable strategy with no AI at all, because Genie must never stop", () => {
+    const s = fallbackStrategy(arqr);
+    expect(s.source).toBe("fallback");
+    expect(strategyReady(s)).toBe(true);
+    expect(s.who).toContain("furniture retailer");
+    expect(s.theirGoal).toContain("increase sales");
+    expect(s.theirGoal).toContain("reduce returns");
+    // The angle is about what the seller is doing, not what we sell.
+    expect(s.angle).toMatch(/one of the ways/i);
+    expect(s.angle).not.toMatch(/augmented|AR\b/i);
+    // And it carries the owner's own rules.
+    expect(s.cta).toBe("Book a 10-minute demo");
+    expect(s.neverSay[0]).toMatch(/conversion uplift/);
+  });
+
+  it("searches where the seller already looks, never for the product's name", () => {
+    const s = fallbackStrategy(arqr);
+    expect(s.whereTheyLook.some((q) => /increase furniture retailer sales/.test(q))).toBe(true);
+    expect(s.whereTheyLook.every((q) => !/augmented|\bar\b/i.test(q))).toBe(true);
+  });
+
+  it("prefers the deterministic strategy over an AI answer that decided nothing", () => {
+    const empty = readStrategy({ who: [], angle: "" }, arqr);
+    expect(empty.source).toBe("fallback");
+    expect(strategyReady(empty)).toBe(true);
+  });
+
+  it("takes the AI's answer when it actually resolved the business", () => {
+    const s = readStrategy({
+      who: ["furniture retailer"], theirGoal: ["increase online sales"],
+      angle: "One of the ways furniture retailers are increasing online sales",
+      mechanism: "Shoppers see it in their room, know it fits, and stop hesitating",
+    }, arqr);
+    expect(s.source).toBe("ai");
+    expect(s.angle).toMatch(/increasing online sales/);
+  });
+
+  it("falls back rather than throwing when the model returns nothing usable", () => {
+    expect(readStrategy(null, arqr).source).toBe("fallback");
+    expect(readStrategy("not json", arqr).source).toBe("fallback");
+  });
+
+  it("tells engines plainly when the owner has not confirmed it yet", () => {
+    const draft = strategyBlock(fallbackStrategy(arqr));
+    expect(draft).toMatch(/has NOT confirmed/);
+    const confirmed = strategyBlock({ ...fallbackStrategy(arqr), confirmedAt: "2026-09-21T00:00:00Z" });
+    expect(confirmed).toMatch(/has confirmed this is right/);
+  });
+
+  it("says nothing at all rather than half a plan", () => {
+    expect(strategyBlock({ who: ["someone"] })).toBe("");
+  });
+});
