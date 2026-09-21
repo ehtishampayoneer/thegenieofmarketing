@@ -148,7 +148,13 @@ export default function OperatorShell({ active = "today", children }) {
         // Ask whether the Google ACCOUNT is linked — not whether a Search Console
         // property has been matched yet (gsc_site fills in later).
         if (!I.google?.connected) missing.push({ label: "Google", why: "real keywords + send from your Gmail" });
-        if (!I.wordpress?.connected) missing.push({ label: "your blog", why: "auto-publish articles" });
+        // WordPress is one way to have a blog, not the only one, and not the best
+        // one. A site on any other host connects through the own-domain rewrite
+        // (lib/own-blog.js), which publishes to THEIR domain — so asking a
+        // business that already did that to "connect your blog" nags them
+        // forever about a thing they finished, and implies the better setup does
+        // not count.
+        if (!I.wordpress?.connected && !I.own_blog?.connected) missing.push({ label: "your blog", why: "auto-publish articles" });
         setMissingConns(missing);
       }
       setLastSync(Date.now());
@@ -317,6 +323,11 @@ function hrefFor(id) {
     today: "/today", approvals: "/approvals", team: "/team", "test-launch": "/test-launch", write: "/write", spread: "/spread", hunt: "/hunt", recover: "/recover", conversations: "/conversations", video: "/video", prospects: "/prospects", featured: "/featured", inbox: "/inbox", pipeline: "/pipeline", sprint: "/sprint", impact: "/impact",
     growth: "/growth", aisearch: "/ai-search", analytics: "/learning", foundation: "/foundation", site: "/site", markets: "/markets",
     trust: "/trust", connections: "/connections", settings: "/settings", howitworks: "/how-it-works", capabilities: "/capabilities",
+    strategy: "/strategy",
   };
-  return map[id] || "/today";
+  // Only ids whose route differs from the id need an entry. Falling back to
+  // "/today" meant a nav item missing from this map sent the owner silently to
+  // the wrong page instead of failing loudly — which is exactly what happened
+  // to The plan, and could not be seen from the nav list itself.
+  return map[id] || `/${id}`;
 }

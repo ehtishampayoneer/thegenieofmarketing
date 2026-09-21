@@ -200,7 +200,9 @@ export default function ApprovalsPage() {
       fireApprove(item, draft);
       setToast(item.platform === "listing"
         ? "Opened the sign-up page and copied your listing text. Sign in, paste it in, and submit."
-        : "Opened it with your post ready. Review and tap post. (I never auto-post to your social accounts.)");
+        : item.image
+          ? "Opened it with your text ready. The image can't travel through a link — press Save image, then attach it before you post."
+          : "Opened it with your post ready. Review and tap post. (I never auto-post to your social accounts.)");
       setDone((d) => d + 1); removeById(item.id);
       return;
     }
@@ -515,7 +517,18 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <LeftPanel item={item} isArticle={isArticle} />
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--hair)" }}>
           <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--hair)" }}>
-            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] mg-subtle"><Icon.eye size={13} /> PREVIEW <span className="font-medium normal-case tracking-normal" style={{ textTransform: "none" }}>(as it will publish)</span></span>
+            {/* "As it will publish" is only true where Genie does the publishing.
+                For X, Reddit and the rest it copies the text and opens their
+                composer — and no composer accepts an image through a link, so
+                the picture shown here does NOT travel with it. Saying "as it
+                will publish" over an image that never arrives is the kind of
+                small lie that makes an owner distrust everything else. */}
+            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] mg-subtle">
+              <Icon.eye size={13} /> PREVIEW
+              <span className="font-medium normal-case tracking-normal" style={{ textTransform: "none" }}>
+                {item.owned ? "(as it will publish)" : item.image ? "(text is copied for you — attach the image yourself)" : "(text is copied for you)"}
+              </span>
+            </span>
             <span className="text-[12px] mg-subtle mg-num">{words ? `${fmt(words)} words` : ""}</span>
           </div>
           <div className="thin-scroll" style={{ maxHeight: 360, overflowY: "auto", padding: "18px 20px", background: "var(--surface)" }}>
@@ -625,6 +638,13 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         ) : (
           <>
             <button className="mg-btn mg-btn--dawn" onClick={onApprove} disabled={working}>{working ? "Publishing…" : item.owned ? "Approve & publish" : item.platform === "pinterest" ? "Save to Pinterest" : "Copy & open"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></button>
+            {/* The image X will not take. One press saves it so it can be
+                attached in the composer that is already open. */}
+            {!item.owned && item.image && (
+              <button className="mg-btn mg-btn--ghost" onClick={() => saveImage(item)} style={{ fontSize: 13 }}>
+                <Icon.plus size={14} /> Save image
+              </button>
+            )}
             <button className="mg-btn mg-btn--ghost" onClick={onEdit}>Edit <span className="mg-kbd" style={{ marginLeft: 4 }}>E</span></button>
             <button className="mg-btn mg-btn--quiet" onClick={onSkip}>Skip <span className="mg-kbd" style={{ marginLeft: 4 }}>S</span></button>
             <div className="ml-auto flex items-center gap-2">
@@ -732,6 +752,23 @@ function ApprovalQueue({ view, idx, onPick }) {
     </div>
   );
 }
+// Save the picture so it can be attached by hand. Genie generates these as data
+// URLs or serves them from its own domain, so a plain download link works; when
+// the browser refuses one, opening it in a tab always lets the owner save it.
+function saveImage(item) {
+  const src = item?.imageRaw || item?.image;
+  if (!src) return;
+  try {
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = `${String(item.title || "image").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50)}.jpg`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch { window.open(src, "_blank", "noopener"); }
+}
+
 function queueTitle(it) {
   if (it.kind === "article") return "Publish a blog article";
   if (it.isCarousel) return `${plat(it.platform || "Instagram")} carousel`;

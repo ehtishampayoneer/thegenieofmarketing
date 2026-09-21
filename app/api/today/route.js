@@ -58,7 +58,20 @@ export async function GET() {
     const a = acts || [];
     const has = (re) => a.filter((x) => re.test(`${x.verb} ${x.message}`)).length;
     const published = a.filter((x) => x.verb === "published").length || has(/publish/i);
-    const found = a.filter((x) => x.verb === "discovered").length || has(/found|discover/i);
+    // NOT the activity log. "discovered" is written by every engine that finds
+    // anything — a place to post, a prospect, an AI-search gap — so counting it
+    // told the owner "3 buyers showing intent" on Today while Buyer Hunt, which
+    // counts the actual staged buyers, showed zero. One number, two definitions,
+    // and the owner reasonably concluded both were invented. It now counts the
+    // same rows the Buyer Hunt page lists, so the two can never disagree.
+    let found = 0;
+    try {
+      const { count } = await supabase.from("placements")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id).eq("status", "ready")
+        .contains("meta", { buyer_intent: true });
+      found = count || 0;
+    } catch {}
     const emails = has(/outreach|email|sent/i);
     const replies = a.filter((x) => x.verb === "replied").length || has(/repl/i);
     const ranks = has(/rank|position|climb|traction/i);

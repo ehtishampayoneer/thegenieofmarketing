@@ -198,7 +198,20 @@ export async function POST(_request, { params }) {
   // ── HOSTED FALLBACK — Genie Pages (no WordPress needed) ──
   if (!hasWP) {
     try {
-      const host = action.target?.host || null;
+      // An article with no host publishes under the handle "site" — an orphan
+      // nobody's blog lists, so the owner approves it, Genie reports success,
+      // and their blog stays empty with no error anywhere. The scan always
+      // knows the host, so ask it rather than filing the article under a
+      // handle that belongs to no one.
+      let host = action.target?.host || null;
+      if (!host) {
+        try {
+          const { data: scan } = await supabase.from("scans").select("final_url, url")
+            .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          const { hostOf } = await import("@/lib/business");
+          host = scan ? hostOf(scan) || null : null;
+        } catch {}
+      }
       const { publishHostedPage, appBase } = await import("@/lib/pages");
       const { conversionCtaHtml } = await import("@/lib/cta");
       const bizName = await businessNameFor(supabase, user.id, host);
