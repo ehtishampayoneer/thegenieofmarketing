@@ -7,7 +7,7 @@
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hostOf } from "@/lib/business";
-import { briefBlock } from "@/lib/business-brief";
+import { genieBrain } from "@/lib/brain";
 import { batchRecover, normalizeContact } from "@/lib/recovery";
 
 export const runtime = "nodejs";
@@ -45,7 +45,7 @@ export async function POST(request) {
   let host = null;
   try {
     const { data: scan } = await supabase.from("scans").select("ai, final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; business.name = business.name || ai.businessName || ""; business.whatTheySell = ai.whatTheySell || ""; business.pitch = business.pitch || ai.whyChooseYou || ai.whatTheySell || ""; business.website = business.website || (host ? `https://${host}` : ""); business.brief = briefBlock(ai, { max: 2200 }); }
+    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; business.name = business.name || ai.businessName || ""; business.whatTheySell = ai.whatTheySell || ""; business.pitch = business.pitch || ai.whyChooseYou || ai.whatTheySell || ""; business.website = business.website || (host ? `https://${host}` : ""); business.brief = (await genieBrain(supabase, { userId, host, ai })).block; }
   } catch {}
 
   // Draft in chunks (rate-limit safe); batchRecover templates any the AI misses.

@@ -14,6 +14,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { recordEvent, getEvents } from "@/lib/events";
 import { spreadPrompt, normalizePack, CHANNEL_INDEX } from "@/lib/spread";
+import { genieBrain } from "@/lib/brain";
 import { pageUrl } from "@/lib/pages";
 import { hostOf } from "@/lib/business";
 
@@ -73,12 +74,12 @@ export async function POST(request) {
   const cached = saved.find((e) => e?.data?.pageId === pageId)?.data?.pack || null;
   if (cached?.length) return json({ ok: true, pack: cached, cached: true });
 
-  let ai = {};
-  try {
-    const { data: scan } = await supabase.from("scans").select("ai").eq("user_id", user.id)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    ai = scan?.ai || {};
-  } catch {}
+  // THE PLAN. This read the newest scan for the account with no host filter, so
+  // an owner who had also scanned a competitor could get that business's details
+  // spread across five platforms. The brain resolves the scan for THIS host and
+  // brings the plan with it, so every version argues what the article argues.
+  const brain = await genieBrain(supabase, { userId: user.id, host: page.host || null });
+  const ai = brain.ai || {};
 
   const owns = await getEvents(supabase, { userId: user.id, types: ["publish.own_url"], limit: 200 });
   const ownUrl = owns.find((e) => e?.data?.pageId === pageId)?.data?.url || null;
@@ -89,7 +90,7 @@ export async function POST(request) {
     const r = await callAI({
       system: "You rewrite one article for different platforms. Each version must stand on its own, sound like a person, and never invent facts. Return ONLY valid JSON.",
       json: true, maxTokens: 6000, temperature: 0.6, timeoutMs: 60000,
-      prompt: spreadPrompt({ article, ai, canonical: pageUrl(page.handle, page.slug), ownUrl }),
+      prompt: spreadPrompt({ article, ai, canonical: pageUrl(page.handle, page.slug), ownUrl, plan: brain.block }),
       ctx: { supabase, userId: user.id, host: page.host || hostOf(page.host || ""), tag: "spread" },
     });
     pack = normalizePack(r.json || {});

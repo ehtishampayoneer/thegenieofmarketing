@@ -12,6 +12,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { callAI } from "@/lib/ai-router";
+import { genieBrain } from "@/lib/brain";
 import { cacheGet, cacheSet } from "@/lib/cache";
 import { classifyEntity } from "@/lib/entity";
 import { verticalsFor } from "@/lib/intent-verticals";
@@ -73,7 +74,11 @@ export async function GET(request) {
 
   let source = "site";
   if (suggestions.length < ENOUGH) {
-    const extra = await modelSuggestions({ surface, ai, host, have: suggestions });
+    // THE PLAN. These phrases are what Hunt, Get featured and Find clients go
+    // searching for, so a plan the owner corrected has to reach them — otherwise
+    // Genie keeps suggesting the business the scan guessed at.
+    const { block: plan } = await genieBrain(supabase, { userId: user.id, host, ai });
+    const extra = await modelSuggestions({ surface, ai, host, have: suggestions, plan });
     if (extra.length) {
       suggestions = dedupe([...suggestions, ...extra]).slice(0, surface === "hunt" ? 6 : 6);
       source = suggestions.length && suggestions.every((s) => s.inferred) ? "inferred" : "mixed";
@@ -86,7 +91,7 @@ export async function GET(request) {
 // One cached call, free engines only. Kept narrow on purpose: it is asked for the
 // same shape the deterministic pass produces, so the UI never has to care which
 // one a chip came from beyond the `why` line it shows.
-async function modelSuggestions({ surface, ai, host, have }) {
+async function modelSuggestions({ surface, ai, host, have, plan = "" }) {
   const key = `suggest:${surface}:${host}`;
   const hit = cacheGet(key);
   if (hit) return hit;
@@ -98,6 +103,7 @@ async function modelSuggestions({ surface, ai, host, have }) {
     ai.targetCustomer ? `Customers: ${ai.targetCustomer}` : "",
     ai.primaryMarket ? `Market: ${ai.primaryMarket}` : "",
     `Website: ${host}`,
+    plan,
   ].filter(Boolean).join("\n");
 
   const ASK = {

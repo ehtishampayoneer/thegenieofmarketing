@@ -32,6 +32,7 @@ const GROUPS = [
     sub: "Before it markets you, it learns what you actually sell.",
     items: [
       { icon: "scan", t: "Reads your website", p: "Scans your site, works out what you sell and who buys it, and classifies your business so every move is on-brand.", href: "/connections", status: ["live", "Active"] },
+      { icon: "target", t: "One plan every part of Genie follows", p: "Your website and your answers become one written plan: who the customer is, what they are trying to do, how you show up in that, why it works, what may never be claimed, and which countries are worth the effort. Every engine reads that same plan, so the article, the Reddit reply, the cold email, the pitch and the listing all argue the same thing. Read it back on the Strategy page and correct it once, not in fourteen places. It will NOT invent proof or customers, and it says plainly when you have not confirmed it yet.", href: "/strategy", status: ["live", "Active"] },
       { icon: "post", t: "Learns from your videos", p: "Give Genie a video and it writes out the captions, the chapters and your three strongest clips to cut, with real timestamps. More importantly it pulls out the facts you said out loud and saves them, so every article afterwards uses your own numbers and process instead of sounding generic.", href: "/video", status: ["live", "Active"] },
       { icon: "target", t: "Builds a keyword strategy", p: "Derives the exact buyer searches to rank for from real Google data, scored by demand vs. winnability.", href: "/growth", status: ["live", "Active"] },
     ],

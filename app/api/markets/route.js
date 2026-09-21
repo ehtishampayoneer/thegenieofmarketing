@@ -16,6 +16,7 @@ import { getValidAccessToken } from "@/lib/google";
 import { scoreMarkets, COUNTRIES, flagEmoji } from "@/lib/markets";
 import { pickPostImage } from "@/lib/media";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
+import { genieBrain } from "@/lib/brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,12 +102,13 @@ export async function GET(req) {
   return jres({ ok: true, host: ctx.host || null, audience: ctx.dims?.audience || "unknown", hasGsc: result.hasGsc, localOnly: result.localOnly, profile, rows: result.rows, experiments, generatedAt: new Date().toISOString() });
 }
 
-function marketPrompt({ name, country, keyword, host, language = "en" }) {
+function marketPrompt({ name, country, keyword, host, language = "en", planBlock = "" }) {
   const kw = keyword || `${name}`;
   const langLine = language === "en"
     ? `Write in clear, natural English (do NOT machine-translate), but make it locally relevant to ${country}.`
     : `Write natively and fluently in ${language.toUpperCase()} (the local language of ${country}) — natural, not machine-translated — for a local reader.`;
-  return `Write ONE genuinely useful landing/answer page for "${name}"${host ? ` (${host})` : ""}, aimed at buyers in ${country} searching for "${kw}".
+  return `${planBlock}
+Write ONE genuinely useful landing/answer page for "${name}"${host ? ` (${host})` : ""}, aimed at buyers in ${country} searching for "${kw}".
 ${langLine} Reference the local context, mention that ${name} serves customers in ${country}, and use local currency/examples where it reads naturally. Be specific and genuinely helpful — no generic filler, no fluff.
 Return ONLY valid JSON (no markdown fences):
 {"title":"a compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case-url","body":"an 800–1100 word article in markdown with ## subheadings, ending with a short FAQ of 2–3 real questions buyers in ${country} would ask, each with a helpful answer"}`;
@@ -114,12 +116,13 @@ Return ONLY valid JSON (no markdown fences):
 
 // The full country KIT prompt — one AI call returns every piece of the market test,
 // each of which becomes its own country-tagged task in Approvals.
-function marketPlanPrompt({ name, country, keyword, host, language = "en" }) {
+function marketPlanPrompt({ name, country, keyword, host, language = "en", planBlock = "" }) {
   const kw = keyword || name;
   const langLine = language === "en"
     ? `Write everything in clear, natural English (do NOT machine-translate), locally relevant to ${country}.`
     : `Write everything natively and fluently in ${language.toUpperCase()} (the local language of ${country}) — natural, not machine-translated, for a local reader.`;
-  return `You are building a focused market-test kit for "${name}"${host ? ` (${host})` : ""} to win buyers in ${country} who search for "${kw}". ${langLine} Be specific and genuinely useful — no generic filler, no fluff. Reference real ${country} context and mention that ${name} serves customers there.
+  return `${planBlock}
+You are building a focused market-test kit for "${name}"${host ? ` (${host})` : ""} to win buyers in ${country} who search for "${kw}". ${langLine} Be specific and genuinely useful — no generic filler, no fluff. Reference real ${country} context and mention that ${name} serves customers there.
 Return ONLY valid JSON (no markdown fences) with EXACTLY these keys:
 {"landing":{"title":"compelling H1","metaTitle":"<=60 chars","metaDescription":"<=155 chars, benefit-led","slug":"kebab-case","body":"650–950 word markdown article with ## subheadings, ending with a 2–3 question FAQ that real buyers in ${country} would ask, each answered"},"social":{"platform":"linkedin","hook":"a punchy 4–8 word hook to overlay on the post image (plain text, no hashtags, no emoji)","text":"a ready-to-post caption, max ~90 words, introducing ${name} to ${country}, with 2–3 relevant local hashtags"},"email":{"subject":"<=60 chars","body":"a 140–190 word outreach email to a local partner, blogger, or community in ${country}","audience":"one line: who to send this to"},"localSeo":{"title":"Local visibility setup","snippet":"copy-paste HTML: an hreflang tag and a geo/region meta targeting ${country}","note":"1–2 lines on where to paste it on their own site"},"distribution":[{"title":"short task name","where":"a real, specific ${country} directory, marketplace, or community","why":"one line on why it helps"}]}
 Give EXACTLY 3 items in distribution.`;
@@ -247,6 +250,12 @@ export async function POST(req) {
     expId = expRow?.id || null;
   } catch (e) { return jres({ ok: false, error: "Couldn't start that experiment. Try again." }, 500); }
 
+  // THE PLAN. Market Testing feeds the plan its countries, and then wrote the
+  // country pages knowing only a name and a keyword — so the page that introduces
+  // the business to a new country could describe it differently from every other
+  // page. It reads the same plan it contributes to.
+  const { block: planBlock } = await genieBrain(supabase, { userId: user.id, host: ctx.host, ai: ctx.ai });
+
   // On-brand imagery, fetched in PARALLEL with the AI draft (same system as global
   // content: the business's own photos first, then free stock). Topic is keyword-based
   // so it doesn't wait on the plan. Best-effort — never blocks the kit.
@@ -256,7 +265,7 @@ export async function POST(req) {
   //    proposed action tagged with this country → Approvals groups them on one tab.
   let planJson = null, aiError = null;
   try {
-    const result = await callAI({ system: "You are Genie, an expert multilingual SEO/AEO marketer. Write genuinely useful, specific, locally-relevant content — never generic filler. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 4200, temperature: 0.7, prompt: marketPlanPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
+    const result = await callAI({ system: "You are Genie, an expert multilingual SEO/AEO marketer. Write genuinely useful, specific, locally-relevant content — never generic filler. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 4200, temperature: 0.7, prompt: marketPlanPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang, planBlock }) });
     planJson = result?.json || null;
   } catch (e) { aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
 
@@ -283,7 +292,7 @@ export async function POST(req) {
   // Graceful fallback: always guarantee at least the anchor landing page.
   if (!tasks.some((t) => t.type === "article")) {
     try {
-      const r2 = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3200, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang }) });
+      const r2 = await callAI({ system: "You are Genie, an expert SEO/AEO content writer. Return ONLY valid JSON, no markdown fences.", json: true, maxTokens: 3200, temperature: 0.7, prompt: marketPrompt({ name: ctx.name, country: co.name, keyword, host: ctx.host, language: writeLang, planBlock }) });
       if (r2?.json?.title && r2?.json?.body) tasks = [...buildMarketTasks({ plan: { landing: r2.json }, name: ctx.name, host: ctx.host, co, keyword, expId, writeLang, hero, socialCardUrl }), ...tasks];
     } catch (e) { if (!aiError) aiError = e instanceof AllProvidersFailedError ? "busy" : "error"; }
   }

@@ -11,7 +11,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
 import { gradePortfolio } from "@/lib/keyword-health";
 import { cooldownFor } from "@/lib/cadence";
-import { briefBlock } from "@/lib/business-brief";
+import { genieBrain } from "@/lib/brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +24,13 @@ export async function POST(request) {
   if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
   const { host, ai } = body || {};
   if (!host) return json({ ok: false, error: "Missing host." }, 400);
+
+  // THE PLAN. This radar used to paste the owner's brief and let the model
+  // re-decide what the business was, which is how a reply here could argue
+  // something the articles never claimed. Read-only: the nightly run must not
+  // spend an AI call drafting the plan, and whichever engine drafts it first has
+  // already saved it for every engine after.
+  const { block: plan } = await genieBrain(supabase, { userId, host, ai });
 
   const { data: kwRows } = await supabase.from("keywords").select("*").eq("user_id", userId).eq("host", host);
   if (!kwRows?.length) return json({ ok: false, needsKeywords: true, error: "Genie needs keywords first." }, 400);
@@ -64,7 +71,7 @@ export async function POST(request) {
     const result = await callAI({
       system: "You are Genie finding off-site marketing openings. Classify each result and write the right placement: a forum reply (value-first), a pitch to be added to a 'best X' listicle, or a guest-post pitch to a blog that accepts contributors. Never spammy. If a result is irrelevant or not actually one of these, set fit:false. Return ONLY valid JSON.",
       json: true, maxTokens: 4500, timeoutMs: 45000, temperature: 0.7,
-      prompt: buildPrompt(candidates, ai, host),
+      prompt: buildPrompt(candidates, ai, host, plan),
     });
     drafted = result.json;
   } catch (e) {
@@ -94,11 +101,11 @@ export async function POST(request) {
   return json({ ok: true, staged: (inserted || []).length });
 }
 
-function buildPrompt(candidates, ai, host) {
+function buildPrompt(candidates, ai, host, plan = "") {
   const list = candidates.map((c, i) => `[${i}] keyword: "${c.keyword}" | likely type: ${c.hint}\ntitle: ${c.title}\nurl: ${c.url}\ncontext: ${c.snippet || "(none)"}`).join("\n\n");
   return `Product: ${ai?.businessName || host} — ${ai?.whatTheySell || ai?.industry || ""}
 Who it helps: ${ai?.targetCustomer || "(infer)"}
-${briefBlock(ai || {}, { max: 1500 })}
+${plan}
 Only count a thread as a fit when the person is one of the owner's target customers. Builders of the same thing, developers asking how to make it, and anyone in who-not-to-target are not fits.
 
 Web results Genie found (classify + write a placement for real fits):

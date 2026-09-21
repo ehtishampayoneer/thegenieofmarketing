@@ -10,7 +10,7 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 
-import { briefBlock } from "@/lib/business-brief";
+import { genieBrain } from "@/lib/brain";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -53,6 +53,11 @@ export async function POST(request) {
     directives = (data || []).map((d) => d.insight).filter(Boolean);
   } catch {}
 
+  // THE PLAN. The owner asks Genie questions in the same place Genie executes, so
+  // the answers have to come from the plan the engines follow, not a fresh read
+  // of the interview that can disagree with it.
+  const { block: plan } = await genieBrain(supabase, { userId: user.id, host, ai });
+
   const name = ai.businessName || host || "your business";
   const convo = messages.map((m) => `${m.role === "user" ? "Owner" : "Genie"}: ${m.content}`).join("\n");
 
@@ -65,7 +70,7 @@ export async function POST(request) {
 Return ONLY JSON: { "reply": "your natural reply as Genie", "directive": null or "a concise standing rule, e.g. 'Write casually, no hype'", "memory": null or "a durable business fact worth remembering" }`;
 
   const prompt = `THIS BUSINESS: ${name}${ai.whatTheySell ? ` — ${ai.whatTheySell}` : ""}.
-${briefBlock(ai, { max: 2500 })}
+${plan}
 ${ai.targetCustomer ? `Ideal customer: ${ai.targetCustomer}.` : ""}${ai.competitors?.length ? ` Competitors: ${(ai.competitors || []).map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean).slice(0, 3).join(", ")}.` : ""}
 
 STANDING INSTRUCTIONS I ALREADY FOLLOW:

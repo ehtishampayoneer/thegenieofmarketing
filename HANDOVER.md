@@ -475,7 +475,32 @@ Free = 15 emails/day, Pro = 50/day. Slow drip (spaced sends), never blasted. One
 (unsubscribe + physical address ship in `buildEmailHtml`, suppression list in
 `lib/compliance.js`); the empty contact directory (`lib/email-engine.js` now seeds it
 from the prospects engine — see `seedDirectory()`); the V1→V2 screen migration; the
-social-copy craft gap; the content engine's shared token budget.
+social-copy craft gap; the content engine's shared token budget; **the engines that
+each re-decided what the business was** (see THE BRAIN below).
+
+**THE BRAIN (`lib/brain.js`) — read this before adding an engine.** The strategy
+layer (`lib/strategy.js`) holds the one decision; the brain is how everything reads
+it. `genieBrain(supabase, { userId, host, ai })` returns the plan, the countries
+Market Testing verified, the keyword the strategy picked, the business name, and a
+`block` string to paste into a prompt. It never throws; with no plan yet it returns
+the owner's brief, so wiring an engine up can never make it worse than it was.
+
+Why it exists: the strategy layer reached eight engines. Three radars still pasted
+raw prose and re-decided the positioning, and nine more — pillars, refresh, spread,
+the reply drafter, the listing kit, sharpen, suggest, the community planner and
+Market Testing — wrote customer-facing text with no business context at all. Nothing
+crashed; the article simply argued one thing and the Reddit reply another.
+
+Also fixed in that pass: `strategyBlock()` never emitted `markets`, so the countries
+Market Testing ranked were stored, shown to the owner and read by nothing. And
+`getStrategy()` only ever filled an EMPTY country list, so a plan saved before Search
+Console had data kept its first guess for good — the brain now re-asks every 14 days
+and records the check in `strategy.marketsAt` (owner-set countries are never touched).
+
+**`test/one-brain.test.js` enforces it.** It walks every file that calls `callAI` and
+fails unless the file reads the brain or is in its `EXEMPT` map WITH a written reason.
+If you add an engine, you read the brain or you justify yourself in that file. It has
+already caught one engine (`/api/genie/plan`) that was missed by hand.
 
 1. **Run the migrations.** `db/onsite.sql` and `db/directory.sql`. Both are idempotent.
    Until they are run, the traffic panel, lead capture, the money page and the entire

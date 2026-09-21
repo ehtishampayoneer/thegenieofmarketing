@@ -9,7 +9,7 @@ import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
 
-import { briefBlock } from "@/lib/business-brief";
+import { genieBrain } from "@/lib/brain";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -67,6 +67,11 @@ export async function POST(request) {
   let profile = {};
   try { const { data } = await supabase.from("profiles").select("company_name, company_pitch, company_website").eq("id", user.id).maybeSingle(); profile = data || {}; } catch {}
 
+  // THE PLAN. This hands the OWNER a written strategy. Reading the interview again
+  // here meant Genie could describe a strategy to the owner that differs from the
+  // one its engines are actually executing, which is worse than saying nothing.
+  const { block: plan } = await genieBrain(supabase, { userId: user.id, host, ai });
+
   let directives = [];
   try {
     const { data } = await supabase.from("growth_memory").select("insight").eq("user_id", user.id).ilike("mkey", "directive:%").order("updated_at", { ascending: false }).limit(10);
@@ -92,7 +97,7 @@ Provide 4-7 steps, 3-6 assets, and 5-10 schedule rows. Keep copy tight.`;
 ${extra ? `\nOWNER'S SPECIFIC ASK: ${extra}` : ""}
 
 THE BUSINESS: ${name}${sells ? ` — ${sells}` : ""}.
-${briefBlock(ai, { max: 2500 })}
+${plan}
 ${ai.targetCustomer ? `Ideal customer: ${ai.targetCustomer}.` : ""}${profile.company_website || host ? ` Website: ${profile.company_website || host}.` : ""}
 ${ai.competitors?.length ? `Competitors: ${(ai.competitors || []).map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean).slice(0, 3).join(", ")}.` : ""}
 

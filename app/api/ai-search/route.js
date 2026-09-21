@@ -12,6 +12,7 @@ import { hostOf } from "@/lib/business";
 import { webSearch } from "@/lib/search";
 import { getBrief, recordDecision, recordLearning } from "@/lib/growth-memory";
 import { aiSearchQuestions, summarizeVisibility, runVerdict } from "@/lib/ai-search";
+import { genieBrain } from "@/lib/brain";
 import { logActivity, logActivityBatch } from "@/lib/activity";
 import { recordEvent, getEvents } from "@/lib/events";
 
@@ -37,7 +38,10 @@ export async function POST(request) {
     keywords = (data || []).map((k) => k.keyword);
   } catch {}
 
-  const questions = aiSearchQuestions(entity, ai, keywords);
+  // THE PLAN. Ask what the owner says their buyers ask, not only what the scan
+  // implied — one correction on /strategy now reaches the wedge too.
+  const brain = await genieBrain(supabase, { userId, host, ai });
+  const questions = aiSearchQuestions(entity, ai, keywords, brain.strategy?.whereTheyLook || []);
   if (questions.length === 0) return json({ ok: false, needsContext: true, message: "Genie needs a scan or keyword to check AI search." }, 400);
 
   await logActivity(supabase, userId, {

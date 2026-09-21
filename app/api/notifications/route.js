@@ -8,6 +8,7 @@
 // Runs on demand and from the overnight cron. Everything inside Genie.
 
 import { callAI } from "@/lib/ai-router";
+import { genieBrain } from "@/lib/brain";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { findNewReplies } from "@/lib/replies";
 
@@ -55,6 +56,12 @@ export async function POST(request) {
   const { data: posted } = await q;
   if (!posted?.length) return json({ ok: true, scanned: 0, newReplies: 0, drafted: 0 });
 
+  // THE PLAN. This drafts replies to real people, and it used to do it knowing
+  // only the business name and one scan field — so it could not honour the
+  // owner's never-say list, their proof, or who is not a customer. One read,
+  // reused for every reply in this run.
+  const { block: plan } = await genieBrain(supabase, { userId, host, ai });
+
   let scanned = 0, newReplyCount = 0, drafted = 0;
 
   for (const p of posted) {
@@ -74,7 +81,7 @@ export async function POST(request) {
     // For each NEW reply we could read → draft an answer + notify.
     for (const reply of result.newReplies || []) {
       newReplyCount++;
-      const draft = await draftAnswer(p, reply, ai, host);
+      const draft = await draftAnswer(p, reply, ai, host, plan);
       await supabase.from("notifications").insert({
         user_id: userId, host: p.host, kind: "reply", priority: 1,
         title: `${reply.author} replied on ${p.platform}`,
@@ -118,12 +125,13 @@ export async function PATCH(request) {
   return json({ ok: true });
 }
 
-async function draftAnswer(placement, reply, ai, host) {
+async function draftAnswer(placement, reply, ai, host, plan = "") {
   try {
     const result = await callAI({
-      system: "You are Genie. Someone replied to a post you made in a community. Write a genuinely helpful, natural, human response that continues the conversation. Never salesy, never repeat the original post. If they asked a question, answer it. Keep it concise and authentic. Return ONLY the reply text.",
+      system: "You are Genie. Someone replied to a post you made in a community. Write a genuinely helpful, natural, human response that continues the conversation. Never salesy, never repeat the original post. If they asked a question, answer it. Keep it concise and authentic. Follow the plan you are given: never claim anything outside its proof, and never say anything on its never-say list. Return ONLY the reply text.",
       maxTokens: 500, temperature: 0.7,
       prompt: `Product context: ${ai?.businessName || host} — ${ai?.whatTheySell || ""}
+${plan}
 Your original ${placement.platform} post:
 ${(placement.draft || "").slice(0, 500)}
 

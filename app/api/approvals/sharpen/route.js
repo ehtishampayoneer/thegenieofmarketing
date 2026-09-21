@@ -20,6 +20,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { callAI } from "@/lib/ai-router";
+import { genieBrain } from "@/lib/brain";
 import { craftBlock, PLATFORMS } from "@/lib/platform-craft";
 
 export const runtime = "nodejs";
@@ -115,6 +116,11 @@ export async function POST(request) {
     if (prof) biz = [prof.company_name, prof.company_pitch].filter(Boolean).join(" — ");
   } catch {}
 
+  // THE PLAN. Sharpening rewrites a draft that already passed the plan and the
+  // content guard, so without it the rewrite is the one step that can quietly put
+  // back a claim the owner said never to make.
+  const { block: plan } = await genieBrain(supabase, { userId: user.id, host: null });
+
   const target = spec
     ? `This is going on ${spec.label}. Hard limit ${spec.limit} characters${spec.fold < spec.limit ? `, and only about ${spec.fold} show before the reader has to expand it` : ""}.`
     : "This is prose on the business's own site, not a social post. There is no character limit, so judge it on whether someone keeps reading.";
@@ -138,7 +144,7 @@ For prose, sharpen means:
     json: true,
     temperature: 0.7,
     maxTokens: 3000,
-    prompt: `${biz ? `THE BUSINESS: ${biz}\n` : ""}${title ? `INTERNAL LABEL (context only, do not quote it): ${title}\n` : ""}
+    prompt: `${biz ? `THE BUSINESS: ${biz}\n` : ""}${title ? `INTERNAL LABEL (context only, do not quote it): ${title}\n` : ""}${plan}
 ${target}
 ${rules}${proseRules}
 THE DRAFT TO SHARPEN:

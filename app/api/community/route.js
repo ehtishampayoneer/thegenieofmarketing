@@ -11,6 +11,7 @@
 
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
+import { genieBrain } from "@/lib/brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,16 @@ export async function POST(request) {
   const { ai, host, scanId } = body || {};
   if (!ai) return json({ ok: false, error: "Missing business context." }, 400);
 
+  // THE PLAN. The community planner decides where the customer gathers and drafts
+  // what to say there, which is the same decision the plan already holds. Signed
+  // out there is no plan to read, and the scan fields below remain the floor.
+  let plan = "";
+  try {
+    const sb = createClient();
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) ({ block: plan } = await genieBrain(sb, { userId: user.id, host, ai }));
+  } catch {}
+
   let data = null;
   try {
     const result = await callAI({
@@ -32,7 +43,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 2800,
       temperature: 0.7,
-      prompt: buildPrompt(ai, host),
+      prompt: buildPrompt(ai, host, plan),
     });
     data = result.json;
   } catch (e) {
@@ -83,11 +94,12 @@ export async function POST(request) {
   return json({ ok: true, communities, weeklyRhythm: rhythm, actionIds });
 }
 
-function buildPrompt(ai, host) {
+function buildPrompt(ai, host, plan = "") {
   return `Business: ${ai.businessName || host || "(unknown)"} — ${ai.industry || ""} ${ai.subCategory ? "/ " + ai.subCategory : ""}
 Type: ${ai.businessType || "(infer)"}
 Sells: ${ai.whatTheySell || ""}
 Target customer: ${ai.targetCustomer || ""}
+${plan}
 
 Find where these customers genuinely gather online and plan authentic participation. Return ONLY this JSON:
 {
