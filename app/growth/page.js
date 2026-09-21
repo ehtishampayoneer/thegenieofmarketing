@@ -617,7 +617,11 @@ function StrategyPhase({ active, inTop20 }) {
     { key: "Build", sub: "Weeks 5–12", current: true },
     { key: "Dominate", sub: "Month 3+" },
   ];
-  const estDays = active.map((k) => k._status?.target?.days || 30).sort((a, b) => a - b)[0] || 12;
+  // Only keywords that actually have a target contribute a timeline. The old
+  // "|| 30" gave every untargeted keyword a made-up thirty days, and the final
+  // "|| 12" produced "est. 12 days" out of thin air when there were no keywords
+  // at all — a confident forecast for work that had not started.
+  const estDays = active.map((k) => k._status?.target?.days).filter((d) => Number(d) > 0).sort((a, b) => a - b)[0] || null;
   return (
     <Card className="p-6 mg-rise">
       <p className="mg-klabel">STRATEGY PHASE</p>
@@ -638,7 +642,7 @@ function StrategyPhase({ active, inTop20 }) {
       <div className="mg-seam my-4" />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[13px] mg-muted">You’re <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{pct}%</span> through the Build phase.</p>
-        <p className="text-[13px] mg-muted">Next milestone: First keyword in top 20 <span className="font-semibold" style={{ color: "var(--accent-ink)" }}>(est. {estDays} days)</span></p>
+        <p className="text-[13px] mg-muted">Next milestone: First keyword in top 20{estDays ? <> <span className="font-semibold" style={{ color: "var(--accent-ink)" }}>(est. {estDays} days)</span></> : null}</p>
       </div>
     </Card>
   );
@@ -702,13 +706,17 @@ function HealthRing({ value, size = 156 }) {
 }
 
 function NextMilestone({ active, inTop20 }) {
-  const estDays = active.map((k) => k._status?.target?.days || 30).sort((a, b) => a - b)[0] || 12;
+  // Only keywords that actually have a target contribute a timeline. The old
+  // "|| 30" gave every untargeted keyword a made-up thirty days, and the final
+  // "|| 12" produced "est. 12 days" out of thin air when there were no keywords
+  // at all — a confident forecast for work that had not started.
+  const estDays = active.map((k) => k._status?.target?.days).filter((d) => Number(d) > 0).sort((a, b) => a - b)[0] || null;
   const title = inTop20 > 0 ? "First page-one ranking" : "First top 20 ranking";
   return (
     <Card className="p-5 mg-rise">
       <p className="mg-klabel">NEXT MILESTONE</p>
       <p className="mt-3 text-[16px] font-bold" style={{ color: "var(--fg)" }}>{title}</p>
-      <p className="mt-1.5 text-[13px] mg-muted">Est. <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{estDays} days</span></p>
+      <p className="mt-1.5 text-[13px] mg-muted">{estDays ? <>Est. <span className="font-bold" style={{ color: "var(--accent-ink)" }}>{estDays} days</span></> : "Genie sets a timeline once it has a rank to climb from."}</p>
     </Card>
   );
 }

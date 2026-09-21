@@ -53,37 +53,66 @@ export async function GET() {
   // Overnight activity (24h) → stat counts + human summary.
   try {
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const { data: acts } = await supabase
-      .from("activity").select("verb, message").eq("user_id", user.id).gte("created_at", since).limit(300);
-    const a = acts || [];
-    const has = (re) => a.filter((x) => re.test(`${x.verb} ${x.message}`)).length;
-    const published = a.filter((x) => x.verb === "published").length || has(/publish/i);
-    // NOT the activity log. "discovered" is written by every engine that finds
-    // anything — a place to post, a prospect, an AI-search gap — so counting it
-    // told the owner "3 buyers showing intent" on Today while Buyer Hunt, which
-    // counts the actual staged buyers, showed zero. One number, two definitions,
-    // and the owner reasonably concluded both were invented. It now counts the
-    // same rows the Buyer Hunt page lists, so the two can never disagree.
-    let found = 0;
+    // ── EVERY NUMBER COUNTS THE THING IT NAMES ─────────────────────────────
+    // All five of these were read off the activity log, by verb or by a regex
+    // over the message text. That log is written by every engine for every kind
+    // of work, so:
+    //   "Articles published"  counted a social post, which also logs "published"
+    //   "Emails sent"         counted any message mentioning email
+    //   "Replies received"    counted a reply Genie DRAFTED, via /repl/i
+    //   "Rankings improved"   counted any message mentioning rank or traction
+    // Not one of them was invented, and not one counted what the label said —
+    // which from the owner's side is indistinguishable from invented, and is
+    // what made them stop believing the rest of the page. Each now reads the
+    // table that holds the fact.
+    const since24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const countOf = async (table, build) => {
+      try {
+        const { count } = await build(supabase.from(table).select("id", { count: "exact", head: true }).eq("user_id", user.id));
+        return count || 0;
+      } catch { return 0; }
+    };
+
+    // Articles live on the owner's blog, not lines in a log.
+    const published = await countOf("published_pages", (q) => q.eq("status", "published").gte("published_at", since24));
+    // Buyers actually staged — the same rows the Buyer Hunt page lists, so the
+    // two screens can never disagree again.
+    const found = await countOf("placements", (q) => q.eq("status", "ready").contains("meta", { buyer_intent: true }));
+    // Email that genuinely left the building.
+    const emails = await countOf("outreach_log", (q) => q.eq("status", "sent").gte("sent_at", since24));
+    // A reply RECEIVED, which is a different thing from one Genie wrote.
+    const replies = await countOf("outreach_log", (q) => q.not("replied_at", "is", null).gte("replied_at", since24));
+    // A ranking improves when today's position beats the last one recorded for
+    // that keyword. Lower is better in search, so the comparison reads backwards
+    // on purpose.
+    let ranks = 0;
     try {
-      const { count } = await supabase.from("placements")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id).eq("status", "ready")
-        .contains("meta", { buyer_intent: true });
-      found = count || 0;
+      const { data: hist } = await supabase.from("keyword_history")
+        .select("keyword, position, recorded_on")
+        .eq("user_id", user.id)
+        .gte("recorded_on", new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10))
+        .order("recorded_on", { ascending: false }).limit(600);
+      const seen = new Map();
+      for (const r of hist || []) {
+        const k = r.keyword;
+        const pos = Number(r.position) || 0;
+        if (!pos) continue;
+        const prev = seen.get(k);
+        if (prev === undefined) { seen.set(k, pos); continue; }
+        if (prev < pos) ranks++;           // newest (prev) is a better position
+        seen.set(k, -1);                   // one comparison per keyword
+      }
     } catch {}
-    const emails = has(/outreach|email|sent/i);
-    const replies = a.filter((x) => x.verb === "replied").length || has(/repl/i);
-    const ranks = has(/rank|position|climb|traction/i);
+
     out.stats = [
       { iconKey: "write", tint: "emerald", n: String(published), label: "Articles published" },
-      { iconKey: "conversations", tint: "blue", n: String(found), label: "Conversations found" },
+      { iconKey: "conversations", tint: "blue", n: String(found), label: "Buyers found" },
       { iconKey: "mail", tint: "dawn", n: String(emails), label: "Emails sent" },
       { iconKey: "reply", tint: "emerald", n: String(replies), label: "Replies received" },
       { iconKey: "growth", tint: "dawn", n: String(ranks), label: "Rankings improved" },
     ];
     if (published + found + emails + replies + ranks > 0) {
-      out.summaryLine = `While you were away I found ${found} conversation${found !== 1 ? "s" : ""}, published ${published}, sent ${emails} email${emails !== 1 ? "s" : ""}, and handled ${replies} repl${replies !== 1 ? "ies" : "y"}.`;
+      out.summaryLine = `While you were away I found ${found} buyer${found !== 1 ? "s" : ""}, published ${published} article${published !== 1 ? "s" : ""}, sent ${emails} email${emails !== 1 ? "s" : ""}, and got ${replies} repl${replies !== 1 ? "ies" : "y"} back.`;
     }
   } catch {}
 

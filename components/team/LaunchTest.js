@@ -20,7 +20,10 @@ const KINDS = [
   ["product", "Product description"], ["email", "Cold email"], ["social", "Social post"], ["reddit", "Reddit post"], ["pitch", "Pitch to a site"],
 ];
 const QUESTIONS = ["Would they trust this?", "Is the price too high?", "Would they click?", "What would make them buy now?", "Would anyone complain about this?"];
-const STEPS = ["Gathering your crowd", "1,000 people reading it", "Arguing it out, round by round", "Improvers writing better versions", "Re-testing the winner"];
+// "1,000 people reading it" was the one place Genie described its crowd as
+// people rather than a simulation of them. The capabilities page is careful
+// about this and the differentiator cannot afford the gap.
+const STEPS = ["Gathering your crowd", "1,000 simulated customers reading it", "Arguing it out, round by round", "Improvers writing better versions", "Re-testing the winner"];
 
 export default function LaunchTest() {
   const [kind, setKind] = useState("launch");
