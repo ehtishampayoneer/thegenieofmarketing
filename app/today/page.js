@@ -61,6 +61,9 @@ export default function TodayPage() {
   }, []);
 
   const swarm = useSwarm(15000);
+  // A nightly run that has not happened in 36 hours is a stopped run, not a
+  // slow one: the schedule is daily and the job records its own completion.
+  const staleRun = !!d?.lastRun && Date.now() - Date.parse(d.lastRun) > 36 * 3600 * 1000;
   const name = cap(d?.greetingName || "");
   const entity = d?.entity?.name || "you";
   const ai = d?.aiSearch || {};
@@ -88,6 +91,18 @@ export default function TodayPage() {
           <div>
             <p className="text-[15px] font-medium" style={{ color: "var(--fg-muted)" }}>Good morning{name ? `, ${name}` : ""} <span aria-hidden>👋</span></p>
             <h1 className="mt-1 mg-display-lg">Genie is working on your growth.</h1>
+            {/* Genie runs once a night. If the last one was more than a day and
+                a half ago something has stopped, and the owner should hear it
+                from Genie rather than work it out from a dashboard that never
+                changes. */}
+            {staleRun && (
+              <p className="mt-2 text-[13px] flex items-start gap-2" style={{ color: "var(--signal-danger)" }}>
+                <span aria-hidden>⚠️</span>
+                <span style={{ color: "var(--fg-muted)" }}>
+                  Genie hasn’t completed a run since <b style={{ color: "var(--fg)" }}>{relTime(d.lastRun)} ago</b>. It runs every night — if this stays stuck, check the cron on your deployment.
+                </span>
+              </p>
+            )}
             <p className="mt-2.5 flex items-center gap-2.5 text-[13px]" style={{ color: "var(--fg-muted)" }}>
               <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live — Working now</span>
               {activity?.[0]?.created_at && (

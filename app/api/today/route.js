@@ -45,6 +45,13 @@ export async function GET() {
 
   out.greetingName = (user.email || "").split("@")[0] || null;
 
+  // When Genie last finished a run. An owner cannot tell a quiet night from a
+  // cron that stopped a fortnight ago, and the difference is the whole product.
+  try {
+    const runs = await getEvents(supabase, { userId: user.id, types: ["system.run.done"], limit: 1 });
+    out.lastRun = runs?.[0]?.created_at || null;
+  } catch {}
+
   if (host) {
     const entity = await resolveEntity(supabase, user.id, host, ai);
     out.entity = { label: entity.label, type: entity.type, source: entity.source, confidence: entity.confidence, name: entity.name || ai.businessName || host, host };
