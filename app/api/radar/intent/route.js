@@ -18,6 +18,7 @@ import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
 import { briefBlock } from "@/lib/business-brief";
+import { strategyPromptBlock } from "@/lib/strategy-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -122,12 +123,17 @@ export async function POST(request) {
     });
   }
 
+  // The plan, so the judge is deciding against the same definition of a buyer
+  // that the articles and the outreach are written to.
+  let plan = "";
+  try { plan = await strategyPromptBlock(supabase, { userId, host, ai }); } catch {}
+
   // 5) Genie confirms intent + drafts the right entity-adapted move for each.
   let refined;
   try {
     const result = await callAI({
       system:
-        `You are Genie, a buyer-intent specialist. ${brief}\n${briefBlock(ai, { max: 2000 })}\n` +
+        `You are Genie, a buyer-intent specialist. ${brief}\n${briefBlock(ai, { max: 2000 })}\n${plan}\n` +
         "For each candidate, decide if this is a GENUINE buyer actively researching/comparing/deciding (fit:true) or noise (fit:false). " +
         // Without this, a thread was judged on intent alone, so a developer asking how
         // to build AR scored as a hot buyer for a company that sells AR to retailers.

@@ -84,3 +84,38 @@ describe("the strategy every engine follows", () => {
     expect(strategyBlock({ who: ["someone"] })).toBe("");
   });
 });
+
+// ── The engines actually read it ─────────────────────────────────────────────
+// A strategy nothing consumes is the problem it was built to solve, so this
+// pins the wiring: if an engine stops passing the plan into its prompt, this
+// fails rather than the owner noticing months later in the output.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const ENGINES = [
+  ["the article writer", "app/api/content/route.js"],
+  ["keyword strategy", "app/api/keywords/route.js"],
+  ["buyer hunt", "app/api/radar/intent/route.js"],
+  ["find clients", "app/api/prospects/discover/route.js"],
+  ["get featured", "app/api/featured/discover/route.js"],
+  ["outreach", "app/api/outreach/campaign/route.js"],
+  ["the crowd", "lib/swarm/engine.js"],
+];
+
+describe("every engine works to the plan", () => {
+  for (const [name, file] of ENGINES) {
+    it(`${name} reads it`, () => {
+      const src = readFileSync(join(process.cwd(), file), "utf8");
+      expect(src).toContain("strategyPromptBlock");
+    });
+  }
+
+  it("the testers judge against it and the improvers rewrite towards it", () => {
+    const judge = readFileSync(join(process.cwd(), "lib/swarm/judge.js"), "utf8");
+    const improve = readFileSync(join(process.cwd(), "lib/swarm/improve.js"), "utf8");
+    expect(judge).toMatch(/plan = ""/);
+    expect(judge).toMatch(/never heard of this kind of product/);
+    expect(improve).toMatch(/plan = ""/);
+    expect(improve).toMatch(/Never open by naming the product/);
+  });
+});

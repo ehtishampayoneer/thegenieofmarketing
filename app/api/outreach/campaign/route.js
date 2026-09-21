@@ -10,6 +10,7 @@ import { DAILY_CAP, sentToday, sourceContacts, draftEmail, deliverEmail } from "
 import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { decideExecution } from "@/lib/autonomy";
+import { strategyPromptBlock } from "@/lib/strategy-store";
 import { logActivity } from "@/lib/activity";
 
 import { briefBlock } from "@/lib/business-brief";
@@ -97,6 +98,9 @@ export async function POST(request) {
     const segs = scan?.ai?.brief?.segments;
     if (Array.isArray(segs) && segs.length) niche = String(segs[Math.floor(Date.now() / 86400000) % segs.length]).slice(0, 120);
     briefForDrafts = briefBlock(scan?.ai || {}, { max: 1800 });
+    // The plan, so the email opens with what the seller is trying to do rather
+    // than with what the owner sells.
+    try { briefForDrafts += await strategyPromptBlock(supabase, { userId, host, ai: scan?.ai || {} }); } catch {}
   } catch {}
 
   // Source contacts. Seeds the shared directory from real published addresses

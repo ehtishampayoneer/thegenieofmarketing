@@ -18,6 +18,7 @@ import { deDash, cleanText } from "@/lib/markdown";
 import { logger } from "@/lib/log";
 
 import { briefBlock } from "@/lib/business-brief";
+import { strategyPromptBlock } from "@/lib/strategy-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -75,6 +76,13 @@ export async function POST(request) {
   if (!topic && userId && host) {
     try { const picks = await selectTargets(supabase, userId, host, { count: 1 }); pick = picks[0] || null; } catch {}
   }
+
+  // ── THE PLAN ── The one decision every engine executes: who the customer is,
+  // what they are trying to do, how this business shows up in that, and why it
+  // works. Read-only here: the nightly run must not spend an AI call drafting
+  // it, and the first engine that does will have saved it for everyone.
+  let plan = "";
+  if (userId) { try { plan = await strategyPromptBlock(supabase, { userId, host, ai }); } catch {} }
 
   // ── INTERNAL LINKING ── Pull the related articles Genie already wrote on this
   // site so the new piece can link to them (markdown → /slug). Internal links
@@ -148,7 +156,7 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500, timeoutMs: 50000,
       temperature: 0.7,
-      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context }),
+      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan }),
     });
     data = result.json;
     provider = result.provider;
@@ -394,7 +402,7 @@ export async function POST(request) {
   return json({ ok: true, saved: actionIds.length, content: data, actionIds, socialFailed, meta: { engine: provider } });
 }
 
-function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "" }) {
+function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "" }) {
   const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
     ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
     : "";
@@ -454,6 +462,11 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
     ai.avoid ? `NEVER say, claim, or promise: ${ai.avoid}.` : "",
     ai.tone ? `Owner's preferred tone: ${ai.tone}.` : "",
     briefBlock(ai, { max: 2000 }),
+    // The plan goes last so it is the final word. Everything above is raw
+    // material — what the scan inferred, what the owner typed. This is the
+    // decision made from it, and it is the same decision the hunt, the outreach
+    // and the pitches are following, which is the whole point of having one.
+    plan,
   ].filter(Boolean).join("\n");
 
   // The owner asked for THIS, and supplied THIS material. It is the only part of

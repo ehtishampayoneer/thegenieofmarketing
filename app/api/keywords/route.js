@@ -18,6 +18,7 @@ import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { briefBlock } from "@/lib/business-brief";
+import { strategyPromptBlock } from "@/lib/strategy-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -73,6 +74,11 @@ export async function POST(request) {
     } catch { ai = {}; }
   }
 
+  // The plan decides what this business is FOR, so the keywords follow it
+  // rather than being re-derived from the same notes a second time.
+  let plan = "";
+  try { plan = await strategyPromptBlock(supabase, { userId, host, ai }); } catch {}
+
   // Layer 0 (free): ground candidates in REAL Google searches via Autocomplete.
   let realSearches = [];
   try {
@@ -89,7 +95,7 @@ export async function POST(request) {
       json: true,
       maxTokens: 5000, timeoutMs: 50000,
       temperature: 0.5,
-      prompt: buildPrompt(host, ai, productOverride, realSearches),
+      prompt: buildPrompt(host, ai, productOverride, realSearches, plan),
     });
     derived = result.json;
   } catch (e) {
@@ -225,7 +231,7 @@ function clampInt(n, dflt) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
 
-function buildPrompt(host, ai, productOverride, realSearches = []) {
+function buildPrompt(host, ai, productOverride, realSearches = [], plan = "") {
   const correction = productOverride
     ? `\n\nIMPORTANT — the owner has clarified what this product actually is. This description OVERRIDES anything inferred from the page. Build the keyword strategy for THIS:\n"${productOverride}"\n`
     : "";
@@ -238,6 +244,7 @@ Industry: ${ai?.industry || "(infer)"} ${ai?.subCategory ? "/ " + ai.subCategory
 What they sell: ${ai?.whatTheySell || "(infer from the above)"}
 Target customer: ${ai?.targetCustomer || "(infer)"}${correction}
 ${briefBlock(ai || {}, { max: 1800 })}
+${plan}
 ${real}
 ════════ HOW TO THINK (read carefully — this is the whole game) ════════
 FIRST, separate two different things:
