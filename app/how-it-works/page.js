@@ -55,6 +55,7 @@ const NIGHT = [
   { t: "It refreshes pages going stale", p: "A page you already won with, untouched for 30 days, gets an improved version staged for approval at the same address. Rankings you earned do not quietly slip away." },
   { t: "It checks whether your links landed", p: "For every site you pitched and marked as agreed, Genie goes back and looks for a real link to you. It reports the page, the anchor text, and whether the link passes ranking strength or is nofollow. That is how you find out which outreach was worth doing, instead of guessing." },
   { t: "It writes down what it learned", p: "Every decision, the reason for it, and how confident it was. You can read all of it in What Genie Learned. Nothing about its reasoning is hidden from you." },
+  { t: "It corrects its own plan, and asks you first", p: "The searches really bringing you visitors, the keyword that led to a sale, the kind of company that actually replies: once there is real evidence that the plan is out of date, Genie writes the correction down and it is waiting on the Strategy page with the facts beside it. It never changes the plan by itself, and it never removes anything you put there. You accept it or you leave it, and whatever you choose reaches every part of Genie at once." },
 ];
 
 // ── 04 · the three decisions ──────────────────────────────────────────────────

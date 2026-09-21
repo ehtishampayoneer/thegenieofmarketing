@@ -497,6 +497,28 @@ Market Testing ranked were stored, shown to the owner and read by nothing. And
 Console had data kept its first guess for good — the brain now re-asks every 14 days
 and records the check in `strategy.marketsAt` (owner-set countries are never touched).
 
+**The other direction (`lib/brain-learn.js`).** The plan used to change only two
+ways: Genie drafted it once, or the owner edited it. Everything learned after
+that went into Growth Memory and steered individual engines, but never corrected
+the plan those engines work to — so Genie could know for months that rug
+retailers reply and furniture chains never do while the plan still said both.
+
+`proposePlanRevision()` runs last in the nightly job. It gathers evidence that is
+COUNTABLE and already happened (real Search Console clicks, recorded conversions,
+replies that arrived, channels the engagement tracker scored above 1.2), and if at
+least three of those facts are not already covered by the plan it writes a
+proposed patch to the ledger (`strategy.proposed`). The owner sees it on
+`/strategy` with the facts beside it and presses accept or dismiss
+(`POST /api/strategy { proposal: "accept" | "dismiss" }`).
+
+Three rules it must keep. It PROPOSES, never applies — a plan that rewrites
+itself makes "one correction reaches everything" false, because the owner's
+correction could be undone the next night. It only ever ADDS to `who`,
+`whereTheyLook` and `contentThemes`; `readPatch()` re-merges the owner's existing
+entries so a model that "tidied" the list cannot delete their work, and `proof`,
+`neverSay`, `cta` and `mechanism` are out of its reach entirely. And it stays
+silent without real evidence, which is the normal state for a new account.
+
 **`test/one-brain.test.js` enforces it.** It walks every file that calls `callAI` and
 fails unless the file reads the brain or is in its `EXEMPT` map WITH a written reason.
 If you add an engine, you read the brain or you justify yourself in that file. It has

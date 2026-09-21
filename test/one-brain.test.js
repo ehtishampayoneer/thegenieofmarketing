@@ -35,6 +35,7 @@ const EXEMPT = {
   "lib/interview.js": "conducts the interview the plan is DRAWN FROM, so it cannot require one",
   "lib/video.js": "transcribes and times what was said out loud; it writes no marketing",
   "lib/local-services.js": "returns service-area facts, not copy",
+  "lib/brain-learn.js": "is the one engine that writes TO the plan, so it reads the stored plan's raw fields and shows them to the model as the thing being corrected; the brain's block is formatted for engines that write, and feeding it back here would have the model rewrite its own instructions",
   // Handed the plan by their caller, which does read the brain. Asserted below.
   "lib/prospects.js": "receives the plan as userBusiness.brief from /api/prospects/discover",
   "lib/earned-media.js": "receives the plan as business.brief from /api/featured/discover",

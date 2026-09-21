@@ -58,6 +58,7 @@ export default function StrategyPage() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState("");
   const [note, setNote] = useState("");
+  const [proposal, setProposal] = useState(null);
 
   const load = useCallback(async (refresh = false) => {
     setState("loading");
@@ -65,7 +66,7 @@ export default function StrategyPage() {
       const j = await fetch(`/api/strategy${refresh ? "?refresh=1" : ""}`, { cache: "no-store" }).then((r) => r.json());
       if (j?.needsScan) { setState("needsScan"); return; }
       if (!j?.ok || !j.strategy) { setState("error"); return; }
-      setS(j.strategy); setDirty(false); setState("ready");
+      setS(j.strategy); setProposal(j.proposal || null); setDirty(false); setState("ready");
     } catch { setState("error"); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -79,6 +80,24 @@ export default function StrategyPage() {
       if (j?.ok) { setS(j.strategy); setDirty(false); setNote(label === "confirm" ? "Confirmed. Genie will work to this." : "Saved."); }
       else setNote(j?.error || "Couldn't save that.");
     } catch { setNote("Couldn't save that."); }
+    setBusy("");
+  }
+
+  // Genie learned something that disagrees with the plan. Accepting merges it and
+  // marks the plan as the owner's; dismissing means it is not asked again.
+  async function answer(kind) {
+    setBusy(kind);
+    try {
+      const j = await fetch("/api/strategy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposal: kind }),
+      }).then((r) => r.json());
+      if (j?.ok) {
+        if (j.strategy) setS(j.strategy);
+        setProposal(null); setDirty(false);
+        setNote(kind === "accept" ? "Applied. Every part of Genie follows this from now on." : "Left as it was.");
+      } else setNote(j?.error || "Couldn't do that.");
+    } catch { setNote("Couldn't do that."); }
     setBusy("");
   }
 
@@ -126,6 +145,49 @@ export default function StrategyPage() {
               <p className="mt-1 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
                 It drafted this from your website{s.source === "ai" ? " and your answers" : ""}, and it is following it now — but every draft it writes says this is an unconfirmed read of your business rather than a fact about you. Fix anything wrong and confirm it, and that caveat goes away.
               </p>
+            </Card>
+          )}
+
+          {proposal && (
+            <Card className="mt-5 p-5" style={{ borderColor: "var(--signal-live)" }}>
+              <p className="text-[14px] font-bold" style={{ color: "var(--fg)" }}>Genie learned something since you wrote this</p>
+              {proposal.patch?.reason && (
+                <p className="mt-1 text-[13.5px]" style={{ color: "var(--fg)", maxWidth: "var(--measure)" }}>{proposal.patch.reason}</p>
+              )}
+              {!!proposal.facts?.length && (
+                <ul className="mt-3 flex flex-col gap-1.5">
+                  {proposal.facts.map((f, i) => (
+                    <li key={i} className="text-[13px] mg-muted flex gap-2" style={{ maxWidth: "var(--measure)" }}>
+                      <span style={{ color: "var(--signal-live)" }}>•</span><span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-3 flex flex-col gap-1.5">
+                {Object.entries(proposal.patch || {}).filter(([k]) => k !== "reason").map(([k, v]) => {
+                  const f = FIELDS.find((x) => x.key === k);
+                  const added = Array.isArray(v) ? v.filter((x) => !(s[k] || []).includes(x)) : [];
+                  if (!added.length) return null;
+                  return (
+                    <p key={k} className="text-[13px]" style={{ color: "var(--fg)" }}>
+                      <span className="mg-muted">{f?.label || k}:</span> add {added.map((a) => `“${a}”`).join(", ")}
+                    </p>
+                  );
+                })}
+              </div>
+              <p className="mt-3 text-[12.5px] mg-muted" style={{ maxWidth: "var(--measure)" }}>
+                Nothing already in your plan is removed. Genie will not change this by itself either way.
+              </p>
+              <div className="mt-3 flex items-center gap-2.5 flex-wrap">
+                <button onClick={() => answer("accept")} disabled={!!busy}
+                  className="mg-btn mg-btn--dawn disabled:opacity-50" style={{ fontSize: 13.5 }}>
+                  {busy === "accept" ? "Applying…" : "Add it to the plan"}
+                </button>
+                <button onClick={() => answer("dismiss")} disabled={!!busy}
+                  className="mg-btn mg-btn--ghost disabled:opacity-50" style={{ fontSize: 13.5 }}>
+                  {busy === "dismiss" ? "…" : "No, leave it"}
+                </button>
+              </div>
             </Card>
           )}
 
