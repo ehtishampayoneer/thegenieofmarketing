@@ -515,6 +515,29 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
       {/* lower: targets  ·  preview */}
       <div className="px-6 pt-5 grid grid-cols-1 lg:grid-cols-[268px_1fr] gap-5 items-start">
         <LeftPanel item={item} isArticle={isArticle} />
+        {/* Held back by the brand-safety guard. This is the only place the owner
+            can find out that happened, so it says what was wrong and what to do. */}
+        {item.held && (
+          <div className="rounded-xl p-3.5 mb-3" style={{ background: "var(--signal-warn-soft, var(--surface-2))", border: "1px solid var(--signal-warn)" }}>
+            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Genie held this back to protect your brand</p>
+            {item.heldReasons?.length > 0 && (
+              <ul className="mt-1.5 flex flex-col gap-1" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                {item.heldReasons.map((r, i) => <li key={i} className="text-[12.5px] mg-muted">· {r}</li>)}
+              </ul>
+            )}
+            {item.heldClaims?.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[12px] font-semibold" style={{ color: "var(--fg-muted)" }}>The sentences to change:</p>
+                <ul className="mt-1 flex flex-col gap-1" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {item.heldClaims.map((c, i) => (
+                    <li key={i} className="text-[12.5px] mg-muted">· “{c.claim || String(c)}”{c.why ? ` — ${c.why}` : ""}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="mt-1.5 text-[12.5px] mg-muted">Press <b>E</b> to edit it, then approve again. It will be re-checked.</p>
+          </div>
+        )}
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--hair)" }}>
           <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--hair)" }}>
             {/* "As it will publish" is only true where Genie does the publishing.

@@ -48,7 +48,10 @@ export async function GET() {
   // counted every proposed action, which meant a queue of eleven social posts
   // and no article read as "11 waiting for you" under a heading about articles —
   // and the owner approves one, sees no blog post, and concludes Genie lies.
-  const articlesWaiting = await count("actions", (q) => q.eq("user_id", user.id).eq("status", "proposed").eq("type", "article"));
+  // Including the ones the guard is holding: they are waiting on the owner
+  // more urgently than a fresh draft, because they need an edit before they
+  // can go anywhere.
+  const articlesWaiting = await count("actions", (q) => q.eq("user_id", user.id).in("status", ["proposed", "needs_review"]).eq("type", "article"));
   const sent = await count("outreach_log", (q) => q.eq("user_id", user.id).in("status", ["sent", "opened", "replied"]));
   const replies = await count("outreach_log", (q) => q.eq("user_id", user.id).eq("status", "replied"));
 

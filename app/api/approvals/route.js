@@ -22,8 +22,14 @@ export async function GET() {
 
   try {
     const { data: actions } = await supabase
-      .from("actions").select("id, type, title, priority, payload, target, status")
-      .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
+      .from("actions").select("id, type, title, priority, payload, target, status, result")
+      // needs_review as well as proposed. The publish guard sets needs_review
+      // when it blocks something at approval time, and nothing anywhere listed
+      // those — so Genie wrote an article, held it to protect the brand, and
+      // then hid it from the only person who could fix it. The owner saw a
+      // toast once, navigated away, and the article was gone for good while
+      // Today still told them to approve their first one.
+      .eq("user_id", user.id).in("status", ["proposed", "needs_review"]).neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
     for (const a of actions || []) items.push(normalizeAction(a));
   } catch {}
 
@@ -88,6 +94,11 @@ function normalizeAction(a) {
               : (p.url || null);
   return {
     id: a.id, source: "action", kind: a.type, platform, owned, executable,
+    // Held back by the publish guard, and why. Without the reasons the owner
+    // can only guess at what to change.
+    held: a.status === "needs_review",
+    heldReasons: a.status === "needs_review" ? (a.result?.reasons || []).slice(0, 4) : null,
+    heldClaims: a.status === "needs_review" ? (a.result?.claims || []).slice(0, 4) : null,
     brand: brandFor(a.type, p, platform),
     title: o.title || a.title || labelFor(a.type),
     outcome: o.value || "",

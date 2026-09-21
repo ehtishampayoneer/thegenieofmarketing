@@ -110,7 +110,13 @@ export async function POST(_request, { params }) {
   const { guardContent } = await import("@/lib/publish-guard");
   const guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true });
   if (guard.decision === "block") {
-    await supabase.from("actions").update({ status: "needs_review", result: { blocked: true, reasons: guard.reasons, flags: guard.flags }, updated_at: new Date().toISOString() }).eq("id", action.id);
+    // Keep the offending claims, not just the count. "2 claim(s) need
+    // verification" tells the owner nothing they can act on; the sentences do.
+    await supabase.from("actions").update({
+      status: "needs_review",
+      result: { blocked: true, reasons: guard.reasons, flags: guard.flags, claims: (guard.claims || []).slice(0, 4) },
+      updated_at: new Date().toISOString(),
+    }).eq("id", action.id);
     try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "blocked", meta: { reasons: guard.reasons, flags: guard.flags, confidence: guard.confidence } }); } catch {}
     return json({ ok: false, blocked: true, error: "Genie held this back to protect your brand: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
   }
