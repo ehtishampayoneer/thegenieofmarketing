@@ -19,6 +19,7 @@ import { LogoUpload } from "@/components/ui/v2/LogoUpload";
 import { Showcase } from "@/components/Showcase";
 import UnderstandingCheck from "@/components/onboarding/UnderstandingCheck";
 import TeamBand from "@/components/onboarding/TeamBand";
+import OwnBlogConnect from "@/components/connections/OwnBlogConnect";
 
 const nameOf = (c) => (typeof c === "string" ? c : c?.name || c?.label || "").trim();
 const cap = (s) => { s = String(s || "").trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
@@ -56,12 +57,16 @@ export default function WelcomePage() {
   const startRef = useRef(0);
   const [details, setDetails] = useState({ company_name: "", logo_url: "", sender_email: "", sender_name: "", money_page_url: "" });
   const [conns, setConns] = useState(null); // live connection status for the connect step
+  const [blogLive, setBlogLive] = useState(false); // articles will publish to the owner's own domain
   // ── Understanding Check (post-scan "did I get you right?") ──
   // The conversation itself lives in components/onboarding/UnderstandingCheck.
   const [understanding, setUnderstanding] = useState(null); // Genie's read of the business, seeded from the scan
 
   async function loadConns() {
     try { const r = await fetch("/api/connections/status", { cache: "no-store" }).then((x) => x.json()); if (r?.integrations) setConns(r.integrations); } catch {}
+    // Already pointed their own site at Genie on a previous visit? Then the
+    // destination line below has to say so rather than warning about a page we host.
+    try { const b = await fetch("/api/connect/blog", { cache: "no-store" }).then((x) => x.json()); if (b?.state === "live") setBlogLive(true); } catch {}
   }
 
   useEffect(() => {
@@ -401,12 +406,16 @@ export default function WelcomePage() {
                   {/* For every site that is not WordPress — the one thing that makes
                       articles build THEIR ranking instead of Genie's. */}
                   {!conns?.wordpress?.connected && (
-                    <div style={{ borderRadius: 16, padding: "16px 18px", background: "var(--onb-panel)", border: "1px solid var(--onb-hair)" }}>
-                      <p className="text-[15px] font-semibold" style={{ color: "var(--onb-fg)" }}>Your blog, on your own domain</p>
+                    <div style={{ borderRadius: 16, padding: "16px 18px", background: "var(--onb-panel)", border: `1px solid ${blogLive ? "rgba(52,199,89,.45)" : "var(--onb-hair)"}` }}>
+                      <p className="text-[15px] font-semibold" style={{ color: "var(--onb-fg)" }}>Your articles, at your own address</p>
                       <p className="mt-1 text-[13px]" style={{ color: "var(--onb-muted)", lineHeight: 1.5 }}>
-                        Not on WordPress? One rule added once to {host || "your site"} lets me publish every article at your own address, so it builds your ranking and not mine. It takes your developer about five minutes, and I check it works.
+                        Not on WordPress? One rule added once to {host || "your site"} lets me publish every article at your own address, so the ranking you earn belongs to {host || "your site"} and not to me. It takes about five minutes, and I check it for you. This is the single most valuable thing on this screen.
                       </p>
-                      <a href="/connections" className="onb-ghost mt-3 inline-flex items-center" style={{ fontSize: 13, padding: ".5rem .9rem", borderRadius: 10 }}>Set it up →</a>
+                      {/* The real tool, right here. It used to be a link to another
+                          screen, which meant leaving onboarding to do the one step
+                          that decides whose domain Genie spends the next year
+                          building. Most people did not come back. */}
+                      <OwnBlogConnect compact onLive={() => setBlogLive(true)} />
                     </div>
                   )}
                   <ConnectRow brand="x" label="X (Twitter)" sub="I write your tweets & threads, you paste them. Nothing to connect." ready />
@@ -414,7 +423,25 @@ export default function WelcomePage() {
                   <ConnectRow brand="reddit" label="Reddit" sub="I find buyers here and draft your replies, you post" ready />
                 </div>
               </div>
-              <div className="mt-10 flex items-center gap-5 flex-wrap">
+              {/* Where the articles will actually land. Skipping is allowed, but it
+                  should be a decision the owner made knowingly, not one they made
+                  by pressing Next past a link they did not read. */}
+              {(() => {
+                const onOwn = conns?.wordpress?.connected || blogLive;
+                return (
+                  <div className="mt-8" style={{ borderRadius: 14, padding: "14px 16px", background: onOwn ? "var(--onb-live-soft)" : "var(--onb-panel)", border: `1px solid ${onOwn ? "rgba(52,199,89,.45)" : "var(--onb-hair)"}` }}>
+                    <p className="text-[13.5px]" style={{ color: "var(--onb-fg)", lineHeight: 1.5 }}>
+                      {onOwn ? (
+                        <>Your articles will publish to <b>{host || "your own site"}</b>. Every ranking they earn builds your site.</>
+                      ) : (
+                        <>Right now your articles will publish to a page I host for you. They still work and people can still read and find them, but the ranking they earn builds my address, not <b>{host || "yours"}</b>. You can turn this on later in Connections, and I will move every article across when you do.</>
+                      )}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <div className="mt-8 flex items-center gap-5 flex-wrap">
                 <button onClick={toDetails} className="onb-cta px-8 text-[16px]" style={{ height: 56 }}>Next: your details →</button>
                 <button onClick={toDetails} style={{ fontSize: 14, color: "var(--onb-subtle)", background: "none", border: "none", cursor: "pointer" }}>I’ll connect these later</button>
               </div>
