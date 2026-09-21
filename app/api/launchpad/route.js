@@ -44,6 +44,11 @@ export async function GET() {
 
   const published = await count("published_pages", (q) => q.eq("user_id", user.id).eq("status", "published"));
   const waiting = await count("actions", (q) => q.eq("user_id", user.id).eq("status", "proposed"));
+  // The step is "approve your first ARTICLE", so it has to count articles. It
+  // counted every proposed action, which meant a queue of eleven social posts
+  // and no article read as "11 waiting for you" under a heading about articles —
+  // and the owner approves one, sees no blog post, and concludes Genie lies.
+  const articlesWaiting = await count("actions", (q) => q.eq("user_id", user.id).eq("status", "proposed").eq("type", "article"));
   const sent = await count("outreach_log", (q) => q.eq("user_id", user.id).in("status", ["sent", "opened", "replied"]));
   const replies = await count("outreach_log", (q) => q.eq("user_id", user.id).eq("status", "replied"));
 
@@ -55,17 +60,32 @@ export async function GET() {
   const steps = [
     {
       id: "own-domain", done: ownDomain, href: "/connections",
-      t: "Articles publish to your own domain",
+      // "Articles publish to your own domain — Live at yoursite.com/blog" was
+      // read, reasonably, as "your articles are live there". It means the pipe
+      // is connected; whether anything has gone through it is the NEXT step.
+      // An owner who reads this as done and then finds an empty blog stops
+      // believing the rest of the page.
+      t: "Your blog is ready on your own domain",
       why: "Articles on a Genie page build Genie's ranking. On your own domain they build yours.",
-      state: ownDomain ? (blog?.meta?.base ? `Live at ${String(blog.meta.base).replace(/^https?:\/\//, "")}` : "WordPress connected") : "Not set up yet",
+      state: ownDomain
+        ? (blog?.meta?.base
+            ? `Ready at ${String(blog.meta.base).replace(/^https?:\/\//, "")}${published > 0 ? ` · ${published} published` : " · nothing published yet"}`
+            : "WordPress connected")
+        : "Not set up yet",
       cta: "Set it up",
     },
     {
       id: "publish", done: published > 0, href: "/approvals",
       t: "Approve your first article",
       why: "Nothing ranks until something is published. Each draft arrives tested by the crowd.",
-      state: published > 0 ? `${published} article${published === 1 ? "" : "s"} published` : waiting > 0 ? `${waiting} waiting for you` : "Genie writes one tonight",
-      cta: waiting > 0 ? `Review ${waiting}` : "Open Approvals",
+      state: published > 0
+        ? `${published} article${published === 1 ? "" : "s"} published`
+        : articlesWaiting > 0
+          ? `${articlesWaiting} article${articlesWaiting === 1 ? "" : "s"} waiting for you`
+          : waiting > 0
+            ? `${waiting} draft${waiting === 1 ? "" : "s"} waiting, but no article yet — Genie writes one tonight`
+            : "Genie writes one tonight",
+      cta: articlesWaiting > 0 ? `Review ${articlesWaiting}` : "Open Approvals",
     },
     {
       id: "gsc", done: !!google?.gsc_site, href: "/connections",
