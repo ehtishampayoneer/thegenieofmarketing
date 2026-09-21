@@ -1,74 +1,57 @@
 import { describe, it, expect } from "vitest";
-import { asSearchPhrase, buyerProblems, painQueries, awarenessOf } from "@/lib/buyer-angle";
+import { sellerWords, sellerGoals, growthQueries, mechanism, awarenessOf } from "@/lib/buyer-angle";
 
-// ARQR360 as the owner describes it: AR for furniture retailers, whose buyers
-// have never considered AR but complain about returns every day.
+// ARQR360 as the owner describes it. The buyer is a furniture retailer who has
+// never heard of AR, and spends their week looking for ways to sell more.
 const arqr = {
+  whatTheySell: "Augmented reality product views — shoppers see the sofa in their own room before buying",
   targetCustomer: "furniture stores and rug retailers",
   competitors: [],
   brief: {
+    offer: "AR previews and 3D models on your product pages, from a QR code, with no app to install",
     segments: ["furniture retailers", "rug and carpet shops"],
     problems: [
       "Customers can't tell if a sofa will fit their room, so a third of orders come back",
-      "Shoppers ask for photos of the item in a real room before they commit",
-      "Online conversion is much lower than in store",
+      "Shoppers hesitate at checkout because they can't picture the piece at home",
     ],
   },
 };
 
-describe("turning the owner's problem into the buyer's words", () => {
-  it("drops the owner's lead-in so the phrase reads like a search", () => {
-    expect(asSearchPhrase("Customers can't tell if a sofa will fit their room"))
-      .toBe("tell if a sofa will fit their room");
-    expect(asSearchPhrase("Our clients struggle to keep their staff rota filled"))
-      .toBe("keep their staff rota filled");
+describe("talking to a seller about growing sales", () => {
+  it("names the seller the way they describe themselves", () => {
+    expect(sellerWords(arqr)).toEqual(["furniture retailer", "rug and carpet shop"]);
   });
 
-  it("keeps the first clause, because a sentence is not a search query", () => {
-    expect(asSearchPhrase("Shoppers worry about delivery times, which makes them abandon the basket"))
-      .toBe("delivery times");
+  it("reads the outcomes off the owner's own problem list", () => {
+    const goals = sellerGoals(arqr);
+    expect(goals[0]).toBe("increase sales");          // what every seller searches
+    expect(goals).toContain("reduce returns");        // from "a third of orders come back"
+    expect(goals).toContain("help shoppers decide");  // from "can't tell if it will fit"
   });
 
-  it("leaves a phrase alone when there is no lead-in to strip", () => {
-    expect(asSearchPhrase("Online conversion is much lower than in store"))
-      .toBe("online conversion is much lower than in store");
+  it("searches where a seller looks for ways to grow, not for this product", () => {
+    const qs = growthQueries(arqr).map((q) => q.query);
+    expect(qs).toContain("how to increase furniture retailer sales");
+    expect(qs).toContain("best apps for furniture retailer");
+    expect(qs.some((q) => /reduce returns/.test(q))).toBe(true);
+    // Nothing here names the product or a rival: nobody is searching for those.
+    expect(qs.every((q) => !/\bar\b|augmented|vntana|threekit/i.test(q))).toBe(true);
+    expect(growthQueries(arqr).every((q) => q.group === "growth")).toBe(true);
   });
 
-  it("reads the owner's brief first, and the scan's guess only as a fallback", () => {
-    expect(buyerProblems(arqr)[0]).toContain("sofa will fit");
-    const scanOnly = { painPoints: "High return rates; customers cannot judge scale" };
-    expect(buyerProblems(scanOnly)).toHaveLength(2);
+  it("carries the reason it makes them money, not what it is", () => {
+    const m = mechanism(arqr);
+    expect(m).toContain("AR previews");                 // what they bought
+    expect(m).toContain("a third of orders come back"); // what it removes
+    expect(m).toContain("increase sales");              // what that moves
   });
 
-  it("ignores a one-word problem, which would search for nothing useful", () => {
-    expect(buyerProblems({ painPoints: "returns; cost; trust" })).toEqual([]);
-  });
-
-  it("hunts the pain, and names the people who have it", () => {
-    const qs = painQueries(arqr).map((q) => q.query);
-    // The problem itself — someone describing it is someone who has it.
-    expect(qs).toContain("tell if a sofa will fit their room");
-    // And the same problem attached to who Genie is looking for.
-    expect(qs.some((q) => q.includes("furniture retailers"))).toBe(true);
-    expect(painQueries(arqr).every((q) => q.group === "pain")).toBe(true);
-  });
-
-  it("finds nothing to hunt when the owner has not said what problem they solve", () => {
-    expect(painQueries({ targetCustomer: "everyone" })).toEqual([]);
-  });
-});
-
-describe("how much the buyer already knows", () => {
-  it("is problem-only for a product nobody is shopping for by name", () => {
-    // ARQR names no competitors: nobody is typing "alternative to" anything.
-    expect(awarenessOf(arqr)).toBe("problem");
-  });
-
-  it("is product-level once there are real names to compare", () => {
+  it("says nobody is comparing when no rival has been named", () => {
+    expect(awarenessOf(arqr)).toBe("growth");
     expect(awarenessOf({ ...arqr, competitors: [{ name: "Threekit" }, { name: "VNTANA" }] })).toBe("product");
   });
 
-  it("does not claim problem-awareness with no problem to point at", () => {
-    expect(awarenessOf({ competitors: [] })).toBe("solution");
+  it("has nothing to search for a business that never said who it sells to", () => {
+    expect(growthQueries({ whatTheySell: "software" })).toEqual([]);
   });
 });

@@ -13,7 +13,7 @@ import { hnSearch, stackExchangeSearch, githubSearch } from "@/lib/intent-source
 import { getBrief, recordDecision } from "@/lib/growth-memory";
 import { buildIntentQueries, selectSources, scoreIntent, reachabilityFor, rankOpportunities, emptyRunMessage } from "@/lib/intent";
 import { verticalsFor } from "@/lib/intent-verticals";
-import { awarenessOf, buyerProblems } from "@/lib/buyer-angle";
+import { awarenessOf, mechanism, sellerGoals } from "@/lib/buyer-angle";
 import { getChannelWeights, applyChannelWeights } from "@/lib/learning";
 import { cooldownFor } from "@/lib/cadence";
 import { logActivity, logActivityBatch } from "@/lib/activity";
@@ -92,13 +92,12 @@ export async function POST(request) {
   //
   // The floor is not one number. scoreIntent rewards shopping language — "best",
   // "vs", "recommend", "alternative" — which is right for someone choosing
-  // between products and wrong for the buyer this product has to reach first. A
-  // furniture retailer writing "a third of our sofas come back because people
-  // can't judge scale" uses none of those words and scores about 30, under the
-  // old floor of 45, so the pain queries would have found exactly the right
-  // person and then thrown them away. For a candidate found BY the problem, the
-  // problem being described is the signal.
-  const floorFor = (c) => (c.group === "pain" ? 25 : 45);
+  // between products and wrong for the buyer this product has to reach first.
+  // A furniture retailer asking "how do I increase my store's sales" uses none
+  // of those words and scores about 30, under the old floor of 45, so the growth
+  // searches would have found exactly the right person and then thrown them
+  // away. Someone working on their own growth is the signal.
+  const floorFor = (c) => (c.group === "growth" ? 25 : 45);
   candidates = candidates.map((c) => ({ ...c, intent: scoreIntent(`${c.title} ${c.snippet || ""}`, { competitors }) }))
     .filter((c) => c.intent.score >= floorFor(c));
   funnel.lowIntent = funnel.pages - candidates.length;
@@ -135,7 +134,7 @@ export async function POST(request) {
         "A buyer must be one of the owner's target customers above. Someone who would build or resell the same thing, a developer asking how to make it, or anyone matching who-not-to-target is fit:false, however strong their intent. " +
         "Rate intent 0-100 and name the journey stage. Write the RIGHT move for the platform, in the entity's voice — value-first, genuinely helpful, product mentioned only where it truly helps. Never spammy. Return ONLY JSON.",
       json: true, maxTokens: 4500, timeoutMs: 45000, temperature: 0.6,
-      prompt: buildPrompt(top, entity, { awareness: awarenessOf(ai), problems: buyerProblems(ai, 3) }),
+      prompt: buildPrompt(top, entity, { awareness: awarenessOf(ai), why: mechanism(ai), goals: sellerGoals(ai) }),
       ctx,
     });
     refined = result.json;
@@ -228,7 +227,7 @@ async function runOne(source, q, ctx, vert = {}) {
   } catch { return []; }
 }
 
-function buildPrompt(candidates, entity, { awareness = "solution", problems = [] } = {}) {
+function buildPrompt(candidates, entity, { awareness = "solution", why = "", goals = [] } = {}) {
   // What the judge is shown. The search query used to sit at the top of each
   // candidate, and a weak model read it as a description of the person: a page
   // about Lightroom alternatives, found by the query "Shopify AR alternative",
@@ -254,12 +253,13 @@ ${list}
 For each one, first answer "who": who this person is, using only the words in
 the title and the page. If you cannot tell who they are, that is fit:false.
 Then fit: true ONLY if that person is one of the owner's target customers AND
-${buyerTest(awareness, problems)}
+${buyerTest(awareness, goals)}
 Everything else is fit:false — including a person asking about a different
 product entirely, a developer or a builder, someone shopping as a consumer, a
 listicle, a news post, or a page that merely mentions a company the owner
 competes with.
 
+${why ? `\nWHY THIS PRODUCT MAKES THEM MONEY — the argument every draft must make.\nNever open by naming the product; open with what they are trying to do, then\nshow this as one of the ways, then the reason it works:\n${why}\n` : ""}
 Return ONLY this JSON. Two worked examples first, so the shape is clear:
 
 {
@@ -300,18 +300,19 @@ function json(obj, status = 200) { return new Response(JSON.stringify(obj), { st
 // heard of AR, is comparing nothing, and is precisely the person to reach. With
 // the old test the pain queries would have found exactly the right person and
 // the judge would have rejected them for not sounding like a shopper.
-function buyerTest(awareness, problems) {
-  if (awareness !== "problem" || !problems.length) {
+function buyerTest(awareness, goals) {
+  if (awareness !== "growth" || !goals.length) {
     return "the title or page shows them researching, comparing or deciding about what the owner sells.";
   }
   return `ONE of these is true:
-  (a) they are describing one of the problems the owner solves, in their own
-      words, even if they have never heard of a product like this and are not
-      asking for one. The problems are:
-${problems.map((p) => `        - ${p}`).join("\n")}
+  (a) they are working on growing their own business — asking how to sell more,
+      which tools or apps to use, how to lift conversion, what other sellers in
+      their trade are doing, or how to fix something costing them sales. They do
+      not need to have heard of this product, and almost certainly have not.
+      What the owner helps them do: ${goals.join(", ")}.
   (b) they are researching, comparing or deciding about what the owner sells.
-Someone simply living the problem IS the buyer here, because almost nobody
-searches for this product by name. A person merely mentioning the topic in
-passing, or discussing it as a curiosity rather than as their own problem, is
-still fit:false.`;
+A seller working on their growth IS the buyer here, because nobody searches for
+this product by name — the whole job is to show them it exists. But it must be
+THEIR business: someone shopping as a customer, an employee asking about their
+own career, or a person discussing the trade as a curiosity is still fit:false.`;
 }
