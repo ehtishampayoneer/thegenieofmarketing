@@ -106,7 +106,7 @@ the content engine.
 **Safety + honesty.** Trust ramp (review → assisted → auto, earned per channel, gated on
 a content guard AND ≥80 confidence, fails closed), kill switch, spend cap, event ledger
 (`lib/events.js`), provenance system (Verified / Estimated / Modelled), SSRF guard,
-54 passing tests (`npx vitest run`).
+301 passing tests (`npx vitest run`).
 
 **Docs in-app.** `/how-it-works` (whole product, plain words) and `/capabilities`
 (flat feature list with honest status). Keep both in sync with reality.
@@ -122,6 +122,65 @@ a content guard AND ≥80 confidence, fails closed), kill switch, spend cap, eve
 - **Country-level revenue attribution** — Market Testing tracks search only.
 - **Resend domain verification** — verify a sending domain, or connect Gmail per-user.
 - **Google OAuth verification** + **token encryption at rest** before public launch.
+
+## 2b. THE PLAN, AND THE TWO RULES THAT KEEP GENIE HONEST
+
+### The plan (`lib/strategy.js`, `lib/strategy-store.js`, `/strategy`)
+
+Genie interviews the owner (`lib/business-brief.js`) and stores what they said.
+For a long time fourteen engines each read that brief as raw prose and decided
+for themselves what the business was — so Buyer Hunt concluded the customer was
+someone comparing products against a rival, the article writer concluded
+something else, and nothing anywhere held the decision. Fixing it meant editing
+prompts one engine at a time.
+
+The strategy is that decision, made once and stored on the event ledger:
+who the customer is, what THEY are trying to do, how this business shows up in
+that, and why it works. Plus proof, never-say, not-the-customer, and where that
+person already looks.
+
+**If you add an engine that writes or targets anything, it reads the plan.**
+`await strategyPromptBlock(supabase, { userId, host, ai })` and put the result in
+the prompt. `test/strategy.test.js` walks the engines and fails if one stops.
+
+Two properties that must survive:
+- It never waits for AI. `fallbackStrategy()` derives a usable plan with no model
+  at all, and an AI answer that resolved nothing is discarded in favour of it.
+- It never pretends to be settled. Until the owner confirms it on `/strategy`,
+  every prompt carries "the owner has NOT confirmed this — follow it, but do not
+  state it as fact about them."
+
+### Rule 1 — a number counts the thing its label names
+
+Nine separate displays once counted a convenient proxy instead: "Articles
+published" counted social posts (they log "published" too), "Replies received"
+matched `/repl/i` and so counted a reply Genie DRAFTED, "3 buyers showing intent"
+counted any `discovered` activity row. None was invented. None counted what it
+said, which from the owner's side is the same thing and is what makes someone
+stop believing the whole product.
+
+Never derive a displayed figure from the activity log or from a regex over
+message text. Read the table that holds the fact. `test/honest-numbers.test.js`
+pins the ones that were wrong.
+
+Related: never promise a result. "Expected ranking: Top 20 in 30 days" sat on
+every article approval; Genie cannot know it, and it is the same kind of claim
+the publish guard blocks an owner from making.
+
+### Rule 2 — work cannot disappear into a status nothing shows
+
+An action moves through `proposed → executing → done`, and can land in
+`needs_review` (the publish guard blocked it) or `failed`. The Approvals queue
+once listed only `proposed`, so anything else vanished: no list, no error, no
+retry. A real owner lost their first article that way for a fortnight.
+
+The queue lists `proposed`, `needs_review` and `failed`, each with its reason.
+`lib/stuck.js` sweeps rows stuck in `executing` (nightly and on every Approvals
+load), marking them done if the page actually published — checked by
+`action_id` — and returning the rest to the queue. **A new terminal state needs
+a surface before it needs anything else.**
+
+---
 
 ## 3. TECH STACK
 
@@ -378,18 +437,23 @@ is `/welcome`.
 - `outcomes.js` — action → outcome titles, impact styling.
 
 ### Components
-- `components/shell/Rail.js` — left nav (MG logo + line icons). Nav: Home, Today's taps, Conversations, **Keywords**, Inbox, History, Connect, Settings.
-- `components/shell/AppShell.js` — layout shell (rail + content + right Genie panel), minimal top bar.
-- `components/shell/GeniePanel.js` — right-side Genie chat (platform-wide; do not rebuild).
+- `components/shell/v2/OperatorShell.js` — **the shell**: left nav (the journey, numbered),
+  the LIVE activity ticker, the command bar and the Genie chat. `hrefFor()` maps a nav id
+  to a route; ids whose route matches the id need no entry. Every id is covered by
+  `test/nav-routes.test.js`, because a missing entry used to fall through to `/today` and
+  produce a link that worked and was wrong.
+- `components/shell/v2/OperatorHeader.js` — the page header every surface uses (eyebrow,
+  one display line, a short kicker, a right-hand action).
 - `components/brand/GenieWordmark.js` — **the logo**. Drawn, not an image: a geometric G
-  monogram plus real text, so it is legible at any size and follows the theme. Retired:
-  `components/ui/Logo.js` / `/public/logo.png`.
+  monogram plus real text, so it is legible at any size and follows the theme.
 - `components/ui/Icon.js` — thin line-icon set (home/tasks/growth/search/etc).
 - `components/ui/BrandIcon.js` — real brand marks (reddit/x/linkedin/medium/quora/wordpress/google/shopify/facebook/instagram/blog/mail/ads).
-- `components/ui/GenieVoice.js` — `GenieSays` (typewriter), `GenieLine` (avatar + speech), `StrengthBar` (red→amber→green with %).
 - `components/ui/v2/primitives.js` — **the current vocabulary** (Card, Pill, Button, Stat,
-  Provenance, SectionHead). `components/ui/kit.js` is the retired V1 set.
-- `components/ActivityFeed.js` — "Genie is working" live feed.
+  Provenance, SectionHead).
+- `components/ui/v2/DataState.js` — `LoadingState` / `EmptyState` / `DataStateBadge`. A page
+  is loading, real, empty or disconnected, and says which. No sample data anywhere.
+- `components/team/SwarmGlobe.js` / `Floor.js` — the crowd at work, and the live feed of
+  what it said. The globe never pauses; see `[[live-means-live]]` in the notes below.
 
 **Asset:** `public/logo.png` — the MG genie logo (owner-uploaded). Referenced as `/logo.png`.
 
