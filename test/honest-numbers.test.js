@@ -49,3 +49,23 @@ describe("nothing forecasts work that has not started", () => {
     expect(read("components/team/LaunchTest.js")).toMatch(/1,000 simulated customers reading it/);
   });
 });
+
+describe("the live ticker shows real work only", () => {
+  const src = read("components/shell/v2/OperatorShell.js");
+  // Comments explaining what was removed still quote it, so read the code.
+  const code = src.replace(/^\s*\/\/.*$/gm, "");
+
+  it("no longer invents activity for a business Genie has not started on", () => {
+    // These sat in the LIVE bar at the top of every page, in the same type as
+    // real activity, for accounts where none of it had happened.
+    expect(code).not.toMatch(/Built your keyword strategy, 5 targets/);
+    expect(code).not.toMatch(/6 AI-search gaps found, plans drafted/);
+    expect(code).not.toMatch(/name you in 0 of 6 buyer answers/);
+    expect(code).not.toMatch(/Publishing content to Reddit in 2 min/);
+    expect(code).not.toMatch(/FALLBACK_TICKER/);
+  });
+
+  it("says nothing has happened yet instead", () => {
+    expect(code).toMatch(/Nothing yet — Genie's first run fills this/);
+  });
+});

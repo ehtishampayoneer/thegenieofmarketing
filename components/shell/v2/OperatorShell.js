@@ -84,15 +84,19 @@ const SEARCH_HINTS = [
   "Try: Which buyers are asking for me right now?",
 ];
 
-// When there's no live stream (public preview / a fresh account), the ticker
-// still reads like an employee at work. Representative, and de-dashed on purpose.
-const FALLBACK_TICKER = [
-  "Built your keyword strategy, 5 targets",
-  "6 AI-search gaps found, plans drafted to win them",
-  "Gemini and OpenAI name you in 0 of 6 buyer answers",
-  "Hunting buyer intent across 5 surfaces",
-  "Learned 1 new thing about your buyers from Reddit",
-  "Publishing content to Reddit in 2 min",
+// ── WHAT THE TICKER SAYS WHEN NOTHING HAS HAPPENED ──
+// It used to say six specific things: "Built your keyword strategy, 5 targets",
+// "6 AI-search gaps found", "Gemini and OpenAI name you in 0 of 6 buyer
+// answers", "Publishing content to Reddit in 2 min". None of it had happened.
+// They sat in the LIVE bar at the top of every page, in the same type as real
+// activity, with no way for an owner to tell which was which — and an owner who
+// later works out that the live feed was inventing specifics about their own
+// business has no reason to believe any other number in the product.
+//
+// A ticker with nothing in it says nothing, which is the honest thing for a
+// business Genie has not started working on yet.
+const IDLE_TICKER = [
+  "Nothing yet — Genie's first run fills this",
 ];
 
 export default function OperatorShell({ active = "today", children }) {
@@ -177,7 +181,9 @@ export default function OperatorShell({ active = "today", children }) {
   // else idle.
   const genieState = counts.approvals > 0 ? "alerting" : activity.length ? "working" : "idle";
   const working = activity.length > 0;
-  const tickerLines = working ? activity.slice(0, 10).map((a) => ({ title: a.title, time: a.time })).filter((a) => a.title) : FALLBACK_TICKER.map((t) => ({ title: t, time: "" }));
+  // Real work only. When there is none, say so rather than inventing some.
+  const realLines = activity.slice(0, 10).map((a) => ({ title: a.title, time: a.time })).filter((a) => a.title);
+  const tickerLines = realLines.length ? realLines : IDLE_TICKER.map((t) => ({ title: t, time: "" }));
 
   // The rail's content — rendered once, used in the desktop aside AND the mobile
   // drawer, so navigation exists on every screen size.
