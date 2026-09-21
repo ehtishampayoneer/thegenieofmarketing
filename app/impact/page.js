@@ -44,7 +44,9 @@ export default function ImpactPage() {
             <Card className="mg-ambient p-6 flex flex-col justify-center">
               <p className="mg-eyebrow">Revenue Genie influenced</p>
               <p className="mt-3 mg-display-lg mg-num" style={{ color: "var(--accent-ink)" }}>{money}</p>
-              <p className="mt-2.5 text-[13px] mg-muted max-w-sm">{d.live ? "Traced from the action to the sale. Real money, not activity." : "Representative sample — connect revenue to see your own."}</p>
+              {/* This block only renders when conversions > 0, which can only come from
+     real recorded sales, so there is no sample case left to describe. */}
+              <p className="mt-2.5 text-[13px] mg-muted max-w-sm">Traced from the action to the sale. Real money, not activity.</p>
             </Card>
             <Card className="p-5 flex flex-col justify-center gap-3.5">
               <ImpactStat label="Customers won" sub="last 500 events" value={d.conversions} />

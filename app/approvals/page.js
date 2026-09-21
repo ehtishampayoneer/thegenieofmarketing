@@ -725,8 +725,15 @@ function LeftPanel({ item, isArticle }) {
 
       <dl className="space-y-2.5">
         <PubRow icon={Icon.globe} label="Publishing to" value={item.owned ? (isArticle ? "your blog" : "your account") : plat(item.platform || item.brand || "the thread")} />
-        {isArticle && <PubRow icon={Icon.clock} label="Expected indexing" value="3 to 6 hours" />}
-        {isArticle && <PubRow icon={Icon.growth} label="Expected ranking" value="Top 20 in 30 days" />}
+        {/* These two used to read "Expected indexing: 3 to 6 hours" and
+            "Expected ranking: Top 20 in 30 days" — on every article, for every
+            keyword, whatever the competition. Genie cannot know either. The
+            second is a hard promise about search results, made by the product
+            itself, of the exact kind the publish guard blocks an owner from
+            making. They are replaced by what Genie actually does, which is a
+            fact, and by where the real answer lives. */}
+        {isArticle && <PubRow icon={Icon.clock} label="After you approve" value="Genie asks Google and Bing to crawl it" />}
+        {isArticle && <PubRow icon={Icon.growth} label="Ranking" value="Tracked per keyword in Growth Score" />}
         {!isArticle && item.target_url && item.target_url !== "#" && <PubRow icon={Icon.link} label="Destination" value="Opens on approve" />}
       </dl>
     </div>

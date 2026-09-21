@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const read = (f) => readFileSync(join(process.cwd(), f), "utf8");
+// Comments that explain what was removed necessarily quote it, so assertions
+// about what the UI says have to read the code and not the prose around it.
+const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 // Every number on Today claims to be counted from real work — the page says so
 // in as many words. Each of these was read off the activity log instead, by
@@ -67,5 +70,23 @@ describe("the live ticker shows real work only", () => {
 
   it("says nothing has happened yet instead", () => {
     expect(code).toMatch(/Nothing yet — Genie's first run fills this/);
+  });
+});
+
+describe("nothing promises a result Genie cannot know", () => {
+  it("the approval card does not forecast a ranking", () => {
+    const code = stripComments(read("app/approvals/page.js"));
+    // "Expected ranking: Top 20 in 30 days" appeared on every article, for
+    // every keyword, whatever the competition — a hard promise about search
+    // results made by the product itself.
+    expect(code).not.toMatch(/Top 20 in 30 days/);
+    expect(code).not.toMatch(/Expected indexing/);
+    expect(code).toMatch(/asks Google and Bing to crawl it/);
+  });
+
+  it("no surface still claims to show a representative sample", () => {
+    for (const f of ["app/impact/page.js", "app/conversations/page.js", "lib/live.js", "components/shell/v2/OperatorShell.js"]) {
+      expect(read(f)).not.toMatch(/Representative sample —/);
+    }
   });
 });

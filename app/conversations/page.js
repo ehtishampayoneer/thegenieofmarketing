@@ -4,7 +4,7 @@
 // Every conversation Genie is running for you, as a story: found → wrote →
 // posted → traction → replies → watching. This is the surface that makes you
 // FEEL an employee is out there talking to the market on your behalf. Reads
-// /api/stories (real when signed in); representative sample for the preview.
+// /api/stories. No sample: an empty list says the work has not started.
 // Migrated from the V1 /stories page into the Operator (Aperture) language.
 
 import { useState, useEffect } from "react";

@@ -9,7 +9,7 @@
 // runs across the top of every page instead of hugging one edge.
 // Day is the default (premium, calm reveal). Night is Mission Control.
 // Live-with-fallback: pulls the real activity feed + entity + counts when signed
-// in; falls back to representative data so the public preview always renders.
+// in. No representative data: an empty ticker says nothing has run yet.
 
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/Icon";
