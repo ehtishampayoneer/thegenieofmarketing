@@ -517,6 +517,13 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <LeftPanel item={item} isArticle={isArticle} />
         {/* Held back by the brand-safety guard. This is the only place the owner
             can find out that happened, so it says what was wrong and what to do. */}
+        {item.failed && (
+          <div className="rounded-xl p-3.5 mb-3" style={{ background: "var(--signal-danger-soft, var(--surface-2))", border: "1px solid var(--signal-danger)" }}>
+            <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>This didn't publish last time</p>
+            {item.failedReason && <p className="mt-1 text-[12.5px] mg-muted">{item.failedReason}</p>}
+            <p className="mt-1.5 text-[12.5px] mg-muted">Nothing went out. Approve it again to retry, or edit it first.</p>
+          </div>
+        )}
         {item.held && (
           <div className="rounded-xl p-3.5 mb-3" style={{ background: "var(--signal-warn-soft, var(--surface-2))", border: "1px solid var(--signal-warn)" }}>
             <p className="text-[13.5px] font-bold" style={{ color: "var(--fg)" }}>Genie held this back to protect your brand</p>

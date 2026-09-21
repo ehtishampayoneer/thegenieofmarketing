@@ -7,6 +7,7 @@
 // surface reads. Best-effort; unauth → ok:false so the UI falls back to demo.
 
 import { createClient } from "@/lib/supabase/server";
+import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 
@@ -20,6 +21,10 @@ export async function GET() {
 
   const items = [];
 
+  // Work that stopped halfway is put back before the list is built, so a
+  // publish that died mid-flight reappears here instead of vanishing.
+  try { await recoverStuckActions(supabase, { userId: user.id }); } catch {}
+
   try {
     const { data: actions } = await supabase
       .from("actions").select("id, type, title, priority, payload, target, status, result")
@@ -29,7 +34,7 @@ export async function GET() {
       // then hid it from the only person who could fix it. The owner saw a
       // toast once, navigated away, and the article was gone for good while
       // Today still told them to approve their first one.
-      .eq("user_id", user.id).in("status", ["proposed", "needs_review"]).neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
+      .eq("user_id", user.id).in("status", ["proposed", "needs_review", "failed"]).neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
     for (const a of actions || []) items.push(normalizeAction(a));
   } catch {}
 
@@ -97,6 +102,10 @@ function normalizeAction(a) {
     // Held back by the publish guard, and why. Without the reasons the owner
     // can only guess at what to change.
     held: a.status === "needs_review",
+    // A publish that errored. The owner saw a toast at the time and then the
+    // row left the queue, so a failed article was as gone as a blocked one.
+    failed: a.status === "failed",
+    failedReason: a.status === "failed" ? (a.result?.error || null) : null,
     heldReasons: a.status === "needs_review" ? (a.result?.reasons || []).slice(0, 4) : null,
     heldClaims: a.status === "needs_review" ? (a.result?.claims || []).slice(0, 4) : null,
     brand: brandFor(a.type, p, platform),

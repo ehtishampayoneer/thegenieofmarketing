@@ -13,7 +13,8 @@ const execute = readFileSync(join(process.cwd(), "app/api/actions/[id]/execute/r
 
 describe("work the guard holds back", () => {
   it("is still listed in the queue", () => {
-    expect(approvalsApi).toContain('.in("status", ["proposed", "needs_review"])');
+    // Plus "failed": a publish that errored left the queue the same way.
+    expect(approvalsApi).toContain('.in("status", ["proposed", "needs_review", "failed"])');
   });
 
   it("arrives with the reason and the sentences that caused it", () => {
@@ -29,5 +30,13 @@ describe("work the guard holds back", () => {
 
   it("still counts as an article waiting for the owner", () => {
     expect(launchpad).toMatch(/\.in\("status", \["proposed", "needs_review"\]\)\.eq\("type", "article"\)/);
+  });
+});
+
+describe("work that failed to publish", () => {
+  it("stays in the queue with the error, so it can be retried", () => {
+    expect(approvalsApi).toMatch(/failedReason/);
+    expect(approvalsPage).toMatch(/didn't publish last time/);
+    expect(approvalsPage).toMatch(/Nothing went out/);
   });
 });
