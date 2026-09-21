@@ -24,7 +24,7 @@ export async function GET(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Sign in first.", { status: 401 });
 
-  const origin = process.env.APP_URL || new URL(request.url).origin;
+  const origin = (process.env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
   const src = `${origin}/api/embed?k=${makeIngestToken(user.id)}`;
 
   let site = "";

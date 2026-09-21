@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request, { params }) {
   const admin = createAdminClient();
-  const fallback = process.env.APP_URL || new URL(request.url).origin;
+  const fallback = (process.env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
 
   const link = await resolveLink(admin, params.id);
   if (!link?.url) return NextResponse.redirect(fallback, 302);

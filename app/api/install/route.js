@@ -51,7 +51,7 @@ export async function GET(request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
 
-  const origin = process.env.APP_URL || new URL(request.url).origin;
+  const origin = (process.env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
   const { src, host, site, platform } = await context(supabase, user.id, origin);
 
   return json({
@@ -77,7 +77,7 @@ export async function POST(request) {
     return json({ ok: false, error: "That does not look like an email address." }, 400);
   }
 
-  const origin = process.env.APP_URL || new URL(request.url).origin;
+  const origin = (process.env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
   const { src, site, platform } = await context(supabase, user.id, origin);
 
   let from = "";

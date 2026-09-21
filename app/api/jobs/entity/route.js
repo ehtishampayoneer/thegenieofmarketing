@@ -25,7 +25,7 @@ export async function POST(request) {
   const { userId, host } = body || {};
   if (!userId || !host) return json({ ok: false, error: "userId and host are required." }, 400);
 
-  const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  const appUrl = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
   const admin = createAdminClient();
   const day = new Date().toISOString().slice(0, 10);
 

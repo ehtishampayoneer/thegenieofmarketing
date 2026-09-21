@@ -38,7 +38,7 @@ export async function GET(request) {
   // error here would put a console error on a customer's live site.
   if (!userId) return js("/* Marketing Genie: this embed key is not valid. */");
 
-  const appUrl = process.env.APP_URL || new URL(request.url).origin;
+  const appUrl = (process.env.APP_URL || new URL(request.url).origin).replace(/\/+$/, "");
 
   // What should the CTA say, and where should it send people? Both come from
   // the owner's own settings; nothing is invented.

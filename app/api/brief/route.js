@@ -83,7 +83,7 @@ async function sendBrief(email, actions) {
   );
   const top = sorted.slice(0, 3);
   const count = actions.length;
-  const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  const appUrl = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
 
   const items = top.map((a) => `
     <tr>

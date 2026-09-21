@@ -25,7 +25,7 @@ export async function POST(request) {
   } catch {}
   if (!host) return json({ ok: false, error: "Run your first scan first — Genie needs to know your business." }, 400);
 
-  const appUrl = process.env.APP_URL || (() => { try { return new URL(request.url).origin; } catch { return "https://thegenieofmarketing.vercel.app"; } })();
+  const appUrl = (process.env.APP_URL || (() => { try { return new URL(request.url).origin; } catch { return "https://thegenieofmarketing.vercel.app"; } })()).replace(/\/+$/, "");
   const cron = process.env.CRON_SECRET || "";
   const rivals = String(body?.rivals || "").slice(0, 200);
   const callRadar = async (path, extra = {}) => {

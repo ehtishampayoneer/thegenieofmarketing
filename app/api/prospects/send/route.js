@@ -63,7 +63,7 @@ export async function POST(request) {
 
   let host = null;
   try { const { data: scan } = await supabase.from("scans").select("final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(); host = scan ? hostOf(scan) : null; } catch {}
-  const base = process.env.APP_URL || "";
+  const base = (process.env.APP_URL || "").replace(/\/+$/, "");
 
   const r = await deliverEmail(supabase, userId, { to, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, to) });
   try {

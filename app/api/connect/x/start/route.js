@@ -44,6 +44,6 @@ function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 function absolute(path) {
-  const base = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  const base = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
   return base + path;
 }

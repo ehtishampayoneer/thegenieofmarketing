@@ -102,6 +102,6 @@ export async function GET(request) {
 }
 
 function absolute(path) {
-  const base = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  const base = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
   return base + path;
 }

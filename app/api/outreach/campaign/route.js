@@ -130,7 +130,7 @@ export async function POST(request) {
   const draftProf = trackedSite ? { ...prof, company_website: trackedSite } : prof;
 
   // Draft + send as a drip. (Serverless: send this batch now; cron handles scale.)
-  const base = process.env.APP_URL || "";
+  const base = (process.env.APP_URL || "").replace(/\/+$/, "");
 
   // Drop addresses that cannot receive mail BEFORE the batch goes out. Bounces
   // are the signal mailbox providers use to classify a sender as spam, so a few

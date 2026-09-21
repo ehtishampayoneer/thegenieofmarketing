@@ -25,7 +25,7 @@ export async function GET(request) {
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return json({ ok: false, error: "Unauthorized" }, 401);
   }
-  const appUrl = process.env.APP_URL || "https://thegenieofmarketing.vercel.app";
+  const appUrl = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
   const admin = createAdminClient();
   logger.info("cron.dispatch.start");
 
