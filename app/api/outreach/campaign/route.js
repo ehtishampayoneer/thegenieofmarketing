@@ -14,6 +14,7 @@ import { decideExecution } from "@/lib/autonomy";
 import { strategyPromptBlock } from "@/lib/strategy-store";
 import { dueFollowUps, draftFollowUp, markCold } from "@/lib/followup";
 import { audienceOf, PARTNER } from "@/lib/audience";
+import { repliedProfile, lookalikeNiche } from "@/lib/lookalike";
 import { genieBrain } from "@/lib/brain";
 import { logActivity } from "@/lib/activity";
 
@@ -165,6 +166,20 @@ export async function POST(request) {
   // Whatever the follow-ups used is no longer available for new strangers.
   const roomLeft = Math.max(0, room - followedUp);
 
+  // ── MORE LIKE THE ONES WHO ANSWERED ──
+  // Without this the search never improves: the same niche runs night after night
+  // whether or not anyone in it ever replies, so a list that is 5% right stays 5%
+  // right and the owner cannot tell "cold email does not work" apart from "this
+  // list does not work". Replies are the only honest signal at this volume, and
+  // two is the floor — one reply is an anecdote, and a list narrowed on an
+  // anecdote is worse than the broad one it replaced.
+  let lookalike = { changed: false, reason: "" };
+  try {
+    const profile = await repliedProfile(supabase, { userId, host });
+    lookalike = lookalikeNiche(profile, niche);
+    if (lookalike.changed) niche = lookalike.niche;
+  } catch {}
+
   // Source contacts. Seeds the shared directory from real published addresses
   // when it has nothing fresh, which is what makes this run send at all.
   // Filter the shared pool by the SAME niche that seeds it. This used to pass
@@ -299,7 +314,7 @@ export async function POST(request) {
     ? ` Skipped ${undeliverable} dead address${undeliverable > 1 ? "es" : ""} to protect your sender reputation.`
     : "";
   const fu = followedUp > 0 ? ` Also followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.` : "";
-  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, cap, ramping, capReason, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
+  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, cap, ramping, capReason, lookalike: lookalike.reason || null, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }

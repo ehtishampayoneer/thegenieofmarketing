@@ -35,6 +35,7 @@ import { pageUrl } from "@/lib/pages";
 import { getEvents } from "@/lib/events";
 import { hostOf } from "@/lib/business";
 import { effectiveDailyCap } from "@/lib/sending-ramp";
+import { repliedProfile, lookalikeNote } from "@/lib/lookalike";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -218,6 +219,12 @@ export async function GET(request) {
   } catch {}
   const silent = (emails || []).filter((e) => !e.replied_at && daysAgo(e.sent_at) >= 3).length;
   if (silent > 0) next.push(`Follow-ups: ${silent} ${silent === 1 ? "person has" : "people have"} gone quiet, so Genie writes to them again with a different angle.`);
+  // Whether the list is getting better, in one line. Without this the loop is
+  // invisible and the owner has no way to see it working.
+  try {
+    const note = lookalikeNote(await repliedProfile(supabase, { userId: uid, host }));
+    if (note) next.push(`Who to look for: ${note}`);
+  } catch {}
   next.push("Writing: one article a night, on the search your keyword strategy picked.");
   next.push("Checking: your Google positions every night, and what the AI assistants answer every week.");
 
