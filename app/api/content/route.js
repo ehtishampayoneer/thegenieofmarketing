@@ -185,6 +185,65 @@ export async function POST(request) {
 
   if (!data) return json({ ok: false, error: "Couldn't write the content." }, 500);
 
+  // Strip the "AI tells" from the article before it is stored, not after: the row
+  // written below is the one an owner reads and publishes.
+  if (data.article) {
+    data.article.body = deDash(data.article.body);
+    data.article.title = cleanText(data.article.title);
+    data.article.metaDescription = cleanText(data.article.metaDescription);
+    if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: cleanText(String(f.q)), a: cleanText(String(f.a)) }));
+    if (data.article.cta && typeof data.article.cta === "object") {
+      const c = data.article.cta;
+      data.article.cta = { headline: cleanText(String(c.headline || "")), subtext: cleanText(String(c.subtext || "")), buttonText: cleanText(String(c.buttonText || "")) };
+    }
+  }
+
+  // ── THE ARTICLE IS SAVED THE MOMENT IT EXISTS ──
+  // Everything after this line — the social pass, the image hunt, the branded cards,
+  // the Pinterest pin — is enrichment, and each one costs real seconds. This
+  // function is killed at 60 seconds on Vercel Hobby whatever maxDuration says, and
+  // the single insert used to be the LAST thing it did. So a run that ran out of
+  // time threw away an article a writer-grade model had already been paid to write,
+  // and the owner saw nothing and was told nothing. Now the article lands first: a
+  // timeout costs the social posts, never the article.
+  let articleId = null;
+  let actionIds = [];
+  if (userId && data.article) {
+    if (pick) { data.article.targetKeyword = pick.keyword; data.article.relatedKeywords = pick.related; }
+    try {
+      const admin = createAdminClient();
+      const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
+      const { data: row, error } = await admin.from("actions").insert({
+        user_id: userId,
+        scan_id: scanId || null,
+        type: "article",
+        title: `Article: ${data.article.title || "Untitled"}`,
+        payload: data.article,
+        target: { platform: "website", host: host || null },
+        priority: VALID.has(data.articlePriority) ? data.articlePriority : "medium",
+        status: "proposed",
+      }).select("id").single();
+      if (error) throw error;
+      articleId = row?.id || null;
+      if (articleId) {
+        actionIds.push(articleId);
+        const kw = pick?.keyword || data.article?.targetKeyword || null;
+        if (kw && host) {
+          try {
+            await recordUsage(supabase, userId, host, {
+              primary: kw, related: pick?.related || [],
+              channel: pick?.aeo ? "answer" : "article",
+              refType: "action", refId: articleId,
+              title: data.article?.title || "Article", status: "proposed",
+            });
+          } catch {}
+        }
+      }
+    } catch (e) {
+      logger.warn("content.early_article_save_failed", { host: host || null, error: String(e?.message || e).slice(0, 200) });
+    }
+  }
+
   // The social pass. Deliberately NOT fatal: if it fails, the owner still gets the
   // article, which is the piece that actually publishes. Before the split a single
   // failure lost everything, so this is strictly more resilient than what it
@@ -219,16 +278,6 @@ export async function POST(request) {
   // markdown (it becomes proper HTML headings/lists on publish), so it only gets
   // de-dashed; everything plain-text (title, meta, FAQ, CTA, and all social) is fully
   // cleaned so nothing reads as machine-written.
-  if (data.article) {
-    data.article.body = deDash(data.article.body);
-    data.article.title = cleanText(data.article.title);
-    data.article.metaDescription = cleanText(data.article.metaDescription);
-    if (Array.isArray(data.article.faq)) data.article.faq = data.article.faq.filter((f) => f && f.q && f.a).slice(0, 6).map((f) => ({ q: cleanText(String(f.q)), a: cleanText(String(f.a)) }));
-    if (data.article.cta && typeof data.article.cta === "object") {
-      const c = data.article.cta;
-      data.article.cta = { headline: cleanText(String(c.headline || "")), subtext: cleanText(String(c.subtext || "")), buttonText: cleanText(String(c.buttonText || "")) };
-    }
-  }
   if (data.cardHeadline) data.cardHeadline = cleanText(data.cardHeadline);
   if (data.social) {
     const cleanArr = (a) => (Array.isArray(a) ? a.map(cleanText) : a);
@@ -240,9 +289,8 @@ export async function POST(request) {
     data.social.quora = cleanText(data.social.quora);
   }
 
-  // Persist everything Genie generated as PROPOSED actions (the autopilot spine).
-  // Ephemeral no more — these are ready for approval + auto-publish (F2/F3).
-  let actionIds = [];
+  // Persist the rest: the social posts, and the article's imagery folded back into
+  // the row that was already written above.
   try {
     if (userId) {
       // The keyword this whole batch targets (real portfolio pick, else the AI's own).
@@ -331,7 +379,19 @@ export async function POST(request) {
       // businesses with a channel they don't have.
       const isLocal = ((classifyEntity(ai)?.dims?.localImportance) || 0) >= 0.6;
 
-      if (data.article) {
+      // The article already has a row (saved the moment it was written, above). The
+      // image hunt has since attached a hero to it, so fold that into the row that
+      // exists rather than writing a second one — a duplicate article in Approvals
+      // is worse than a missing image.
+      if (data.article && articleId) {
+        try {
+          await createAdminClient().from("actions")
+            .update({ payload: data.article, priority: articlePriority })
+            .eq("id", articleId).eq("user_id", userId);
+        } catch {}
+      } else if (data.article) {
+        // The early save failed. Fall back to the original behaviour so the article
+        // is not lost twice over.
         rows.push({
           user_id: userId,
           scan_id: scanId || null,
@@ -396,12 +456,15 @@ export async function POST(request) {
         const admin = createAdminClient();
         const { data: inserted, error: insErr } = await admin.from("actions").insert(rows).select("id, type");
         if (insErr) throw insErr; // surface via saved:0 + honest message below
-        actionIds = (inserted || []).map((r) => r.id);
+        actionIds = [...actionIds, ...(inserted || []).map((r) => r.id)];
 
         // ── RECORD THE CHAIN ── link the produced pieces back to the keyword they
         // target (and advance its coverage), so the user can see exactly what Genie
         // wrote for each keyword. Best-effort; never blocks returning the content.
         if (primaryKw && host) {
+          // The article's own usage was recorded at its early save, so only the
+          // fallback insert needs it here — recording it twice would inflate the
+          // keyword's coverage off one article.
           const artId = (inserted || []).find((r) => r.type === "article")?.id;
           const socId = (inserted || []).find((r) => r.type === "social_post")?.id;
           if (artId) await recordUsage(supabase, userId, host, { primary: primaryKw, related: pick?.related || [], channel: pick?.aeo ? "answer" : "article", refType: "action", refId: artId, title: data.article?.title || "Article", status: "proposed" });
