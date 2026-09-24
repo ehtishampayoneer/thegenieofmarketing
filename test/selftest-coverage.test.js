@@ -69,6 +69,49 @@ describe("every engine in the rebuild is checked against live data", () => {
   });
 });
 
+
+// ── THE HALF OF "RUN THE SELF-TEST" THAT CAN RUN HERE ──
+// The real thing needs the live keys and a signed-in session. What can be proved
+// locally is that no check throws — because a check that throws is the one outcome
+// the page cannot explain to an owner, and an empty account is the state every
+// new owner is in on day one.
+describe("no check crashes on a brand-new, empty account", () => {
+  // Every query chains and resolves to nothing found, the way a fresh account reads.
+  function stubDb() {
+    const res = { data: [], count: 0, error: null };
+    const q = new Proxy({}, {
+      get(_t, prop) {
+        if (prop === "then") return (resolve) => resolve(res);
+        if (prop === "maybeSingle" || prop === "single") return async () => ({ data: null, error: null });
+        return () => q;
+      },
+    });
+    return { from: () => q };
+  }
+
+  const NEW = ["plan", "brain", "platform", "contacts-safe", "ramp", "followups", "lookalike", "owner-signal"];
+
+  for (const id of NEW) {
+    it(`${id} answers instead of throwing`, async () => {
+      const fetch0 = globalThis.fetch;
+      globalThis.fetch = async () => { throw new Error("offline in tests"); };
+      try {
+        const r = await CHECK_INDEX[id].run(
+          { supabase: stubDb(), userId: "u1", host: "example.com", ai: {}, profile: {} },
+          { origin: "https://example.test" }
+        );
+        expect(["pass", "warn", "fail", "skip"], `${id} returned ${JSON.stringify(r)}`).toContain(r?.status);
+        expect(typeof r.summary).toBe("string");
+        expect(r.summary.length).toBeGreaterThan(0);
+        // A red or amber row an owner cannot act on is a dead end.
+        if (r.status !== "pass") expect(typeof r.fix === "string" || r.fix === undefined).toBe(true);
+      } finally {
+        globalThis.fetch = fetch0;
+      }
+    });
+  }
+});
+
 // The argument text of each call to `name`, found by counting brackets so a `)`
 // inside a template literal does not end the call early.
 function callsTo(src, name) {
