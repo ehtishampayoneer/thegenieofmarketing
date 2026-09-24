@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeStrategy, strategyReady, fallbackStrategy, readStrategy, strategyBlock } from "@/lib/strategy";
+import { normalizeStrategy, strategyReady, fallbackStrategy, readStrategy, strategyBlock, strategyPrompt } from "@/lib/strategy";
 
 const arqr = {
   businessName: "ARQR360",
@@ -136,5 +136,69 @@ describe("the plan does not re-answer what another section already answered", ()
     expect(src).toMatch(/getGscCountries/);
     // Only markets it is actually sure about: an estimate is not a recommendation.
     expect(src).toMatch(/confidence === "verified"/);
+  });
+});
+
+describe("the plan now knows what is being sold", () => {
+  const withOffer = normalizeStrategy({
+    who: ["furniture retailer"], theirGoal: ["increase sales"],
+    angle: "One of the ways furniture retailers grow", mechanism: "Fewer returns",
+    offer: "AR product views. From $29 a month plus a $249 setup.",
+    partnerOffer: "20% of the monthly fee, for as long as the client stays.",
+    roles: ["ecommerce manager", "owner"],
+    qualityBar: "At least 10 reviews and three years trading.",
+  });
+
+  it("carries the offer and the price into every engine that writes", () => {
+    const block = strategyBlock(withOffer);
+    expect(block).toMatch(/What we sell, and what it costs/);
+    expect(block).toMatch(/\$29 a month/);
+  });
+
+  it("tells a writer not to pitch an agency the customer price", () => {
+    // The mistake this field exists to stop: an agency is not buying it, they
+    // are putting it in front of twenty of their own clients.
+    const block = strategyBlock(withOffer);
+    expect(block).toMatch(/20% of the monthly fee/);
+    expect(block).toMatch(/Do not pitch them the customer price/);
+  });
+
+  it("names the job the offer has to be relevant to", () => {
+    expect(strategyBlock(withOffer)).toMatch(/ecommerce manager, owner/);
+  });
+
+  it("says nothing about a partner offer when there is none to state", () => {
+    const noPartner = normalizeStrategy({ ...withOffer, partnerOffer: "" });
+    expect(strategyBlock(noPartner)).not.toMatch(/AGENCY or a partner/);
+  });
+});
+
+describe("where Genie may cold-email", () => {
+  it("defaults to the permissive countries rather than to nowhere or everywhere", () => {
+    // An empty list means one of those two, and one of them is a fine.
+    const s = normalizeStrategy({});
+    expect(s.emailCountries).toContain("United States");
+    expect(s.emailCountries).toContain("Pakistan");
+    expect(s.emailCountries).not.toContain("Canada");
+    expect(s.emailCountries).not.toContain("Germany");
+  });
+
+  it("keeps the owner's own list when they set one", () => {
+    const s = normalizeStrategy({ emailCountries: ["United Kingdom"] });
+    expect(s.emailCountries).toEqual(["United Kingdom"]);
+  });
+
+  it("keeps 'where to email' apart from 'where to publish'", () => {
+    // You can write for a country you are not allowed to email into.
+    const s = normalizeStrategy({ markets: ["Germany"] });
+    expect(s.markets).toEqual(["Germany"]);
+    expect(s.emailCountries).not.toContain("Germany");
+  });
+
+  it("never invents a price, and the drafting prompt says so", () => {
+    const p = strategyPrompt({ ai: { businessName: "ARQR360" }, briefText: "" });
+    expect(p).toMatch(/never invent a price/);
+    expect(p).toMatch(/"partnerOffer"/);
+    expect(p).toMatch(/"roles"/);
   });
 });
