@@ -5,6 +5,22 @@
 // moves). Cadence-ordered: your OWNED accounts first (auto-publishable), then
 // community taps, ranked by impact/intent. The single contract the Approval
 // surface reads. Best-effort; unauth → ok:false so the UI falls back to demo.
+//
+// ── IT SERVES THREE ──
+// The nightly engine can stage forty items in a night: fifteen cold emails, a
+// handful of community replies, an article, a hub page, a refresh, listings, a
+// pitch. Every one of them is worth doing and the pile is unusable — a beginner
+// opens it, cannot tell which of the forty matters, and closes the app. Genie's
+// promise is three minutes a morning, and forty cards is not three minutes.
+//
+// So the queue serves the best three and says how many are behind them. Nothing
+// is hidden or thrown away: ?all=1 returns the lot for an owner who wants to keep
+// going. What is capped is what you are ASKED to do, not what you are allowed to.
+//
+// The ranking is not new and not arbitrary. Every item already carries an impact
+// score out of 100 — a hot buyer-intent thread scores in the nineties, a
+// low-traffic directory listing in the twenties — and this queue already sorted
+// by it. The cap simply stops showing the tail.
 
 import { createClient } from "@/lib/supabase/server";
 import { recoverStuckActions } from "@/lib/stuck";
@@ -14,7 +30,10 @@ import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export const DAILY_CARDS = 3;
+
+export async function GET(request) {
+  const showAll = new URL(request.url).searchParams.get("all") === "1";
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ ok: false, reason: "not_authenticated" }, 401);
@@ -57,7 +76,16 @@ export async function GET() {
   items.sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);
 
   const ownedCount = items.filter((i) => i.owned).length;
-  return json({ ok: true, live: true, count: items.length, ownedCount, items });
+  const shown = showAll ? items : items.slice(0, DAILY_CARDS);
+  const backlog = Math.max(0, items.length - shown.length);
+  return json({
+    ok: true, live: true,
+    // `count` stays the size of the whole queue: the screen says "3 for you today,
+    // 12 waiting", and a number that quietly meant something else is the bug this
+    // codebase keeps having.
+    count: items.length, ownedCount, backlog, showingAll: showAll, perDay: DAILY_CARDS,
+    items: shown,
+  });
 }
 
 function normalizeAction(a) {

@@ -73,7 +73,11 @@ function cardTitleOf(u) { try { const x = new URL(u, location.origin); return x.
 function rebuildCard(u, { title, img, sig, focus }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) { x.searchParams.set("img", img); if (sig) x.searchParams.set("sig", sig); else x.searchParams.delete("sig"); } if (focus != null) x.searchParams.set("focus", String(focus)); return x.href; } catch { return u; } }
 
 export default function ApprovalsPage() {
-  const { data: feed, state } = useLive("/api/approvals", (j) => !(j.items?.length));
+  // The queue serves the best three and holds the rest. Nothing is hidden: this
+  // asks for the whole thing when the owner says they want to keep going.
+  const [showAll, setShowAll] = useState(false);
+  const { data: feed, state } = useLive(`/api/approvals${showAll ? "?all=1" : ""}`, (j) => !(j.items?.length));
+  const backlog = feed?.backlog || 0;
   const [items, setItems] = useState([]);
   const [idx, setIdx] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -373,6 +377,15 @@ export default function ApprovalsPage() {
           <h1 className="mt-2 mg-display" style={{ fontSize: "clamp(29px,3.2vw,40px)" }}>
             {loading ? <>Opening your <span className="dawn-text">queue…</span></> : view.length > 0 ? <>Genie did the work. <span className="dawn-text">You just approve.</span></> : <>You’re all <span className="dawn-text">caught up.</span></>}
           </h1>
+          {/* Said before they start, not only after. Capping the queue without
+              saying so reads as Genie having stopped working. */}
+          {state === "real" && view.length > 0 && (
+            <p className="mt-2 text-[13.5px] mg-muted">
+              {showAll
+                ? <>Showing everything — <span className="mg-num">{view.length}</span> waiting.</>
+                : <><span className="mg-num">{view.length}</span> for you today{backlog > 0 ? <> · <span className="mg-num">{backlog}</span> lined up behind them</> : null}. About a minute each.</>}
+            </p>
+          )}
         </div>
         {state === "real" && items.length > 0 && (
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -409,7 +422,7 @@ export default function ApprovalsPage() {
           <div className="mg-surface p-6" style={{ minHeight: 160 }}><div className="mg-skel" style={{ height: 16, width: "60%" }} /><div className="mg-skel mt-3" style={{ height: 90 }} /></div>
         </div>
       ) : empty ? (
-        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); setMarketFilter("all"); }} />
+        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); setMarketFilter("all"); }} backlog={backlog} showingAll={showAll} onShowAll={() => setShowAll(true)} />
       ) : (
         <div className="mt-5 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
           {/* ── LEFT: progress + the current approval ── */}
@@ -854,17 +867,19 @@ function queueTitle(it) {
 }
 
 // ── ALL CLEAR / EMPTY ───────────────────────────────────────────────────────
-function AllClear({ done, drafting, onDraft, filtered, onClear }) {
+function AllClear({ done, drafting, onDraft, filtered, onClear, backlog = 0, showingAll = false, onShowAll }) {
   return (
     <div className="mt-8 mg-surface mg-ambient p-12 text-center">
       <span className="mg-tile mx-auto" style={{ width: 62, height: 62, background: "var(--signal-live-soft)", color: "var(--signal-live-ink)" }}><Icon.check size={30} /></span>
       <p className="mt-4 mg-title" style={{ fontSize: 21 }}>{done > 0 ? <>Cleared. <span className="mg-num">{done}</span> {done === 1 ? "decision" : "decisions"} approved.</> : filtered ? "Nothing matches these filters." : "Nothing in your queue yet."}</p>
-      <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? "I’m already lining up tomorrow’s work. Go enjoy your day." : filtered ? "Try widening the filters to see the rest of your queue." : "Have me draft your first publish-ready article and social posts right now, from what I already learned about you."}</p>
+      <p className="mt-1.5 text-[14px] mg-muted max-w-md mx-auto">{done > 0 ? (backlog > 0 && !showingAll ? `That is today's three. ${backlog} more are lined up and waiting — they will be here tomorrow, or you can carry on now.` : "I’m already lining up tomorrow’s work. Go enjoy your day.") : filtered ? "Try widening the filters to see the rest of your queue." : "Have me draft your first publish-ready article and social posts right now, from what I already learned about you."}</p>
       <div className="mt-5 flex items-center justify-center gap-2.5">
         {filtered && done === 0 ? (
           <button onClick={onClear} className="mg-btn mg-btn--dawn">Clear filters</button>
         ) : done === 0 ? (
           <button onClick={onDraft} disabled={drafting} className="mg-btn mg-btn--dawn disabled:opacity-60">{drafting ? "Genie is writing… (~30s)" : "Draft my first content →"}</button>
+        ) : backlog > 0 && !showingAll ? (
+          <button onClick={onShowAll} className="mg-btn mg-btn--dawn">Keep going — {backlog} waiting</button>
         ) : null}
         <a href={done > 0 ? "/today" : "/growth"} className="mg-btn mg-btn--ghost">{done > 0 ? "Back to Today" : "See opportunities"}</a>
       </div>
