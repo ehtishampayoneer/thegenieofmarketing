@@ -23,36 +23,37 @@ import PageGuide from "@/components/shell/v2/PageGuide";
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
 // where it's growing you (the journey), and how you stay in control (settings).
 const NAV = [
-  // ── THE ORDER IS THE JOURNEY ──
-  // Twenty-nine entries in one flat list read as a pile of features, and an owner
-  // cannot tell what to do first. They are now stages, numbered in the order the
-  // work actually happens: the daily loop, then being found, then winning
-  // customers, then proving it paid, then widening. Control sits last because it
-  // is where you go on purpose, not on the way through.
-  { section: "Every day" },
+  // ── THE SIX A CUSTOMER USES ──
+  // Twenty-four destinations is the reason a beginner opened this and could not
+  // tell what their job was. These are the daily loop, in the order it happens:
+  // read what happened, decide the three things, answer whoever wrote back, fix
+  // the plan if it is wrong, check the work is real, connect what is missing.
+  //
+  // Nothing is deleted and nothing 404s. Everything else moved behind one
+  // disclosure below, closed by default, because those screens are good and the
+  // problem was never their quality — it was being asked to choose between
+  // twenty-four of them before breakfast.
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
-  // The testers, improvers and doers, live on a globe, plus testing anything on
-  // demand — one crowd, one page (lib/swarm).
-  { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
-  { id: "inbox", label: "Inbox", icon: Icon.inbox },
-  // The proof of work, with a link to each of it. Results take weeks; this is
-  // what a beginner has on day two, and it is why they are still here in week
-  // three (app/worklog).
-  { id: "worklog", label: "Everything Genie did", icon: Icon.history },
-
-  // The plan every other page executes. It sits at the top of the journey
-  // because a wrong assumption here is wrong in eight engines at once.
+  { id: "inbox", label: "Leads", icon: Icon.inbox },
   { id: "strategy", label: "The plan", icon: Icon.target },
+  { id: "worklog", label: "Everything Genie did", icon: Icon.history },
+  { id: "connections", label: "Setup", icon: Icon.settings },
+];
 
-  { section: "1 · Get found" },
+// Reachable, and not in the way. Most of these run on their own and put their
+// output in Approvals — the owner does not need a door to Buyer Hunt, because
+// Genie brings the buyer to them. The rest are tools somebody reaches for on
+// purpose, perhaps once a month.
+const MORE = [
+  { section: "Get found" },
   { id: "growth", label: "Growth Score", icon: Icon.growth },
   { id: "aisearch", label: "AI Search Presence", icon: Icon.search },
   { id: "spread", label: "Spread your articles", icon: Icon.megaphone },
   { id: "site", label: "Website Setup", icon: Icon.globe },
   { id: "foundation", label: "Foundation links", icon: Icon.link },
 
-  { section: "2 · Win customers" },
+  { section: "Win customers" },
   { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
   { id: "prospects", label: "Find clients", icon: Icon.target },
   { id: "featured", label: "Get featured", icon: Icon.megaphone },
@@ -60,23 +61,27 @@ const NAV = [
   { id: "pipeline", label: "Deal Pipeline", icon: Icon.board },
   { id: "recover", label: "Revenue Recovery", icon: Icon.coins },
 
-  { section: "3 · Prove it pays" },
+  { section: "Prove it pays" },
   { id: "impact", label: "Customer Impact", icon: Icon.bolt },
   { id: "sprint", label: "Proof Sprint", icon: Icon.flag },
   { id: "analytics", label: "What Genie Learned", icon: Icon.brain },
 
-  { section: "4 · Go wider" },
+  { section: "Go wider" },
+  { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
   { id: "markets", label: "Market Testing", icon: Icon.megaphone },
   { id: "write", label: "Ask Genie to write", icon: Icon.write },
   { id: "video", label: "Video", icon: Icon.post },
 
   { section: "Control" },
-  { id: "connections", label: "Connections", icon: Icon.link },
   { id: "trust", label: "Trust Center", icon: Icon.check },
   { id: "settings", label: "Settings", icon: Icon.settings },
   { id: "howitworks", label: "How it works", icon: Icon.info },
   { id: "capabilities", label: "What Genie can do", icon: Icon.spark },
 ];
+
+// Which ids live behind the disclosure, so landing on one opens it rather than
+// leaving the owner looking at a rail that does not contain the page they are on.
+const MORE_IDS = new Set(MORE.filter((i) => i.id).map((i) => i.id));
 
 // The command bar's rotating prompt — shows the operator what they can ask for.
 const initials = (n) => (String(n || "You").trim().split(/\s+/).map((w) => w[0]).join("") || "Y").slice(0, 2).toUpperCase();
@@ -110,6 +115,9 @@ export default function OperatorShell({ active = "today", children }) {
   const [user, setUser] = useState({ name: "", entity: "" });
   const [chatOpen, setChatOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false); // mobile rail drawer
+  // Closed by default. Opens itself when the page you are on lives inside it, so
+  // the rail never fails to contain where you actually are.
+  const [moreOpen, setMoreOpen] = useState(() => MORE_IDS.has(active));
   const [missingConns, setMissingConns] = useState([]);
   const [connDismissed, setConnDismissed] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
@@ -198,18 +206,32 @@ export default function OperatorShell({ active = "today", children }) {
         <button onClick={() => setNavOpen(false)} className="md:hidden mg-focus" style={{ color: "var(--fg-subtle)", background: "none", border: "none", cursor: "pointer", padding: 4 }} aria-label="Close menu"><Icon.x size={18} /></button>
       </div>
       <nav className="flex-1 overflow-y-auto thin-scroll px-2.5 py-3">
-        {NAV.map((item, i) =>
-          item.section ? (
-            <p key={i} className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
-          ) : (
-            <a key={item.id} href={hrefFor(item.id)} target={item.external ? "_blank" : undefined} rel={item.external ? "noopener noreferrer" : undefined} onClick={() => setNavOpen(false)} className="mg-rail-item mg-focus" data-active={active === item.id}>
-              <item.icon size={18} />
-              <span>{item.label}</span>
-              {(item.countKey ? counts[item.countKey] : item.count) != null && (item.countKey ? counts[item.countKey] : item.count) > 0 && (
-                <span className="mg-rail-count">{item.countKey ? counts[item.countKey] : item.count}</span>
-              )}
-            </a>
-          )
+        {NAV.map((item) => <RailLink key={item.id} item={item} active={active} counts={counts} onGo={() => setNavOpen(false)} />)}
+
+        {/* Everything else. One disclosure rather than eighteen more doors: these
+            screens are good, and the problem was being asked to choose between
+            twenty-four of them before breakfast. */}
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-expanded={moreOpen}
+          className="mg-rail-item mg-focus w-full"
+          style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+        >
+          <Icon.plus size={18} style={{ transform: moreOpen ? "rotate(45deg)" : "none", transition: "transform .15s" }} />
+          <span>{moreOpen ? "Less" : "Everything else"}</span>
+        </button>
+
+        {moreOpen && (
+          <div style={{ paddingLeft: 2 }}>
+            {MORE.map((item, i) =>
+              item.section ? (
+                <p key={`s${i}`} className="px-2.5 pt-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] mg-subtle">{item.section}</p>
+              ) : (
+                <RailLink key={item.id} item={item} active={active} counts={counts} onGo={() => setNavOpen(false)} />
+              )
+            )}
+          </div>
         )}
       </nav>
 
@@ -325,6 +347,24 @@ export default function OperatorShell({ active = "today", children }) {
 
       <GenieChat open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
+  );
+}
+
+function RailLink({ item, active, counts, onGo }) {
+  const n = item.countKey ? counts?.[item.countKey] : item.count;
+  return (
+    <a
+      href={hrefFor(item.id)}
+      target={item.external ? "_blank" : undefined}
+      rel={item.external ? "noopener noreferrer" : undefined}
+      onClick={onGo}
+      className="mg-rail-item mg-focus"
+      data-active={active === item.id}
+    >
+      <item.icon size={18} />
+      <span>{item.label}</span>
+      {n != null && n > 0 && <span className="mg-rail-count">{n}</span>}
+    </a>
   );
 }
 
