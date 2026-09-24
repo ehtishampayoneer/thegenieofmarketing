@@ -1,7 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { articleShape, shapeReason } from "@/lib/article-shape";
+import { articleShape, shapeReason, writeBudgetMs, clampReason, DEFAULT_FUNCTION_SECONDS } from "@/lib/article-shape";
+
+// What each job WANTS is a separate question from what the host allows, and these
+// first blocks are about what it wants. Asserting them on Hobby's 60 seconds would
+// be asserting the workaround and losing the intent — so the budget is opened up
+// here, and the clamping has its own block below.
+beforeAll(() => { process.env.FUNCTION_MAX_SECONDS = "300"; });
+afterAll(() => { delete process.env.FUNCTION_MAX_SECONDS; });
 
 describe("how long an article should be depends on the job it is doing", () => {
   it("keeps a question page short, because assistants quote the clearest answer", () => {
@@ -92,5 +99,98 @@ describe("the choice is explainable", () => {
     expect(shapeReason("deep", { competition: 75 })).toMatch(/competitive \(75\/100\)/);
     expect(shapeReason("comparison")).toMatch(/one-sided comparison convinces nobody/);
     expect(shapeReason("guide")).toMatch(/no longer/);
+  });
+});
+
+// ── WHAT THE HOST ALLOWS ──
+// Vercel Hobby stops any function at 60 seconds whatever maxDuration declares. A
+// deep article asked the model for 70, so on Hobby it was killed mid-sentence and
+// the article was lost after the writer-grade model had already been paid for it.
+// One AI call needing 70 seconds cannot run in a 60-second function, so the shapes
+// are clamped to the host — deliberately, and reversibly.
+describe("an article is shortened to fit the host, and lengthens again when it can", () => {
+  const at = (secs, fn) => {
+    const before = process.env.FUNCTION_MAX_SECONDS;
+    process.env.FUNCTION_MAX_SECONDS = secs;
+    try { return fn(); } finally {
+      if (before === undefined) delete process.env.FUNCTION_MAX_SECONDS;
+      else process.env.FUNCTION_MAX_SECONDS = before;
+    }
+  };
+
+  it("assumes the free plan when nothing says otherwise", () => {
+    expect(DEFAULT_FUNCTION_SECONDS).toBe(60);
+    const before = process.env.FUNCTION_MAX_SECONDS;
+    delete process.env.FUNCTION_MAX_SECONDS;
+    try {
+      expect(writeBudgetMs()).toBeLessThan(60000);
+      expect(articleShape({ stage: "buy", competition: 80 }).clamped).toBe(true);
+    } finally { if (before !== undefined) process.env.FUNCTION_MAX_SECONDS = before; }
+  });
+
+  it("never asks for more writing time than the function has", () => {
+    at("60", () => {
+      for (const p of [{ source: "aeo" }, { stage: "compare" }, { stage: "buy", competition: 80 }, { stage: "learn", competition: 10 }]) {
+        const s = articleShape(p);
+        expect(s.timeoutMs, s.shape).toBeLessThanOrEqual(writeBudgetMs());
+        expect(s.timeoutMs + 12000, s.shape).toBeLessThanOrEqual(60000);
+      }
+    });
+  });
+
+  it("shortens the words with the clock, because a deadline alone just truncates", () => {
+    at("60", () => {
+      const deep = articleShape({ stage: "buy", competition: 80 });
+      expect(deep.clamped).toBe(true);
+      expect(deep.max).toBeLessThan(2200);
+      expect(deep.min).toBeGreaterThanOrEqual(600);
+      expect(deep.max).toBeGreaterThan(deep.min);
+      // And the brief carries the new number, never both.
+      expect(deep.brief).toMatch(new RegExp(`${deep.min.toLocaleString()} to ${deep.max.toLocaleString()} words`));
+      expect(deep.brief).not.toMatch(/1,500 to 2,200/);
+    });
+  });
+
+  it("leaves a short answer page alone, because it already fits", () => {
+    at("60", () => {
+      const a = articleShape({ source: "aeo" });
+      expect(a.clamped).toBe(false);
+      expect(a.max).toBe(1000);
+    });
+  });
+
+  it("gives the full length back on a bigger plan, with no code change", () => {
+    at("300", () => {
+      const deep = articleShape({ stage: "buy", competition: 80 });
+      expect(deep.clamped).toBe(false);
+      expect(deep.min).toBe(1500);
+      expect(deep.max).toBe(2200);
+    });
+  });
+
+  it("still ranks the four kinds in the same order once shortened", () => {
+    at("60", () => {
+      const answer = articleShape({ source: "aeo" }).max;
+      const guide = articleShape({ stage: "learn", competition: 10 }).max;
+      const deep = articleShape({ stage: "buy", competition: 80 }).max;
+      expect(guide).toBeGreaterThan(answer - 1);
+      expect(deep).toBeGreaterThan(guide);
+    });
+  });
+
+  it("explains a shortened article rather than leaving the owner to wonder", () => {
+    at("60", () => {
+      expect(clampReason(articleShape({ stage: "buy", competition: 80 }))).toMatch(/stopped at 60 seconds/);
+    });
+    at("300", () => {
+      expect(clampReason(articleShape({ stage: "buy", competition: 80 }))).toBe("");
+    });
+    expect(clampReason(null)).toBe("");
+  });
+
+  it("ignores a nonsense limit rather than producing a nonsense article", () => {
+    for (const bad of ["0", "-5", "abc", ""]) {
+      at(bad, () => { expect(writeBudgetMs()).toBe(48000); });
+    }
   });
 });

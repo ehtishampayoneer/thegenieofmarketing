@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
-import { articleShape, shapeReason } from "@/lib/article-shape";
+import { articleShape, shapeReason, functionLimitMs } from "@/lib/article-shape";
 import { pickPostImage } from "@/lib/media";
 import { setCardImage, signImageUrl } from "@/lib/card-sign";
 import { classifyEntity } from "@/lib/entity";
@@ -45,6 +45,13 @@ export async function POST(request) {
   const attachedVideo = typeof body?.video === "string" && /^https?:\/\//.test(body.video) ? body.video : null;
   // "article" | "social" | "both". Defaults to both, which is the nightly behaviour.
   const channels = ["article", "social", "both"].includes(body?.channels) ? body.channels : "both";
+
+  // ── THIS ROUTE'S OWN CLOCK ──
+  // maxDuration below says 120 and the host may allow 60. Every stage from here on
+  // asks how much is actually left rather than assuming its declared budget, so the
+  // function finishes on its own terms instead of being killed mid-write.
+  const routeStarted = Date.now();
+  const msLeft = () => functionLimitMs() - 4000 - (Date.now() - routeStarted);
 
   // Resolve the caller up front (browser session or trusted cron).
   const { supabase, userId } = await resolveRadarUser(request, body);
@@ -148,6 +155,7 @@ export async function POST(request) {
   // against the router's free daily allowances.
   let data = null;
   let provider = null;
+  let shapeUsed = null;
   try {
     // Flagship AEO pages are where AI citations are won — quality is the moat, so
     // spend the extra token budget on being the single best answer for those.
@@ -157,11 +165,15 @@ export async function POST(request) {
     // came out 600 to 900 words whether it was a question someone asks an
     // assistant or a commercial search whose page one is all 2,000-word guides.
     const shape = articleShape(pick);
+    shapeUsed = shape;
     const result = await callAI({
       system:
         "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given, and follow the owner's standing instructions exactly. Return ONLY valid JSON, no markdown fences.",
       json: true,
       maxTokens: shape.maxTokens, timeoutMs: shape.timeoutMs,
+      // The whole writing stage, however many providers it has to try. Without this
+      // a hung provider eats the budget and the next attempt is started anyway.
+      deadlineMs: Math.min(shape.timeoutMs, Math.max(0, msLeft())),
       temperature: 0.7,
       // This is published on the owner's domain under their name. Written by a
       // writer-grade model or not written tonight.
@@ -249,13 +261,17 @@ export async function POST(request) {
   // failure lost everything, so this is strictly more resilient than what it
   // replaced. `socialFailed` is reported honestly rather than hidden.
   let socialFailed = false;
-  if (data.article?.body && channels !== "article") {
+  // Enough time left to be worth starting? The article is already saved, so
+  // stopping here costs the posts and nothing else. Starting a pass that cannot
+  // finish costs the same posts AND kills the function before the image stage.
+  const socialBudget = Math.min(40000, Math.max(0, msLeft() - 8000));
+  if (data.article?.body && channels !== "article" && socialBudget >= 8000) {
     try {
       const soc = await callAI({
         system:
           "You are Genie, writing social posts for a business. You follow each platform's mechanics exactly. You never invent a fact that is not in the article you are given. No em-dashes, no hype. Return ONLY valid JSON, no markdown fences.",
         json: true,
-        maxTokens: 2600, timeoutMs: 40000,
+        maxTokens: 2600, timeoutMs: socialBudget, deadlineMs: socialBudget,
         temperature: 0.75,
         prompt: buildSocialPrompt({ ai, directives, pick, firstParty, article: data.article, context }),
       });
@@ -272,6 +288,10 @@ export async function POST(request) {
     } catch { socialFailed = true; }
   }
   if (socialFailed) logger.warn("content.social_pass_failed", { host: host || null });
+  const socialSkippedForTime = !!(data.article?.body && channels !== "article" && socialBudget < 8000);
+  if (socialSkippedForTime) {
+    logger.warn("content.social_skipped_no_time", { host: host || null, leftMs: Math.max(0, msLeft()) });
+  }
 
   // Strip the "AI tells": em-dashes everywhere, and stray markdown symbols (#, **, -
   // bullets) from any text that is shown/posted AS-IS. The article BODY keeps its
@@ -478,7 +498,11 @@ export async function POST(request) {
 
   // saved = how many drafts actually landed in Approvals. The UI reads this instead
   // of assuming success, so a failed insert is reported honestly, not masked.
-  return json({ ok: true, saved: actionIds.length, content: data, actionIds, socialFailed, meta: { engine: provider } });
+  return json({
+    ok: true, saved: actionIds.length, content: data, actionIds,
+    socialFailed, socialSkippedForTime,
+    meta: { engine: provider, shape: shapeUsed?.shape || null, shortened: !!shapeUsed?.clamped, ms: Date.now() - routeStarted },
+  });
 }
 
 function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "", shape = null }) {
