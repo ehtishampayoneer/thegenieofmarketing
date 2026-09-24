@@ -4,7 +4,7 @@
 // Output is designed to be AUTO-PUBLISHED (Phase F3). Copy-to-clipboard is a
 // temporary stopgap until the WordPress/Shopify write integrations land.
 
-import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
+import { callAI, AllProvidersFailedError, QualityUnavailableError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { craftBlock } from "@/lib/platform-craft";
 import { hookBlock, isSeriousBusiness } from "@/lib/hooks";
@@ -157,11 +157,20 @@ export async function POST(request) {
       json: true,
       maxTokens: aeo ? 4200 : 3500, timeoutMs: 50000,
       temperature: 0.7,
+      // This is published on the owner's domain under their name. Written by a
+      // writer-grade model or not written tonight.
+      quality: "best",
       prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan }),
     });
     data = result.json;
     provider = result.provider;
   } catch (e) {
+    // Nothing writer-grade was free. That is a deliberate skip, not a failure:
+    // tonight's miss becomes tomorrow's properly written article, and the owner
+    // never reads a flat one wondering why Genie got worse.
+    if (e instanceof QualityUnavailableError) {
+      return json({ ok: false, retryable: true, skipped: "writer_unavailable", message: "Every good writing model is busy. Genie will write this tomorrow rather than write it badly." }, 503);
+    }
     if (e instanceof AllProvidersFailedError) {
       return json({ ok: false, retryable: true, message: "Genie is busy — try again in a moment." }, 503);
     }

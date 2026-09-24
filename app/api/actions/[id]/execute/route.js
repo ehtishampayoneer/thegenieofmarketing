@@ -79,6 +79,7 @@ export async function POST(_request, { params }) {
     const res = await deliverEmail(supabase, user.id, {
       to, subject: p.subject, body: bodyText,
       unsubscribeUrl: unsubUrl(process.env.APP_URL || "", user.id, to),
+      source: p.source || action.target?.source || "discovery",
     });
     if (!res.ok) {
       return json({ ok: false, error: res.error || "Genie couldn't send that email. Check your Gmail connection." }, 400);

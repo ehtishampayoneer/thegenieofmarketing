@@ -46,7 +46,7 @@ export async function POST(request) {
   // One sender: the user's own Gmail if connected, else the platform domain with
   // replies routed to their inbox. Includes their logo + address.
   const { deliverEmail } = await import("@/lib/email-engine");
-  const r = await deliverEmail(supabase, user.id, { to, subject: finalSubject, body: text });
+  const r = await deliverEmail(supabase, user.id, { to, subject: finalSubject, body: text, source: overrideTo ? "owner" : (p.source || action.target?.source || "discovery") });
   if (!r.ok) {
     await supabase.from("actions").update({ status: "failed", result: { error: r.error }, updated_at: new Date().toISOString() }).eq("id", action.id);
     try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "failed", meta: { error: r.error } }); } catch {}

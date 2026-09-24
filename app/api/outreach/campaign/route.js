@@ -195,7 +195,7 @@ export async function POST(request) {
     // falls back to the platform sender. sendOne skipped that entirely, which is
     // why the nightly run ignored a connected Gmail and sent from a shared
     // address with the deliverability that implies.
-    const res = await deliverEmail(supabase, userId, { to: c.email, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, c.email) });
+    const res = await deliverEmail(supabase, userId, { to: c.email, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, c.email), source: c.source });
     // No usable sender means every send in this batch will fail the same way, so
     // stop rather than marking the whole day's contacts as failed.
     if (res.needsSender || res.needsConfig) {
@@ -252,10 +252,12 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
     await supabase.from("actions").insert({
       user_id: userId,
       type: "outreach_email",
+      // Provenance travels with the draft: by the time the owner approves this,
+      // days later, the contact row it came from is no longer in hand.
       title: `Email ${contact.name || contact.company || contact.email}`,
       status: "proposed",
       priority: "medium",
-      target: { host, email: contact.email },
+      target: { host, email: contact.email, source: contact.source || null },
       payload: {
         to: contact.email,
         toName: contact.name || null,

@@ -66,7 +66,9 @@ export default function RecoverPage() {
     if (c._sending) return;
     patch(c.id, { _sending: true });
     try {
-      const j = await fetch("/api/prospects/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: c.email, subject: c.subject, body: c.body, name: c.name, company: c.company }) }).then((r) => r.json());
+      const j = await fetch("/api/prospects/send", { method: "POST", headers: { "Content-Type": "application/json" }, // These are the owner's OWN past leads, uploaded by them. Not a cold contact
+        // Genie discovered, and the provenance has to say so.
+        body: JSON.stringify({ to: c.email, subject: c.subject, body: c.body, name: c.name, company: c.company, source: "import" }) }).then((r) => r.json());
       if (j?.ok) { await fetch("/api/recover/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, act: "sent" }) }); patch(c.id, { sent: true, _sending: false }); setToast(`Win-back sent to ${c.name || c.email}. Replies land in your Inbox.`); }
       else { patch(c.id, { _sending: false }); setToast(j?.error || "Couldn't send that one."); }
     } catch { patch(c.id, { _sending: false }); setToast("Couldn't send that one."); }

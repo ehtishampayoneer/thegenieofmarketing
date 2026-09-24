@@ -161,3 +161,27 @@ describe("paid backup and the spend cap", () => {
     expect(paidCalls).toBe(1);
   });
 });
+
+describe("anything a buyer reads is written well or not at all", () => {
+  it("names a writer-grade set, and it is configurable", async () => {
+    const { writerProviders } = await import("@/lib/ai-router");
+    const prev = process.env.WRITER_PROVIDERS;
+    delete process.env.WRITER_PROVIDERS;
+    expect(writerProviders()).toContain("gemini");
+    expect(writerProviders()).toContain("paid");
+    // Which model is "good" changes faster than this file does.
+    process.env.WRITER_PROVIDERS = "paid , groq ";
+    expect(writerProviders()).toEqual(["paid", "groq"]);
+    if (prev === undefined) delete process.env.WRITER_PROVIDERS; else process.env.WRITER_PROVIDERS = prev;
+  });
+
+  it("refuses rather than quietly dropping to a weaker model", async () => {
+    const { callAI, QualityUnavailableError } = await import("@/lib/ai-router");
+    const prev = process.env.WRITER_PROVIDERS;
+    // A provider that does not exist, so nothing writer-grade can be reached.
+    process.env.WRITER_PROVIDERS = "nobody-at-all";
+    await expect(callAI({ prompt: "write me an email", quality: "best" }))
+      .rejects.toBeInstanceOf(QualityUnavailableError);
+    if (prev === undefined) delete process.env.WRITER_PROVIDERS; else process.env.WRITER_PROVIDERS = prev;
+  });
+});

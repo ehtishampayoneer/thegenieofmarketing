@@ -94,7 +94,7 @@ export async function POST(request) {
   // come from their address, not from Genie.
   try {
     const { deliverEmail } = await import("@/lib/email-engine");
-    const r = await deliverEmail(supabase, user.id, { to, subject, body: text });
+    const r = await deliverEmail(supabase, user.id, { to, subject, body: text, source: "owner" });
     if (!r.ok) {
       return json({
         ok: false,
