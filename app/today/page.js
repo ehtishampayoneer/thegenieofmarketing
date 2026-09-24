@@ -456,8 +456,11 @@ function PendingFromYou({ approvals, replies, setup, broken = [] }) {
           </a>
         ))}
       </div>
-      <div className="mt-3 pt-3 text-center" style={{ borderTop: "1px solid var(--hair)" }}>
+      <div className="mt-3 pt-3 flex items-center justify-center gap-4 flex-wrap" style={{ borderTop: "1px solid var(--hair)" }}>
         <a href="/approvals" className="text-[13px] font-semibold mg-focus" style={{ color: "var(--accent-ink)" }}>Go to approvals →</a>
+        {/* Results take weeks; proof of work is there on day two, and it is the
+            reason someone is still here in week three. */}
+        <a href="/worklog" className="text-[13px] mg-focus mg-muted">See everything I did</a>
       </div>
     </Card>
   );

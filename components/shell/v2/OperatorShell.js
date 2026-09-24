@@ -36,6 +36,10 @@ const NAV = [
   // demand — one crowd, one page (lib/swarm).
   { id: "team", label: "Your team", icon: Icon.globe, countKey: "team" },
   { id: "inbox", label: "Inbox", icon: Icon.inbox },
+  // The proof of work, with a link to each of it. Results take weeks; this is
+  // what a beginner has on day two, and it is why they are still here in week
+  // three (app/worklog).
+  { id: "worklog", label: "Everything Genie did", icon: Icon.history },
 
   // The plan every other page executes. It sits at the top of the journey
   // because a wrong assumption here is wrong in eight engines at once.
