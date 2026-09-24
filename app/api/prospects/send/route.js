@@ -6,7 +6,8 @@
 
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
-import { DAILY_CAP, sentToday, deliverEmail } from "@/lib/email-engine";
+import { sentToday, deliverEmail } from "@/lib/email-engine";
+import { effectiveDailyCap } from "@/lib/sending-ramp";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { logActivity } from "@/lib/activity";
 
@@ -34,8 +35,12 @@ export async function POST(request) {
 
   // Daily cap (protects your sending reputation).
   const { data: prof } = await supabase.from("profiles").select("plan").eq("id", userId).maybeSingle();
-  const cap = DAILY_CAP[prof?.plan === "pro" ? "pro" : "free"];
-  if ((await sentToday(supabase, userId)) >= cap) return json({ ok: false, capReached: true, error: `You've hit today's send limit of ${cap}. Fresh batch tomorrow.` }, 200);
+  // The SAME cap the nightly run uses. A ramp only one send path respected would
+  // be one the owner could step around from the Find clients screen.
+  const { cap, ramping, reason: capReason } = await effectiveDailyCap(supabase, userId, prof?.plan === "pro" ? "pro" : "free");
+  if ((await sentToday(supabase, userId)) >= cap) {
+    return json({ ok: false, capReached: true, ramping, error: ramping ? `That is today's ${cap}. ${capReason}` : `You've hit today's send limit of ${cap}. Fresh batch tomorrow.` }, 200);
+  }
 
   // Never email an opt-out or someone already contacted.
   if (await isSuppressed(supabase, userId, to)) return json({ ok: false, error: "This contact opted out — Genie won't email them." }, 200);

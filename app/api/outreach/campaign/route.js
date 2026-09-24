@@ -7,6 +7,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { DAILY_CAP, sentToday, sourceContacts, draftEmail, deliverEmail } from "@/lib/email-engine";
+import { effectiveDailyCap } from "@/lib/sending-ramp";
 import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { decideExecution } from "@/lib/autonomy";
@@ -27,7 +28,9 @@ export async function GET(request) {
 
   const { data: prof } = await supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle();
   const plan = prof?.plan === "pro" ? "pro" : "free";
-  const cap = DAILY_CAP[plan];
+  // The ramp, not the flat plan cap: a brand-new sender at fifteen a day looks to
+  // Google like a mailbox somebody just took over.
+  const { cap, ramping, reason: capReason } = await effectiveDailyCap(supabase, user.id, plan);
 
   const since = new Date(); since.setHours(0, 0, 0, 0);
   const { data: todayLog } = await supabase.from("outreach_log").select("status, replied_at")
@@ -41,7 +44,7 @@ export async function GET(request) {
   const { count: totalReplied } = await supabase.from("outreach_log")
     .select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "replied");
 
-  return json({ ok: true, plan, cap, today: { sent, replied, remaining: Math.max(0, cap - sent) }, allTime: { sent: totalSent || 0, replied: totalReplied || 0 } });
+  return json({ ok: true, plan, cap, ramping, capReason, today: { sent, replied, remaining: Math.max(0, cap - sent) }, allTime: { sent: totalSent || 0, replied: totalReplied || 0 } });
 }
 
 export async function POST(request) {
@@ -72,11 +75,11 @@ export async function POST(request) {
   }
   if (!canSend) return json({ ok: false, needsSender: true, error: "Connect Gmail on the Connections page so outreach sends from your own address." }, 200);
   const plan = prof?.plan === "pro" ? "pro" : "free";
-  const cap = DAILY_CAP[plan];
+  const { cap, ramping, reason: capReason } = await effectiveDailyCap(supabase, userId, plan);
 
   const already = await sentToday(supabase, userId);
   const room = Math.max(0, cap - already);
-  if (room === 0) return json({ ok: true, done: true, sent: 0, message: `You've hit today's limit of ${cap}. Fresh batch tomorrow.` });
+  if (room === 0) return json({ ok: true, done: true, sent: 0, ramping, message: ramping ? `That is today's ${cap}. ${capReason}` : `You've hit today's limit of ${cap}. Fresh batch tomorrow.` });
 
   // Who to look for. This matters more than it looks: the niche has to describe
   // the people we are SELLING TO, not what this business is. Seeding on "AR
@@ -279,7 +282,7 @@ export async function POST(request) {
     ? ` Skipped ${undeliverable} dead address${undeliverable > 1 ? "es" : ""} to protect your sender reputation.`
     : "";
   const fu = followedUp > 0 ? ` Also followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.` : "";
-  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
+  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, cap, ramping, capReason, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }

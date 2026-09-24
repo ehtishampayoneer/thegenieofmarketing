@@ -465,7 +465,14 @@ Home strength (real connections only): Google 35, X 15, WordPress 15, sender_ema
 Colors: red < 35, amber 35-84, green ≥ 85. Bar shows the % number.
 
 ## 10. EMAIL VOLUMES (decided)
-Free = 15 emails/day, Pro = 50/day. Slow drip (spaced sends), never blasted. One tap sends the day's batch; cron also drips overnight. Daily report: sent / opened / replied.
+Free = 15 emails/day, Pro = 50/day — but RAMPED, not flat (`lib/sending-ramp.js`).
+Week 1 caps at 5/day, week 2 at 10, week 3 at 20, week 4 at 35, then the plan cap.
+A mailbox with no cold-sending history that starts at 15 reads to Google like a
+compromised account, and that failure is invisible: everything reports "sent"
+while landing in spam. The ramp measures days of ACTUAL sending, and restarts
+after 30 days of silence. Both send paths (the nightly campaign and the one-off
+send on Find clients) share `effectiveDailyCap`, or the ramp would be one the
+owner steps around without meaning to. Slow drip (spaced sends), never blasted. One tap sends the day's batch; cron also drips overnight. Daily report: sent / opened / replied.
 
 ---
 
