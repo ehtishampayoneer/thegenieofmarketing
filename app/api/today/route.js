@@ -50,6 +50,11 @@ export async function GET() {
   try {
     const runs = await getEvents(supabase, { userId: user.id, types: ["system.run.done"], limit: 1 });
     out.lastRun = runs?.[0]?.created_at || null;
+    // What last night ran out of time for. The nightly pass skips the steps it
+    // cannot finish inside the hosting plan's function limit, by name — and a skip
+    // that is recorded and never shown is the same as a skip that was hidden.
+    const sk = runs?.[0]?.data?.skipped;
+    out.lastRunSkipped = Array.isArray(sk) ? sk.slice(0, 8) : [];
   } catch {}
 
   if (host) {

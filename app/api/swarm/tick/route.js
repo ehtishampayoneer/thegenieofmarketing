@@ -9,6 +9,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { tick } from "@/lib/swarm/engine";
 import { recordEvent } from "@/lib/events";
+import { functionLimitMs } from "@/lib/function-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,10 @@ async function run(request) {
   try { body = await request.json(); } catch {}
   const userId = typeof body?._uid === "string" ? body._uid : null;
   const admin = createAdminClient();
-  const r = await tick(admin, { userId, budgetMs: 230000 });
+  // 230 seconds was right for the 300 this route declares and wrong for the 60 the
+  // host may allow, and being wrong meant the crowd was killed part-way through a
+  // draft every night with nothing recorded. Ask what the plan actually permits.
+  const r = await tick(admin, { userId, budgetMs: Math.max(20000, functionLimitMs() - 10000) });
   // One line per tick so the team page can show whether the swarm is awake.
   if (r.tested || r.waiting) {
     await recordEvent(admin, { userId, type: "swarm.tick", actor: "genie", subject: `${r.tested} tested`, data: r });

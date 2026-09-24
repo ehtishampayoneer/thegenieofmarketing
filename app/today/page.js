@@ -103,6 +103,18 @@ export default function TodayPage() {
                 </span>
               </p>
             )}
+            {/* Last night ran out of time before it reached these. Saying which, in
+                the words an owner would use, is the difference between "Genie is
+                slow" and a decision they can actually make about their hosting. */}
+            {d?.lastRunSkipped?.length > 0 && (
+              <p className="mt-2 text-[13px] flex items-start gap-2">
+                <span aria-hidden>⏱️</span>
+                <span style={{ color: "var(--fg-muted)" }}>
+                  Last night finished the main work but ran out of time for{" "}
+                  <b style={{ color: "var(--fg)" }}>{d.lastRunSkipped.map(skipLabel).join(", ")}</b>. Everything else ran. This is your hosting plan&apos;s time limit, not a fault — it will try again tonight.
+                </span>
+              </p>
+            )}
             <p className="mt-2.5 flex items-center gap-2.5 text-[13px]" style={{ color: "var(--fg-muted)" }}>
               <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: "var(--signal-live-ink)" }}><span className="mg-live-dot" /> Live — Working now</span>
               {activity?.[0]?.created_at && (
@@ -489,4 +501,19 @@ function FirstRun({ state }) {
       </Card>
     </div>
   );
+}
+
+// The nightly pass records what it skipped by its internal step name. An owner
+// should never have to read "plan-revision" to find out what did not happen.
+function skipLabel(name) {
+  return ({
+    spread: "preparing the other-platform versions of your newest article",
+    listings: "finding new places to be listed",
+    escalate: "helping a stuck keyword",
+    pillar: "building a hub page",
+    "gsc-setup": "finishing your Search Console setup",
+    "site-check": "the weekly read of your own home page",
+    calibrate: "checking the crowd against real results",
+    "plan-revision": "looking for a correction to your plan",
+  })[name] || name;
 }
