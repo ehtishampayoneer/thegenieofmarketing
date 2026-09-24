@@ -7,7 +7,8 @@
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { briefBlock } from "@/lib/business-brief";
-import { strategyPromptBlock } from "@/lib/strategy-store";
+import { strategyPromptBlock, getStrategy } from "@/lib/strategy-store";
+import { requiredPlatform } from "@/lib/platform-detect";
 import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies, fitFrom } from "@/lib/prospects";
 
 export const runtime = "nodejs";
@@ -29,15 +30,26 @@ export async function POST(request) {
     const { data: prof } = await supabase.from("profiles").select("company_name, company_pitch").eq("id", userId).maybeSingle();
     if (prof) userBusiness = { name: prof.company_name || "", pitch: prof.company_pitch || "", whatTheySell: "" };
   } catch {}
+  let scanAi = {};
   let host = null;
   let fit = null;
   try {
     const { data: scan } = await supabase.from("scans").select("ai, final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; userBusiness.brief = briefBlock(ai) + (await strategyPromptBlock(supabase, { userId, host, ai }).catch(() => "")); fit = fitFrom(ai); }
+    if (scan) { host = hostOf(scan); const ai = scan.ai || {}; scanAi = ai; userBusiness.name = userBusiness.name || ai.businessName || ""; userBusiness.whatTheySell = ai.whatTheySell || ai.keyProducts || ""; userBusiness.pitch = userBusiness.pitch || ai.whyChooseYou || ai.whatTheySell || ""; userBusiness.brief = briefBlock(ai) + (await strategyPromptBlock(supabase, { userId, host, ai }).catch(() => "")); fit = fitFrom(ai); }
   } catch {}
 
   const ctx = { supabase, userId, host, tag: "prospects" };
-  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit });
+  // Does the offer only work on one platform? Read from what the owner sells and
+  // the plan, never assumed — most businesses have no such requirement, and
+  // inventing one would silently empty their list. When there IS one, a shop on a
+  // different platform is dropped before anything is written to them.
+  let needsPlatform = null;
+  try {
+    const strategy = await getStrategy(supabase, { userId, host, ai: scanAi, draft: false });
+    needsPlatform = requiredPlatform({ ai: scanAi, strategy });
+  } catch {}
+
+  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit, needsPlatform });
 
   // RECOVERY: if the main path came up empty (a transient provider hiccup), run the
   // candidate call once more — it reliably names companies at this calmer moment —
