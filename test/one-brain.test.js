@@ -35,6 +35,7 @@ const EXEMPT = {
   "lib/interview.js": "conducts the interview the plan is DRAWN FROM, so it cannot require one",
   "lib/video.js": "transcribes and times what was said out loud; it writes no marketing",
   "lib/local-services.js": "returns service-area facts, not copy",
+  "lib/followup.js": "writes the second and third email from the plan its caller already resolved, which it takes as `plan` — the route reads the brain once and hands the same block to the first email and the follow-ups, so both argue the same thing",
   "lib/brain-learn.js": "is the one engine that writes TO the plan, so it reads the stored plan's raw fields and shows them to the model as the thing being corrected; the brain's block is formatted for engines that write, and feeding it back here would have the model rewrite its own instructions",
   // Handed the plan by their caller, which does read the brain. Asserted below.
   "lib/prospects.js": "receives the plan as userBusiness.brief from /api/prospects/discover",
@@ -107,6 +108,7 @@ describe("the libs that are handed the plan really are handed it", () => {
     ["app/api/featured/discover/route.js", "lib/earned-media.js"],
     ["app/api/outreach/campaign/route.js", "lib/email-engine.js"],
     ["app/api/ai-search/route.js", "lib/ai-search.js"],
+    ["app/api/outreach/campaign/route.js", "lib/followup.js"],
   ];
   for (const [caller, lib] of cases) {
     it(`${caller} reads the brain on behalf of ${lib}`, () => {

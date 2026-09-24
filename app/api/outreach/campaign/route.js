@@ -11,6 +11,7 @@ import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { decideExecution } from "@/lib/autonomy";
 import { strategyPromptBlock } from "@/lib/strategy-store";
+import { dueFollowUps, draftFollowUp, markCold } from "@/lib/followup";
 import { logActivity } from "@/lib/activity";
 
 import { briefBlock } from "@/lib/business-brief";
@@ -103,6 +104,47 @@ export async function POST(request) {
     try { briefForDrafts += await strategyPromptBlock(supabase, { userId, host, ai: scan?.ai || {} }); } catch {}
   } catch {}
 
+  // ── FOLLOW-UPS FIRST ────────────────────────────────────────────────────────
+  // Most of the replies a cold campaign ever gets arrive on the second or third
+  // message, not the first. Genie sent once and stopped, so about half the value
+  // of its lead channel was being thrown away every night.
+  //
+  // They run BEFORE new contacts and out of the SAME daily cap, deliberately.
+  // Chasing someone who already let a message through is worth more than finding
+  // a stranger, so when the day is tight the follow-up is the one that sends.
+  let followedUp = 0, wentCold = 0;
+  try {
+    const { due, cold } = await dueFollowUps(supabase, userId, host, { limit: Math.max(0, Math.min(room, 6)) });
+    wentCold = await markCold(supabase, { userId, host, cold });
+    for (const c of due) {
+      if (followedUp >= room) break;
+      if (await isSuppressed(supabase, userId, c.email)) continue;
+      const d = await draftFollowUp({
+        contact: c, business: { name: prof.company_name }, step: c.step,
+        previous: c.previous, plan: briefForDrafts, userId, host,
+      });
+      // No writer-grade model free, or the model failed: this person waits for
+      // tomorrow rather than getting a weak message today.
+      if (d.failed) continue;
+      const res = await deliverEmail(supabase, userId, {
+        to: c.email, subject: d.subject, body: d.body,
+        unsubscribeUrl: unsubUrl((process.env.APP_URL || "").replace(/\/+$/, ""), userId, c.email),
+        source: c.source,
+      });
+      if (res.needsSender || res.needsConfig) break;
+      await supabase.from("outreach_log").insert({
+        user_id: userId, host, contact_email: c.email, contact_name: c.name,
+        subject: d.subject, body: d.body, status: res.ok ? "sent" : "failed",
+        email_id: res.id || null, sent_at: res.ok ? new Date().toISOString() : null,
+        is_followup: true, followup_step: c.step, source: c.source || null,
+      });
+      if (res.ok) { followedUp++; await sleep(400); }
+    }
+  } catch {}
+
+  // Whatever the follow-ups used is no longer available for new strangers.
+  const roomLeft = Math.max(0, room - followedUp);
+
   // Source contacts. Seeds the shared directory from real published addresses
   // when it has nothing fresh, which is what makes this run send at all.
   // Filter the shared pool by the SAME niche that seeds it. This used to pass
@@ -112,13 +154,17 @@ export async function POST(request) {
   // business's run had gone and found for a completely different market. The
   // emails send from the owner's own Gmail, so a bad match costs them their own
   // sending reputation, not Genie's.
-  const contacts = await sourceContacts(supabase, userId, host, niche || industry || null, room, { niche });
+  const contacts = await sourceContacts(supabase, userId, host, niche || industry || null, roomLeft, { niche });
   if (contacts.length === 0) {
+    // Finding nobody new is not the same as doing nothing: the follow-ups above
+    // may well have sent, and they are the messages most likely to get a reply.
     return json({
-      ok: true, sent: 0,
-      message: niche
-        ? "No fresh contacts found this time. Genie looks for more every night, so check back tomorrow."
-        : "Genie needs to know who you sell to before it can find contacts. Add your target customer in Settings.",
+      ok: true, sent: 0, followedUp, wentCold,
+      message: followedUp > 0
+        ? `No new contacts today, so Genie followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied yet.`
+        : niche
+          ? "No fresh contacts found this time. Genie looks for more every night, so check back tomorrow."
+          : "Genie needs to know who you sell to before it can find contacts. Add your target customer in Settings.",
     });
   }
 
@@ -205,6 +251,9 @@ export async function POST(request) {
       user_id: userId, host, contact_email: c.email, contact_name: c.name,
       subject, body: emailBody, status: res.ok ? "sent" : "failed",
       email_id: res.id || null, sent_at: res.ok ? new Date().toISOString() : null,
+      // Step 0 is the first message. Provenance lives on the send record too, so a
+      // follow-up months later can still say where the address came from.
+      is_followup: false, followup_step: 0, source: c.source || null,
     });
     if (res.ok) { sent++; await sleep(400); } else failed++;
   }
@@ -229,7 +278,8 @@ export async function POST(request) {
   const protectedNote = undeliverable > 0
     ? ` Skipped ${undeliverable} dead address${undeliverable > 1 ? "es" : ""} to protect your sender reputation.`
     : "";
-  return json({ ok: true, sent, failed, undeliverable, remaining: Math.max(0, cap - already - sent), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients. I'll follow up with the ones who don't reply.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
+  const fu = followedUp > 0 ? ` Also followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.` : "";
+  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
