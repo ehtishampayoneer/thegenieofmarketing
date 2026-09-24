@@ -63,7 +63,7 @@ const FIELDS = [
   { key: "markets", kind: "list", label: "Countries worth targeting",
     help: "Leave empty unless there is a real reason. This is where I aim the writing.", ph: "" },
   { key: "emailCountries", kind: "list", label: "Countries I may email into",
-    help: "Not the same question as above: you can publish for a country and still not be allowed to cold-email it. I start with the places where emailing a published business address is permitted with an opt-out. Canada and Germany are off until I can meet their extra conditions honestly.",
+    help: "Not the same question as above: you can publish for a country and still not be allowed to cold-email it. I start with the places where emailing a published business address is permitted with an opt-out. Canada asks for one more thing — that the message is relevant to the person's job — and I now check that on every send, so you can add Canada here if you want it. Germany wants a written assessment for each contact, which I cannot do honestly yet. I am telling you the shape of these rules, not giving legal advice.",
     ph: "United States" },
 ];
 
