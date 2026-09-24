@@ -13,6 +13,8 @@ import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { decideExecution } from "@/lib/autonomy";
 import { strategyPromptBlock } from "@/lib/strategy-store";
 import { dueFollowUps, draftFollowUp, markCold } from "@/lib/followup";
+import { audienceOf, PARTNER } from "@/lib/audience";
+import { genieBrain } from "@/lib/brain";
 import { logActivity } from "@/lib/activity";
 
 import { briefBlock } from "@/lib/business-brief";
@@ -91,6 +93,7 @@ export async function POST(request) {
   // below is where it really comes from.
   let niche = String(industry || "").trim();
   let briefForDrafts = "";
+  let scanAi = {};
   try {
     const { data: scan } = await supabase.from("scans").select("ai")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -105,7 +108,21 @@ export async function POST(request) {
     // The plan, so the email opens with what the seller is trying to do rather
     // than with what the owner sells.
     try { briefForDrafts += await strategyPromptBlock(supabase, { userId, host, ai: scan?.ai || {} }); } catch {}
+    scanAi = scan?.ai || {};
   } catch {}
+
+  // ── TWO AUDIENCES, TWO PITCHES ──
+  // A furniture retailer buys this. A Shopify agency does not — they build
+  // stores for retailers, so a subscription pitch is addressed to the wrong
+  // person, and it fails silently: the email is well written and the reader has
+  // no reason to care. The plan is resolved ONCE per audience here rather than
+  // per contact, and each draft gets the version written for whoever is reading.
+  let partnerBrief = briefForDrafts;
+  try {
+    const b = await genieBrain(supabase, { userId, host, ai: scanAi, audience: PARTNER });
+    if (b.block) partnerBrief = briefBlock(scanAi, { max: 1800 }) + b.block;
+  } catch {}
+  const briefFor = (c) => (audienceOf(c) === PARTNER ? partnerBrief : briefForDrafts);
 
   // ── FOLLOW-UPS FIRST ────────────────────────────────────────────────────────
   // Most of the replies a cold campaign ever gets arrive on the second or third
@@ -124,7 +141,7 @@ export async function POST(request) {
       if (await isSuppressed(supabase, userId, c.email)) continue;
       const d = await draftFollowUp({
         contact: c, business: { name: prof.company_name }, step: c.step,
-        previous: c.previous, plan: briefForDrafts, userId, host,
+        previous: c.previous, plan: briefFor(c), userId, host,
       });
       // No writer-grade model free, or the model failed: this person waits for
       // tomorrow rather than getting a weak message today.
@@ -208,7 +225,7 @@ export async function POST(request) {
   const drafts = new Map();
   for (let i = 0; i < queue.length; i += 4) {
     const chunk = queue.slice(i, i + 4);
-    const out = await Promise.all(chunk.map((c) => draftEmail(draftProf, c, { name: prof.company_name, brief: briefForDrafts })));
+    const out = await Promise.all(chunk.map((c) => draftEmail(draftProf, c, { name: prof.company_name, brief: briefFor(c) })));
     chunk.forEach((c, k) => drafts.set(c.email, out[k]));
   }
 

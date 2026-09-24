@@ -160,7 +160,7 @@ describe("the plan now knows what is being sold", () => {
     // are putting it in front of twenty of their own clients.
     const block = strategyBlock(withOffer);
     expect(block).toMatch(/20% of the monthly fee/);
-    expect(block).toMatch(/Do not pitch them the customer price/);
+    expect(block).toMatch(/Never pitch them the customer price/);
   });
 
   it("names the job the offer has to be relevant to", () => {
@@ -169,7 +169,7 @@ describe("the plan now knows what is being sold", () => {
 
   it("says nothing about a partner offer when there is none to state", () => {
     const noPartner = normalizeStrategy({ ...withOffer, partnerOffer: "" });
-    expect(strategyBlock(noPartner)).not.toMatch(/AGENCY or a partner/);
+    expect(strategyBlock(noPartner)).not.toMatch(/aimed at an AGENCY/);
   });
 });
 
