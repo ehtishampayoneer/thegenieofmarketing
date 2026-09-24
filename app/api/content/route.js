@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
+import { articleShape, shapeReason } from "@/lib/article-shape";
 import { pickPostImage } from "@/lib/media";
 import { setCardImage, signImageUrl } from "@/lib/card-sign";
 import { classifyEntity } from "@/lib/entity";
@@ -150,17 +151,22 @@ export async function POST(request) {
   try {
     // Flagship AEO pages are where AI citations are won — quality is the moat, so
     // spend the extra token budget on being the single best answer for those.
-    const aeo = !!pick?.aeo;
+    // What KIND of article this is decides how long it should be. Both facts —
+    // the buyer stage and how competitive the search is — were already computed
+    // for every keyword and then collapsed into one boolean, so every article
+    // came out 600 to 900 words whether it was a question someone asks an
+    // assistant or a commercial search whose page one is all 2,000-word guides.
+    const shape = articleShape(pick);
     const result = await callAI({
       system:
         "You are Genie, an expert SEO content writer. Write genuinely useful, specific content — never generic filler. Match the brand voice given, and follow the owner's standing instructions exactly. Return ONLY valid JSON, no markdown fences.",
       json: true,
-      maxTokens: aeo ? 4200 : 3500, timeoutMs: 50000,
+      maxTokens: shape.maxTokens, timeoutMs: shape.timeoutMs,
       temperature: 0.7,
       // This is published on the owner's domain under their name. Written by a
       // writer-grade model or not written tonight.
       quality: "best",
-      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan }),
+      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan, shape }),
     });
     data = result.json;
     provider = result.provider;
@@ -412,7 +418,7 @@ export async function POST(request) {
   return json({ ok: true, saved: actionIds.length, content: data, actionIds, socialFailed, meta: { engine: provider } });
 }
 
-function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "" }) {
+function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "", shape = null }) {
   const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
     ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
     : "";
@@ -525,7 +531,10 @@ Also assign a PRIORITY to the article. Use EXACTLY one of these literal values:
 - "low" = nice-to-have, no urgency
 Base it on impact + effort.
 
-Write a complete, ready-to-publish blog article. Return ONLY this JSON:
+${shape ? `${shape.brief}
+A LENGTH IS A CEILING, NOT A QUOTA. Padding to reach a number is the one thing that makes an article worse in every way at once: it buries the useful part, it reads as filler to a human, and both search engines and AI assistants discount it. If you run out of things genuinely worth saying, finish early.
+
+` : ""}Write a complete, ready-to-publish blog article. Return ONLY this JSON:
 {
   "articlePriority": "high | quick_win | strategic | low",
   "article": {
@@ -534,7 +543,7 @@ Write a complete, ready-to-publish blog article. Return ONLY this JSON:
     "metaTitle": "SEO meta title (<60 chars)",
     "metaDescription": "compelling meta description (150-160 chars)",
     "slug": "url-friendly-slug",
-    "body": "the full article in markdown, 600-900 words, opening with the reader's problem, then bridging to the solution, with ## H2 subheadings, specific useful content, and a short ## FAQ section with 2-3 Q&As. No em-dashes anywhere.",
+    "body": "the full article in markdown at the length given above, opening with the reader's problem, then bridging to the solution, with ## H2 subheadings, specific useful content, and a short ## FAQ section with 2-3 Q&As. No em-dashes anywhere.",
     "wordCount": approximate integer,
     "imagePrompt": "a scroll-stopping, specific prompt for a photorealistic hero image: one clear focal point, a real telling moment or object tied to the subject, slightly unexpected, on-brand — NOT generic stock (no handshakes, lightbulbs, arrows, teams pointing at screens). No text in the image.",
     "heroImageAlt": "descriptive alt text for the hero image",
