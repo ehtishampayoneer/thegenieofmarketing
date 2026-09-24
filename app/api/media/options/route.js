@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
+import { signImageUrl } from "@/lib/card-sign";
 import { harvestSiteImages, pexelsSearch } from "@/lib/media";
 
 export const runtime = "nodejs";
@@ -31,10 +32,14 @@ export async function GET(request) {
     pexelsSearch(topic || "business marketing", { perPage: 8 }),
   ]);
 
+  // Each option carries the signature the card composer will ask for, so picking
+  // one in Approvals is enough — the browser never has to mint anything, and a URL
+  // that did not come from this list cannot be substituted for one that did.
+  const sign = async (u) => await signImageUrl(u);
   return json({
     ok: true,
-    site: site.map((i) => ({ url: i.url, alt: i.alt })),
-    stock: stock.map((s) => ({ url: s.url, alt: s.alt, credit: `${s.photographer} / Pexels` })),
+    site: await Promise.all(site.map(async (i) => ({ url: i.url, alt: i.alt, sig: await sign(i.url) }))),
+    stock: await Promise.all(stock.map(async (s) => ({ url: s.url, alt: s.alt, credit: `${s.photographer} / Pexels`, sig: await sign(s.url) }))),
   });
 }
 

@@ -17,6 +17,7 @@ import { scoreMarkets, COUNTRIES, flagEmoji } from "@/lib/markets";
 import { pickPostImage } from "@/lib/media";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { genieBrain } from "@/lib/brain";
+import { setCardImage } from "@/lib/card-sign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -280,7 +281,7 @@ export async function POST(req) {
       const headline = String(planJson?.social?.hook || planJson?.landing?.title || keyword || co.name).slice(0, 90);
       if (appOrigin) {
         const u = new URL("/api/card", appOrigin);
-        u.searchParams.set("img", hero.url); u.searchParams.set("title", headline); u.searchParams.set("name", bizName || ""); u.searchParams.set("handle", handle);
+        await setCardImage(u, hero.url); u.searchParams.set("title", headline); u.searchParams.set("name", bizName || ""); u.searchParams.set("handle", handle);
         if (ctx.ai?.brandColor) u.searchParams.set("brand", ctx.ai.brandColor);
         u.searchParams.set("ratio", "square");
         socialCardUrl = u.href;

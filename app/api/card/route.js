@@ -7,6 +7,7 @@
 // a solid brand background instead of erroring, so the <img> never breaks.
 
 import { ImageResponse } from "next/og";
+import { verifyImageUrl } from "@/lib/card-sign";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -30,9 +31,14 @@ async function toDataUri(u) {
 // Inline the photo. jpeg/png go straight in; anything else (webp, avif, gif) is
 // converted to jpeg for free via the weserv image proxy, so ANY product photo can
 // go in a card. Total failure → null, and the card falls back to a brand panel.
-async function inlinePhoto(url) {
+// `sig` is what stops this being an open proxy: without a signature Genie minted
+// when it chose the photo, nothing is fetched at all. A data: URI carries its own
+// bytes and reaches the network never, so it needs no signature.
+async function inlinePhoto(url, sig) {
   if (!url) return null;
   if (url.startsWith("data:image/")) return url;
+  if (!/^https?:\/\//i.test(url)) return null;
+  if (!(await verifyImageUrl(url, sig))) return null;
   try {
     const direct = await toDataUri(url);
     if (direct) return direct;
@@ -88,7 +94,7 @@ export async function GET(request) {
   );
 
   // ── PHOTO CARD (cover / social / pin) ──
-  const photo = body ? null : await inlinePhoto(searchParams.get("img"));
+  const photo = body ? null : await inlinePhoto(searchParams.get("img"), searchParams.get("sig"));
   const photoCard = (
     <div style={{ width: W, height: H, display: "flex", flexDirection: "column", background: "#FAF7F2", fontFamily: "sans-serif" }}>
       <div style={{ display: "flex", width: "100%", height: photoH, overflow: "hidden", position: "relative", background: brand, alignItems: "center", justifyContent: "center" }}>

@@ -13,6 +13,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 import { pickPostImage } from "@/lib/media";
+import { setCardImage, signImageUrl } from "@/lib/card-sign";
 import { classifyEntity } from "@/lib/entity";
 import { deDash, cleanText } from "@/lib/markdown";
 import { logger } from "@/lib/log";
@@ -260,7 +261,7 @@ export async function POST(request) {
           const headline = data.cardHeadline || data.article?.title || primaryKw || "";
           if (appOrigin) {
             const u = new URL("/api/card", appOrigin);
-            u.searchParams.set("img", heroPick.url);
+            await setCardImage(u, heroPick.url);
             u.searchParams.set("title", headline);
             u.searchParams.set("name", bizName || "");
             u.searchParams.set("handle", handle);
@@ -271,7 +272,7 @@ export async function POST(request) {
             // Pinterest pin: a vertical (2:3) branded card + keyword-rich title and
             // description, linking back to the business. Evergreen visual-search reach.
             const pin = new URL("/api/card", appOrigin);
-            pin.searchParams.set("img", heroPick.url);
+            await setCardImage(pin, heroPick.url);
             pin.searchParams.set("title", headline);
             pin.searchParams.set("name", bizName || "");
             pin.searchParams.set("handle", handle);
@@ -288,7 +289,7 @@ export async function POST(request) {
             if (slides.length >= 2) {
               const mk = (extra) => { const c = new URL("/api/card", appOrigin); c.searchParams.set("name", bizName || ""); c.searchParams.set("handle", handle); if (ai.brandColor) c.searchParams.set("brand", ai.brandColor); c.searchParams.set("ratio", "square"); for (const [k, v] of Object.entries(extra)) if (v != null && v !== "") c.searchParams.set(k, String(v)); return c.href; };
               const total = slides.length + 1;
-              const cover = mk({ img: heroPick.url, title: data.cardHeadline || data.article?.title || headline });
+              const cover = mk({ img: heroPick.url, sig: await signImageUrl(heroPick.url), title: data.cardHeadline || data.article?.title || headline });
               const slideUrls = slides.map((s, i) => mk({ title: s.heading, body: s.text || "", index: i + 2, total }));
               carouselData = { images: [cover, ...slideUrls], caption: `${data.article?.metaDescription || headline}` };
             }

@@ -66,7 +66,11 @@ function matchesMarket(it, f) { if (f === "all") return true; if (f === "global"
 // Helpers for editing a branded card's overlay hook + underlying photo in place.
 function isCardUrl(u) { try { return new URL(u, location.origin).pathname.endsWith("/api/card"); } catch { return false; } }
 function cardTitleOf(u) { try { const x = new URL(u, location.origin); return x.pathname.endsWith("/api/card") ? (x.searchParams.get("title") || "") : ""; } catch { return ""; } }
-function rebuildCard(u, { title, img, focus }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) x.searchParams.set("img", img); if (focus != null) x.searchParams.set("focus", String(focus)); return x.href; } catch { return u; } }
+// Changing the headline or the framing keeps whatever photo is already in the card,
+// signature and all. Changing the PHOTO has to bring its own signature: the card
+// composer fetches nothing it was not handed one for (lib/card-sign.js), so an
+// image swapped in without one would silently render as a plain brand panel.
+function rebuildCard(u, { title, img, sig, focus }) { try { const x = new URL(u, location.origin); if (title != null) x.searchParams.set("title", title); if (img != null) { x.searchParams.set("img", img); if (sig) x.searchParams.set("sig", sig); else x.searchParams.delete("sig"); } if (focus != null) x.searchParams.set("focus", String(focus)); return x.href; } catch { return u; } }
 
 export default function ApprovalsPage() {
   const { data: feed, state } = useLive("/api/approvals", (j) => !(j.items?.length));
@@ -289,7 +293,7 @@ export default function ApprovalsPage() {
     setEditImageRaw(o.url);
     setEditSource(o.source);
     setEditCredit(o.source === "stock" ? (o.credit || "Pexels") : null);
-    setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { img: o.url, title: editHook }) : o.url);
+    setEditImage((img) => (editBranded && img && isCardUrl(img)) ? rebuildCard(img, { img: o.url, sig: o.sig, title: editHook }) : o.url);
     setSwapOpen(false);
   }
   // Upload the user's OWN photo → store it → use it exactly like a swapped image.
@@ -300,7 +304,7 @@ export default function ApprovalsPage() {
     try {
       const fd = new FormData(); fd.append("file", file);
       const j = await fetch("/api/upload/image", { method: "POST", body: fd }).then((r) => r.json());
-      if (j?.ok && j.url) { pickSwap({ url: j.url, source: "upload" }); setToast("Your image is in. Save to keep it."); }
+      if (j?.ok && j.url) { pickSwap({ url: j.url, sig: j.sig, source: "upload" }); setToast("Your image is in. Save to keep it."); }
       else setToast(j?.error || "Couldn’t upload that image.");
     } catch { setToast("Couldn’t upload that image."); }
     setSwapLoading(false);

@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { signImageUrl } from "@/lib/card-sign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export async function POST(request) {
   if (error) return json({ ok: false, error: error.message }, 500);
 
   const { data } = admin.storage.from(BUCKET).getPublicUrl(path);
-  return json({ ok: true, url: data.publicUrl });
+  return json({ ok: true, url: data.publicUrl, sig: await signImageUrl(data.publicUrl) });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }
