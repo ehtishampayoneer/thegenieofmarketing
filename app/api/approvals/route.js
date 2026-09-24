@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/server";
 import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
+import { ownerSignal, penaltyFor } from "@/lib/owner-signal";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +72,18 @@ export async function GET(request) {
       .from("placements").select("*").eq("user_id", user.id).eq("status", "ready").limit(50);
     for (const p of placements || []) items.push(normalizePlacement(p));
   } catch {}
+
+  // ── WHAT THE OWNER KEEPS SKIPPING GOES LAST ──
+  // Three cards a day means the ranking decides what the owner ever sees. A kind
+  // of work they have skipped three times should not keep winning one of those
+  // three slots. It is a multiplier, not a filter: the item is still in the
+  // backlog and ?all=1 still shows it, because refusing to show an owner their
+  // own work is how things disappear.
+  const signal = await ownerSignal(supabase, user.id);
+  for (const i of items) {
+    const mult = penaltyFor(signal, i.kind, i.platform);
+    if (mult < 1) { i.impact = Math.round(i.impact * mult); i.deprioritized = true; }
+  }
 
   // Owned (auto-publishable) first, then by impact/intent.
   items.sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);

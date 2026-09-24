@@ -950,6 +950,9 @@ function CrowdVerdict({ crowd }) {
         {!quick && <> · {Math.round((crowd.positive || 0) * 100)}% positive</>}
         {worry && <> · main worry: {worry}</>}
       </p>
+      {crowd.weakNote && (
+        <p className="mt-1 text-[12px]" style={{ color: "var(--signal-danger)" }}>{crowd.weakNote}</p>
+      )}
       {crowd.improved && (
         <p className="mt-1 text-[12px]" style={{ color: "var(--fg-muted)" }}>
           <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "#FFB347", marginRight: 6 }} />
