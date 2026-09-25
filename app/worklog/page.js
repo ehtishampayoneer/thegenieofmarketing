@@ -141,6 +141,17 @@ function Row({ it }) {
           <p className="mt-1 text-[15px] font-semibold" style={{ color: "var(--fg)" }}>{it.title}</p>
           {it.sub && <p className="mt-0.5 text-[13.5px] mg-muted truncate">{it.sub}</p>}
 
+          {/* WHY Genie did it. The approval card explained the choice, and then the
+              explanation died with the card — so a week later this page was a list of
+              things that had happened and no clue what any of them was for. An owner
+              who cannot see the reasoning has no way to tell work from activity. */}
+          {it.why && (
+            <p className="mt-1.5 text-[13px] flex items-start gap-1.5" style={{ maxWidth: "var(--measure)", color: "var(--fg-muted)" }}>
+              <span aria-hidden style={{ flex: "none" }}>↳</span>
+              <span><b style={{ color: "var(--fg)", fontWeight: 600 }}>Why:</b> {it.why}</span>
+            </p>
+          )}
+
           {/* Every number gets a sentence. A bare "12 visits" reads as failure to
               someone who does not know what a new article normally does. */}
           {it.note && <p className="mt-1.5 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{it.note}</p>}

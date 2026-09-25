@@ -117,6 +117,12 @@ export async function GET(request) {
       at: p.published_at, kind: "published",
       title: p.title || p.slug,
       url: live, linkLabel: live.replace(/^https?:\/\//, ""),
+      // WHY Genie did it. The approval card explained the choice and then the
+      // explanation died with the card, so a week later the owner has a list of
+      // things that happened and no idea what any of them was for.
+      why: p.target_keyword
+        ? `Written to win the Google search "${p.target_keyword}" — a question your buyers actually type, that your site had no answer for.`
+        : "Written to answer a question your buyers search for, that your site had no page for.",
       meta: seen > 0 ? `${seen} visit${seen === 1 ? "" : "s"}` : null,
       note: age !== null && age < 60
         ? "Normal for a new article. These take three to six months to build up in Google."
@@ -136,6 +142,9 @@ export async function GET(request) {
       kind: replied ? "reply" : e.is_followup ? "followup" : "email",
       title: e.is_followup ? `Follow-up ${e.followup_step || 1} to ${who}` : `Emailed ${who}`,
       sub: e.subject || null,
+      why: e.is_followup
+        ? "They did not answer the first one. Two follow-ups roughly double the replies a cold campaign gets, so Genie writes them on a schedule instead of hoping."
+        : "This company matches who your plan says you sell to, and published this address on their own website — Genie never buys or guesses an address.",
       meta: replied ? "replied" : opened ? "opened" : null,
       note: replied
         ? "They wrote back. There is a draft answer waiting in Leads."
@@ -194,6 +203,7 @@ export async function GET(request) {
       items.push({
         at: a.updated_at, kind: "failed",
         title: `Did not publish: "${name}"`,
+        why: "Genie had written it and was putting it live when something stopped it.",
         note: a?.result?.error
           ? `It stopped with: ${String(a.result.error).slice(0, 220)}`
           : "It stopped part-way through and Genie did not record why.",
@@ -204,6 +214,7 @@ export async function GET(request) {
       items.push({
         at: a.updated_at, kind: "held",
         title: `Waiting on you: "${name}"`,
+        why: "Genie checks everything it writes for claims it cannot back up, because the article goes out under your name, not Genie's.",
         note: reasons.length
           ? `Genie rewrote what it could and this is what is left: ${reasons.slice(0, 2).join(" ")}`
           : "Genie held this back rather than publish it under your name.",
@@ -223,6 +234,7 @@ export async function GET(request) {
       items.push({
         at: e.created_at, kind: "discarded",
         title: `Not published: "${e.subject || "an article"}"`,
+        why: "Genie wrote two articles too close to each other. Publishing near-copies is what gets a site pushed down by Google, so it threw its own work away rather than risk your site.",
         note: `Genie had already written something too close to "${e.data?.duplicateOf || "an earlier article"}", so it threw this one away rather than publish a near-copy — that is what gets a site penalised by Google. It writes a different one tonight.`,
         where: "Nothing for you to do. Shown so you know why the article you saw yesterday is gone.",
       });

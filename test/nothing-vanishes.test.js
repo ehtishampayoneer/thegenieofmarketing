@@ -47,3 +47,38 @@ describe("every way a piece of work can end has a home", () => {
     expect(api).not.toMatch(/kind: "published"[\s\S]{0,200}status === "approved"/);
   });
 });
+
+// ── WHY, NOT JUST WHAT ──
+// "I am confused how a user sees what he did, where it landed, and why." The card
+// in Approvals explains the choice and then the card goes away, so a week later
+// this page was a list of things that had happened with no clue what any of them
+// was for. An owner who cannot see the reasoning has no way to tell work from
+// activity, and activity is what every other tool already sells them.
+describe("every line says why Genie did it, not only that it happened", () => {
+  it("carries a reason for each kind of thing that can land here", () => {
+    expect((api.match(/^\s*why:/gm) || []).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("names the actual keyword, because that is the checkable part", () => {
+    expect(api).toMatch(/Written to win the Google search "\$\{p\.target_keyword\}"/);
+  });
+
+  it("explains a follow-up differently from a first email", () => {
+    expect(api).toMatch(/Two follow-ups roughly double the replies/);
+    expect(api).toMatch(/published this address on their own website/);
+  });
+
+  it("explains a thrown-away article as Genie protecting the site, not as a failure", () => {
+    expect(api).toMatch(/threw its own work away rather than risk your site/);
+  });
+
+  it("shows it, labelled, rather than burying it in the note", () => {
+    expect(page).toMatch(/\{it\.why &&/);
+    expect(page).toMatch(/Why:<\/b>/);
+  });
+
+  it("says nothing when there is no honest reason to give", () => {
+    // A row with no why must render nothing rather than an invented sentence.
+    expect(page).toMatch(/\{it\.why && \(/);
+  });
+});
