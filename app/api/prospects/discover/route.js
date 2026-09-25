@@ -22,7 +22,7 @@ export async function POST(request) {
   if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
 
   const niche = String(body?.niche || "").trim().slice(0, 120);
-  if (!niche) return json({ ok: false, error: "Tell me who to target (e.g. 'rug e-commerce brands')." }, 400);
+  if (!niche) return json({ ok: false, error: "Tell me who to target — a kind of company, not one firm. For example 'independent bookshops' or 'dental practices'." }, 400);
 
   // Who's sending — used to tailor each pitch.
   let userBusiness = { name: "", pitch: "", whatTheySell: "" };

@@ -69,7 +69,7 @@ Write 4-5 short lines to send the owner. Two rules decide the shape of each one:
    them to confirm or add to it. Quote the real detail back, with their actual
    numbers, names or wording:
      "I can see your plans start at $49 and Pro is $149. Is that current, and which one do you most want people on?"
-     "It looks like you mainly sell to furniture and rug retailers. Is that who you want more of, or is there a better fit?"
+     "It looks like you mainly sell to <the kinds of customer the site actually shows>. Is that who you want more of, or is there a better fit?"
 
 2. Only ask an open question when the site genuinely does not answer it. The
    things a homepage almost never says: why buyers actually choose them over a

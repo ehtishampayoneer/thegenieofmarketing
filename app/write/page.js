@@ -138,7 +138,7 @@ export default function WritePage() {
             <span className="text-[12px] font-medium mg-muted">What should Genie write about?</span>
             <input
               value={topic} onChange={(e) => setTopic(e.target.value)}
-              placeholder="The new EU furniture safety rules"
+              placeholder="A change in your industry your customers will ask about"
               className="mg-field mg-focus" style={{ fontSize: 15, padding: "10px 12px" }}
             />
           </label>

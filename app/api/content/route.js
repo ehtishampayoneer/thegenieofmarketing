@@ -589,9 +589,9 @@ ${targetBlock}${internalLinks}${paaBlock}${fp}
 ${hookBlock({ seed: pick?.keyword || topic || ai.businessName || "", serious: isSeriousBusiness(ai) })}
 
 REACH THE BUYER WHO DOESN'T KNOW YOU EXIST. Most readers arrive with a PROBLEM, not
-knowledge of your product or category. Open with THEIR problem in THEIR words (e.g.
-"you found the perfect couch online, but will it actually fit — and look right — in
-your room?"), make them feel understood, then bridge naturally to how ${ai.businessName || "the business"}
+knowledge of your product or category. Open with THEIR problem in THEIR words (for a
+payroll tool, "another Friday afternoon gone to a payroll run"; for a kitchen
+fitter, "the second site was meant to open in March"), make them feel understood, then bridge naturally to how ${ai.businessName || "the business"}
 solves it. Never open by naming your product or technology. Earn the introduction.
 
 ${CLAIM_RULES}

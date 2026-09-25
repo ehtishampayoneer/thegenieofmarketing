@@ -255,12 +255,17 @@ FIRST, separate two different things:
     and the sale — it is NOT what most people search for.
 
 The #1 mistake (do NOT make it): targeting the DIFFERENTIATOR as your main keywords.
-A person who wants a couch searches "buy sofa online" or "modern sectional sofa" or
-"affordable couch" — they have NEVER heard of "AR shopping" and will never type it.
-If you build the strategy around "augmented reality shopping app" / "virtual try on"
-/ "3d product viewer", you will rank for tiny tech-curious traffic and MISS the
-millions of actual buyers. The AR/differentiator is how you CONVERT and stand out in
-the content — the keyword itself must be what the buyer really types to buy the product.
+Buyers search for the THING THEY WANT, never for the clever way you deliver it. They
+have usually never heard of your method and will never type its name. Two examples
+from unrelated trades, so the shape is clear and neither is a template:
+  · A payroll tool for accountants: buyers type "payroll software for accountants"
+    and "how to grow an accountancy practice" — never "automated payroll engine".
+  · A firm that fits commercial kitchens: buyers type "commercial kitchen cost" and
+    "restaurant kitchen layout" — never "kitchen workflow optimisation".
+Build a strategy around the method's name and you will rank for a trickle of
+curious traffic and miss every actual buyer. The differentiator is how you CONVERT
+once they arrive and how the content stands out — the keyword itself has to be what
+the buyer really types when they are trying to buy.
 
 ════════ THE TIERS (in priority order) ════════
 TIER 1 — CORE COMMERCIAL / PRODUCT (the money keywords — make these the BACKBONE).
@@ -268,20 +273,19 @@ TIER 1 — CORE COMMERCIAL / PRODUCT (the money keywords — make these the BACK
   (a marketplace), cover its MAIN product categories. Patterns:
   "buy [product] online", "[product] for sale", "[product] online", "best [product]",
   "affordable/cheap [product]", "modern/[style] [product]", "[product] store online",
-  "online [category] shopping". e.g. for a furniture+decor+shoes marketplace:
-  "buy furniture online", "modern sofa", "sectional sofa for sale", "living room
-  furniture online", "buy shoes online", "home decor online store", "online furniture store".
+  "online [category] shopping". Fill the brackets from what THIS business actually
+  sells, in the words its buyers use, and cover its main categories if it has several.
   These carry the most buyer intent and real volume — they MUST dominate the list.
 TIER 2 — DIFFERENTIATOR / SOLUTION (medium volume, low competition, HIGH conversion).
-  The buyer's desire that your USP uniquely answers: "see furniture in your room before
-  buying", "visualize furniture at home", "try shoes on virtually", "view sofa in my space".
-TIER 3 — PROBLEM (warm, untapped, long-tail): the pain in plain words before they know
-  a solution exists: "will this couch fit my living room", "furniture looks different in
-  person", "how to buy furniture online without regret".
-TIER 4 — PRODUCT-AWARE / BRANDy tech + COMPARISON (smallest share): "ar furniture app",
-  "virtual try on furniture", "best online furniture stores", "[competitor] alternative".
+  The buyer's desire that your differentiator uniquely answers, written as the buyer
+  would say it — the outcome they want, not the mechanism you use to deliver it.
+TIER 3 — PROBLEM (warm, untapped, long-tail): the pain in plain words, from before
+  they knew a solution existed. Usually a full sentence, often a worry or a regret.
+TIER 4 — PRODUCT-AWARE / CATEGORY + COMPARISON (smallest share): the category name
+  itself, "best [category] for [buyer]", "[competitor] alternative".
 
-Never use engineer jargon ("webgl", "3d website builder", "3d model viewer sdk").
+Never use engineer or industry jargon. If a phrase would only be typed by someone who
+already works in this field, it belongs nowhere in the list.
 
 ════════ THE MIX (enforce this ratio) ════════
 Return 24-32 keywords, weighted toward demand:
@@ -291,7 +295,7 @@ Return 24-32 keywords, weighted toward demand:
   ~10% TIER 4 (tech/comparison).
 Priority 1 = attack first (best mix of real demand, winnability, and buyer value) —
 most Priority-1 keywords should be TIER 1. For each keyword, the rationale says how the
-content ranks for that term AND uses the differentiator (e.g. AR preview) to convert.
+content ranks for that term AND uses this business's own differentiator to convert.
 
 Return ONLY this JSON:
 {

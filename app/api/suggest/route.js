@@ -108,7 +108,7 @@ async function modelSuggestions({ surface, ai, host, have, plan = "" }) {
 
   const ASK = {
     featured: `5 short topic phrases naming the SPACE this business is in — the kind of phrase a blogger would use in a "best ..." roundup or a buying guide this business deserves to appear in. Bare noun phrases, 2 to 4 words, no "best", no "near me", no brand names.`,
-    prospects: `5 short phrases naming KINDS OF COMPANY this business could sell to. A group of businesses, never one named company, 2 to 5 words, e.g. "independent furniture stores".`,
+    prospects: `5 short phrases naming KINDS OF COMPANY this business could sell to. A group of businesses, never one named company, 2 to 5 words, in the words that group uses about itself, e.g. "independent bookshops" or "dental practices".`,
     hunt: `5 real, currently-operating competitor brands of this business. Real company names only — return an empty list if you are not confident, never invented names.`,
   };
 
