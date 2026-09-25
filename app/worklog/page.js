@@ -156,6 +156,23 @@ function Row({ it }) {
               someone who does not know what a new article normally does. */}
           {it.note && <p className="mt-1.5 text-[13px] mg-muted" style={{ maxWidth: "var(--measure)" }}>{it.note}</p>}
 
+          {/* ── READ WHAT ACTUALLY WENT OUT ──
+              An owner could see that forty emails had been sent and could not read
+              one of them. Closed by default, because the point of this page is to
+              skim; open on demand, because the point of trusting it is to check. */}
+          {it.body && (
+            <details className="mt-2">
+              <summary className="text-[13px] font-semibold cursor-pointer" style={{ color: "var(--accent-ink)" }}>
+                Read the email that was sent
+              </summary>
+              <div className="mt-2 rounded-lg p-3" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+                {it.to && <p className="text-[12px] mg-subtle">To: {it.to}</p>}
+                {it.sub && <p className="text-[12.5px] font-semibold mt-0.5" style={{ color: "var(--fg)" }}>{it.sub}</p>}
+                <p className="mt-2 text-[13px] whitespace-pre-wrap" style={{ color: "var(--fg-muted)", maxWidth: "var(--measure)" }}>{it.body}</p>
+              </div>
+            </details>
+          )}
+
           <div className="mt-2 flex items-center gap-3 flex-wrap">
             {it.url && (
               <a href={it.url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-semibold" style={{ color: "var(--accent-ink)" }}>

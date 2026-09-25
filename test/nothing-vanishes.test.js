@@ -82,3 +82,29 @@ describe("every line says why Genie did it, not only that it happened", () => {
     expect(page).toMatch(/\{it\.why && \(/);
   });
 });
+
+// ── WHAT WENT OUT UNDER THEIR NAME ──
+// "How can I see what Genie sent? What if it sent something wrong?" The body was
+// written to outreach_log on every single send and shown on no screen anywhere. An
+// owner could see that forty emails had gone out and could not read one of them.
+describe("the words that were actually sent are readable", () => {
+  it("carries the body out of the send log", () => {
+    expect(api).toMatch(/select\("contact_email, contact_name, subject, body,/);
+    expect(api).toMatch(/body: e\.body \|\| null,/);
+    expect(api).toMatch(/to: e\.contact_email \|\| null,/);
+  });
+
+  it("shows it on demand rather than in the way", () => {
+    expect(page).toMatch(/\{it\.body && \(/);
+    expect(page).toMatch(/Read the email that was sent/);
+    expect(page).toMatch(/<details/);
+  });
+
+  it("keeps the line breaks the recipient saw", () => {
+    expect(page).toMatch(/whitespace-pre-wrap/);
+  });
+
+  it("says who it went to, which is half the question", () => {
+    expect(page).toMatch(/To: \{it\.to\}/);
+  });
+});

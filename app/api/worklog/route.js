@@ -69,7 +69,7 @@ export async function GET(request) {
       .select("id, title, handle, slug, published_at, target_keyword")
       .eq("user_id", uid).order("published_at", { ascending: false }).limit(40)),
     safe(() => supabase.from("outreach_log")
-      .select("contact_email, contact_name, subject, status, sent_at, replied_at, is_followup, followup_step")
+      .select("contact_email, contact_name, subject, body, status, sent_at, replied_at, is_followup, followup_step")
       .eq("user_id", uid).not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(60)),
     safe(() => supabase.from("placements")
       .select("platform, target_title, target_url, posted_at, reply_count, performance")
@@ -142,6 +142,13 @@ export async function GET(request) {
       kind: replied ? "reply" : e.is_followup ? "followup" : "email",
       title: e.is_followup ? `Follow-up ${e.followup_step || 1} to ${who}` : `Emailed ${who}`,
       sub: e.subject || null,
+      // ── THE WORDS THAT WENT OUT UNDER THEIR NAME ──
+      // "How can I see what Genie sent? What if it sent something wrong?" had no
+      // answer: the body was stored on every send and shown on no screen. An owner
+      // could see that forty emails went out and could not read one of them, which
+      // is not something you can ask a person to be comfortable with.
+      body: e.body || null,
+      to: e.contact_email || null,
       why: e.is_followup
         ? "They did not answer the first one. Two follow-ups roughly double the replies a cold campaign gets, so Genie writes them on a schedule instead of hoping."
         : "This company matches who your plan says you sell to, and published this address on their own website — Genie never buys or guesses an address.",
