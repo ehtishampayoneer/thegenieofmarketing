@@ -133,16 +133,16 @@ export default function ConnectionsPage() {
 
       {/* Measure */}
       <Group title="Needed to start · Google" sub="One click. Sending from your Gmail, plus your real rankings and traffic.">
-        <Row icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
+        <Row checking={state === "loading"} icon={<BrandIcon brand="google" size={18} />} label="Google (Search Console, Analytics, Gmail, Keyword Planner)"
           sub={googleSub(I)}
           connected={I.google?.connected} broken={I.google?.broken}
           action={<a href="/api/connect/google/start" className="mg-btn mg-btn--dawn" style={btn}>{I.google?.connected ? "Reconnect" : "Connect Google"}</a>} />
-        <Row icon={<span className="mg-tile" style={tile}><Icon.growth size={17} /></span>} label="Real Google rankings (Search Console)"
+        <Row checking={state === "loading"} icon={<span className="mg-tile" style={tile}><Icon.growth size={17} /></span>} label="Real Google rankings (Search Console)"
           sub={I.search_console?.connected ? "Connected · Genie reads your real positions every night" : "Genie sets this up for you: it verifies your site with Google and adds it. No Search Console account needed."}
           connected={I.search_console?.connected} broken={I.search_console?.broken} action={null}>
           {!I.search_console?.connected && <GscSetup googleConnected={I.google?.connected} />}
         </Row>
-        <Row icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
+        <Row checking={state === "loading"} icon={<span className="mg-tile" style={tile}><Icon.store size={17} /></span>} label="Revenue (any provider)"
           sub={I.commerce.connected ? "Receiving real revenue events" : "Point your payment provider’s webhook here so Genie proves the dollars it earns you"}
           connected={I.commerce.connected} action={null}>
           {ingest && !I.commerce.connected && <RevenueSetup ingest={ingest} />}
@@ -152,13 +152,13 @@ export default function ConnectionsPage() {
       {/* Publish */}
       <Group title="Put articles on your own website" sub="This is what builds YOUR Google ranking. Articles on your Genie page help people and AI find you, but only articles on your own domain move your site up. Set it up once and every article after that goes there by itself.">
         {!I.wordpress.connected && (
-          <Row icon={<span className="mg-tile" style={tile}><Icon.write size={17} /></span>} label="Your blog on your own website (any site that isn't WordPress)"
+          <Row checking={state === "loading"} icon={<span className="mg-tile" style={tile}><Icon.write size={17} /></span>} label="Your blog on your own website (any site that isn't WordPress)"
             sub={I.own_blog?.connected ? "Live · every approved article publishes to your own domain automatically" : "One rule on your site, added once by you or your developer. Works with Next.js, Vercel, Netlify, Cloudflare, Nginx and Apache."}
             connected={I.own_blog?.connected} action={null}>
             <OwnBlogConnect />
           </Row>
         )}
-        <Row icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (only if your own site runs WordPress)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles to your own domain" : "If your site runs WordPress, this is the one-click way to publish articles on your own domain. Not a way to post on other people's sites: that is Get featured."}
+        <Row checking={state === "loading"} icon={<BrandIcon brand="wordpress" size={18} />} label="WordPress (only if your own site runs WordPress)" sub={I.wordpress.connected ? "Connected · Genie auto-publishes approved articles to your own domain" : "If your site runs WordPress, this is the one-click way to publish articles on your own domain. Not a way to post on other people's sites: that is Get featured."}
           connected={I.wordpress.connected} action={<WordPressConnect connected={I.wordpress.connected} />} />
       </Group>
 
@@ -166,13 +166,13 @@ export default function ConnectionsPage() {
         {/* X needs no connection: Genie writes the post, you paste it, and pressing
             "Copy & open" in Approvals records that it is done. Kept for anyone who
             already connected it. */}
-        <Row icon={<BrandIcon brand="x" size={18} />} label="X, LinkedIn, Reddit and the rest" sub={I.x.connected ? "X connected · Genie drafts, opens X, you tap post" : "Nothing to connect. Genie writes each post, you press Copy & open in Approvals, paste, and Genie marks it done so it never repeats itself."}
+        <Row checking={state === "loading"} icon={<BrandIcon brand="x" size={18} />} label="X, LinkedIn, Reddit and the rest" sub={I.x.connected ? "X connected · Genie drafts, opens X, you tap post" : "Nothing to connect. Genie writes each post, you press Copy & open in Approvals, paste, and Genie marks it done so it never repeats itself."}
           connected={I.x.connected} connectedLabel="Connected" action={null} />
       </Group>
 
       {/* Reach */}
       <Group title="Reach buyers" sub="Already working. Outreach sends from your own Gmail once Google is connected.">
-        <Row icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" connectedLabel="Built-in · ready" sub={I.email.connected ? "Built in — every email is CAN-SPAM compliant (unsubscribe + address). Nothing to connect." : "Email sending is configured for you at the platform level"}
+        <Row checking={state === "loading"} icon={<BrandIcon brand="mail" size={18} />} label="Outreach email" connectedLabel="Built-in · ready" sub={I.email.connected ? "Built in — every email is CAN-SPAM compliant (unsubscribe + address). Nothing to connect." : "Email sending is configured for you at the platform level"}
           connected={I.email.connected} action={null} />
         <DeliverabilityCheck />
       </Group>
@@ -195,7 +195,7 @@ function Group({ title, sub, children }) {
   );
 }
 
-function Row({ icon, label, sub, connected, broken = false, connectedLabel = "Connected", action, children }) {
+function Row({ icon, label, sub, connected, broken = false, checking = false, connectedLabel = "Connected", action, children }) {
   return (
     <Card className="p-4" style={broken ? { borderColor: "var(--signal-danger)" } : undefined}>
       <div className="flex items-center gap-3 flex-wrap">
@@ -205,13 +205,19 @@ function Row({ icon, label, sub, connected, broken = false, connectedLabel = "Co
             {label}
             {/* Saved is not the same as working: once the grant is gone, a tick
                 here would be a lie the owner acts on for weeks. */}
-            {broken
-              ? <span className="inline-flex items-center gap-1 text-[11.5px] font-bold" style={{ color: "var(--signal-danger)" }}>⚠️ Stopped working</span>
-              : connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
+            {/* Until the answer is in, say so. The fallback this page starts from
+                has every integration set to false, so it used to state "not
+                connected" as a fact for the first second of every visit — an owner
+                whose Google IS connected was told twice a day that it was not. */}
+            {checking
+              ? <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold mg-muted">Checking…</span>
+              : broken
+                ? <span className="inline-flex items-center gap-1 text-[11.5px] font-bold" style={{ color: "var(--signal-danger)" }}>⚠️ Stopped working</span>
+                : connected && <span className="mg-verified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 6" /></svg> {connectedLabel}</span>}
           </p>
-          <p className="text-[12px] mg-muted mt-0.5">{broken ? "Google ended this connection. Reconnect to restore your real rankings, indexing and sending — nothing else needs redoing." : sub}</p>
+          <p className="text-[12px] mg-muted mt-0.5">{checking ? "Asking…" : broken ? "Google ended this connection. Reconnect to restore your real rankings, indexing and sending — nothing else needs redoing." : sub}</p>
         </div>
-        {action}
+        {checking ? null : action}
       </div>
       {children}
     </Card>

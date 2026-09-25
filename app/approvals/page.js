@@ -235,7 +235,21 @@ export default function ApprovalsPage() {
         : "Connect that account on Connections and I’ll post it for you. I copied the draft for now.");
       setDone((d) => d + 1); removeById(item.id);
     } else if (r?.blocked) {
-      setToast("I held this back to protect your brand. Press E to edit, then re-approve.");
+      // The route already sends the reason — "Too similar (62%) to <title>", "2
+      // claims need verification" — and this used to throw it away and say "press
+      // E to edit" without saying WHAT to edit. The owner then has to guess at a
+      // 780-word article, which is the same as being told nothing.
+      const why = (r.guard?.reasons || []).filter(Boolean);
+      setToast(why.length
+        ? `Held back: ${why.slice(0, 2).join(" ")} Press E to edit, then approve again.`
+        : (r.error || "I held this back to protect your brand. Press E to edit, then re-approve."));
+      // The card already knows how to show the full list and the exact sentences to
+      // fix — it renders them for anything in needs_review. The route has just put
+      // this row into needs_review, so mark it here rather than refetching: a reload
+      // would throw away the toast and the owner's place in the queue.
+      setItems((prev) => prev.map((i) => (i.id === item.id
+        ? { ...i, held: true, heldReasons: why.slice(0, 4), heldClaims: (r.guard?.claims || []).slice(0, 4) }
+        : i)));
     } else {
       setToast(r?.error || "That didn’t publish. Try again in a moment.");
     }
