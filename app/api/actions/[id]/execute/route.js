@@ -111,7 +111,7 @@ export async function POST(_request, { params }) {
     : (p.body || "");
   const { guardContent } = await import("@/lib/publish-guard");
   const { repairClaims, repairable } = await import("@/lib/self-repair");
-  let guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true });
+  let guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true, excludeActionId: action.id });
   // ── GENIE FIXES ITS OWN WRITING FIRST ──
   // The guard is right to refuse "the best online retailers" and "ensures your
   // purchase feels right at home". What was wrong was who it asked to fix them: it
@@ -123,7 +123,7 @@ export async function POST(_request, { params }) {
   if (guard.decision === "block" && repairable(guard)) {
     const fix = await repairClaims(guardText, guard.claims, { entity: { label: action.target?.host || null } });
     if (fix.ok) {
-      const after = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: fix.text, title: p.title || null, deep: true });
+      const after = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: fix.text, title: p.title || null, deep: true, excludeActionId: action.id });
       if (after.decision !== "block") {
         // Publish the repaired words, and keep the originals so the owner can see
         // exactly what was changed under their name rather than taking it on trust.
@@ -158,6 +158,13 @@ export async function POST(_request, { params }) {
         result: { discarded: "near_duplicate", duplicateOf: dup, similarity: guard.scaled?.similarity ?? null },
         updated_at: new Date().toISOString(),
       }).eq("id", action.id);
+      // Give the topic back. Coverage advanced when this was drafted, so without
+      // this the keyword stays marked covered and Genie never writes it again —
+      // the owner silently loses a topic to a draft that no longer exists.
+      try {
+        const { releaseUsage } = await import("@/lib/keyword-usage");
+        await releaseUsage(supabase, user.id, action.target?.host || null, { refId: action.id, primary: p.targetKeyword || null });
+      } catch {}
       try {
         const { recordEvent } = await import("@/lib/events");
         await recordEvent(supabase, {
