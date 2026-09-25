@@ -1,7 +1,19 @@
-# The swarm's heartbeat. Every ten minutes this asks Genie to run one pass of the
-# testers and improvers (app/api/swarm/tick), so drafts are tested all day, not
-# only at night, and work left over when the free AI was busy is picked up as
-# soon as it is back. Free: GitHub Actions minutes are free on public repos.
+# The swarm's heartbeat. This asks Genie to run one pass of the testers and
+# improvers (app/api/swarm/tick), so drafts are tested during the day and not only
+# at night, and work left over when the free AI was busy is picked up as soon as it
+# is back. Free: GitHub Actions minutes are free on public repos.
+#
+# WHAT THE SCHEDULE BELOW ACTUALLY DELIVERS. It asks for every ten minutes. GitHub
+# does not honour that on free shared runners — measured over the first six days of
+# this workflow, it fired 39 times: about seven a day, a median of three and a half
+# hours apart, and never closer together than 107 minutes. So read `*/10` as "as
+# often as GitHub feels like", which in practice is a few times a day.
+#
+# That is still worth having — it is the difference between a draft written at noon
+# being improved this afternoon and waiting for 1am. But if the gap ever matters,
+# the fix is not this file: point a free external pinger (cron-job.org, Cloudflare
+# Workers cron) at the same URL with the same Authorization header. Vercel's own
+# cron is no help — Hobby allows one run a day.
 #
 # Setup, once: repo Settings -> Secrets and variables -> Actions
 #   Secret   HEARTBEAT_SECRET = the same value as HEARTBEAT_SECRET in Vercel
