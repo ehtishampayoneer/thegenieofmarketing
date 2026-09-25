@@ -8,7 +8,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { briefBlock } from "@/lib/business-brief";
 import { strategyPromptBlock, getStrategy } from "@/lib/strategy-store";
-import { requiredPlatform } from "@/lib/platform-detect";
+import { requiredPlatform, rivalCategory } from "@/lib/platform-detect";
 import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies, fitFrom } from "@/lib/prospects";
 
 export const runtime = "nodejs";
@@ -44,12 +44,19 @@ export async function POST(request) {
   // inventing one would silently empty their list. When there IS one, a shop on a
   // different platform is dropped before anything is written to them.
   let needsPlatform = null;
+  // And which category of rival matters to THIS owner, read from the same plan.
+  // Somebody selling booking software cares whether a prospect already has
+  // Calendly; somebody selling 3D product views cares about something else
+  // entirely. Most businesses match nothing here, and then nothing is detected
+  // and nothing is filtered.
+  let rivalCat = null;
   try {
     const strategy = await getStrategy(supabase, { userId, host, ai: scanAi, draft: false });
     needsPlatform = requiredPlatform({ ai: scanAi, strategy });
+    rivalCat = rivalCategory({ ai: scanAi, strategy });
   } catch {}
 
-  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit, needsPlatform });
+  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit, needsPlatform, rivalCat });
 
   // RECOVERY: if the main path came up empty (a transient provider hiccup), run the
   // candidate call once more — it reliably names companies at this calmer moment —
