@@ -41,6 +41,12 @@ const KIND = {
   lead: { icon: Icon.bolt, word: "Lead" },
   sale: { icon: Icon.coins, word: "Sale" },
   link: { icon: Icon.link, word: "Link" },
+  // Three ways a piece of work can end without reaching anyone. Each one used to
+  // exist only as a toast, which is how "I pressed publish and cannot find it"
+  // became a question with no answer anywhere in the product.
+  discarded: { icon: Icon.write, word: "Thrown away" },
+  failed: { icon: Icon.bolt, word: "Did not publish" },
+  held: { icon: Icon.check, word: "Waiting on you" },
 };
 
 export default function WorklogPage() {

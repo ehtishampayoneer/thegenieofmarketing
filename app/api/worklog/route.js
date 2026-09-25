@@ -64,7 +64,7 @@ export async function GET(request) {
     plan = p?.plan === "pro" ? "pro" : "free";
   } catch {}
 
-  const [pages, emails, posts, ranks, evs] = await Promise.all([
+  const [pages, emails, posts, ranks, evs, stuckWork] = await Promise.all([
     safe(() => supabase.from("published_pages")
       .select("id, title, handle, slug, published_at, target_keyword")
       .eq("user_id", uid).order("published_at", { ascending: false }).limit(40)),
@@ -78,6 +78,16 @@ export async function GET(request) {
       .select("keyword, position, recorded_on").eq("user_id", uid)
       .order("recorded_on", { ascending: false }).limit(300)),
     safe(() => getEvents(supabase, { userId: uid, types: ["publish.own_url", "lead.captured", "conversion.recorded", "link.earned", "content.discarded"], limit: 120 })),
+    // ── WHAT DID NOT GO OUT ──
+    // "I pressed publish and cannot find it anywhere" had no answer. A publish that
+    // failed, or that was held for review, said so in a toast and then the toast
+    // went away — so the only record of the most alarming thing that can happen was
+    // a sentence the owner had four seconds to read. This page is meant to be the
+    // place work cannot vanish from, and that has to include work that never left.
+    safe(() => supabase.from("actions")
+      .select("id, type, title, status, result, updated_at, payload")
+      .eq("user_id", uid).in("status", ["failed", "needs_review"])
+      .order("updated_at", { ascending: false }).limit(20)),
   ]);
 
   const events = Array.isArray(evs) ? evs : [];
@@ -175,6 +185,31 @@ export async function GET(request) {
         : `That is page ${Math.ceil(now.position / 10)} of Google. Page one is the target.`,
       where: "These are real numbers from your own Google Search Console.",
     });
+  }
+
+  // ── THINGS THAT DID NOT PUBLISH, AND WHY.
+  for (const a of Array.isArray(stuckWork) ? stuckWork : []) {
+    const name = a?.payload?.title || a?.title || "An article";
+    if (a.status === "failed") {
+      items.push({
+        at: a.updated_at, kind: "failed",
+        title: `Did not publish: "${name}"`,
+        note: a?.result?.error
+          ? `It stopped with: ${String(a.result.error).slice(0, 220)}`
+          : "It stopped part-way through and Genie did not record why.",
+        where: "Nothing was sent or posted. Open Approvals and approve it again to retry.",
+      });
+    } else {
+      const reasons = Array.isArray(a?.result?.reasons) ? a.result.reasons.filter(Boolean) : [];
+      items.push({
+        at: a.updated_at, kind: "held",
+        title: `Waiting on you: "${name}"`,
+        note: reasons.length
+          ? `Genie rewrote what it could and this is what is left: ${reasons.slice(0, 2).join(" ")}`
+          : "Genie held this back rather than publish it under your name.",
+        where: "It is in Approvals. Edit it there, then approve again.",
+      });
+    }
   }
 
   // ── LEADS, SALES AND EARNED LINKS.
