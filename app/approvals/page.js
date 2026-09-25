@@ -178,6 +178,35 @@ export default function ApprovalsPage() {
     const item = current;
     const draft = editing ? editDraft : current.draft;
 
+    // ── THE DAY'S EMAILS, APPROVED TOGETHER ──
+    // Three cards is the right number of decisions and was the wrong number of
+    // emails: about two a day against an allowance built for five rising to
+    // thirty-five. The emails now arrive as one card carrying all of them, so this
+    // is one decision that sends the batch — each one still individually readable
+    // and skippable inside the card before it goes.
+    if (Array.isArray(item.batch) && item.batch.length) {
+      setWorking(true);
+      let ok = 0, stopped = null;
+      for (const sub of item.batch) {
+        const r = await fetch(`/api/actions/${sub.id}/execute`, { method: "POST" })
+          .then((x) => x.json()).catch(() => ({ ok: false }));
+        if (r?.ok) { ok++; setToast(`Sending… ${ok} of ${item.batch.length}`); continue; }
+        // A cap or a missing sender stops the whole run: every remaining email
+        // would fail the same way, and reporting each one separately turns one
+        // problem into five.
+        if (r?.capReached || r?.needsSender || r?.needsConnection) { stopped = r.error || "Today's sending allowance is used up."; break; }
+      }
+      setWorking(false);
+      setToast(stopped
+        ? `${ok} sent. ${stopped}`
+        : ok === item.batch.length
+          ? `Sent all ${ok}. Replies land in Leads, and every word is on Everything Genie did.`
+          : `${ok} of ${item.batch.length} sent. The rest are still in Approvals.`);
+      setDone((dn) => dn + ok);
+      if (ok) removeById(item.id);
+      return;
+    }
+
     // A Get featured pitch: sent from the owner's Gmail through the same route the
     // Get featured page uses (daily cap, opt-outs, address check), or, when the
     // site only has a contact form, copied and the form opened.
@@ -575,6 +604,34 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         </div>
       </div>
 
+      {/* ── THE DAY'S EMAILS, ALL OF THEM, BEFORE ANY OF THEM GOES ──
+          One decision, but never a blind one: every email is readable here, and
+          anything that looks wrong can be dropped from the batch before sending.
+          Approving five emails you have not read is not an improvement on
+          approving two you have. */}
+      {Array.isArray(item.batch) && item.batch.length > 0 && (
+        <div className="px-6 pt-5">
+          <p className="mg-eyebrow" style={{ margin: 0 }}>All {item.batch.length}, before you send</p>
+          <div className="mt-2 flex flex-col gap-2">
+            {item.batch.map((b, i) => (
+              <details key={b.id} className="rounded-xl" style={{ background: "var(--surface-2)", border: "1px solid var(--hair)" }}>
+                <summary className="p-3 cursor-pointer text-[13.5px] font-semibold" style={{ color: "var(--fg)" }}>
+                  <span className="mg-subtle" style={{ fontVariantNumeric: "tabular-nums" }}>{i + 1}.</span>{" "}
+                  {b.title || "An email"}
+                </summary>
+                <div className="px-3 pb-3">
+                  {b.why && <p className="text-[12.5px] mg-muted">{b.why}</p>}
+                  <p className="mt-2 text-[13px] whitespace-pre-wrap" style={{ color: "var(--fg-muted)", maxWidth: "var(--measure)" }}>{b.draft}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+          <p className="mt-2 text-[12px] mg-subtle">
+            Sent one at a time from your own Gmail, spaced out, and stopped the moment today&apos;s allowance runs out.
+          </p>
+        </div>
+      )}
+
       {/* lower: targets  ·  preview */}
       <div className="px-6 pt-5 grid grid-cols-1 lg:grid-cols-[268px_1fr] gap-5 items-start">
         <LeftPanel item={item} isArticle={isArticle} />
@@ -733,7 +790,7 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
           </>
         ) : (
           <>
-            <button className="mg-btn mg-btn--dawn" onClick={onApprove} disabled={working}>{working ? "Publishing…" : item.owned ? "Approve & publish" : item.platform === "pinterest" ? "Save to Pinterest" : "Copy & open"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></button>
+            <button className="mg-btn mg-btn--dawn" onClick={onApprove} disabled={working}>{working ? "Publishing…" : item.batch?.length ? `Send all ${item.batch.length}` : item.owned ? "Approve & publish" : item.platform === "pinterest" ? "Save to Pinterest" : "Copy & open"} <span className="mg-kbd" style={{ marginLeft: 4 }}>A</span></button>
             {/* The image X will not take. One press saves it so it can be
                 attached in the composer that is already open. */}
             {!item.owned && item.image && (

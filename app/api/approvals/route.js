@@ -88,9 +88,38 @@ export async function GET(request) {
   // Owned (auto-publishable) first, then by impact/intent.
   items.sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);
 
-  const ownedCount = items.filter((i) => i.owned).length;
-  const shown = showAll ? items : items.slice(0, DAILY_CARDS);
-  const backlog = Math.max(0, items.length - shown.length);
+  // ── THE DAY'S EMAILS ARE ONE DECISION, NOT FIVE CARDS ──
+  // Three cards a day is the right number of DECISIONS. It was the wrong number of
+  // EMAILS, and nobody noticed the difference. An article sorts above everything,
+  // so a normal morning showed one article and two of whatever came next — about
+  // two emails a day, against a sending allowance deliberately built for five
+  // rising to thirty-five. Eight times fewer than the product was designed to send,
+  // and the arithmetic of cold email is unforgiving about that: sixty emails a
+  // month is under three replies, where five hundred is five to twenty-five.
+  //
+  // So the emails travel together. One card, every email readable and editable
+  // inside it, approved one by one or all at once. The owner still makes three
+  // decisions; one of them is now worth five emails instead of one.
+  const emails = items.filter((i) => i.kind === "outreach_email");
+  let batched = items;
+  if (!showAll && emails.length > 1) {
+    const rest = items.filter((i) => i.kind !== "outreach_email");
+    const lead = emails[0];
+    batched = [...rest, {
+      ...lead,
+      id: `batch:${lead.id}`,
+      batch: emails.map((e) => ({ id: e.id, source: e.source, title: e.title, draft: e.draft, outcome: e.outcome, why: e.why })),
+      title: `${emails.length} emails to ${emails.length} companies`,
+      outcome: `Reach ${emails.length} businesses that match your plan`,
+      // The batch inherits the best impact in it, so a strong lead is not buried
+      // by averaging it with the rest.
+      impact: Math.max(...emails.map((e) => e.impact || 0)),
+    }].sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);
+  }
+
+  const ownedCount = batched.filter((i) => i.owned).length;
+  const shown = showAll ? batched : batched.slice(0, DAILY_CARDS);
+  const backlog = Math.max(0, items.length - shown.reduce((n, i) => n + (i.batch?.length || 1), 0));
   return json({
     ok: true, live: true,
     // `count` stays the size of the whole queue: the screen says "3 for you today,

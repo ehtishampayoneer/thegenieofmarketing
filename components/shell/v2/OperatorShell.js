@@ -23,11 +23,12 @@ import PageGuide from "@/components/shell/v2/PageGuide";
 // Employee-centric, not a feature list. What Genie is doing for you (the loop),
 // where it's growing you (the journey), and how you stay in control (settings).
 const NAV = [
-  // ── THE SIX A CUSTOMER USES ──
+  // ── THE ONES A CUSTOMER USES ──
   // Twenty-four destinations is the reason a beginner opened this and could not
   // tell what their job was. These are the daily loop, in the order it happens:
-  // read what happened, decide the three things, answer whoever wrote back, fix
-  // the plan if it is wrong, check the work is real, connect what is missing.
+  // read what happened, decide the day's cards, go hunting when you want more,
+  // send something of your own, answer whoever wrote back, fix the plan if it is
+  // wrong, check the work is real, connect what is missing.
   //
   // Nothing is deleted and nothing 404s. Everything else moved behind one
   // disclosure below, closed by default, because those screens are good and the
@@ -35,6 +36,16 @@ const NAV = [
   // twenty-four of them before breakfast.
   { id: "today", label: "Today", icon: Icon.home },
   { id: "approvals", label: "Approvals", icon: Icon.tasks, countKey: "approvals" },
+  // ── THE TWO THAT WERE HIDDEN, AND SHOULD NOT HAVE BEEN ──
+  // Approvals is where Genie brings you three things it chose. It is not where the
+  // volume is: three cards a day, with an article ranking above everything, works
+  // out at roughly two emails a day against a sending allowance built for five
+  // rising to thirty-five. Find clients is the other lane — you pick who to go
+  // after, read the pitch written for each company, and send. Filing that behind
+  // a disclosure made the queue look like the whole product, and the whole product
+  // look far too slow to ever find anyone.
+  { id: "prospects", label: "Find clients", icon: Icon.search },
+  { id: "announce", label: "Send an update", icon: Icon.mail },
   { id: "inbox", label: "Leads", icon: Icon.inbox },
   { id: "strategy", label: "The plan", icon: Icon.target },
   { id: "worklog", label: "Everything Genie did", icon: Icon.history },
@@ -55,7 +66,6 @@ const MORE = [
 
   { section: "Win customers" },
   { id: "hunt", label: "Buyer Hunt", icon: Icon.crosshair },
-  { id: "prospects", label: "Find clients", icon: Icon.target },
   { id: "featured", label: "Get featured", icon: Icon.megaphone },
   { id: "conversations", label: "Conversations", icon: Icon.conversations },
   { id: "pipeline", label: "Deal Pipeline", icon: Icon.board },

@@ -16,10 +16,31 @@ const more = idsIn("MORE");
 
 // Twenty-four destinations was the reason a beginner could not tell what their
 // job was. This is the one thing in the rebuild that a later "just add it to the
-// rail" undoes in a single line, so it is pinned.
-describe("the rail asks for six decisions, not twenty-four", () => {
-  it("shows six, and they are the daily loop in order", () => {
-    expect(primary).toEqual(["today", "approvals", "inbox", "strategy", "worklog", "connections"]);
+// rail" undoes in a single line, so the list is pinned and every addition has to
+// be argued for here.
+//
+// Two were added after the first customer used it. Approvals is where Genie brings
+// three things it chose; it is not where the volume is. Three cards a day, with an
+// article ranking above everything, is about two emails a day against an allowance
+// built for five rising to thirty-five — so the queue looked like the whole
+// product and the whole product looked far too slow to ever find anyone. Find
+// clients is the other lane, and Send an update is the only place the owner's own
+// words can go out at all.
+describe("the rail is the daily loop, and nothing else", () => {
+  it("shows eight, and they are the daily loop in order", () => {
+    expect(primary).toEqual(["today", "approvals", "prospects", "announce", "inbox", "strategy", "worklog", "connections"]);
+  });
+
+  it("stays small enough to read without choosing", () => {
+    // The number is allowed to move; twenty-four is not. Ten is the line where a
+    // rail stops being a loop and goes back to being a menu.
+    expect(primary.length).toBeLessThanOrEqual(10);
+  });
+
+  it("keeps the two lanes next to each other", () => {
+    // "Genie brought you three" and "go and find more" are the same job at two
+    // speeds; splitting them across the rail is what hid the second one.
+    expect(primary.indexOf("prospects")).toBe(primary.indexOf("approvals") + 1);
   });
 
   it("calls them what they are to an owner, not what the route is called", () => {
@@ -30,7 +51,7 @@ describe("the rail asks for six decisions, not twenty-four", () => {
   it("keeps everything else reachable rather than deleting it", () => {
     // The screens were never the problem. Being asked to choose between
     // twenty-four of them before breakfast was.
-    for (const id of ["growth", "hunt", "prospects", "featured", "markets", "write", "team", "trust", "settings"]) {
+    for (const id of ["growth", "hunt", "featured", "markets", "write", "team", "trust", "settings"]) {
       expect(more, id).toContain(id);
     }
     expect(more.length).toBeGreaterThan(15);
