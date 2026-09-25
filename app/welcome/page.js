@@ -217,6 +217,14 @@ export default function WelcomePage() {
     // Re-run it on the owner's corrected brief (and the keywords just rebuilt), so
     // Buyer Hunt is right today instead of after tonight's run.
     fetch("/api/radar/intent", { method: "POST", headers: head, body: JSON.stringify({ host: h, ai }) }).catch(() => {});
+    // ── THE FASTEST ROUTE TO A REPLY STARTS NOW, NOT AT 1AM ──
+    // Onboarding started the article and the buyer hunt and left out the one channel
+    // that can produce a reply this week. So a new owner finished setup, opened
+    // Approvals, and found a blog post — from a product whose whole promise is
+    // "paste your link and Genie finds you clients". The emails did not exist until
+    // the night ran, and by then the person who had just been excited about it had
+    // gone. Nothing is sent: the drafts wait in Approvals like everything else.
+    fetch("/api/outreach/campaign", { method: "POST", headers: head, body: JSON.stringify({ host: h }) }).catch(() => {});
     setBusy(false);
     await toConnect();
   }
@@ -503,8 +511,8 @@ export default function WelcomePage() {
                   <p className="text-[12px] font-mono font-semibold mb-4" style={{ color: "var(--onb-live)", letterSpacing: ".16em" }}>HERE’S THE PLAN</p>
                   <div className="flex flex-col gap-3">
                     {[
-                      { n: 1, icon: Icon.search, tag: "Discover", t: "Every night, I find high-intent buyers.", s: "I write your content, run outreach, and check where you rank." },
-                      { n: 2, icon: Icon.write, tag: "Deliver", t: "Every morning, you get a short list of ready-to-publish work.", s: "Articles, replies, posts, all waiting for your one-tap approval." },
+                      { n: 1, icon: Icon.search, tag: "Discover", t: "Tonight, and every night, I find businesses that match your plan.", s: "I read their website, find the right person, and write to each one personally." },
+                      { n: 2, icon: Icon.write, tag: "Deliver", t: "Every morning, three decisions. Not a queue.", s: "An article, the day’s emails in one card, and a reply to someone asking right now." },
                       { n: 3, icon: Icon.check, tag: "Approve", t: "Nothing goes out without you.", s: "I draft, you approve. On social I open the post ready and you tap send, so your accounts stay safe." },
                       { n: 4, icon: Icon.growth, tag: "Optimize", t: "I learn, follow up, and scale what works.", s: "Open Talk to Genie (⌘K) for progress, or to build a full Meta / Google / social campaign plan." },
                     ].map((row, i, arr) => (
