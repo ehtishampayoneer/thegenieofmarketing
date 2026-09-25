@@ -13,6 +13,7 @@ import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { selectTargets, recordUsage } from "@/lib/keyword-usage";
 import { articleShape, shapeReason, functionLimitMs } from "@/lib/article-shape";
+import { CLAIM_RULES } from "@/lib/claim-rules";
 import { pickPostImage } from "@/lib/media";
 import { setCardImage, signImageUrl } from "@/lib/card-sign";
 import { classifyEntity } from "@/lib/entity";
@@ -592,6 +593,8 @@ knowledge of your product or category. Open with THEIR problem in THEIR words (e
 "you found the perfect couch online, but will it actually fit — and look right — in
 your room?"), make them feel understood, then bridge naturally to how ${ai.businessName || "the business"}
 solves it. Never open by naming your product or technology. Earn the introduction.
+
+${CLAIM_RULES}
 
 WRITE LIKE A SHARP HUMAN, NOT AN AI. This is critical:
 - No em-dashes (—). Use commas, periods, or parentheses.

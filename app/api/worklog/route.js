@@ -77,7 +77,7 @@ export async function GET(request) {
     safe(() => supabase.from("keyword_history")
       .select("keyword, position, recorded_on").eq("user_id", uid)
       .order("recorded_on", { ascending: false }).limit(300)),
-    safe(() => getEvents(supabase, { userId: uid, types: ["publish.own_url", "lead.captured", "conversion.recorded", "link.earned"], limit: 120 })),
+    safe(() => getEvents(supabase, { userId: uid, types: ["publish.own_url", "lead.captured", "conversion.recorded", "link.earned", "content.discarded"], limit: 120 })),
   ]);
 
   const events = Array.isArray(evs) ? evs : [];
@@ -179,7 +179,19 @@ export async function GET(request) {
 
   // ── LEADS, SALES AND EARNED LINKS.
   for (const e of events) {
-    if (e.type === "lead.captured") {
+    // ── WORK GENIE THREW AWAY ──
+    // An article too close to one already published is dropped rather than handed
+    // to the owner to rewrite. That is a decision made on their behalf about their
+    // own site, so it is shown, not swallowed. Nothing here gets to delete work and
+    // stay quiet about it.
+    if (e.type === "content.discarded") {
+      items.push({
+        at: e.created_at, kind: "discarded",
+        title: `Not published: "${e.subject || "an article"}"`,
+        note: `Genie had already written something too close to "${e.data?.duplicateOf || "an earlier article"}", so it threw this one away rather than publish a near-copy — that is what gets a site penalised by Google. It writes a different one tonight.`,
+        where: "Nothing for you to do. Shown so you know why the article you saw yesterday is gone.",
+      });
+    } else if (e.type === "lead.captured") {
       items.push({ at: e.created_at, kind: "lead", title: `A lead on your site${e.data?.email ? `: ${e.data.email}` : ""}`,
         note: "Caught by the snippet on your own website.", where: "Reply to them in Leads." });
     } else if (e.type === "conversion.recorded") {

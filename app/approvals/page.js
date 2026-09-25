@@ -234,6 +234,12 @@ export default function ApprovalsPage() {
         ? "I wrote it and copied it to your clipboard. Connect WordPress on Connections and I’ll publish automatically next time."
         : "Connect that account on Connections and I’ll post it for you. I copied the draft for now.");
       setDone((d) => d + 1); removeById(item.id);
+    } else if (r?.discarded) {
+      // Genie wrote a near-copy of something it had already written. That is Genie's
+      // mistake, not the owner's, so the card leaves the queue instead of becoming
+      // a 780-word rewriting job. The work log carries the record.
+      setToast(r.error || "Genie threw this away rather than publish a near-copy. It writes a different one tonight.");
+      removeById(item.id);
     } else if (r?.blocked) {
       // The route already sends the reason — "Too similar (62%) to <title>", "2
       // claims need verification" — and this used to throw it away and say "press

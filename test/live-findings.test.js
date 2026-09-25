@@ -33,7 +33,9 @@ describe("a held-back article says what is wrong with it", () => {
   const route = read("app/api/actions/[id]/execute/route.js");
 
   it("the route has always sent the reason", () => {
-    expect(route).toMatch(/blocked: true, error: "Genie held this back to protect your brand: "/);
+    // The wording changed when self-repair landed — it now says it already TRIED —
+    // so this pins the thing that matters: the reason travels with the refusal.
+    expect(route).toMatch(/blocked: true, error: "Genie rewrote this and it still is not safe to publish: " \+ \(guard\.reasons\[0\]/);
     expect(route).toMatch(/reasons: guard\.reasons/);
   });
 

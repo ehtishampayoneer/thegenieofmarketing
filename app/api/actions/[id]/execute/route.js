@@ -13,6 +13,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { markdownToHtml } from "@/lib/markdown";
 import { taggedLink } from "@/lib/attribution";
+import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,21 +106,81 @@ export async function POST(_request, { params }) {
   // GATE 2.5 — brand safety + fact-check. Never publish toxic content or high-risk
   // claims under the user's name, even when they approved it.
   const guardChannel = isX ? "x" : "blog";
-  const guardText = isX
+  let guardText = isX
     ? (Array.isArray(p.draft) ? p.draft.join("\n\n") : (p.text || p.draft || p.body || ""))
     : (p.body || "");
   const { guardContent } = await import("@/lib/publish-guard");
-  const guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true });
+  const { repairClaims, repairable } = await import("@/lib/self-repair");
+  let guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true });
+  // ── GENIE FIXES ITS OWN WRITING FIRST ──
+  // The guard is right to refuse "the best online retailers" and "ensures your
+  // purchase feels right at home". What was wrong was who it asked to fix them: it
+  // listed seven sentences, and a paragraph of reasoning for each, and handed all
+  // of it to an owner who had not written a word of the article. Deciding whether a
+  // sentence is an unverifiable superlative is Genie's job, and Genie already holds
+  // the exact sentence and the exact reason at the moment it decides to refuse.
+  let repaired = null;
+  if (guard.decision === "block" && repairable(guard)) {
+    const fix = await repairClaims(guardText, guard.claims, { entity: { label: action.target?.host || null } });
+    if (fix.ok) {
+      const after = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: fix.text, title: p.title || null, deep: true });
+      if (after.decision !== "block") {
+        // Publish the repaired words, and keep the originals so the owner can see
+        // exactly what was changed under their name rather than taking it on trust.
+        repaired = { fixed: fix.fixed, before: guardText.slice(0, 4000) };
+        if (isX) { /* X drafts are short and rarely reach here; leave the draft alone. */ }
+        else { p.body = fix.text; }
+        guardText = fix.text;
+        guard = after;
+        try {
+          await supabase.from("actions").update({
+            payload: { ...p, repairedClaims: fix.fixed, originalBody: repaired.before },
+            updated_at: new Date().toISOString(),
+          }).eq("id", action.id).eq("user_id", user.id);
+        } catch {}
+        logger.info("publish.self_repaired", { actionId: action.id, fixed: fix.fixed.length });
+      }
+    }
+  }
+
   if (guard.decision === "block") {
+    // Still refused after a repair, or not the kind of problem rewording fixes.
+    //
+    // A near-duplicate is the second kind, and it is never the owner's to solve:
+    // Genie wrote two articles saying the same thing, and asking a furniture
+    // retailer to rewrite 780 words to cover for that is indefensible. It is
+    // dropped, the fact is recorded where the work log will show it, and Genie
+    // writes a different one. Nothing about it reaches the morning queue.
+    const dup = guard.scaled?.duplicateOf;
+    if (dup) {
+      await supabase.from("actions").update({
+        status: "dismissed",
+        result: { discarded: "near_duplicate", duplicateOf: dup, similarity: guard.scaled?.similarity ?? null },
+        updated_at: new Date().toISOString(),
+      }).eq("id", action.id);
+      try {
+        const { recordEvent } = await import("@/lib/events");
+        await recordEvent(supabase, {
+          userId: user.id, host: action.target?.host || null, type: "content.discarded", actor: "genie",
+          subject: p.title || action.title || "Article",
+          data: { reason: "near_duplicate", duplicateOf: dup, similarity: guard.scaled?.similarity ?? null },
+        });
+      } catch {}
+      return json({
+        ok: false, discarded: true,
+        error: `Genie wrote this too close to "${dup}", so it threw it away rather than publish a near-copy. Nothing for you to do — it writes a different one tonight.`,
+      }, 200);
+    }
+
     // Keep the offending claims, not just the count. "2 claim(s) need
     // verification" tells the owner nothing they can act on; the sentences do.
     await supabase.from("actions").update({
       status: "needs_review",
-      result: { blocked: true, reasons: guard.reasons, flags: guard.flags, claims: (guard.claims || []).slice(0, 4) },
+      result: { blocked: true, reasons: guard.reasons, flags: guard.flags, claims: (guard.claims || []).slice(0, 4), triedRepair: true },
       updated_at: new Date().toISOString(),
     }).eq("id", action.id);
     try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "blocked", meta: { reasons: guard.reasons, flags: guard.flags, confidence: guard.confidence } }); } catch {}
-    return json({ ok: false, blocked: true, error: "Genie held this back to protect your brand: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
+    return json({ ok: false, blocked: true, error: "Genie rewrote this and it still is not safe to publish: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
   }
 
   // ── REFRESH branch — re-optimized content republished IN PLACE (same URL) ──

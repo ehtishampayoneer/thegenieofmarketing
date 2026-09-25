@@ -32,6 +32,7 @@ const EXEMPT = {
   "lib/selftest.js": "exercises the providers with fixed probes; a business plan would tell it nothing",
   "lib/verdict.js": "the public, signed-out visibility check — there is no account, so there is no plan",
   "lib/factcheck.js": "checks claims that are already in a draft against the draft; it adds nothing",
+  "lib/self-repair.js": "rewrites sentences the brain already wrote, and is forbidden from adding a fact — its whole job is to say LESS than the draft claimed. Handing it the plan would invite it to write toward the strategy instead of minimally correcting four sentences, and every replacement is verified against the same rules that flagged the original",
   "lib/interview.js": "conducts the interview the plan is DRAWN FROM, so it cannot require one",
   "lib/video.js": "transcribes and times what was said out loud; it writes no marketing",
   "lib/local-services.js": "returns service-area facts, not copy",
