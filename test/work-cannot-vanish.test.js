@@ -123,3 +123,48 @@ describe("the self-test can go red when nothing is produced", () => {
     expect(row).toMatch(/articles > 0 && published === 0/);
   });
 });
+
+describe("no send path can reach a stranger without an unsubscribe link", () => {
+  // /api/outreach/send was dead and unsafe at the same time: no unsubscribe, no
+  // opt-out check, no outreach_log row, so its sends were invisible to the daily
+  // cap and to the list that stops Genie writing to the same person twice. It is
+  // closed; this is the rule that stops the next one being written.
+  const SENDERS = [
+    "app/api/actions/[id]/execute/route.js",
+    "app/api/outreach/campaign/route.js",
+    "app/api/prospects/send/route.js",
+    "app/api/announce/route.js",
+  ];
+
+  it("every live send path passes an unsubscribe url and checks suppression", () => {
+    for (const f of SENDERS) {
+      const src = read(f);
+      expect(src, `${f} has no unsubscribe url`).toMatch(/unsubscribeUrl|unsubUrl/);
+      expect(src, `${f} never checks isSuppressed`).toMatch(/isSuppressed/);
+    }
+  });
+
+  it("the closed one is closed, and says why", () => {
+    const src = read("app/api/outreach/send/route.js");
+    expect(src).toMatch(/status: 410/);
+    expect(src).not.toMatch(/deliverEmail/);
+  });
+
+  it("the two retired routes can no longer fill the approvals queue", () => {
+    for (const f of ["app/api/distribute/route.js", "app/api/growth/route.js"]) {
+      const src = read(f);
+      expect(src, `${f} still writes to actions`).not.toMatch(/from\("actions"\)/);
+      expect(src).toMatch(/status: 410/);
+    }
+  });
+});
+
+describe("the capabilities page does not promise what the product does not do", () => {
+  // app/trust/page.js was rewritten because the seven-channel ramp was not real.
+  // The capabilities page went on describing it for months afterwards.
+  it("claims the ramp only for the channel that has one", () => {
+    const caps = read("app/capabilities/page.js");
+    expect(caps).not.toMatch(/Every channel starts needing your approval/);
+    expect(caps).toMatch(/the only channel with a ramp/);
+  });
+});

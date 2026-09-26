@@ -47,11 +47,12 @@ const EXEMPT = {
   "app/api/understand/route.js": "captures the owner's corrections to the understanding the plan is drawn from",
   "app/api/engagement/route.js": "classifies how a posted item performed; it writes nothing",
   // Dead V1 routes. Nothing in the app calls them; asserted below so that if one
-  // is ever revived, this test makes it justify itself.
+  // is ever revived, this test makes it justify itself. /api/distribute and
+  // /api/growth left this list by being closed outright: both were unreferenced,
+  // both were exempt from the plan rule, and both could still insert rows into the
+  // approvals queue written by a model that had never seen the business plan.
   "app/api/cadence/route.js": "retired V1 route, unreferenced",
   "app/api/chat/route.js": "retired V1 route, unreferenced (the live one is /api/genie/chat)",
-  "app/api/distribute/route.js": "retired V1 route, unreferenced",
-  "app/api/growth/route.js": "retired V1 route, unreferenced",
 };
 
 function walk(dir, out = []) {
