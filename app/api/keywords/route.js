@@ -18,7 +18,10 @@ import { swallow } from "@/lib/log";
 import { getUsageMap } from "@/lib/keyword-usage";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { briefBlock } from "@/lib/business-brief";
-import { strategyPromptBlock } from "@/lib/strategy-store";
+import { strategyPromptBlock, getStrategy } from "@/lib/strategy-store";
+// Volumes are measured in the country the owner sells to, and the number carries
+// the name of that country so it can never read as "searches everywhere".
+import { volumeLabel } from "@/lib/geo-targets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -44,7 +47,15 @@ export async function GET(request) {
   // wrote for it (article / social / reply / email).
   const usage = await getUsageMap(supabase, user.id, host);
   portfolio.graded = (portfolio.graded || []).map((k) => ({ ...k, usage: usage[k.keyword] || [] }));
-  return json({ ok: true, ...portfolio });
+
+  // A volume with no country on it is a number pretending to be about everywhere.
+  // The same market the build used, read from the plan rather than stored twice.
+  let volumeMarket = null;
+  try {
+    const st = await getStrategy(supabase, { userId: user.id, host, draft: false });
+    volumeMarket = (st?.markets || [])[0] || null;
+  } catch {}
+  return json({ ok: true, ...portfolio, volumeMarket, volumeLabel: volumeLabel(volumeMarket) });
 }
 
 // POST { host, ai } → Genie derives + stores the keyword strategy
@@ -79,6 +90,16 @@ export async function POST(request) {
   let plan = "";
   try { plan = await strategyPromptBlock(supabase, { userId, host, ai }); } catch {}
 
+  // ── WHERE THE VOLUMES ARE MEASURED ──
+  // Market Testing already ranked the countries, best first, and the plan stores
+  // that ranking. Google is asked about THAT country. Read-only: deriving the plan
+  // here would spend an AI call inside the nightly keyword rebuild.
+  let volumeMarket = null;
+  try {
+    const st = await getStrategy(supabase, { userId, host, ai, draft: false });
+    volumeMarket = (st?.markets || [])[0] || null;
+  } catch {}
+
   // Layer 0 (free): ground candidates in REAL Google searches via Autocomplete.
   let realSearches = [];
   try {
@@ -110,7 +131,7 @@ export async function POST(request) {
   // the dev token + Google connection exist. Returns {} otherwise (AI estimates stand).
   const kwStrings = list.map((k) => String(k.keyword || "").slice(0, 120).trim().toLowerCase()).filter(Boolean);
   let vols = {};
-  try { vols = await enrichWithVolumes(supabase, user.id, host, kwStrings); } catch {}
+  try { vols = await enrichWithVolumes(supabase, user.id, host, kwStrings, volumeMarket); } catch {}
 
   const rows = list.slice(0, 40).map((k) => {
     const key = String(k.keyword || "").slice(0, 120).trim().toLowerCase();
@@ -186,7 +207,7 @@ export async function POST(request) {
   await logActivity(supabase, user.id, { host, verb: "keywords", message: `Built your keyword strategy — ${(saved || []).length} targets`, detail: (portfolio.graded || []).slice(0,3).map((k)=>k.keyword).join(", "), meta: { count: (saved||[]).length } });
   // grounded = these keywords were shaped by REAL Google Autocomplete phrases, not
   // AI guesses alone. Surfaced so the owner knows which they're looking at.
-  return json({ ok: true, ...portfolio, strategy: derived.strategy || null, grounded: realSearches.length > 0 });
+  return json({ ok: true, ...portfolio, volumeMarket, volumeLabel: volumeLabel(volumeMarket), strategy: derived.strategy || null, grounded: realSearches.length > 0 });
 }
 
 // Add the user's OWN keyword.
