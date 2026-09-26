@@ -7,7 +7,7 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPublishedPage, pageUrl } from "@/lib/pages";
+import { getPublishedPage, listPublishedPages, pageUrl } from "@/lib/pages";
 import { blogBaseFor, ownArticleUrl } from "@/lib/own-blog";
 import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
 import SubscribeBox from "@/components/p/SubscribeBox";
@@ -21,6 +21,47 @@ const load = cache(async (handle, slug) => {
   try { return await getPublishedPage(createAdminClient(), handle, slug); }
   catch { return null; }
 });
+
+// What else this site has, for the rails. Cached, so the page and its metadata
+// share one read, and guarded so a rail failing can never take the article with it.
+const loadSiblings = cache(async (handle) => {
+  try { return await listPublishedPages(createAdminClient(), handle); }
+  catch { return []; }
+});
+
+// Which articles belong beside this one: the ones sharing words with it, then the
+// newest. The same idea the internal linker uses, so a reader who followed a link
+// in the body finds the same neighbours in the rail.
+function relatedTo(page, pages, limit = 5) {
+  const words = new Set(`${page.title} ${page.target_keyword || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3));
+  return pages
+    .filter((p) => p.slug !== page.slug)
+    .map((p) => ({ p, overlap: `${p.title} ${p.target_keyword || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter((w) => words.has(w)).length }))
+    .sort((a, b) => b.overlap - a.overlap || new Date(b.p.published_at || 0) - new Date(a.p.published_at || 0))
+    .slice(0, limit)
+    .map((x) => x.p);
+}
+
+// Only ever articles that exist. A rail padded out with something invented would be
+// the one part of this page that lies.
+function Rail({ kicker, handle, pages }) {
+  if (!pages.length) return <aside className="gp-rail" />;
+  return (
+    <aside className="gp-rail">
+      <p className="gp-rail-k">{kicker}</p>
+      <ul className="gp-rail-list">
+        {pages.map((p) => (
+          <li key={p.slug}>
+            <a href={`/p/${handle}/${p.slug}`}>
+              <span className="gp-rail-t">{p.title}</span>
+              <span className="gp-rail-m">{fmtDate(p.published_at)}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
 
 export async function generateMetadata({ params }) {
   const page = await load(params.handle, params.slug);
@@ -119,11 +160,18 @@ export default async function ArticlePage({ params }) {
   // it applies) together — the structured signals Google and AI answer engines read.
   const jsonLd = { "@context": "https://schema.org", "@graph": [org, blog, faqNode, breadcrumb, howToNode].filter(Boolean) };
 
+  const siblings = await loadSiblings(page.handle);
+  const near = relatedTo(page, siblings);
+  const latest = siblings.filter((p) => p.slug !== page.slug && !near.some((n) => n.slug === p.slug)).slice(0, 6);
+
   return (
     <main className="gp">
       <style>{READING_CSS}</style>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <article className="gp-wrap">
+      {/* The rails carry the rest of the site, so there is always something to read
+          next. They fall in under the article on a narrow screen. */}
+      <div className="gp-shell">
+      <article className="gp-main">
         <p className="gp-eyebrow"><a href={`/p/${page.handle}`}>{author}</a>{date ? <> · {date}</> : null}</p>
         <h1 className="gp-title">{page.title}</h1>
         {page.meta_description ? <p className="gp-lede">{page.meta_description}</p> : null}
@@ -147,6 +195,9 @@ export default async function ArticlePage({ params }) {
           </aside>
         ) : null}
       </article>
+        <Rail kicker={`More from ${author}`} handle={page.handle} pages={near} />
+        <Rail kicker="Latest" handle={page.handle} pages={latest} />
+      </div>
       <footer className="gp-foot">
         <a href="/verdict">Published with Marketing Genie — does AI recommend your business? →</a>
       </footer>

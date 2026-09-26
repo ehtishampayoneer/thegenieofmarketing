@@ -23,6 +23,9 @@ import { appBase } from "@/lib/pages";
 import { blogOwnerByHandle, ownArticleUrl, rewriteBodyLinks, markerValue } from "@/lib/own-blog";
 import { htmlToMarkdown } from "@/lib/markdown";
 import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
+// The lead story, the cards, the thumbnails and the rails. Out in lib so they can
+// be unit-tested and previewed: a route file may only export its HTTP verbs.
+import { cardGrid, rail, related, indexBody } from "@/lib/blog-ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,19 +123,7 @@ async function getPage({ admin, userId, handle }, slug) {
 async function indexPage(ctx) {
   const pages = await listPages(ctx, 100);
   const name = pages[0]?.business_name || ctx.site.replace(/^https?:\/\//, "");
-  const items = pages.map((p) => `
-      <li><a href="${attr(ownArticleUrl(ctx.base, p.slug))}">
-        <span class="gp-li-t">${esc(p.title)}</span>
-        ${p.meta_description ? `<span class="gp-li-d">${esc(p.meta_description)}</span>` : ""}
-        <span class="gp-li-m">${esc(fmtDate(p.published_at))}</span>
-      </a></li>`).join("");
-  const body = `
-    <div class="gp-wrap">
-      ${topBar(ctx, name)}
-      <h1 class="gp-title">Articles &amp; guides</h1>
-      <p class="gp-lede">Practical answers from ${esc(name)}.</p>
-      ${pages.length ? `<ul class="gp-list">${items}</ul>` : `<p class="gp-lede">New articles are on their way.</p>`}
-    </div>`;
+  const body = indexBody({ pages, name, topBar: topBar(ctx, name), hrefOf: (p) => ownArticleUrl(ctx.base, p.slug) });
   return html(doc({
     ctx, title: `Articles & guides | ${name}`, description: `Guides and answers from ${name}.`, canonical: ctx.base, body,
   }), LIST_CACHE);
@@ -168,15 +159,26 @@ async function articlePage(ctx, slug) {
   ].filter(Boolean);
 
   const bodyHtml = rewriteBodyLinks(page.body_html || "", ctx.handle, ctx.base);
+  // The rails: what else this site has. listPages is memoised per request, so the
+  // article page pays for this list once whether one rail reads it or three.
+  const all = await listPages(ctx, 100);
+  const href = (p) => ownArticleUrl(ctx.base, p.slug);
+  const near = related(page, all);
+  const latest = all.filter((p) => p.slug !== page.slug && !near.some((n) => n.slug === p.slug)).slice(0, 6);
   const body = `
-    <article class="gp-wrap">
-      ${topBar(ctx, author, fmtDate(page.published_at))}
-      <h1 class="gp-title">${esc(page.title)}</h1>
-      ${page.meta_description ? `<p class="gp-lede">${esc(page.meta_description)}</p>` : ""}
-      ${page.hero_image ? `<img class="gp-hero" src="${attr(page.hero_image)}" alt="${attr(page.hero_alt || page.title)}">` : ""}
-      <div class="gp-body">${bodyHtml}</div>
-      ${subscribeForm(page, author)}
-    </article>`;
+    <div class="gp-shell">
+      <article class="gp-main">
+        ${topBar(ctx, author, fmtDate(page.published_at))}
+        <h1 class="gp-title">${esc(page.title)}</h1>
+        ${page.meta_description ? `<p class="gp-lede">${esc(page.meta_description)}</p>` : ""}
+        ${page.hero_image ? `<img class="gp-hero" src="${attr(page.hero_image)}" alt="${attr(page.hero_alt || page.title)}">` : ""}
+        <div class="gp-body">${bodyHtml}</div>
+        ${subscribeForm(page, author)}
+        ${near.length ? `<hr class="gp-rule"><p class="gp-count">Read next</p>${cardGrid(near.slice(0, 3), href)}` : ""}
+      </article>
+      ${rail(`More from ${author}`, near, href)}
+      ${rail("Latest", latest, href)}
+    </div>`;
 
   return html(doc({
     ctx, title: page.title, description: page.meta_description || "", canonical: url, body,
