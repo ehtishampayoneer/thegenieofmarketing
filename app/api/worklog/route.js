@@ -77,7 +77,7 @@ export async function GET(request) {
     safe(() => supabase.from("keyword_history")
       .select("keyword, position, recorded_on").eq("user_id", uid)
       .order("recorded_on", { ascending: false }).limit(300)),
-    safe(() => getEvents(supabase, { userId: uid, types: ["publish.own_url", "lead.captured", "conversion.recorded", "link.earned", "content.discarded"], limit: 120 })),
+    safe(() => getEvents(supabase, { userId: uid, types: ["publish.own_url", "lead.captured", "conversion.recorded", "link.earned", "content.discarded", "content.expired"], limit: 120 })),
     // ── WHAT DID NOT GO OUT ──
     // "I pressed publish and cannot find it anywhere" had no answer. A publish that
     // failed, or that was held for review, said so in a toast and then the toast
@@ -244,6 +244,15 @@ export async function GET(request) {
         why: "Genie wrote two articles too close to each other. Publishing near-copies is what gets a site pushed down by Google, so it threw its own work away rather than risk your site.",
         note: `Genie had already written something too close to "${e.data?.duplicateOf || "an earlier article"}", so it threw this one away rather than publish a near-copy — that is what gets a site penalised by Google. It writes a different one tonight.`,
         where: "Nothing for you to do. Shown so you know why the article you saw yesterday is gone.",
+      });
+    } else if (e.type === "content.expired") {
+      const n = e.data?.count || 0;
+      items.push({
+        at: e.created_at, kind: "expired",
+        title: `${n} draft${n === 1 ? "" : "s"} retired without being used`,
+        why: "Genie writes every night and the queue asks for three a day. Anything nobody reached in two weeks is out of date by then, so it is retired rather than left to pile up.",
+        note: "A post about an article from a fortnight ago is late, and an email written from a plan you have since corrected argues the wrong thing. Articles are never retired this way.",
+        where: "Nothing for you to do. This is Genie writing more than there was time for, not you falling behind.",
       });
     } else if (e.type === "lead.captured") {
       items.push({ at: e.created_at, kind: "lead", title: `A lead on your site${e.data?.email ? `: ${e.data.email}` : ""}`,

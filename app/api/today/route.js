@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveEntity } from "@/lib/growth-memory";
 import { hostOf } from "@/lib/business";
 import { getEvents } from "@/lib/events";
-import { countWaiting } from "@/lib/queue-count";
+import { countWaiting, DAILY_CARDS } from "@/lib/queue-count";
 import { swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -165,7 +165,14 @@ export async function GET() {
     // numbers on one screen, none of them the same, and the one in the menu could
     // never exceed 40 however much work was waiting. A count query costs nothing and
     // counts the thing its label names.
-    out.approvalsCount = await countWaiting(supabase, user.id);
+    // ── THE BADGE IS TODAY'S JOB, NOT THE PILE ──
+    // Counting the whole queue made it honest and useless: 78 beside a screen that
+    // shows three reads as seventy-eight things you are behind on, when the answer
+    // is three. A badge is a call to action, so it counts the actions. The size of
+    // the backlog belongs on the page, where there is room to explain it.
+    const waiting = await countWaiting(supabase, user.id);
+    out.approvalsCount = Math.min(waiting, DAILY_CARDS);
+    out.approvalsWaiting = waiting;
     // How many of the team's bots worked in the last 15 minutes (lib/swarm/live.js),
     // for the live count beside "Your team" in the menu.
     try {

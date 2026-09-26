@@ -11,7 +11,10 @@ const page = readFileSync(join(ROOT, "app/approvals/page.js"), "utf8");
 // accident, so it is pinned here rather than trusted to a comment.
 describe("the queue asks for three, not forty", () => {
   it("serves three by default", () => {
-    expect(route).toMatch(/DAILY_CARDS\s*=\s*3/);
+    // The number now lives in lib/queue-count.js, so the queue and the badge
+    // beside it read the same constant instead of each keeping their own.
+    expect(readFileSync(join(process.cwd(), "lib/queue-count.js"), "utf8")).toMatch(/DAILY_CARDS = 3/);
+    expect(route).toMatch(/countWaiting, DAILY_CARDS \} from "@\/lib\/queue-count"/);
     expect(route).toMatch(/batched\.slice\(0,\s*DAILY_CARDS\)/);
   });
 
@@ -64,7 +67,10 @@ describe("the queue asks for three, not forty", () => {
     expect(route).toMatch(/const waiting = await countWaiting\(supabase, user\.id\)/);
     expect(route).toMatch(/const total = Math\.max\(waiting, items\.length\)/);
     const today = readFileSync(join(process.cwd(), "app/api/today/route.js"), "utf8");
-    expect(today).toMatch(/out\.approvalsCount = await countWaiting\(supabase, user\.id\)/);
+    // The badge counts TODAY'S cards, not the pile: 78 beside a screen showing
+    // three reads as seventy-eight things you are behind on.
+    expect(today).toMatch(/out\.approvalsCount = Math\.min\(waiting, DAILY_CARDS\)/);
+    expect(today).toMatch(/out\.approvalsWaiting = waiting/);
     // And the old cap-then-add is gone, not merely bypassed.
     expect(today).not.toMatch(/approvalsCount \+= Math\.min\(20/);
   });

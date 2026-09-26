@@ -47,6 +47,7 @@ const KIND = {
   discarded: { icon: Icon.write, word: "Thrown away" },
   failed: { icon: Icon.bolt, word: "Did not publish" },
   held: { icon: Icon.check, word: "Waiting on you" },
+  expired: { icon: Icon.history, word: "Retired" },
 };
 
 export default function WorklogPage() {

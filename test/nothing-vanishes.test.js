@@ -17,7 +17,7 @@ const page = readFileSync(join(process.cwd(), "app/worklog/page.js"), "utf8");
 describe("every way a piece of work can end has a home", () => {
   it("reads the ones that stopped, not only the ones that landed", () => {
     expect(api).toMatch(/in\("status", \["failed", "needs_review"\]\)/);
-    expect(api).toMatch(/types: \["publish\.own_url"[^\]]*"content\.discarded"\]/);
+    expect(api).toMatch(/"content\.discarded", "content\.expired"\]/);
   });
 
   it("says what stopped it, in the words the route recorded", () => {

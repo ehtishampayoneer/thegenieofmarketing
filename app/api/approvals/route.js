@@ -27,12 +27,12 @@ import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 import { ownerSignal, penaltyFor } from "@/lib/owner-signal";
-import { countWaiting } from "@/lib/queue-count";
+import { countWaiting, DAILY_CARDS } from "@/lib/queue-count";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const DAILY_CARDS = 3;
+export { DAILY_CARDS };
 
 export async function GET(request) {
   const showAll = new URL(request.url).searchParams.get("all") === "1";
@@ -86,8 +86,23 @@ export async function GET(request) {
     if (mult < 1) { i.impact = Math.round(i.impact * mult); i.deprioritized = true; }
   }
 
-  // Owned (auto-publishable) first, then by impact/intent.
-  items.sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);
+  // ── THE CHANNEL THAT PRODUCES REPLIES GOES FIRST ──
+  // Sorting by impact alone buried the whole business. A social post is filed as
+  // "high" and scores 92; a cold email is filed "medium" and scores 66. So every
+  // post Genie wrote outranked every email it wrote, and on a real account the
+  // emails sat seventy places down a queue that shows three — a copy-and-paste
+  // LinkedIn draft beating the one channel that can produce a reply this week.
+  //
+  // Priority describes how good a piece is. It says nothing about which KIND of
+  // work is worth the owner's three minutes, and that is a decision the plan
+  // already made: cold email is the primary channel. So the kind is ranked first
+  // and the score decides within it.
+  const KIND_RANK = { article: 0, outreach_email: 1, media_pitch: 2 };
+  const kindRank = (i) => KIND_RANK[i.kind] ?? (i.source === "placement" ? 3 : 4);
+  items.sort((a, b) =>
+    Number(b.owned) - Number(a.owned) ||
+    kindRank(a) - kindRank(b) ||
+    b.impact - a.impact);
 
   // ── THE DAY'S EMAILS ARE ONE DECISION, NOT FIVE CARDS ──
   // Three cards a day is the right number of DECISIONS. It was the wrong number of
@@ -115,7 +130,10 @@ export async function GET(request) {
       // The batch inherits the best impact in it, so a strong lead is not buried
       // by averaging it with the rest.
       impact: Math.max(...emails.map((e) => e.impact || 0)),
-    }].sort((a, b) => Number(b.owned) - Number(a.owned) || b.impact - a.impact);
+    }].sort((a, b) =>
+      Number(b.owned) - Number(a.owned) ||
+      kindRank(a) - kindRank(b) ||
+      b.impact - a.impact);
   }
 
   const ownedCount = batched.filter((i) => i.owned).length;
