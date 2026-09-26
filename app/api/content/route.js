@@ -58,6 +58,13 @@ export async function POST(request) {
 
   // Resolve the caller up front (browser session or trusted cron).
   const { supabase, userId } = await resolveRadarUser(request, body);
+  // ── AND REFUSE ONE THAT IS NEITHER ──
+  // This resolved the caller and then carried on regardless. An anonymous POST
+  // carrying its own `ai` object skipped the scan lookup entirely and went
+  // straight into a writer-grade model: the database insert failed harmlessly at
+  // the end, and the bill did not. The nightly run is unaffected — it sends the
+  // cron header and _uid, which resolveRadarUser accepts (lib/radar-auth.js:14).
+  if (!userId) return json({ ok: false, reason: "not_authenticated" }, 401);
 
   // Self-sufficient: with no business context passed, use the caller's latest
   // scan — so a one-tap "draft my content" works without re-onboarding.

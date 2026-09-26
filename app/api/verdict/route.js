@@ -8,6 +8,7 @@
 //   • SSRF-safe scan (runAudit → safeFetch).
 // Fails honestly: if no AI model is reachable it says so, never a fake "0%".
 
+import { ipOf, isLimited, limitedResponse } from "@/lib/rate-limit";
 import { publicVerdict } from "@/lib/verdict";
 
 export const runtime = "nodejs";
@@ -18,7 +19,8 @@ const WINDOW_MS = 10 * 60 * 1000; // 10 min
 const MAX_PER_WINDOW = 5;         // verdicts per IP per window
 const CACHE_TTL = 30 * 60 * 1000; // 30 min
 
-const RL = new Map();    // ip -> [timestamps]
+// The buckets live in lib/rate-limit.js now, shared with the two other routes
+// that spend money for a caller who is not signed in.
 const CACHE = new Map(); // host -> { at, data }
 
 export async function POST(request) {
@@ -35,7 +37,7 @@ export async function POST(request) {
 
   // Only real runs (which cost a scan + AI) count against the limit.
   const ip = ipOf(request);
-  if (isLimited(ip)) return json({ ok: false, reason: "rate_limited", message: "You've run a few verdicts already — give it a couple of minutes and try again." }, 429);
+  if (isLimited(ip, { key: "verdict", max: MAX_PER_WINDOW, windowMs: WINDOW_MS })) return json(limitedResponse("a verdict"), 429);
 
   try {
     const result = await publicVerdict(url, { ctx: { tag: "verdict" } });
@@ -47,17 +49,6 @@ export async function POST(request) {
   }
 }
 
-function ipOf(req) {
-  const xff = req.headers.get("x-forwarded-for") || "";
-  return xff.split(",")[0].trim() || req.headers.get("x-real-ip") || "anon";
-}
-function isLimited(ip) {
-  const now = Date.now();
-  const arr = (RL.get(ip) || []).filter((t) => now - t < WINDOW_MS);
-  if (arr.length >= MAX_PER_WINDOW) { RL.set(ip, arr); return true; }
-  arr.push(now); RL.set(ip, arr);
-  return false;
-}
 function statusFor(reason) {
   if (reason === "no_ai_engine") return 503;
   if (reason === "bad_url" || reason === "blocked_url" || reason === "bad_status" || reason === "no_questions") return 422;

@@ -2,6 +2,7 @@
 // Runs the verified HTML scan AND the Google PageSpeed scan in parallel,
 // merges them, then asks the AI brain for the plain-English layer.
 
+import { ipOf, isLimited, limitedResponse } from "@/lib/rate-limit";
 import { runAudit, runSpeed, computeScores } from "@/lib/audit";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { computeAccuracy } from "@/lib/accuracy";
@@ -20,6 +21,19 @@ export async function POST(request) {
   } catch {
     return json({ ok: false, error: "Invalid request." }, 400);
   }
+
+  // ── THIS ROUTE SPENDS MONEY FOR A CALLER WHO MAY NOT BE SIGNED IN ──
+  // Deliberately open: it is how someone sees what Genie can do before they have
+  // an account. What was missing is the speed bump the other open route has had
+  // all along. A signed-in owner is not limited; an anonymous caller gets a
+  // handful in a window, which is the difference between a demo and a bill.
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user && isLimited(ipOf(request), { key: "audit", max: 6, windowMs: 10 * 60 * 1000 })) {
+      return json(limitedResponse("a scan"), 429);
+    }
+  } catch {}
 
   const { url } = body || {};
   if (!url) return json({ ok: false, error: "Enter a website address." }, 400);

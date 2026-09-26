@@ -9,6 +9,7 @@
 //  - Contributions must be genuinely helpful; self-promotion only where it
 //    truly helps the reader.
 
+import { ipOf, isLimited, limitedResponse } from "@/lib/rate-limit";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { createClient } from "@/lib/supabase/server";
 import { genieBrain } from "@/lib/brain";
@@ -22,6 +23,20 @@ const VALID_PRIO = new Set(["high", "quick_win", "strategic", "low", "medium"]);
 export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return json({ ok: false, error: "Invalid request." }, 400); }
+
+  // ── THIS ROUTE SPENDS MONEY FOR A CALLER WHO MAY NOT BE SIGNED IN ──
+  // Deliberately open: it is how someone sees what Genie can do before they have
+  // an account. What was missing is the speed bump the other open route has had
+  // all along. A signed-in owner is not limited; an anonymous caller gets a
+  // handful in a window, which is the difference between a demo and a bill.
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user && isLimited(ipOf(request), { key: "community", max: 6, windowMs: 10 * 60 * 1000 })) {
+      return json(limitedResponse("this"), 429);
+    }
+  } catch {}
+
   const { ai, host, scanId } = body || {};
   if (!ai) return json({ ok: false, error: "Missing business context." }, 400);
 

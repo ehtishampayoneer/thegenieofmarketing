@@ -346,3 +346,67 @@ describe("a plan with no countries is re-checked, not left for a fortnight", () 
     expect(brain).toMatch(/if \(stale \|\| noneYet\)/);
   });
 });
+
+describe("a route that spends money does not serve strangers", () => {
+  const content = read("app/api/content/route.js");
+
+  it("the writing engine refuses a caller it could not identify", () => {
+    // It resolved the caller and carried on regardless. An anonymous POST
+    // carrying its own `ai` object skipped the scan lookup and went straight
+    // into a writer-grade model: the database insert failed harmlessly at the
+    // end, and the bill did not.
+    expect(content).toMatch(/const \{ supabase, userId \} = await resolveRadarUser\(request, body\);/);
+    const at = content.indexOf("await resolveRadarUser(request, body);");
+    expect(content.slice(at, at + 600)).toMatch(/if \(!userId\) return json\(\{ ok: false, reason: "not_authenticated" \}, 401\)/);
+  });
+
+  it("the two open AI routes have the speed bump the third always had", () => {
+    for (const f of ["app/api/audit/route.js", "app/api/community/route.js", "app/api/verdict/route.js"]) {
+      expect(read(f), f).toMatch(/from "@\/lib\/rate-limit"/);
+      expect(read(f), f).toMatch(/isLimited\(/);
+    }
+    // One limiter, not three copies of the same twelve lines.
+    expect(read("app/api/verdict/route.js")).not.toMatch(/function isLimited/);
+  });
+});
+
+describe("guards that only work by accident", () => {
+  it("a file:// url is refused by the scheme check, not by DNS failing", async () => {
+    const { assertPublicUrl } = await import("@/lib/ssrf");
+    const reason = async (u) => { try { await assertPublicUrl(u); return "ALLOWED"; } catch (e) { return e?.ssrf || String(e); } };
+    expect(await reason("file:///etc/passwd")).toBe("bad_scheme");
+    expect(await reason("FILE://C:/Windows/win.ini")).toBe("bad_scheme");
+    expect(await reason("gopher://x/")).toBe("bad_scheme");
+    // And the ordinary cases still behave.
+    expect(await reason("http://127.0.0.1/")).toBe("blocked_ip");
+    expect(String(await assertPublicUrl("example.com:8080"))).toBe("https://example.com:8080/");
+  });
+
+  it("a rotated Google refresh token is kept, and a missing one does not wipe it", () => {
+    const g = read("lib/google.js");
+    expect(g).toMatch(/\.\.\.\(refreshed\.refresh_token \? \{ refresh_token: refreshed\.refresh_token \} : \{\}\)/);
+  });
+});
+
+describe("copying is not posting", () => {
+  const page = read("app/approvals/page.js");
+
+  it("does not mark it done just because the composer opened", () => {
+    const at = page.indexOf("if (!item.owned) {");
+    const branch = page.slice(at, page.indexOf("// Owned content", at));
+    expect(branch).toMatch(/setConfirmPost\(item\.id\)/);
+    expect(branch).not.toMatch(/fireApprove/);
+    expect(branch).not.toMatch(/removeById/);
+    expect(branch).not.toMatch(/setDone/);
+  });
+
+  it("asks, and only the owner's answer finishes it", () => {
+    expect(page).toMatch(/Did you post it\?/);
+    expect(page).toMatch(/Yes, I posted it/);
+    expect(page).toMatch(/Not yet — keep it/);
+    expect(page).toMatch(/async function confirmPosted\(item\)/);
+    // "Not yet" leaves it exactly where it was.
+    const at = page.indexOf("function notPostedYet()");
+    expect(page.slice(at, at + 300)).not.toMatch(/removeById|setDone/);
+  });
+});

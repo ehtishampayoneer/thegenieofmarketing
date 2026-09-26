@@ -108,6 +108,9 @@ export default function ApprovalsPage() {
   const [impactFilter, setImpactFilter] = useState("all");
   const [marketFilter, setMarketFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
+  // The id of the card waiting to hear whether the owner actually posted it.
+  // Cleared when they answer, or when they move to another card.
+  const [confirmPost, setConfirmPost] = useState(null);
   const [openMenu, setOpenMenu] = useState(null); // 'type' | 'impact' | 'more' | null
   const [expandReason, setExpandReason] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
@@ -188,7 +191,7 @@ export default function ApprovalsPage() {
   const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesTier(it, tierFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, tierFilter, marketFilter]);
   useEffect(() => { setIdx((i) => Math.max(0, Math.min(i, view.length - 1))); }, [view.length]);
   const current = view[idx] || null;
-  useEffect(() => { setExpandReason(false); setEditing(false); setSharpenNotes(null); }, [current?.id]);
+  useEffect(() => { setExpandReason(false); setEditing(false); setSharpenNotes(null); setConfirmPost(null); }, [current?.id]);
 
   const total = done + view.length;
   const estMin = Math.max(1, Math.round(view.length * 0.3));
@@ -196,6 +199,21 @@ export default function ApprovalsPage() {
   const highOwned = view.filter((i) => impactMeta(i.impact).label === "High" && i.owned);
 
   const removeById = useCallback((id) => { setItems((prev) => prev.filter((i) => i.id !== id)); setEditing(false); }, []);
+
+  // "I posted it" is the only thing that marks a draft-and-you-post item done.
+  async function confirmPosted(item) {
+    setConfirmPost(null);
+    await fireApprove(item, item.draft);
+    setToast("Marked as posted. It will not come back.");
+    setDone((d) => d + 1);
+    removeById(item.id);
+  }
+  // "Not yet" leaves it exactly where it was, which is the honest outcome: the
+  // work is still waiting, and the queue should still say so.
+  function notPostedYet() {
+    setConfirmPost(null);
+    setToast("Left it in your queue. It will still be here when you are ready.");
+  }
 
   async function draftFirstContent() {
     setDrafting(true);
@@ -276,15 +294,24 @@ export default function ApprovalsPage() {
     // Not on your own site (X, Reddit, Quora…) → draft-and-you-post: copy it +
     // open the platform's own composer; YOU tap post. Keeps your accounts safe.
     if (!item.owned) {
+      // ── COPYING IS NOT POSTING ──
+      // This copied the text, opened the composer, marked the item approved and
+      // removed it from the queue, all in the same breath. Close the tab without
+      // pasting and Genie believed the post had gone out: counted in the day's
+      // total, written into "Everything Genie did", gone from the queue, and
+      // never offered again. The one thing it could not know is the only thing
+      // that mattered, so it assumed.
+      //
+      // It now asks. The card stays until you say you posted it, and if you walk
+      // away it is simply still there tomorrow.
       try { await navigator.clipboard.writeText(draft || ""); } catch {}
       if (item.target_url && item.target_url !== "#") window.open(item.target_url, "_blank");
-      fireApprove(item, draft);
+      setConfirmPost(item.id);
       setToast(item.platform === "listing"
-        ? "Opened the sign-up page and copied your listing text. Sign in, paste it in, and submit."
+        ? "Copied your listing text and opened the sign-up page. Paste it in and submit, then tell me below."
         : item.image
-          ? "Opened it with your text ready. The image can't travel through a link — press Save image, then attach it before you post."
-          : "Opened it with your post ready. Review and tap post. (I never auto-post to your social accounts.)");
-      setDone((d) => d + 1); removeById(item.id);
+          ? "Copied your text and opened the composer. The image can't travel through a link — press Save image and attach it, then tell me below."
+          : "Copied your post and opened the composer. Paste it, post it, then tell me below. (I never auto-post to your accounts.)");
       return;
     }
 
@@ -570,6 +597,8 @@ export default function ApprovalsPage() {
               onEdit={() => startEdit(current)} onCancelEdit={() => { setEditing(false); setSwapOpen(false); setSharpenNotes(null); }}
               onSharpen={() => sharpen(current)} sharpening={sharpening} sharpenNotes={sharpenNotes}
               onApprove={approveCurrent} onSkip={skipCurrent} working={working}
+              awaitingPost={confirmPost === current.id}
+              onPosted={() => confirmPosted(current)} onNotPosted={notPostedYet}
               edit={{ hook: editHook, setHook: onSetHook, image: editImage, branded: editBranded, focus: editFocus, setFocus: onSetFocus, swapOpen, swapOpts, swapLoading, openSwap: () => openSwap(current.keyword || current.title), pickSwap, upload: uploadImage, save: () => saveEdit(current, false), saveApprove: () => saveEdit(current, true) }}
               expandReason={expandReason} setExpandReason={setExpandReason}
               saved={saved.has(current.id)} onToggleSave={() => toggleSave(current.id)}
@@ -625,7 +654,7 @@ export default function ApprovalsPage() {
 }
 
 // ── THE CURRENT APPROVAL — the dominant card ────────────────────────────────
-function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext, edit, onSharpen, sharpening, sharpenNotes }) {
+function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCancelEdit, onApprove, onSkip, working, expandReason, setExpandReason, saved, onToggleSave, openMore, onToggleMore, idx, count, onPrev, onNext, edit, onSharpen, sharpening, sharpenNotes, awaitingPost, onPosted, onNotPosted }) {
   const im = impactMeta(item.impact);
   const words = approxWords(item.draft);
   const isArticle = item.kind === "article";
@@ -870,6 +899,15 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
               {sharpening ? "Sharpening…" : "✦ Sharpen"}
             </button>
             <button className="mg-btn mg-btn--quiet" onClick={onCancelEdit}>Cancel <span className="mg-kbd" style={{ marginLeft: 4 }}>Esc</span></button>
+          </>
+        ) : awaitingPost ? (
+          /* ── COPYING IS NOT POSTING ── The composer is open with the text in it.
+             Only the owner knows whether it went out, so only the owner can say. */
+          <>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>Did you post it?</span>
+            <button className="mg-btn mg-btn--dawn" onClick={onPosted} disabled={working}>Yes, I posted it</button>
+            <button className="mg-btn mg-btn--quiet" onClick={onNotPosted}>Not yet — keep it</button>
+            <span className="text-[12px] mg-subtle">Nothing is marked done until you say so.</span>
           </>
         ) : (
           <>
