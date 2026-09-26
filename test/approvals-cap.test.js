@@ -15,15 +15,25 @@ describe("the queue asks for three, not forty", () => {
     // beside it read the same constant instead of each keeping their own.
     expect(readFileSync(join(process.cwd(), "lib/queue-count.js"), "utf8")).toMatch(/DAILY_CARDS = 3/);
     expect(route).toMatch(/countWaiting, DAILY_CARDS \} from "@\/lib\/queue-count"/);
-    expect(route).toMatch(/batched\.slice\(0,\s*DAILY_CARDS\)/);
+    expect(route).toMatch(/\.slice\(0,\s*DAILY_CARDS\)/);
   });
 
   it("still sorts by impact before it cuts, so the three are the best three", () => {
-    const sortAt = route.indexOf("items.sort(");
-    const sliceAt = route.indexOf("batched.slice(0, DAILY_CARDS)");
+    const sortAt = route.indexOf("items.sort(order)");
+    const sliceAt = route.indexOf(".slice(0, DAILY_CARDS)");
     expect(sortAt).toBeGreaterThan(-1);
     expect(sliceAt).toBeGreaterThan(sortAt);
     expect(route).toMatch(/b\.impact\s*-\s*a\.impact/);
+  });
+
+  // ── THE CAP MUST NOT DROP TWO COUNTRIES OUT OF THREE ──
+  // Counting a country's whole day of emails as one card is what keeps a morning to
+  // three minutes. Slicing the list at three then threw away two of the three
+  // countries the plan had chosen to work: those emails were written, allowed to
+  // send, and shown to nobody.
+  it("caps everything except the countries' email cards", () => {
+    expect(route).toMatch(/const emailCards = batched\.filter\(\(i\) => i\.kind === "outreach_email"\)/);
+    expect(route).toMatch(/batched\.filter\(\(i\) => i\.kind !== "outreach_email"\)\.slice\(0, DAILY_CARDS\), \.\.\.emailCards\]/);
   });
 
   // ── THREE DECISIONS, NOT THREE EMAILS ──
@@ -35,12 +45,18 @@ describe("the queue asks for three, not forty", () => {
   // twenty-five. The emails now travel as one card.
   it("puts the day's emails in one card instead of spending the whole queue on two", () => {
     expect(route).toMatch(/const emails = items\.filter\(\(i\) => i\.kind === "outreach_email"\)/);
-    expect(route).toMatch(/batch: emails\.map\(/);
-    expect(route).toMatch(/title: `\$\{emails\.length\} emails to \$\{emails\.length\} companies`/);
+    // One card PER COUNTRY, not one card for the world: Malaysia's five, India's
+    // three and America's four are three decisions about three different places,
+    // and "twelve emails to twelve companies" throws away the only fact that says
+    // which of the three is working.
+    expect(route).toMatch(/batch: group\.map\(/);
+    expect(route).toMatch(/title: `\$\{group\.length\} emails to \$\{group\.length\} companies\$\{where\}`/);
+    expect(route).toMatch(/const key = e\.market \|\| ""/);
+    expect(route).toMatch(/lead\.marketName \? ` in \$\{lead\.marketName\}` : ""/);
   });
 
-  it("gives the batch the best impact in it, so a strong lead is not averaged away", () => {
-    expect(route).toMatch(/impact: Math\.max\(\.\.\.emails\.map\(\(e\) => e\.impact \|\| 0\)\)/);
+  it("gives each country's batch the best impact in it, so a strong lead is not averaged away", () => {
+    expect(route).toMatch(/impact: Math\.max\(\.\.\.group\.map\(\(e\) => e\.impact \|\| 0\)\)/);
   });
 
   it("counts the backlog in emails, not in cards", () => {

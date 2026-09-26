@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { activeMarkets, tierOf, marketOf, marketNote, nextMarket, MAX_ACTIVE, TIERS } from "@/lib/market-plan";
+import { activeMarkets, tierOf, tierFor, marketOf, marketNote, nextMarket, MAX_ACTIVE, TIERS } from "@/lib/market-plan";
 
 const campaign = readFileSync(join(process.cwd(), "app/api/outreach/campaign/route.js"), "utf8");
 const content = readFileSync(join(process.cwd(), "app/api/content/route.js"), "utf8");
+const approvals = readFileSync(join(process.cwd(), "app/api/approvals/route.js"), "utf8");
+const queue = readFileSync(join(process.cwd(), "app/approvals/page.js"), "utf8");
 const M = [
   { name: "United Arab Emirates", code: "ae", score: 78 },
   { name: "Pakistan", code: "pk", score: 71, verified: true },
@@ -92,7 +94,7 @@ describe("which market a company belongs to", () => {
 
 describe("it changes who gets written to tonight", () => {
   it("the send reads the plan's markets rather than one line in a prompt", () => {
-    expect(campaign).toMatch(/strategyMarkets = raw \? \(normalizeStrategy\(raw\)\.markets \|\| \[\]\) : \[\]/);
+    expect(campaign).toMatch(/strategyMarkets = plan \? \(plan\.marketData\?\.length \? plan\.marketData : plan\.markets \|\| \[\]\) : \[\]/);
     expect(campaign).toMatch(/markets = activeMarkets\(strategyMarkets, roomLeft\)/);
   });
 
@@ -176,5 +178,74 @@ describe("the writing engine acts on it", () => {
   it("stamps the market on the draft so the queue can group by it", () => {
     expect(content).toMatch(/data\.article\.market = articleMarket\.name/);
     expect(content).toMatch(/data\.article\.marketTier = articleMarket\.tier/);
+  });
+});
+
+// ── THE THREE COLOURS HAVE TO MEAN THREE THINGS ──
+// The plan stored six country NAMES and threw the scorer's verdict away, so every
+// market came back as the middle tier and green, amber and red were one colour.
+describe("how hard a country is", () => {
+  it("takes Market Testing's own verdict when it has one", () => {
+    expect(tierFor({ name: "Malaysia", difficulty: "Easy" }).id).toBe("green");
+    expect(tierFor({ name: "India", difficulty: "Medium" }).id).toBe("amber");
+    expect(tierFor({ name: "United States", difficulty: "Hard" }).id).toBe("red");
+  });
+
+  it("prefers the verdict over the opportunity score, which measures something else", () => {
+    // A country can be a big opportunity AND hard to win. Saturation and reach are
+    // what make it hard; the opportunity score is how much is in it.
+    expect(tierFor({ score: 95, difficulty: "Hard" }).id).toBe("red");
+  });
+
+  it("falls back to the score when there is no verdict", () => {
+    expect(tierFor({ score: 78 }).id).toBe("green");
+    expect(tierFor({ score: 12 }).id).toBe("red");
+  });
+
+  it("a country the owner typed in by hand is unmeasured, not hard", () => {
+    expect(tierFor({ name: "Spain" }).id).toBe("amber");
+    expect(tierFor({}).id).toBe("amber");
+    expect(tierFor(null).id).toBe("amber");
+  });
+
+  it("the plan carries the verdict, not only the name", () => {
+    const store = readFileSync(join(process.cwd(), "lib/strategy-store.js"), "utf8");
+    expect(store).toMatch(/difficulty: r\.difficulty \|\| null/);
+    expect(store).toMatch(/marketData: markets/);
+    const strategy = readFileSync(join(process.cwd(), "lib/strategy.js"), "utf8");
+    expect(strategy).toMatch(/marketData: marketDetail\(s\)/);
+    // Names stay authoritative so a country the owner typed in by hand wins, and
+    // the detail is only ever the detail for a name that is in the list.
+    expect(strategy).toMatch(/markets: marketNames\(s\)/);
+  });
+});
+
+// ── THE DAY, GROUPED THE WAY THE PLAN WORKS ──
+describe("the approvals queue groups by country", () => {
+  it("tags every card with its country and how hard that country is", () => {
+    expect(approvals).toMatch(/i\.marketTier = mk\.tier/);
+    expect(approvals).toMatch(/const { tierFor } = await import\("@\/lib\/market-plan"\)/);
+    expect(approvals).toMatch(/flag: g\.iso2 \? flagEmoji\(g\.iso2\)/);
+  });
+
+  it("keeps a live country on screen even with nothing waiting for it today", () => {
+    expect(approvals).toMatch(/markets: planMarkets, tiers: TIERS\.map/);
+    expect(queue).toMatch(/for \(const mk of feed\?\.markets \|\| \[\]\)/);
+    expect(queue).toMatch(/muted=\{mk\.count === 0\}/);
+  });
+
+  it("does not colour a dropped country as one of the three it was never ranked into", () => {
+    expect(approvals).toMatch(/i\.marketTier = "other"; i\.marketTierLabel = "Not in your plan any more"/);
+  });
+
+  it("filters the day by colour, then by country", () => {
+    expect(queue).toMatch(/matchesTier\(it, tierFilter\) && matchesMarket\(it, marketFilter\)/);
+    expect(queue).toMatch(/setTierFilter\(id\); setMarketFilter\("all"\)/);
+  });
+
+  it("uses one colour per tier, from the app's own signal tokens", () => {
+    expect(queue).toMatch(/green: \{ label: "Winnable now", dot: "var\(--signal-live\)"/);
+    expect(queue).toMatch(/amber: \{ label: "Worth the work", dot: "var\(--signal-warn\)"/);
+    expect(queue).toMatch(/red: \{ label: "Hard", dot: "var\(--signal-danger\)"/);
   });
 });

@@ -28,6 +28,7 @@ import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 import { ownerSignal, penaltyFor } from "@/lib/owner-signal";
 import { countWaiting, DAILY_CARDS } from "@/lib/queue-count";
+import { TIERS } from "@/lib/market-plan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,6 +81,54 @@ export async function GET(request) {
   // three slots. It is a multiplier, not a filter: the item is still in the
   // backlog and ?all=1 still shows it, because refusing to show an owner their
   // own work is how things disappear.
+  // -- EVERY CARD SAYS WHICH COUNTRY IT IS FOR, AND HOW HARD THAT COUNTRY IS --
+  // This screen already had a row of country tabs and almost nothing to put in
+  // them: the fields were read off the payload and nothing ever wrote them. Drafts
+  // now carry the market they were made for, so the day can be grouped the way the
+  // plan actually works: three colours, the countries inside them, the tasks
+  // inside those. A colour is Market Testing's own verdict on how hard a country
+  // is, never a new opinion invented on this screen.
+  let planMarkets = [];
+  try {
+    const { storedStrategy } = await import("@/lib/strategy-store");
+    const { normalizeStrategy } = await import("@/lib/strategy");
+    const { tierFor } = await import("@/lib/market-plan");
+    const { resolveMarket } = await import("@/lib/geo-targets");
+    const { flagEmoji } = await import("@/lib/markets");
+    const raw = await storedStrategy(supabase, user.id);
+    const plan = raw ? normalizeStrategy(raw) : null;
+    const rows = plan ? (plan.marketData?.length ? plan.marketData : plan.markets || []) : [];
+    planMarkets = rows.map((r) => {
+      const m = typeof r === "string" ? { name: r } : r || {};
+      const t = tierFor(m);
+      const g = resolveMarket(m.name);
+      return {
+        name: m.name, code: String(m.name || "").toLowerCase(), iso2: g.iso2,
+        flag: g.iso2 ? flagEmoji(g.iso2) : "🌍",
+        tier: t.id, tierLabel: t.label, why: t.why,
+        score: Number.isFinite(Number(m.score)) ? Number(m.score) : null,
+        verified: !!m.verified,
+      };
+    }).filter((m) => m.name);
+  } catch {}
+
+  // A country a draft was made for that has since left the plan is still shown,
+  // and is not dressed up as one of the three colours it was never ranked into.
+  const byMarketName = new Map(planMarkets.map((m) => [m.name.toLowerCase(), m]));
+  for (const i of items) {
+    const mk = i.market ? byMarketName.get(String(i.market).toLowerCase()) : null;
+    if (mk) {
+      i.market = mk.code; i.marketName = mk.name; i.marketFlag = mk.flag;
+      i.marketTier = mk.tier; i.marketTierLabel = mk.tierLabel;
+    } else if (i.market) {
+      i.marketName = String(i.market); i.marketFlag = "🌍";
+      i.market = String(i.market).toLowerCase();
+      i.marketTier = "other"; i.marketTierLabel = "Not in your plan any more";
+    } else {
+      i.marketTier = "other"; i.marketTierLabel = "Every country";
+    }
+  }
+
   const signal = await ownerSignal(supabase, user.id);
   for (const i of items) {
     const mult = penaltyFor(signal, i.kind, i.platform);
@@ -99,10 +148,11 @@ export async function GET(request) {
   // and the score decides within it.
   const KIND_RANK = { article: 0, outreach_email: 1, media_pitch: 2 };
   const kindRank = (i) => KIND_RANK[i.kind] ?? (i.source === "placement" ? 3 : 4);
-  items.sort((a, b) =>
+  const order = (a, b) =>
     Number(b.owned) - Number(a.owned) ||
     kindRank(a) - kindRank(b) ||
-    b.impact - a.impact);
+    b.impact - a.impact;
+  items.sort(order);
 
   // ── THE DAY'S EMAILS ARE ONE DECISION, NOT FIVE CARDS ──
   // Three cards a day is the right number of DECISIONS. It was the wrong number of
@@ -116,28 +166,52 @@ export async function GET(request) {
   // So the emails travel together. One card, every email readable and editable
   // inside it, approved one by one or all at once. The owner still makes three
   // decisions; one of them is now worth five emails instead of one.
+  //
+  // ONE CARD PER COUNTRY, NOT ONE CARD FOR THE WORLD. A single batch was right
+  // while there was one market and wrong the moment the plan had three: Malaysia's
+  // five, India's three and America's four are three decisions about three
+  // different places, and merging them into "twelve emails to twelve companies"
+  // throws away the one fact that tells an owner which of the three is working.
   const emails = items.filter((i) => i.kind === "outreach_email");
   let batched = items;
   if (!showAll && emails.length > 1) {
     const rest = items.filter((i) => i.kind !== "outreach_email");
-    const lead = emails[0];
-    batched = [...rest, {
-      ...lead,
-      id: `batch:${lead.id}`,
-      batch: emails.map((e) => ({ id: e.id, source: e.source, title: e.title, draft: e.draft, outcome: e.outcome, why: e.why })),
-      title: `${emails.length} emails to ${emails.length} companies`,
-      outcome: `Reach ${emails.length} businesses that match your plan`,
-      // The batch inherits the best impact in it, so a strong lead is not buried
-      // by averaging it with the rest.
-      impact: Math.max(...emails.map((e) => e.impact || 0)),
-    }].sort((a, b) =>
-      Number(b.owned) - Number(a.owned) ||
-      kindRank(a) - kindRank(b) ||
-      b.impact - a.impact);
+    const groups = new Map();
+    for (const e of emails) {
+      const key = e.market || "";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(e);
+    }
+    const cards = [];
+    for (const group of groups.values()) {
+      if (group.length === 1) { cards.push(group[0]); continue; }
+      const lead = group[0];
+      const where = lead.marketName ? ` in ${lead.marketName}` : "";
+      cards.push({
+        ...lead,
+        id: `batch:${lead.id}`,
+        batch: group.map((e) => ({ id: e.id, source: e.source, title: e.title, draft: e.draft, outcome: e.outcome, why: e.why })),
+        title: `${group.length} emails to ${group.length} companies${where}`,
+        outcome: `Reach ${group.length} businesses that match your plan${where}`,
+        // The batch inherits the best impact in it, so a strong lead is not buried
+        // by averaging it with the rest.
+        impact: Math.max(...group.map((e) => e.impact || 0)),
+      });
+    }
+    batched = [...rest, ...cards].sort(order);
   }
 
   const ownedCount = batched.filter((i) => i.owned).length;
-  const shown = showAll ? batched : batched.slice(0, DAILY_CARDS);
+  // THREE DECISIONS, BUT NEVER THREE COUNTRIES OUT OF FOUR. The cap keeps a
+  // morning to three minutes, and counting a country's whole day of emails as one
+  // card is what makes that possible. Slicing the list at three then quietly
+  // dropped two of the three countries the plan had chosen to work: the emails
+  // were written, allowed to send, and never shown to anyone. So each country's
+  // email card survives the cap, and the cap applies to everything else.
+  const emailCards = batched.filter((i) => i.kind === "outreach_email");
+  const shown = showAll
+    ? batched
+    : [...batched.filter((i) => i.kind !== "outreach_email").slice(0, DAILY_CARDS), ...emailCards].sort(order);
   // The true size of the queue, counted rather than measured off a list three
   // `.limit()` calls have already trimmed — and counted by the SAME function the
   // menu badge uses, so the two can never again show different numbers for the
@@ -151,6 +225,9 @@ export async function GET(request) {
     // 12 waiting", and a number that quietly meant something else is the bug this
     // codebase keeps having.
     count: total, ownedCount, backlog, showingAll: showAll, perDay: DAILY_CARDS,
+    // The plan's countries and how hard each is, so the screen can show a colour
+    // with nothing under it yet rather than pretending that country is not live.
+    markets: planMarkets, tiers: TIERS.map((t) => ({ id: t.id, label: t.label, why: t.why })),
     items: shown,
   });
 }

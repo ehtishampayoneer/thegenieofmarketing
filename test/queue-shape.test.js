@@ -21,8 +21,13 @@ describe("the channel that produces replies is reachable", () => {
   });
 
   it("applies the same order after the emails are batched", () => {
-    // Otherwise batching would quietly put the batch back behind the posts.
-    expect((approvals.match(/kindRank\(a\) - kindRank\(b\)/g) || []).length).toBe(2);
+    // Otherwise batching would quietly put the batch back behind the posts. It was
+    // two copies of the same comparator; a third sort was needed once the emails
+    // grouped per country, and three copies is how they drift apart. One now.
+    expect((approvals.match(/kindRank\(a\) - kindRank\(b\)/g) || []).length).toBe(1);
+    expect(approvals).toMatch(/const order = \(a, b\) =>/);
+    expect((approvals.match(/\.sort\(order\)/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(approvals).toMatch(/items\.sort\(order\)/);
   });
 
   it("puts community replies behind the three that matter, not in front", () => {

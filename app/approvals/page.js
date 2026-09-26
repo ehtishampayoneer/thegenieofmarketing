@@ -62,6 +62,15 @@ function matchesType(it, f) {
 }
 function matchesImpact(it, f) { return f === "all" || impactMeta(it.impact).tier === f; }
 function matchesMarket(it, f) { if (f === "all") return true; if (f === "global") return !it.market; return it.market === f; }
+// How hard the country is, straight from Market Testing. "other" is work that
+// belongs to no one country, and work for a country that has left the plan.
+function matchesTier(it, f) { return f === "all" || (it.marketTier || "other") === f; }
+const TIER_UI = {
+  green: { label: "Winnable now", dot: "var(--signal-live)", soft: "var(--signal-live-soft)", ink: "var(--signal-live-ink)" },
+  amber: { label: "Worth the work", dot: "var(--signal-warn)", soft: "var(--signal-warn-soft)", ink: "var(--signal-warn-ink)" },
+  red: { label: "Hard", dot: "var(--signal-danger)", soft: "var(--signal-danger-soft)", ink: "var(--signal-danger-ink)" },
+  other: { label: "Every country", dot: "var(--fg-subtle)", soft: "var(--surface-sunk)", ink: "var(--fg-muted)" },
+};
 
 // Helpers for editing a branded card's overlay hook + underlying photo in place.
 function isCardUrl(u) { try { return new URL(u, location.origin).pathname.endsWith("/api/card"); } catch { return false; } }
@@ -98,6 +107,7 @@ export default function ApprovalsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [impactFilter, setImpactFilter] = useState("all");
   const [marketFilter, setMarketFilter] = useState("all");
+  const [tierFilter, setTierFilter] = useState("all");
   const [openMenu, setOpenMenu] = useState(null); // 'type' | 'impact' | 'more' | null
   const [expandReason, setExpandReason] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
@@ -132,20 +142,43 @@ export default function ApprovalsPage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [openMenu]);
 
-  // Country tabs: markets present in the queue (from market-test kits), most tasks first.
+  // ── TWO LEVELS, THE WAY THE PLAN WORKS ──
+  // How hard the country is on top, the countries inside that colour underneath,
+  // the day's tasks inside the country. Market Testing ranked the countries and
+  // the queue used to ignore the ranking completely: everything was one flat pile
+  // and an owner could not see that three easy countries were being worked at once.
+  const tierCounts = useMemo(() => {
+    const c = { green: 0, amber: 0, red: 0, other: 0 };
+    for (const it of items) c[it.marketTier || "other"] = (c[it.marketTier || "other"] || 0) + 1;
+    return c;
+  }, [items]);
+  const tiers = useMemo(
+    () => ["green", "amber", "red", "other"].filter((id) => tierCounts[id] > 0 || (feed?.markets || []).some((m) => m.tier === id)),
+    [tierCounts, feed],
+  );
+
+  // Countries inside the chosen colour. A live country with nothing waiting today
+  // still shows, at zero — a country that quietly disappears from this row is how
+  // an owner stops believing it is being worked at all.
   const markets = useMemo(() => {
     const m = new Map();
+    for (const mk of feed?.markets || []) {
+      if (tierFilter !== "all" && mk.tier !== tierFilter) continue;
+      m.set(mk.code, { code: mk.code, name: mk.name, flag: mk.flag || "🌍", tier: mk.tier, count: 0 });
+    }
     for (const it of items) {
       if (!it.market) continue;
-      const e = m.get(it.market) || { code: it.market, name: it.marketName || it.market, flag: it.marketFlag || "🌍", count: 0 };
+      if (tierFilter !== "all" && (it.marketTier || "other") !== tierFilter) continue;
+      const e = m.get(it.market) || { code: it.market, name: it.marketName || it.market, flag: it.marketFlag || "🌍", tier: it.marketTier || "other", count: 0 };
       e.count++; m.set(it.market, e);
     }
-    return [...m.values()].sort((a, b) => b.count - a.count);
-  }, [items]);
-  const globalCount = useMemo(() => items.filter((it) => !it.market).length, [items]);
+    return [...m.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [items, feed, tierFilter]);
+  const globalCount = useMemo(() => items.filter((it) => !it.market && matchesTier(it, tierFilter)).length, [items, tierFilter]);
   useEffect(() => { if (marketFilter !== "all" && marketFilter !== "global" && !markets.some((m) => m.code === marketFilter)) setMarketFilter("all"); }, [markets, marketFilter]);
+  useEffect(() => { if (tierFilter !== "all" && !tiers.includes(tierFilter)) setTierFilter("all"); }, [tiers, tierFilter]);
 
-  const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, marketFilter]);
+  const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesTier(it, tierFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, tierFilter, marketFilter]);
   useEffect(() => { setIdx((i) => Math.max(0, Math.min(i, view.length - 1))); }, [view.length]);
   const current = view[idx] || null;
   useEffect(() => { setExpandReason(false); setEditing(false); setSharpenNotes(null); }, [current?.id]);
@@ -455,11 +488,50 @@ export default function ApprovalsPage() {
         />
       )}
 
-      {state === "real" && markets.length > 0 && (
-        <div className="mt-4 flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
-          <MTab active={marketFilter === "all"} onClick={() => setMarketFilter("all")} label="All work" count={items.length} />
-          {globalCount > 0 && <MTab active={marketFilter === "global"} onClick={() => setMarketFilter("global")} label="🌍 Global" count={globalCount} />}
-          {markets.map((mk) => <MTab key={mk.code} active={marketFilter === mk.code} onClick={() => setMarketFilter(mk.code)} label={`${mk.flag} ${mk.name}`} count={mk.count} />)}
+      {/* HOW HARD THE COUNTRY IS, then WHICH COUNTRY, then the tasks inside it.
+          Market Testing has always known which countries are winnable; until now
+          this screen showed one flat pile and the ranking reached nobody. */}
+      {state === "real" && tiers.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
+            <MTab active={tierFilter === "all"} onClick={() => { setTierFilter("all"); setMarketFilter("all"); }} label="All work" count={items.length} />
+            {tiers.map((id) => (
+              <MTab
+                key={id}
+                active={tierFilter === id}
+                onClick={() => { setTierFilter(id); setMarketFilter("all"); }}
+                label={TIER_UI[id].label}
+                count={tierCounts[id] || 0}
+                dot={TIER_UI[id].dot}
+                tone={TIER_UI[id]}
+              />
+            ))}
+          </div>
+          {(markets.length > 0 || globalCount > 0) && (
+            <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1 mt-1.5 pl-0.5">
+              {tierFilter !== "all" && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--fg-subtle)", whiteSpace: "nowrap", paddingRight: 2 }}>
+                  {TIER_UI[tierFilter].label}:
+                </span>
+              )}
+              <MTab active={marketFilter === "all"} onClick={() => setMarketFilter("all")} label="Every country" count={view.length} />
+              {globalCount > 0 && <MTab active={marketFilter === "global"} onClick={() => setMarketFilter("global")} label="🌍 No country" count={globalCount} />}
+              {markets.map((mk) => (
+                <MTab
+                  key={mk.code}
+                  active={marketFilter === mk.code}
+                  onClick={() => setMarketFilter(mk.code)}
+                  label={`${mk.flag} ${mk.name}`}
+                  count={mk.count}
+                  dot={TIER_UI[mk.tier]?.dot}
+                  /* A live country with nothing waiting today still shows, greyed,
+                     at zero. A country that vanishes from this row is how an owner
+                     stops believing it is being worked at all. */
+                  muted={mk.count === 0}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -965,10 +1037,14 @@ function AllClear({ done, drafting, onDraft, filtered, onClear, backlog = 0, sho
 }
 
 // ── SMALL PARTS ─────────────────────────────────────────────────────────────
-function MTab({ active, onClick, label, count }) {
+function MTab({ active, onClick, label, count, dot = null, tone = null, muted = false }) {
+  const border = active ? (tone?.dot || "var(--accent)") : "var(--hair)";
+  const bg = active ? (tone?.soft || "var(--accent-quiet)") : "var(--surface)";
+  const fg = active ? (tone?.ink || "var(--accent-ink)") : muted ? "var(--fg-subtle)" : "var(--fg-muted)";
   return (
-    <button onClick={onClick} className="shrink-0 mg-focus" style={{ fontSize: 13, fontWeight: 600, padding: ".4rem .75rem", borderRadius: 999, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${active ? "var(--accent)" : "var(--hair)"}`, background: active ? "var(--accent-quiet)" : "var(--surface)", color: active ? "var(--accent-ink)" : "var(--fg-muted)" }}>
-      {label}{count != null ? <span className="mg-num" style={{ opacity: 0.7 }}> · {count}</span> : null}
+    <button onClick={onClick} className="shrink-0 mg-focus" style={{ display: "inline-flex", alignItems: "center", gap: ".4rem", fontSize: 13, fontWeight: 600, padding: ".4rem .75rem", borderRadius: 999, whiteSpace: "nowrap", cursor: "pointer", border: `1px solid ${border}`, background: bg, color: fg, opacity: muted ? 0.75 : 1 }}>
+      {dot ? <span aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: dot, flex: "0 0 auto" }} /> : null}
+      <span>{label}{count != null ? <span className="mg-num" style={{ opacity: 0.7 }}> · {count}</span> : null}</span>
     </button>
   );
 }

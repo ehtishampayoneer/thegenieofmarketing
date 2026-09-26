@@ -116,7 +116,10 @@ export async function POST(request) {
       const { storedStrategy } = await import("@/lib/strategy-store");
       const { normalizeStrategy } = await import("@/lib/strategy");
       const raw = await storedStrategy(supabase, userId);
-      strategyMarkets = raw ? (normalizeStrategy(raw).markets || []) : [];
+      const plan = raw ? normalizeStrategy(raw) : null;
+      // The detail where Market Testing has it, so an easy country is treated as
+      // an easy one; names alone would make every market the middle tier.
+      strategyMarkets = plan ? (plan.marketData?.length ? plan.marketData : plan.markets || []) : [];
     } catch {}
     scanAi = scan?.ai || {};
   } catch {}
