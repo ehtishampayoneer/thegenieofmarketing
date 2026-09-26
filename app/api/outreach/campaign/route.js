@@ -93,6 +93,7 @@ export async function POST(request) {
   // niche started empty unless the caller passed one. The scan's targetCustomer
   // below is where it really comes from.
   let niche = String(industry || "").trim();
+  let strategyMarkets = [];
   let briefForDrafts = "";
   let scanAi = {};
   try {
@@ -109,6 +110,14 @@ export async function POST(request) {
     // The plan, so the email opens with what the seller is trying to do rather
     // than with what the owner sells.
     try { briefForDrafts += await strategyPromptBlock(supabase, { userId, host, ai: scan?.ai || {} }); } catch {}
+    // The countries Market Testing ranked. Read here so the send can aim, instead
+    // of the ranking existing only as a sentence inside a prompt.
+    try {
+      const { storedStrategy } = await import("@/lib/strategy-store");
+      const { normalizeStrategy } = await import("@/lib/strategy");
+      const raw = await storedStrategy(supabase, userId);
+      strategyMarkets = raw ? (normalizeStrategy(raw).markets || []) : [];
+    } catch {}
     scanAi = scan?.ai || {};
   } catch {}
 
@@ -190,6 +199,41 @@ export async function POST(request) {
   // emails send from the owner's own Gmail, so a bad match costs them their own
   // sending reputation, not Genie's.
   const contacts = await sourceContacts(supabase, userId, host, niche || industry || null, roomLeft, { niche });
+
+  // ── WHICH COUNTRY EACH OF TODAY'S EMAILS IS FOR ──
+  // Market Testing already ranks the countries worth winning, and until now that
+  // ranking was read by one line in a prompt: the nightly send took whoever came
+  // back from the pool, in whatever country, with no idea it had a view. So an
+  // owner whose easiest market was the UAE spent every send on whoever happened to
+  // surface, usually American, usually the hardest market they have.
+  //
+  // Each live market now gets its own share of today's allowance. Not the same
+  // work divided — the allowance belongs to the mailbox and cannot grow just
+  // because there are more countries — but aimed, so the easy market gets the
+  // biggest share and the hard one is kept warm rather than fought over.
+  let markets = [];
+  try {
+    const { activeMarkets } = await import("@/lib/market-plan");
+    markets = activeMarkets(strategyMarkets, roomLeft);
+  } catch {}
+
+  // Sort the day's contacts so each market's share is filled in turn, best market
+  // first. A contact whose country cannot be told is not dropped — it fills
+  // whatever the named markets did not use, exactly as before.
+  let ordered = contacts;
+  if (markets.length > 1) {
+    try {
+      const { marketOf } = await import("@/lib/market-plan");
+      const left = new Map(markets.map((m) => [m.name, m.emailsToday]));
+      const picked = [], spare = [];
+      for (const c of contacts) {
+        const m = marketOf(c, markets);
+        if (m && (left.get(m) || 0) > 0) { left.set(m, left.get(m) - 1); picked.push({ ...c, market: m }); }
+        else spare.push(c);
+      }
+      ordered = [...picked, ...spare].slice(0, roomLeft);
+    } catch {}
+  }
   if (contacts.length === 0) {
     // Finding nobody new is not the same as doing nothing: the follow-ups above
     // may well have sent, and they are the messages most likely to get a reply.
@@ -219,14 +263,14 @@ export async function POST(request) {
   // DNS-level only: Vercel blocks outbound port 25, so a true SMTP mailbox probe
   // is not possible here. This still removes dead domains, typos and throwaways.
   let undeliverable = 0;
-  let sendable = contacts;
+  let sendable = ordered;
   try {
     const { verifyEmails } = await import("@/lib/email-verify");
     const { good } = await verifyEmails(contacts.map((c) => c.email));
     const live = new Set(good.map((g) => g.email));
-    sendable = contacts.filter((c) => live.has(String(c.email || "").toLowerCase()));
+    sendable = ordered.filter((c) => live.has(String(c.email || "").toLowerCase()));
     undeliverable = contacts.length - sendable.length;
-  } catch { sendable = contacts; } // a resolver hiccup must never stop the run
+  } catch { sendable = ordered; } // a resolver hiccup must never stop the run
 
   let sent = 0, failed = 0, skipped = 0;
   // Compliance: never email someone who opted out.
@@ -267,7 +311,7 @@ export async function POST(request) {
     });
     if (!decision.execute) {
       await stageForApproval(supabase, {
-        userId, host, contact: c, subject, body: emailBody, reason: decision.reason,
+        userId, host, contact: c, subject, body: emailBody, reason: decision.reason, market: c.market || null,
       });
       staged++;
       continue;
@@ -332,7 +376,7 @@ function json(obj, status = 200) {
 // actually sent, and a draft nobody has approved has not been sent — counting it
 // there would inflate "emails sent" and, worse, make sourceContacts() treat the
 // person as already contacted and never write to them again.
-async function stageForApproval(supabase, { userId, host, contact, subject, body, reason }) {
+async function stageForApproval(supabase, { userId, host, contact, subject, body, reason, market = null }) {
   try {
     // ── THE CARD MUST NOT ASK THE OWNER TO FILL A BLANK ──
     // The send path already refuses one, but by then the owner has read the draft.
@@ -364,6 +408,9 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
         to: contact.email,
         toName: contact.name || null,
         company: contact.company || null,
+        // Which country's share of today this email came out of, so the queue can
+        // group by market instead of showing one undifferentiated pile.
+        market: market || null,
         subject,
         body,
         text: body,              // what the Approvals editor reads and edits
