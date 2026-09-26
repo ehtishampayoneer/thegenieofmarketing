@@ -88,13 +88,13 @@ export async function GET(request) {
   // plan actually works: three colours, the countries inside them, the tasks
   // inside those. A colour is Market Testing's own verdict on how hard a country
   // is, never a new opinion invented on this screen.
+  const { iso2Of, resolveMarket } = await import("@/lib/geo-targets");
+  const { flagEmoji } = await import("@/lib/markets");
   let planMarkets = [];
   try {
     const { storedStrategy } = await import("@/lib/strategy-store");
     const { normalizeStrategy } = await import("@/lib/strategy");
     const { tierFor } = await import("@/lib/market-plan");
-    const { resolveMarket } = await import("@/lib/geo-targets");
-    const { flagEmoji } = await import("@/lib/markets");
     const raw = await storedStrategy(supabase, user.id);
     const plan = raw ? normalizeStrategy(raw) : null;
     const rows = plan ? (plan.marketData?.length ? plan.marketData : plan.markets || []) : [];
@@ -103,7 +103,10 @@ export async function GET(request) {
       const t = tierFor(m);
       const g = resolveMarket(m.name);
       return {
-        name: m.name, code: String(m.name || "").toLowerCase(), iso2: g.iso2,
+        // The filter key is the country, not the spelling. A market test tags its
+        // tasks with the three-letter code ("are"); the plan names the country
+        // ("United Arab Emirates"). Keyed on either, they are two countries.
+        name: m.name, code: (g.iso2 || String(m.name || "")).toLowerCase(), iso2: g.iso2,
         flag: g.iso2 ? flagEmoji(g.iso2) : "🌍",
         tier: t.id, tierLabel: t.label, why: t.why,
         score: Number.isFinite(Number(m.score)) ? Number(m.score) : null,
@@ -112,18 +115,28 @@ export async function GET(request) {
     }).filter((m) => m.name);
   } catch {}
 
-  // A country a draft was made for that has since left the plan is still shown,
-  // and is not dressed up as one of the three colours it was never ranked into.
-  const byMarketName = new Map(planMarkets.map((m) => [m.name.toLowerCase(), m]));
+  // ── ONE COUNTRY, HOWEVER IT WAS SPELLED ──
+  // A market test writes `market: "are"` onto its tasks (app/api/markets/route.js)
+  // and the plan writes "United Arab Emirates". Matching on the string turned every
+  // market-test card into an unknown country and threw away the flag and name the
+  // test had already put on it. Both resolve to AE, so that is what they are keyed on.
+  const byIso = new Map(planMarkets.filter((m) => m.iso2).map((m) => [m.iso2, m]));
   for (const i of items) {
-    const mk = i.market ? byMarketName.get(String(i.market).toLowerCase()) : null;
+    const raw = i.market || i.marketName || null;
+    const iso = raw ? iso2Of(raw) : null;
+    const mk = iso ? byIso.get(iso) : null;
     if (mk) {
       i.market = mk.code; i.marketName = mk.name; i.marketFlag = mk.flag;
       i.marketTier = mk.tier; i.marketTierLabel = mk.tierLabel;
-    } else if (i.market) {
-      i.marketName = String(i.market); i.marketFlag = "🌍";
-      i.market = String(i.market).toLowerCase();
-      i.marketTier = "other"; i.marketTierLabel = "Not in your plan any more";
+    } else if (raw) {
+      // A country the owner is testing by hand, or one the plan has since dropped.
+      // Shown with its own name and flag, and not dressed up as one of the three
+      // colours Market Testing never ranked it into.
+      const g = iso ? resolveMarket(iso) : null;
+      i.marketName = i.marketName || g?.name || String(raw);
+      i.marketFlag = i.marketFlag || (iso ? flagEmoji(iso) : "🌍");
+      i.market = String(iso || raw).toLowerCase();
+      i.marketTier = "other"; i.marketTierLabel = "A country you are testing";
     } else {
       i.marketTier = "other"; i.marketTierLabel = "Every country";
     }

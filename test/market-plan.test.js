@@ -7,11 +7,14 @@ const campaign = readFileSync(join(process.cwd(), "app/api/outreach/campaign/rou
 const content = readFileSync(join(process.cwd(), "app/api/content/route.js"), "utf8");
 const approvals = readFileSync(join(process.cwd(), "app/api/approvals/route.js"), "utf8");
 const queue = readFileSync(join(process.cwd(), "app/approvals/page.js"), "utf8");
+// The shape lib/strategy-store.js actually writes onto the plan. It used to say
+// `code`, which no part of the app ever sends, so a passing test proved nothing
+// about the only caller there is.
 const M = [
-  { name: "United Arab Emirates", code: "ae", score: 78 },
-  { name: "Pakistan", code: "pk", score: 71, verified: true },
-  { name: "United Kingdom", code: "uk", score: 52 },
-  { name: "United States", code: "us", score: 31 },
+  { name: "United Arab Emirates", iso2: "AE", score: 78, difficulty: "Easy" },
+  { name: "Pakistan", iso2: "PK", score: 71, difficulty: "Easy", verified: true },
+  { name: "United Kingdom", iso2: "GB", score: 52, difficulty: "Medium" },
+  { name: "United States", iso2: "US", score: 31, difficulty: "Hard" },
 ];
 
 // ── THE RANKING THAT WAS READ BY ONE LINE ──
@@ -74,6 +77,8 @@ describe("which market a company belongs to", () => {
   const live = activeMarkets(M, 10);
   it("reads it from the address when the address says", () => {
     expect(marketOf({ domain: "moebel.ae" }, live)).toBe("United Arab Emirates");
+    expect(marketOf({ domain: "sofas.pk" }, live)).toBe("Pakistan");
+    expect(marketOf({ domain: "chairs.co.uk" }, live)).toBe("United Kingdom");
     expect(marketOf({ country: "Pakistan" }, live)).toBe("Pakistan");
   });
 
@@ -234,8 +239,14 @@ describe("the approvals queue groups by country", () => {
     expect(queue).toMatch(/muted=\{mk\.count === 0\}/);
   });
 
-  it("does not colour a dropped country as one of the three it was never ranked into", () => {
-    expect(approvals).toMatch(/i\.marketTier = "other"; i\.marketTierLabel = "Not in your plan any more"/);
+  it("matches a country however it was spelled, and keeps the flag the test put on it", () => {
+    // A market test tags its tasks `market: "are"`; the plan says "United Arab
+    // Emirates". Keyed on the string they are two countries, and the card lost the
+    // flag and name the market test had already given it.
+    expect(approvals).toMatch(/const byIso = new Map\(planMarkets\.filter\(\(m\) => m\.iso2\)/);
+    expect(approvals).toMatch(/const iso = raw \? iso2Of\(raw\) : null/);
+    expect(approvals).toMatch(/i\.marketName = i\.marketName \|\| g\?\.name/);
+    expect(approvals).toMatch(/i\.marketTierLabel = "A country you are testing"/);
   });
 
   it("filters the day by colour, then by country", () => {
