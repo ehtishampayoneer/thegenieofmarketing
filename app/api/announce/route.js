@@ -102,6 +102,7 @@ export async function POST(request) {
       subject,
       body: `${greeting}${text}`,
       unsubscribeUrl: unsubUrl(base, userId, person.email),
+      name: person.name || null,
       // This is a message to someone already in contact, not a cold approach.
       source: "reply",
     });

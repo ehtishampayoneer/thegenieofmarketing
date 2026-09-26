@@ -70,7 +70,7 @@ export async function POST(request) {
   try { const { data: scan } = await supabase.from("scans").select("final_url, url").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(); host = scan ? hostOf(scan) : null; } catch {}
   const base = (process.env.APP_URL || "").replace(/\/+$/, "");
 
-  const r = await deliverEmail(supabase, userId, { to, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, to), source: body?.source || "discovery" });
+  const r = await deliverEmail(supabase, userId, { to, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, to), source: body?.source || "discovery", name, company });
   try {
     await supabase.from("outreach_log").insert({
       user_id: userId, host, contact_email: to, contact_name: name || company,

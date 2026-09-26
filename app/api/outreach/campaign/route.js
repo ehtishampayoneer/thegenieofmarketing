@@ -150,7 +150,7 @@ export async function POST(request) {
       const res = await deliverEmail(supabase, userId, {
         to: c.email, subject: d.subject, body: d.body,
         unsubscribeUrl: unsubUrl((process.env.APP_URL || "").replace(/\/+$/, ""), userId, c.email),
-        source: c.source,
+        source: c.source, name: c.name || null, company: c.company || null,
       });
       if (res.needsSender || res.needsConfig) break;
       await supabase.from("outreach_log").insert({
@@ -276,7 +276,7 @@ export async function POST(request) {
     // falls back to the platform sender. sendOne skipped that entirely, which is
     // why the nightly run ignored a connected Gmail and sent from a shared
     // address with the deliverability that implies.
-    const res = await deliverEmail(supabase, userId, { to: c.email, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, c.email), source: c.source });
+    const res = await deliverEmail(supabase, userId, { to: c.email, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, c.email), source: c.source, name: c.name || null, company: c.company || null });
     // No usable sender means every send in this batch will fail the same way, so
     // stop rather than marking the whole day's contacts as failed.
     if (res.needsSender || res.needsConfig) {
@@ -334,6 +334,23 @@ function json(obj, status = 200) {
 // person as already contacted and never write to them again.
 async function stageForApproval(supabase, { userId, host, contact, subject, body, reason }) {
   try {
+    // ── THE CARD MUST NOT ASK THE OWNER TO FILL A BLANK ──
+    // The send path already refuses one, but by then the owner has read the draft.
+    // A card that says "Hi [Decision-Maker Name]" hands the work straight back on
+    // the one screen that exists to say Genie did it.
+    try {
+      const { fillBlanks } = await import("@/lib/fill-blanks");
+      const { data: prof } = await supabase.from("profiles").select("sender_name, company_name").eq("id", userId).maybeSingle();
+      const who = {
+        recipientName: contact.name || null,
+        senderName: prof?.sender_name || prof?.company_name || null,
+        companyName: prof?.company_name || prof?.sender_name || null,
+        recipientCompany: contact.company || null,
+      };
+      body = fillBlanks(body, who).text;
+      subject = fillBlanks(subject, who).text;
+    } catch {}
+
     await supabase.from("actions").insert({
       user_id: userId,
       type: "outreach_email",
