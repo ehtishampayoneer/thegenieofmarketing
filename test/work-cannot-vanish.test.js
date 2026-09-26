@@ -284,3 +284,65 @@ describe("the publish guard's middle verdict is not thrown away", () => {
     expect(execute.indexOf("let reviewNote = null;")).toBeLessThan(execute.indexOf("result: reviewNote ?"));
   });
 });
+
+describe("Genie does not call a draft ready when its own test failed it", () => {
+  // The swarm runs a spam-filter gate over every draft. The card printed "would
+  // likely block this" at the bottom while the header said Medium impact 66 and
+  // the queue ranked it above clean work — for a draft its own test scored 21.
+  // A cold email a spam filter blocks costs the sending reputation the whole
+  // daily ramp exists to protect.
+  const page = read("app/approvals/page.js");
+
+  it("reads the gate the swarm already computed", () => {
+    expect(approvals).toMatch(/const crowdBlocked = !!p\.crowd\?\.gate\?\.blocked/);
+  });
+
+  it("stops it claiming to be ready, and says who would block it", () => {
+    expect(approvals).toMatch(/would block this/);
+    expect(approvals).toMatch(/edit it before you approve/);
+  });
+
+  it("stops it outranking work that is ready", () => {
+    expect(approvals).toMatch(/impact: crowdBlocked \? Math\.min\(35/);
+  });
+
+  it("is neither hidden nor thrown away — the owner may know better", () => {
+    // No filter drops a crowd-blocked item; it is marked, not disappeared.
+    expect(approvals).not.toMatch(/filter\([^)]*crowdBlocked/);
+    expect(approvals).toMatch(/needsEdit: crowdBlocked/);
+    expect(page).toMatch(/item\.needsEdit && <Pill tone="danger">/);
+  });
+});
+
+describe("the queue does not show scaffolding for grouping that is not there", () => {
+  const page = read("app/approvals/page.js");
+
+  it("hides the colour row until a real country exists", () => {
+    expect(page).toMatch(/const showTiers = tiers\.some\(\(id\) => id !== "other"\)/);
+    expect(page).toMatch(/state === "real" && showTiers &&/);
+  });
+
+  it("hides the country row until there is a country in it", () => {
+    expect(page).toMatch(/\{markets\.length > 0 && \(/);
+  });
+
+  it("never labels two different things with the same words", () => {
+    // Both rows once read "Every country · 4", side by side, meaning different
+    // things: work tied to no country, and the show-everything button.
+    expect(page).toMatch(/other: \{ label: "Not tied to a country"/);
+    expect(page).toMatch(/label="All countries"/);
+    expect(page).not.toMatch(/label="Every country"/);
+  });
+});
+
+describe("a plan with no countries is re-checked, not left for a fortnight", () => {
+  it("looks again whenever the list is empty", () => {
+    const brain = read("lib/brain.js");
+    // getStrategy returns a stored plan as-is, so its fill-in-the-countries step
+    // only runs when a plan is first created. This was the only other chance, and
+    // it waited 14 days between looks — so every owner whose plan was written
+    // while the country lookup was broken kept an empty list long after the fix.
+    expect(brain).toMatch(/const noneYet = !\(strategy\.markets \|\| \[\]\)\.length/);
+    expect(brain).toMatch(/if \(stale \|\| noneYet\)/);
+  });
+});

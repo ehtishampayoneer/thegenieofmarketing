@@ -264,6 +264,10 @@ function normalizeAction(a) {
   const isReddit = platform === "reddit";
   const isQuora = platform === "quora";
   const o = toOutcome(a);
+  // Genie tested this against its own simulated crowd and the gatekeeper — the
+  // spam filter for an email, the moderator for a community post — said it would
+  // not get through.
+  const crowdBlocked = !!p.crowd?.gate?.blocked;
   const draft = p.body || p.text || (Array.isArray(p.draft) ? p.draft.join("\n\n") : p.draft) || "";
   // ── REPUTATION SAFETY ──
   // Only content on YOUR OWN site (article → WordPress) auto-publishes via API.
@@ -316,14 +320,30 @@ function normalizeAction(a) {
     imageFocus: Number.isFinite(Number(p.imageFocus)) ? Number(p.imageFocus) : 50,
     cardHeadline: p.cardHeadline || null,
     isRefresh: !!p.refresh,
-    draft, why: p.rationale || null, target_url,
+    draft,
+    why: crowdBlocked
+      ? `Genie's own test says ${p.crowd?.gate?.name || "the gatekeeper"} would block this${Number.isFinite(Number(p.crowd?.score)) ? ` (it scored ${Math.round(Number(p.crowd.score))}/100)` : ""} — edit it before you approve.`
+      : (p.rationale || null),
+    target_url,
     keyword: p.targetKeyword || null,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
     market: p.market || a.target?.market || null,
     marketName: p.marketName || null,
     marketFlag: p.marketFlag || null,
-    impact: clampNum(p.impact, priorityScore(a.priority)),
-    tags: tagsFor(a.priority),
+    // ── GENIE'S OWN TEST SAID THIS WOULD BE BLOCKED ──
+    // The swarm runs a spam-filter gate over every draft and the card already
+    // prints "would likely block this". Nothing acted on it: the same card was
+    // offered as Ready, at a Medium impact score of 66, ahead of clean work — for
+    // a draft its own test had scored 21 out of 100. Sending a cold email a spam
+    // filter blocks costs the owner's sending reputation, which is the single
+    // thing the whole daily ramp exists to protect.
+    //
+    // It is not hidden and not auto-discarded: the owner may know better than a
+    // simulation. It stops claiming to be ready, and it stops outranking work
+    // that is.
+    needsEdit: crowdBlocked,
+    impact: crowdBlocked ? Math.min(35, clampNum(p.impact, priorityScore(a.priority))) : clampNum(p.impact, priorityScore(a.priority)),
+    tags: crowdBlocked ? [{ label: "Needs an edit", tone: "danger" }, ...tagsFor(a.priority)] : tagsFor(a.priority),
     crowd: p.crowd || null,
   };
 }

@@ -69,7 +69,7 @@ const TIER_UI = {
   green: { label: "Winnable now", dot: "var(--signal-live)", soft: "var(--signal-live-soft)", ink: "var(--signal-live-ink)" },
   amber: { label: "Worth the work", dot: "var(--signal-warn)", soft: "var(--signal-warn-soft)", ink: "var(--signal-warn-ink)" },
   red: { label: "Hard", dot: "var(--signal-danger)", soft: "var(--signal-danger-soft)", ink: "var(--signal-danger-ink)" },
-  other: { label: "Every country", dot: "var(--fg-subtle)", soft: "var(--surface-sunk)", ink: "var(--fg-muted)" },
+  other: { label: "Not tied to a country", dot: "var(--fg-subtle)", soft: "var(--surface-sunk)", ink: "var(--fg-muted)" },
 };
 
 // Helpers for editing a branded card's overlay hook + underlying photo in place.
@@ -156,6 +156,13 @@ export default function ApprovalsPage() {
     () => ["green", "amber", "red", "other"].filter((id) => tierCounts[id] > 0 || (feed?.markets || []).some((m) => m.tier === id)),
     [tierCounts, feed],
   );
+  // ── NOTHING TO GROUP MEANS NO GROUPING ──
+  // Before any draft carries a country, both rows collapse to a single chip
+  // meaning "everything", twice, in slightly different words. That is worse than
+  // the old flat queue: it takes up the top of the screen, implies a structure
+  // that is not there, and tells the owner nothing. The colours appear the first
+  // morning there is a country to put under them.
+  const showTiers = tiers.some((id) => id !== "other");
 
   // Countries inside the chosen colour. A live country with nothing waiting today
   // still shows, at zero — a country that quietly disappears from this row is how
@@ -491,7 +498,7 @@ export default function ApprovalsPage() {
       {/* HOW HARD THE COUNTRY IS, then WHICH COUNTRY, then the tasks inside it.
           Market Testing has always known which countries are winnable; until now
           this screen showed one flat pile and the ranking reached nobody. */}
-      {state === "real" && tiers.length > 0 && (
+      {state === "real" && showTiers && (
         <div className="mt-4">
           <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
             <MTab active={tierFilter === "all"} onClick={() => { setTierFilter("all"); setMarketFilter("all"); }} label="All work" count={items.length} />
@@ -507,14 +514,14 @@ export default function ApprovalsPage() {
               />
             ))}
           </div>
-          {(markets.length > 0 || globalCount > 0) && (
+          {markets.length > 0 && (
             <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1 mt-1.5 pl-0.5">
               {tierFilter !== "all" && (
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--fg-subtle)", whiteSpace: "nowrap", paddingRight: 2 }}>
                   {TIER_UI[tierFilter].label}:
                 </span>
               )}
-              <MTab active={marketFilter === "all"} onClick={() => setMarketFilter("all")} label="Every country" count={view.length} />
+              <MTab active={marketFilter === "all"} onClick={() => setMarketFilter("all")} label="All countries" count={view.length} />
               {globalCount > 0 && <MTab active={marketFilter === "global"} onClick={() => setMarketFilter("global")} label="🌍 No country" count={globalCount} />}
               {markets.map((mk) => (
                 <MTab
@@ -633,6 +640,10 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
         <span className="text-[12px] font-bold tracking-[0.08em]" style={{ color: "var(--fg-muted)" }}>{typeLabel(item)}</span>
         <span className="mg-subtle">|</span>
         {item.owned ? <Pill tone="live">Auto-publishes</Pill> : <Pill tone="dawn">You post it</Pill>}
+        {/* Genie's own simulated crowd failed this one. The warning was printed at
+            the bottom of the card while the header still said Medium impact and
+            the queue still ranked it above clean work. */}
+        {item.needsEdit && <Pill tone="danger">Needs an edit</Pill>}
         {item.market && <Pill tone="info">{item.marketFlag} {item.marketName}</Pill>}
         <Pill tone={im.pill}>{im.label} impact</Pill>
         {item.isRefresh && <Pill tone="info">Refresh</Pill>}
