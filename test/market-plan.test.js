@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { activeMarkets, tierOf, marketOf, marketNote, MAX_ACTIVE, TIERS } from "@/lib/market-plan";
+import { activeMarkets, tierOf, marketOf, marketNote, nextMarket, MAX_ACTIVE, TIERS } from "@/lib/market-plan";
 
 const campaign = readFileSync(join(process.cwd(), "app/api/outreach/campaign/route.js"), "utf8");
+const content = readFileSync(join(process.cwd(), "app/api/content/route.js"), "utf8");
 const M = [
   { name: "United Arab Emirates", code: "ae", score: 78 },
   { name: "Pakistan", code: "pk", score: 71, verified: true },
@@ -112,5 +113,68 @@ describe("it changes who gets written to tonight", () => {
 
   it("cannot break the send when the plan has no markets", () => {
     expect(campaign).toMatch(/if \(markets\.length > 1\)/);
+  });
+});
+
+// ── WHICH COUNTRY TONIGHT'S ARTICLE IS FOR ──
+// Every article was written for nowhere in particular, priced in dollars whoever
+// the reader was, while the plan sat there knowing the owner sells into the UAE.
+describe("which country gets written for", () => {
+  const live = activeMarkets(M, 12);
+
+  it("starts with the most winnable market", () => {
+    expect(nextMarket(live, {}).name).toBe("United Arab Emirates");
+  });
+
+  it("moves on once a market has had its share", () => {
+    const first = nextMarket(live, {});
+    const second = nextMarket(live, { [first.name]: 1 });
+    expect(second.name).not.toBe(first.name);
+  });
+
+  it("gives each market its share over a run, not one country everything", () => {
+    const counts = {};
+    for (let i = 0; i < 12; i++) {
+      const m = nextMarket(live, counts);
+      counts[m.name] = (counts[m.name] || 0) + 1;
+    }
+    // Three live markets, all three written for, and the easiest one leading.
+    expect(Object.keys(counts).length).toBe(live.length);
+    const top = live[0].name;
+    expect(counts[top]).toBeGreaterThan(counts[live[live.length - 1].name]);
+    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(12);
+    // Nothing is starved: a market with a share gets written for at least once.
+    for (const m of live) expect(counts[m.name]).toBeGreaterThan(0);
+  });
+
+  it("is a rotation, not a rewrite — no market when there are none", () => {
+    expect(nextMarket([], {})).toBe(null);
+    expect(nextMarket(null, {})).toBe(null);
+    expect(nextMarket(live, null)).toBeTruthy();
+  });
+
+  it("survives a count column that came back as junk", () => {
+    expect(nextMarket(live, { "United Arab Emirates": null, Pakistan: "x" }).name).toBeTruthy();
+  });
+});
+
+describe("the writing engine acts on it", () => {
+  it("picks tonight's market from the plan, weighted by how it already spent", () => {
+    expect(content).toMatch(/articleMarket = nextMarket\(live, counts\)/);
+    expect(content).toMatch(/select\("market:payload->>market"\)/);
+  });
+
+  it("tells the writer the country, the money and the spelling", () => {
+    expect(content).toContain('import { writeForBlock } from "@/lib/geo-targets"');
+    expect(content).toMatch(/\$\{targetBlock\}\$\{marketBlock\}/);
+  });
+
+  it("forbids the same article again with the currency swapped", () => {
+    expect(content).toMatch(/not a copy of another country's with the currency swapped/);
+  });
+
+  it("stamps the market on the draft so the queue can group by it", () => {
+    expect(content).toMatch(/data\.article\.market = articleMarket\.name/);
+    expect(content).toMatch(/data\.article\.marketTier = articleMarket\.tier/);
   });
 });

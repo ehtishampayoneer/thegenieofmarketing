@@ -22,6 +22,8 @@ import { logger } from "@/lib/log";
 
 import { briefBlock } from "@/lib/business-brief";
 import { strategyPromptBlock } from "@/lib/strategy-store";
+// Which country this article is for, and what that means for a writer.
+import { writeForBlock } from "@/lib/geo-targets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -93,6 +95,39 @@ export async function POST(request) {
   // it, and the first engine that does will have saved it for everyone.
   let plan = "";
   if (userId) { try { plan = await strategyPromptBlock(supabase, { userId, host, ai }); } catch {} }
+
+  // ── WHICH COUNTRY THIS ONE IS FOR ──
+  // Market Testing ranks the countries, the plan stores the ranking, and until now
+  // the writing ignored it: every article was written for nowhere in particular and
+  // priced in dollars whoever the reader was. Each live market now gets its turn,
+  // on the same weights the sending uses.
+  //
+  // This changes WHO a piece is for and which keyword is worth writing next. It is
+  // never the same article rewritten per country — near-identical pages differing
+  // only in the currency are doorway pages, which is precisely what Google's
+  // scaled-content policy penalises, and lib/publish-guard.js already refuses them.
+  let articleMarket = null;
+  if (userId && host) {
+    try {
+      const { getStrategy } = await import("@/lib/strategy-store");
+      const st = await getStrategy(supabase, { userId, host, ai, draft: false });
+      const names = st?.markets || [];
+      if (names.length) {
+        const { activeMarkets, nextMarket } = await import("@/lib/market-plan");
+        const live = activeMarkets(names, 6);
+        // How many each market already has, read without dragging every article
+        // body back across the wire.
+        const counts = {};
+        try {
+          const { data: had } = await supabase.from("actions")
+            .select("market:payload->>market").eq("user_id", userId).eq("type", "article")
+            .order("created_at", { ascending: false }).limit(200);
+          for (const r of had || []) if (r?.market) counts[r.market] = (counts[r.market] || 0) + 1;
+        } catch {}
+        articleMarket = nextMarket(live, counts);
+      }
+    } catch {}
+  }
 
   // ── INTERNAL LINKING ── Pull the related articles Genie already wrote on this
   // site so the new piece can link to them (markdown → /slug). Internal links
@@ -179,7 +214,7 @@ export async function POST(request) {
       // This is published on the owner's domain under their name. Written by a
       // writer-grade model or not written tonight.
       quality: "best",
-      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan, shape }),
+      prompt: buildArticlePrompt({ ai, gsc, topic, directives, pick, existingLinks, paa, firstParty, context, plan, shape, market: articleMarket }),
     });
     data = result.json;
     provider = result.provider;
@@ -223,6 +258,12 @@ export async function POST(request) {
   let actionIds = [];
   if (userId && data.article) {
     if (pick) { data.article.targetKeyword = pick.keyword; data.article.relatedKeywords = pick.related; }
+    // The country it was written for travels with the draft, so the approvals
+    // queue can group by market and the next rotation knows this one is served.
+    if (articleMarket?.name) {
+      data.article.market = articleMarket.name;
+      data.article.marketTier = articleMarket.tier || null;
+    }
     try {
       const admin = createAdminClient();
       const VALID = new Set(["high", "quick_win", "strategic", "low", "medium"]);
@@ -506,7 +547,15 @@ export async function POST(request) {
   });
 }
 
-function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "", shape = null }) {
+function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "", shape = null, market = null }) {
+  // The country this one is for: the money on the price tag, which English to
+  // write, and a standing ban on inventing local facts to sound local.
+  const marketBlock = market?.name
+    ? `
+${writeForBlock(market.name)}
+- This is ${market.name}'s article on this topic, not a copy of another country's with the currency swapped. If you cannot say something that is genuinely true and useful for a reader in ${market.name}, write the general truth plainly instead of dressing it up as local.
+`
+    : "";
   const fp = firstParty && (firstParty.data || firstParty.process || firstParty.proof || firstParty.take)
     ? `\nFIRST-PARTY FACTS — these are REAL, verified details from THIS business. This is the single most important input for genuine Information Gain. Weave them in naturally where they fit (don't dump them in a list, and never contradict them):${firstParty.data ? `\n- Their own data / numbers: ${firstParty.data}` : ""}${firstParty.process ? `\n- Their signature process / method: ${firstParty.process}` : ""}${firstParty.proof ? `\n- Their proof / results / case study: ${firstParty.proof}` : ""}${firstParty.take ? `\n- Their expert / contrarian take: ${firstParty.take}` : ""}`
     : "";
@@ -584,7 +633,7 @@ Weave in these related searches NATURALLY where they genuinely fit — do NOT st
 Sells: ${ai.whatTheySell || ""}.
 Target customer: ${ai.targetCustomer || ""}.
 ${insight ? insight + "\n" : ""}${voice}
-${targetBlock}${internalLinks}${paaBlock}${fp}
+${targetBlock}${marketBlock}${internalLinks}${paaBlock}${fp}
 
 ${hookBlock({ seed: pick?.keyword || topic || ai.businessName || "", serious: isSeriousBusiness(ai) })}
 
