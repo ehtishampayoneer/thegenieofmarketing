@@ -54,6 +54,11 @@ export async function POST(_request, { params }) {
   if (!isArticle && !isX && !isEmail) {
     return json({ ok: false, error: "That action type can't auto-publish yet. More channels are coming." }, 400);
   }
+
+  // Set below by the publish guard when it grades this "review" — published, but
+  // worth a look. Declared here because every branch that finishes stores it on
+  // the result, including the email branch, which runs before the guard does.
+  let reviewNote = null;
   if (action.status === "done") {
     return json({ ok: true, alreadyDone: true, result: action.result });
   }
@@ -91,7 +96,7 @@ export async function POST(_request, { params }) {
       email_id: res.id || null, sent_at: new Date().toISOString(),
     });
     const result = { to, subject: p.subject, publishedAt: new Date().toISOString(), channel: "email", emailId: res.id || null };
-    await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+    await supabase.from("actions").update({ status: "done", result: reviewNote ? { ...result, flagged: reviewNote } : result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
     try {
       const { logActivity } = await import("@/lib/activity");
       await logActivity(supabase, user.id, {
@@ -190,6 +195,47 @@ export async function POST(_request, { params }) {
     return json({ ok: false, blocked: true, error: "Genie rewrote this and it still is not safe to publish: " + (guard.reasons[0] || "risky content detected") + ". Edit and re-approve.", guard }, 422);
   }
 
+  // ── THE MIDDLE VERDICT, WHICH NOBODY WAS READING ──
+  // lib/publish-guard.js grades everything publish / review / block, and this
+  // route handled exactly one of the three. Anything scoring under 80 without
+  // toxicity, a high-risk claim or a near-duplicate — in practice, an article
+  // containing a sentence that reads like an unverified claim — went live on the
+  // owner's own domain under their own name with nobody told, ever.
+  //
+  // It still publishes. Holding every article under 80 would stop the machine, and
+  // the owner asked for a working machine that tells the truth, not a cautious one
+  // that stalls. What changes is that the verdict now survives the publish: it is
+  // written onto the action, recorded as an event, and said out loud in the
+  // activity feed on the same day, with the actual sentences rather than a count.
+  // "2 claims need verification" is not something an owner can act on; the two
+  // sentences are.
+  if (guard.decision === "review") {
+    const claims = (guard.claims || []).map((c) => (typeof c === "string" ? c : c?.claim)).filter(Boolean).slice(0, 3);
+    reviewNote = {
+      confidence: guard.confidence,
+      reasons: (guard.reasons || []).slice(0, 3),
+      claims,
+    };
+    try {
+      const { recordEvent } = await import("@/lib/events");
+      await recordEvent(supabase, {
+        userId: user.id, host: action.target?.host || null, type: "publish.flagged", actor: "genie",
+        subject: p.title || action.title || "Article", data: reviewNote,
+      });
+    } catch {}
+    try {
+      const { logActivity } = await import("@/lib/activity");
+      await logActivity(supabase, user.id, {
+        host: action.target?.host || null, verb: "flagged", icon: "⚠",
+        message: claims.length
+          ? `Published with ${claims.length} ${claims.length === 1 ? "line" : "lines"} worth checking`
+          : "Published, but Genie was less sure than usual about this one",
+        detail: claims.length ? claims.join(" · ") : (reviewNote.reasons[0] || null),
+        meta: { actionId: action.id, confidence: guard.confidence },
+      });
+    } catch {}
+  }
+
   // ── REFRESH branch — re-optimized content republished IN PLACE (same URL) ──
   // Keeps the page's ranking equity instead of forking a duplicate. Targets the
   // hosted Genie Page it came from; re-pings indexing so the update is picked up.
@@ -206,7 +252,7 @@ export async function POST(_request, { params }) {
         faq: Array.isArray(p.faq) ? p.faq : null,
       });
       const result = { url: page.url, pageId: page.id, publishedAt: now, channel: "genie_pages", refreshed: true };
-      await supabase.from("actions").update({ status: "done", result, executed_at: now, updated_at: now }).eq("id", action.id);
+      await supabase.from("actions").update({ status: "done", result: reviewNote ? { ...result, flagged: reviewNote } : result, executed_at: now, updated_at: now }).eq("id", action.id);
       try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
       try { const { pingIndexNow } = await import("@/lib/indexnow"); await pingIndexNow(page.url); } catch {}
       try { const { pingGoogleIndex } = await import("@/lib/google-index"); await pingGoogleIndex(supabase, user.id, page.url); } catch {}
@@ -235,7 +281,7 @@ export async function POST(_request, { params }) {
       return json({ ok: false, needsConnection: needsConn, error: r.error }, needsConn ? 400 : 502);
     }
     const result = { url: r.url, tweetId: r.id, publishedAt: new Date().toISOString(), channel: "x" };
-    await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+    await supabase.from("actions").update({ status: "done", result: reviewNote ? { ...result, flagged: reviewNote } : result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
     try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
     return json({ ok: true, result });
   }
@@ -333,7 +379,7 @@ export async function POST(_request, { params }) {
           });
         } catch {}
       }
-      await supabase.from("actions").update({ status: "done", result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
+      await supabase.from("actions").update({ status: "done", result: reviewNote ? { ...result, flagged: reviewNote } : result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
       try { await supabase.from("action_outcomes").insert({ action_id: action.id, user_id: user.id, event: "executed", meta: result }); } catch {}
       // Instant-index it (free) so Bing/Yandex — and the engines AI search reads —
       // pick it up in hours, not weeks. No-op if INDEXNOW_KEY isn't set.

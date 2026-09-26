@@ -67,7 +67,9 @@ export async function GET() {
     wordpress: { label: "WordPress", connected: !!byProvider.wordpress, broken: !!broken.wordpress, category: "publish" },
     // Any other site: /blog served by Genie through one rewrite rule (lib/own-blog.js).
     own_blog: { label: "Your own blog", connected: !!byProvider.ownblog?.meta?.verifiedAt, category: "publish" },
-    x: { label: "X (Twitter)", connected: !!byProvider.x, category: "publish" },
+    // X is deliberately absent: there is no way to connect it and no path that
+    // posts to it. Reporting it here made every screen that reads this think it
+    // was one OAuth away from working.
     email: { label: "Outreach email (Resend)", connected: !!process.env.RESEND_API_KEY, category: "reach", system: true },
     commerce: { label: "Revenue (any provider webhook)", connected: commerce, category: "measure" },
   };

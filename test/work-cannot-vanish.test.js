@@ -223,3 +223,64 @@ describe("an engine that stops says so somewhere that lasts", () => {
     expect(selftest).toMatch(/The reason is in the detail beside this row/);
   });
 });
+
+describe("nothing offers a connection that cannot exist", () => {
+  // X was dead in three independent places at once — no link to the connect flow,
+  // the queue never marks a social post sendable, and Approvals copies to the
+  // clipboard before any send. Four screens went on implying it was connectable.
+  it("the connections page does not claim X can be connected", () => {
+    const page = read("app/connections/page.js");
+    // Comments stripped: the phrase survives in the note explaining it was wrong.
+    const code = page.split(String.fromCharCode(10))
+      .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*") && !l.trim().startsWith("/*"))
+      .join(String.fromCharCode(10));
+    expect(code).not.toMatch(/X connected/);
+    expect(code).not.toMatch(/I\.x\.connected/);
+    expect(code).not.toMatch(/X_ERRORS|x_error|x_connected/);
+    // The copy-and-paste flow it really has is still described.
+    expect(page).toMatch(/Nothing to connect/);
+  });
+
+  it("the status route does not report X as a connection", () => {
+    const status = read("app/api/connections/status/route.js");
+    expect(status).not.toMatch(/x: \{ label: "X \(Twitter\)"/);
+  });
+
+  it("the trust ramp is computed only for channels that have one", () => {
+    const trust = read("app/api/trust/route.js");
+    expect(trust).toMatch(/const CHANNELS = \["blog", "email"\]/);
+  });
+
+  it("the OAuth routes say why rather than half-working", () => {
+    for (const f of ["app/api/connect/x/route.js", "app/api/connect/x/start/route.js", "app/api/connect/x/callback/route.js"]) {
+      expect(read(f)).toMatch(/status: 410/);
+    }
+  });
+});
+
+describe("the publish guard's middle verdict is not thrown away", () => {
+  // It grades everything publish / review / block and only "block" was handled,
+  // so an article with an unverified-sounding claim went live on the owner's own
+  // domain, under their name, with nobody told.
+  const execute = read("app/api/actions/[id]/execute/route.js");
+
+  it("a flagged article still publishes, so the machine does not stall", () => {
+    expect(execute).toMatch(/if \(guard\.decision === "review"\)/);
+    // No early return inside the review branch: it records and falls through.
+    const at = execute.indexOf('if (guard.decision === "review")');
+    const branch = execute.slice(at, execute.indexOf("REFRESH branch", at));
+    expect(branch).not.toMatch(/return json/);
+  });
+
+  it("but the owner is told the same day, with the sentences not a count", () => {
+    expect(execute).toMatch(/type: "publish\.flagged"/);
+    expect(execute).toMatch(/lines" : "line"\} worth checking|worth checking/);
+    expect(execute).toMatch(/detail: claims\.length \? claims\.join/);
+  });
+
+  it("and the flag is stored on the action, not only announced once", () => {
+    expect(execute).toMatch(/result: reviewNote \? \{ \.\.\.result, flagged: reviewNote \} : result/);
+    // Declared before the first branch that can finish, or the email path throws.
+    expect(execute.indexOf("let reviewNote = null;")).toBeLessThan(execute.indexOf("result: reviewNote ?"));
+  });
+});

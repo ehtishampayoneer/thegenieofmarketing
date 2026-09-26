@@ -10,7 +10,13 @@ import { hostOf } from "@/lib/business";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CHANNELS = ["blog", "x", "linkedin", "medium", "reddit", "quora", "email"];
+// Email is the only channel with a ramp — the only one where Genie can act on the
+// outside world unattended (app/trust/page.js says so, and lib/autonomy.js is read
+// by /api/outreach/campaign alone). The publishing channels always wait for
+// someone to press Approve. `blog` stays because the owner sees a level for their
+// own site; the rest were decorative, and each cost up to two event queries a page
+// load to compute a number that changed nothing.
+const CHANNELS = ["blog", "email"];
 
 export async function GET(request) {
   const supabase = createClient();

@@ -1,107 +1,33 @@
 // app/api/connect/x/callback/route.js
-// X sends the user back here with a code. We verify state, exchange the code
-// (with the PKCE verifier) for access + refresh tokens, fetch the handle, and
-// store the connection. Refresh token + expiry live in the meta jsonb.
-
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+// ── CLOSED. THERE IS NO WAY TO CONNECT X, AND NOTHING THAT WOULD POST TO IT. ──
+//
+// Nothing in the app links here: zero references in the whole repo. Even if a
+// connection existed it would do nothing, because app/api/approvals/route.js
+// marks only articles and emails sendable, and app/approvals/page.js copies a
+// social post to the clipboard and returns before any send could happen.
+//
+// The product decided not to auto-post to social — automated posting is what gets
+// accounts flagged — and lib/selftest.js already says so out loud: "X posts are
+// copy and paste now, so there is nothing to connect." Three screens went on
+// implying otherwise. They no longer do, and neither does this.
+//
+// The copy-and-paste flow is untouched: Genie still writes the post every night
+// and Approvals still opens X with it ready.
+//
+// Optional tidy-up: X_CLIENT_ID, X_CLIENT_SECRET and X_REDIRECT_URI can come out
+// of Vercel.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
-  const state = searchParams.get("state");
-  const cookieState = request.cookies.get("x_oauth_state")?.value;
-  const verifier = request.cookies.get("x_pkce_verifier")?.value;
+const GONE = { ok: false, error: "X is not connectable. Genie writes each post and you paste it from Approvals." };
 
-  // Return to the onboarding welcome step if that's where the connect began.
-  const fromWelcome = request.cookies.get("oauth_from")?.value === "welcome";
-  const back = (q) => {
-    const params = String(q || "").replace(/^&/, "");
-    const dest = fromWelcome ? "/welcome" : "/connections";
-    const all = [params, fromWelcome ? "resume=connect" : ""].filter(Boolean).join("&");
-    const r = NextResponse.redirect(absolute(`${dest}${all ? `?${all}` : ""}`));
-    r.cookies.set("oauth_from", "", { maxAge: 0, path: "/" });
-    return r;
-  };
-
-  // X says why it refused (access_denied, invalid_request…). This used to be read
-  // as "state_mismatch", which sent the owner hunting for a cookie problem.
-  const xErr = searchParams.get("error");
-  if (xErr) return back(`&x_error=${encodeURIComponent(xErr)}`);
-  if (!code || !state || !verifier || state !== cookieState) {
-    return back("&x_error=state_mismatch");
-  }
-
-  const clientId = process.env.X_CLIENT_ID;
-  const clientSecret = process.env.X_CLIENT_SECRET;
-  const redirectUri = process.env.X_REDIRECT_URI;
-
-  // Exchange the code for tokens.
-  let tokens;
-  try {
-    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${basic}` },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-        code_verifier: verifier,
-        client_id: clientId,
-      }),
-    });
-    tokens = await res.json().catch(() => ({}));
-    if (!res.ok || !tokens.access_token) {
-      // unauthorized_client = wrong client secret or a "Native App" type (no secret);
-      // invalid_request with a redirect complaint = callback URL mismatch.
-      return back(`&x_error=token_exchange&x_detail=${encodeURIComponent(String(tokens?.error || res.status))}`);
-    }
-  } catch {
-    return back("&x_error=token_exchange");
-  }
-
-  // Fetch the handle so we can show "Connected as @handle".
-  let handle = null, xUserId = null;
-  try {
-    const me = await fetch("https://api.twitter.com/2/users/me", {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const j = await me.json();
-    handle = j?.data?.username || null;
-    xUserId = j?.data?.id || null;
-  } catch {}
-
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(absolute("/login"));
-
-  const expiresAt = new Date(Date.now() + (tokens.expires_in || 7200) * 1000).toISOString();
-  const { error: saveErr } = await supabase.from("connections").upsert(
-    {
-      user_id: user.id,
-      provider: "x",
-      access_token: tokens.access_token,
-      meta: { refresh_token: tokens.refresh_token || null, expires_at: expiresAt, handle, x_user_id: xUserId },
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,provider" }
-  );
-  // Same silent failure the Google callback used to have: X approved, the save
-  // failed, and the page just said "not connected".
-  if (saveErr) return back("&x_error=save");
-
-  const res = back(handle ? `&x_connected=${encodeURIComponent(handle)}` : "&x_connected=1");
-  res.cookies.delete("genie_return");
-  res.cookies.delete("x_pkce_verifier");
-  res.cookies.delete("x_oauth_state");
-  return res;
+export async function GET() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }
-
-function absolute(path) {
-  const base = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
-  return base + path;
+export async function POST() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
+}
+export async function DELETE() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }

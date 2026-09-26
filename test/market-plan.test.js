@@ -260,3 +260,70 @@ describe("the approvals queue groups by country", () => {
     expect(queue).toMatch(/red: \{ label: "Hard", dot: "var\(--signal-danger\)"/);
   });
 });
+
+// ── TWO DIFFERENT QUESTIONS, TWO DIFFERENT MEASURES ──
+// Sending used to be split by SEO difficulty, which has nothing to do with
+// whether a stranger in that country will reply. Once ability-to-pay was weighted
+// in for B2B it produced the opposite of the intent: the United States ranked
+// first on opportunity and got nine emails a day while India, ranked second, took
+// eighteen for being easier to rank in.
+describe("email where the buyers are, write where you can rank", () => {
+  const P = [
+    { name: "United States", iso2: "US", score: 71, difficulty: "Hard" },
+    { name: "India", iso2: "IN", score: 68, difficulty: "Medium" },
+    { name: "United Kingdom", iso2: "GB", score: 64, difficulty: "Hard" },
+  ];
+
+  it("sends most to the market worth most, whatever colour it is", () => {
+    const live = activeMarkets(P, 35);
+    const us = live.find((m) => m.iso2 === "US");
+    const india = live.find((m) => m.iso2 === "IN");
+    expect(us.tier).toBe("red");
+    expect(india.tier).toBe("amber");
+    expect(us.emailsToday).toBeGreaterThanOrEqual(india.emailsToday);
+  });
+
+  it("still never bets the whole day on one country", () => {
+    const live = activeMarkets(P, 35);
+    for (const m of live) expect(m.emailsToday).toBeLessThan(35 * 0.6);
+    expect(live.reduce((n, m) => n + m.emailsToday, 0)).toBe(35);
+  });
+
+  it("writes mostly for the market it can actually rank in", () => {
+    const live = activeMarkets(P, 35);
+    const counts = {};
+    for (let i = 0; i < 6; i++) { const m = nextMarket(live, counts); counts[m.name] = (counts[m.name] || 0) + 1; }
+    expect(counts["India"]).toBeGreaterThan(counts["United States"] || 0);
+  });
+
+  it("shares evenly when nobody has measured a score", () => {
+    const named = activeMarkets([{ name: "Spain" }, { name: "Italy" }], 10);
+    expect(named.map((m) => m.emailsToday).sort()).toEqual([5, 5]);
+  });
+});
+
+describe("a paid B2B seller is not sent to the markets least able to pay", () => {
+  it("ranks by ability to pay, and leaves difficulty alone", async () => {
+    const { scoreMarkets } = await import("@/lib/markets");
+    const profile = { targetCustomer: "furniture retailers", whatTheySell: "AR catalogues" };
+    const pick = (audience) => scoreMarkets({ entity: { dims: { audience, commerceModel: "saas" } }, profile })
+      .rows.filter((r) => r.targetable).slice(0, 5).map((r) => r.iso2);
+
+    const b2b = pick("b2b");
+    const global = pick("global");
+    // The countries that can pay a European price rise for a B2B seller...
+    expect(b2b).toContain("US");
+    expect(b2b).toContain("GB");
+    // ...and the cheap-to-rank ones no longer take the top of the list.
+    expect(b2b.slice(0, 3)).not.toContain("PH");
+    expect(b2b.slice(0, 3)).not.toContain("KE");
+    // A general-audience business is unchanged.
+    expect(global).not.toEqual(b2b);
+
+    // Difficulty is a fact about the country, not about who is selling.
+    const d = (audience) => Object.fromEntries(
+      scoreMarkets({ entity: { dims: { audience, commerceModel: "saas" } }, profile })
+        .rows.map((r) => [r.iso2, r.difficulty]));
+    expect(d("b2b")).toEqual(d("global"));
+  });
+});

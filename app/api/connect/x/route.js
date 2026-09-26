@@ -1,32 +1,33 @@
 // app/api/connect/x/route.js
-// Status + disconnect for the X connection.
-
-import { createClient } from "@/lib/supabase/server";
+// ── CLOSED. THERE IS NO WAY TO CONNECT X, AND NOTHING THAT WOULD POST TO IT. ──
+//
+// Nothing in the app links here: zero references in the whole repo. Even if a
+// connection existed it would do nothing, because app/api/approvals/route.js
+// marks only articles and emails sendable, and app/approvals/page.js copies a
+// social post to the clipboard and returns before any send could happen.
+//
+// The product decided not to auto-post to social — automated posting is what gets
+// accounts flagged — and lib/selftest.js already says so out loud: "X posts are
+// copy and paste now, so there is nothing to connect." Three screens went on
+// implying otherwise. They no longer do, and neither does this.
+//
+// The copy-and-paste flow is untouched: Genie still writes the post every night
+// and Approvals still opens X with it ready.
+//
+// Optional tidy-up: X_CLIENT_ID, X_CLIENT_SECRET and X_REDIRECT_URI can come out
+// of Vercel.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const GONE = { ok: false, error: "X is not connectable. Genie writes each post and you paste it from Approvals." };
+
 export async function GET() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false, connected: false });
-
-  const { data } = await supabase.from("connections").select("meta")
-    .eq("user_id", user.id).eq("provider", "x").maybeSingle();
-
-  return json({ ok: true, connected: !!data, handle: data?.meta?.handle || null });
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }
-
+export async function POST() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
+}
 export async function DELETE() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return json({ ok: false }, 401);
-  const { error } = await supabase.from("connections").delete()
-    .eq("user_id", user.id).eq("provider", "x");
-  if (error) return json({ ok: false, error: error.message }, 500);
-  return json({ ok: true });
-}
-
-function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }

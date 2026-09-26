@@ -1,49 +1,33 @@
 // app/api/connect/x/start/route.js
-// Begins X (Twitter) OAuth 2.0 with PKCE. Generates a code verifier/challenge,
-// stashes verifier + state in a short-lived httpOnly cookie, and redirects the
-// user to X to authorize posting from their account.
-
-import { NextResponse } from "next/server";
-import crypto from "crypto";
+// ── CLOSED. THERE IS NO WAY TO CONNECT X, AND NOTHING THAT WOULD POST TO IT. ──
+//
+// Nothing in the app links here: zero references in the whole repo. Even if a
+// connection existed it would do nothing, because app/api/approvals/route.js
+// marks only articles and emails sendable, and app/approvals/page.js copies a
+// social post to the clipboard and returns before any send could happen.
+//
+// The product decided not to auto-post to social — automated posting is what gets
+// accounts flagged — and lib/selftest.js already says so out loud: "X posts are
+// copy and paste now, so there is nothing to connect." Three screens went on
+// implying otherwise. They no longer do, and neither does this.
+//
+// The copy-and-paste flow is untouched: Genie still writes the post every night
+// and Approvals still opens X with it ready.
+//
+// Optional tidy-up: X_CLIENT_ID, X_CLIENT_SECRET and X_REDIRECT_URI can come out
+// of Vercel.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request) {
-  const clientId = process.env.X_CLIENT_ID;
-  const redirectUri = process.env.X_REDIRECT_URI;
-  const from = new URL(request.url).searchParams.get("from"); // "welcome" → resume onboarding
-  if (!clientId || !redirectUri) {
-    return NextResponse.redirect(absolute("/connections?x_error=not_configured"));
-  }
+const GONE = { ok: false, error: "X is not connectable. Genie writes each post and you paste it from Approvals." };
 
-  const verifier = base64url(crypto.randomBytes(48));
-  const challenge = base64url(crypto.createHash("sha256").update(verifier).digest());
-  const state = base64url(crypto.randomBytes(24));
-
-  const scope = ["tweet.read", "tweet.write", "users.read", "offline.access"].join(" ");
-  const url = new URL("https://twitter.com/i/oauth2/authorize");
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("scope", scope);
-  url.searchParams.set("state", state);
-  url.searchParams.set("code_challenge", challenge);
-  url.searchParams.set("code_challenge_method", "S256");
-
-  const res = NextResponse.redirect(url.toString());
-  // Short-lived, httpOnly — verifier never reaches the browser JS.
-  const cookieOpts = { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 600 };
-  res.cookies.set("x_pkce_verifier", verifier, cookieOpts);
-  res.cookies.set("x_oauth_state", state, cookieOpts);
-  if (from === "welcome") res.cookies.set("oauth_from", "welcome", cookieOpts);
-  return res;
+export async function GET() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }
-
-function base64url(buf) {
-  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+export async function POST() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }
-function absolute(path) {
-  const base = (process.env.APP_URL || "https://thegenieofmarketing.vercel.app").replace(/\/+$/, "");
-  return base + path;
+export async function DELETE() {
+  return new Response(JSON.stringify(GONE), { status: 410, headers: { "Content-Type": "application/json" } });
 }
