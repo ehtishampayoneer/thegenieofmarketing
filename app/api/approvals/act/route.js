@@ -79,8 +79,15 @@ export async function POST(request) {
       await learnFromSkip(supabase, user.id, before?.target?.host, { what: before?.type || "action", title: before?.title });
       return json({ ok: true });
     }
-    // approve → approved (enters publish queue; owned/executable are published by
-    // the queue via the execute route). Learn from the approval.
+    // ── APPROVED IS THE END OF THE LINE, SO IT HAS TO LEAVE A MARK ──
+    // This comment used to say "enters publish queue". There is no publish queue:
+    // nothing in this codebase ever reads status "approved" — one write, zero
+    // reads. Everything that is not an article or an email comes here, so a social
+    // post, a Google Business post, a review request or a listing was approved,
+    // vanished from the queue and the waiting count, and left no line anywhere in
+    // "Everything Genie did". For draft-and-you-post work that IS the finish — the
+    // owner posts it themselves — but a finish with no record is indistinguishable
+    // from losing it. Learn from the approval, and say it happened.
     const { data: a } = await supabase.from("actions").select("type, title, target, payload").eq("id", id).eq("user_id", user.id).maybeSingle();
     // A listing approved = the owner opened the page to submit it. Recorded so
     // the self-test and reports can count listings; the action itself already
@@ -95,6 +102,16 @@ export async function POST(request) {
       } catch {}
     }
     await supabase.from("actions").update({ status: "approved", updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
+    try {
+      const { logActivity } = await import("@/lib/activity");
+      const what = String(a?.type || "item").replace(/_/g, " ");
+      const where = a?.payload?.platform ? ` for ${a.payload.platform}` : "";
+      await logActivity(supabase, user.id, {
+        host: a?.target?.host || null, verb: "approved", icon: "✓",
+        message: `You approved a ${what}${where}`,
+        detail: a?.title || null, meta: { type: a?.type || null, actionId: id },
+      });
+    } catch {}
     await recordDecision(supabase, {
       userId: user.id, host: a?.target?.host || null, kind: "approval",
       choice: a?.title || a?.type || "action",

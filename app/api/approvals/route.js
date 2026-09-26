@@ -56,7 +56,16 @@ export async function GET(request) {
       // then hid it from the only person who could fix it. The owner saw a
       // toast once, navigated away, and the article was gone for good while
       // Today still told them to approve their first one.
-      .eq("user_id", user.id).in("status", ["proposed", "needs_review", "failed"]).neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(50);
+      .eq("user_id", user.id).in("status", ["proposed", "needs_review", "failed"]).neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint")
+      // ── FIFTY OF THEM, CHOSEN BY NOBODY ──
+      // This was `.limit(50)` with no `.order()`, so Postgres returned whichever
+      // fifty it felt like. countWaiting counts the queue exactly, so the screen
+      // could honestly say "62 waiting" while `?all=1` was structurally incapable
+      // of ever showing twelve of them — and expireStaleDrafts retires unreachable
+      // drafts at fourteen days. Newest first, and asking for everything now
+      // actually means everything.
+      .order("created_at", { ascending: false })
+      .limit(showAll ? 250 : 50);
     for (const a of actions || []) items.push(normalizeAction(a));
   } catch {}
 

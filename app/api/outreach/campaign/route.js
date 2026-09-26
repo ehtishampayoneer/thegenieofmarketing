@@ -17,6 +17,7 @@ import { audienceOf, PARTNER } from "@/lib/audience";
 import { repliedProfile, lookalikeNiche } from "@/lib/lookalike";
 import { genieBrain } from "@/lib/brain";
 import { logActivity } from "@/lib/activity";
+import { logger } from "@/lib/log";
 
 import { briefBlock } from "@/lib/business-brief";
 import { connScopes } from "@/lib/gmail";
@@ -313,10 +314,11 @@ export async function POST(request) {
       userId, host, channel: "email", content: `${subject}\n\n${emailBody}`,
     });
     if (!decision.execute) {
-      await stageForApproval(supabase, {
+      const didStage = await stageForApproval(supabase, {
         userId, host, contact: c, subject, body: emailBody, reason: decision.reason, market: c.market || null,
       });
-      staged++;
+      // Only a draft that landed is a draft that is waiting.
+      if (didStage) staged++;
       continue;
     }
     // deliverEmail, not sendOne: it tries the user's OWN Gmail first and only
@@ -398,7 +400,7 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
       subject = fillBlanks(subject, who).text;
     } catch {}
 
-    await supabase.from("actions").insert({
+    const { error: stageErr } = await supabase.from("actions").insert({
       user_id: userId,
       type: "outreach_email",
       // Provenance travels with the draft: by the time the owner approves this,
@@ -420,5 +422,19 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
         heldBecause: reason || null,
       },
     });
-  } catch {}
+    // ── THE COUNT HAS TO BE OF THINGS THAT EXIST ──
+    // supabase-js RETURNS its errors, it does not throw them, so this insert could
+    // fail and the whole function still looked like it had worked. The caller then
+    // counted it and the activity feed told the owner "5 outreach emails are
+    // waiting for you to approve". They opened Approvals to nothing, on the one
+    // screen whose whole job is to prove Genie did something.
+    if (stageErr) {
+      logger.warn("outreach.stage_failed", { host: host || null, error: String(stageErr.message || stageErr).slice(0, 200) });
+      return false;
+    }
+    return true;
+  } catch (e) {
+    logger.warn("outreach.stage_threw", { host: host || null, error: String(e?.message || e).slice(0, 200) });
+    return false;
+  }
 }
