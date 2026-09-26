@@ -55,11 +55,25 @@ describe("the queue asks for three, not forty", () => {
     expect(page).toMatch(/\?all=1/);
   });
 
+  // ── ONE NUMBER, COUNTED ONCE ──
+  // The menu said 36 while this page said "3 for you today, 74 lined up behind
+  // them". Both were measuring the length of a list a `.limit()` had already cut,
+  // and the menu's could never exceed forty however much work was waiting. They now
+  // share one counter.
+  it("counts the queue rather than measuring a trimmed list", () => {
+    expect(route).toMatch(/const waiting = await countWaiting\(supabase, user\.id\)/);
+    expect(route).toMatch(/const total = Math\.max\(waiting, items\.length\)/);
+    const today = readFileSync(join(process.cwd(), "app/api/today/route.js"), "utf8");
+    expect(today).toMatch(/out\.approvalsCount = await countWaiting\(supabase, user\.id\)/);
+    // And the old cap-then-add is gone, not merely bypassed.
+    expect(today).not.toMatch(/approvalsCount \+= Math\.min\(20/);
+  });
+
   it("reports how many are waiting, and counts the whole queue in `count`", () => {
     // The bug this codebase keeps having is a number that quietly means something
     // other than its label. `count` is the queue; `backlog` is what is held back.
     expect(route).toMatch(/backlog/);
-    expect(route).toMatch(/count:\s*items\.length/);
+    expect(route).toMatch(/count: total,/);
   });
 
   it("tells the owner before they start, not only when they finish", () => {

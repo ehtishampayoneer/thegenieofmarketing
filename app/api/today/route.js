@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveEntity } from "@/lib/growth-memory";
 import { hostOf } from "@/lib/business";
 import { getEvents } from "@/lib/events";
+import { countWaiting } from "@/lib/queue-count";
 import { swallow } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -157,7 +158,14 @@ export async function GET() {
       .from("actions").select("id, type, title, priority, payload, target")
       .eq("user_id", user.id).eq("status", "proposed").neq("type", "media_outreach").neq("type", "foundation").neq("type", "recovery").neq("type", "local_services").neq("type", "sprint").limit(20);
     const list = actions || [];
-    out.approvalsCount = list.length;
+    // ── THE BADGE COUNTS THE QUEUE, NOT THE ROWS THIS QUERY HAPPENED TO FETCH ──
+    // It used to be list.length, and the query above stops at twenty. So the number
+    // beside Approvals in the menu was "up to 20 actions, plus up to 20 pitches",
+    // and it said 36 while the queue itself said 3 waiting and 74 behind them. Three
+    // numbers on one screen, none of them the same, and the one in the menu could
+    // never exceed 40 however much work was waiting. A count query costs nothing and
+    // counts the thing its label names.
+    out.approvalsCount = await countWaiting(supabase, user.id);
     // How many of the team's bots worked in the last 15 minutes (lib/swarm/live.js),
     // for the live count beside "Your team" in the menu.
     try {
@@ -166,12 +174,6 @@ export async function GET() {
       const ev = await getEvents(supabase, { userId: user.id, types: ["swarm.tested", "swarm.improved"], since, limit: 50 });
       const { data: act } = await supabase.from("activity").select("verb, message, created_at").eq("user_id", user.id).gte("created_at", since).limit(50);
       out.teamLive = liveView({ tested: ev.filter((e) => e.type === "swarm.tested"), improved: ev.filter((e) => e.type === "swarm.improved"), activity: act || [] }).activeBots;
-    } catch {}
-    // Get featured pitches waiting to be sent are in Approvals too (see /api/approvals).
-    try {
-      const { MEDIA_TYPE, isPendingPitch } = await import("@/lib/media-store");
-      const { data: pitches } = await supabase.from("actions").select("payload").eq("user_id", user.id).eq("type", MEDIA_TYPE).order("created_at", { ascending: false }).limit(60);
-      out.approvalsCount += Math.min(20, (pitches || []).filter(isPendingPitch).length);
     } catch {}
     if (list.length) out.approvals = list.slice(0, 3).map(approvalView);
   } catch {}

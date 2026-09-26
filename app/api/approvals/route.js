@@ -27,6 +27,7 @@ import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 import { ownerSignal, penaltyFor } from "@/lib/owner-signal";
+import { countWaiting } from "@/lib/queue-count";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,13 +120,19 @@ export async function GET(request) {
 
   const ownedCount = batched.filter((i) => i.owned).length;
   const shown = showAll ? batched : batched.slice(0, DAILY_CARDS);
-  const backlog = Math.max(0, items.length - shown.reduce((n, i) => n + (i.batch?.length || 1), 0));
+  // The true size of the queue, counted rather than measured off a list three
+  // `.limit()` calls have already trimmed — and counted by the SAME function the
+  // menu badge uses, so the two can never again show different numbers for the
+  // same thing on the same screen.
+  const waiting = await countWaiting(supabase, user.id);
+  const total = Math.max(waiting, items.length);
+  const backlog = Math.max(0, total - shown.reduce((n, i) => n + (i.batch?.length || 1), 0));
   return json({
     ok: true, live: true,
     // `count` stays the size of the whole queue: the screen says "3 for you today,
     // 12 waiting", and a number that quietly meant something else is the bug this
     // codebase keeps having.
-    count: items.length, ownedCount, backlog, showingAll: showAll, perDay: DAILY_CARDS,
+    count: total, ownedCount, backlog, showingAll: showAll, perDay: DAILY_CARDS,
     items: shown,
   });
 }
