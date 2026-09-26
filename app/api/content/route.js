@@ -222,12 +222,22 @@ export async function POST(request) {
     // Nothing writer-grade was free. That is a deliberate skip, not a failure:
     // tonight's miss becomes tomorrow's properly written article, and the owner
     // never reads a flat one wondering why Genie got worse.
+    // ── A NIGHT WITH NO ARTICLE HAS TO LEAVE A RECORD ──
+    // The nightly run starts this engine and lets go (lib/genie-jobs.js fire()),
+    // because waiting would get the orchestrator killed at 60 seconds and the rest
+    // of the pipeline would never start. The cost is that every explanation this
+    // route returns goes into a reply nobody is holding — and this route recorded
+    // no events at all, so a run that deliberately skipped writing, or wrote an
+    // article and failed to save it, looked exactly like a run that never happened.
     if (e instanceof QualityUnavailableError) {
+      await reportSkipped(supabase, userId, host, "writer_unavailable", "Every writer-grade model was busy, so Genie chose to skip rather than publish a flat article.");
       return json({ ok: false, retryable: true, skipped: "writer_unavailable", message: "Every good writing model is busy. Genie will write this tomorrow rather than write it badly." }, 503);
     }
     if (e instanceof AllProvidersFailedError) {
+      await reportSkipped(supabase, userId, host, "all_providers_busy", "Every AI provider refused or timed out.");
       return json({ ok: false, retryable: true, message: "Genie is busy — try again in a moment." }, 503);
     }
+    await reportSkipped(supabase, userId, host, "write_failed", String(e?.message || e));
     return json({ ok: false, error: "Couldn't write the content." }, 500);
   }
 
@@ -545,6 +555,20 @@ export async function POST(request) {
     socialFailed, socialSkippedForTime,
     meta: { engine: provider, shape: shapeUsed?.shape || null, shortened: !!shapeUsed?.clamped, ms: Date.now() - routeStarted },
   });
+}
+
+/** One row in `events` on a night that produced no article, with the reason. The
+ *  self-test reads these, so "nothing was produced" can say why. */
+async function reportSkipped(supabase, userId, host, reason, detail) {
+  if (!supabase || !userId) return;
+  try {
+    const { recordEvent } = await import("@/lib/events");
+    await recordEvent(supabase, {
+      userId, host: host || null, type: "content.skipped", actor: "genie", subject: reason,
+      data: { reason, detail: String(detail || "").slice(0, 300) },
+      dedupeKey: `content-skipped:${reason}:${new Date().toISOString().slice(0, 10)}`,
+    });
+  } catch {}
 }
 
 function buildArticlePrompt({ ai, gsc, topic, directives = [], pick = null, existingLinks = [], paa = [], firstParty = null, context = "", plan = "", shape = null, market = null }) {

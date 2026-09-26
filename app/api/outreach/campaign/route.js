@@ -77,7 +77,10 @@ export async function POST(request) {
       canSend = connScopes(conn).includes("gmail.send");
     } catch {}
   }
-  if (!canSend) return json({ ok: false, needsSender: true, error: "Connect Gmail on the Connections page so outreach sends from your own address." }, 200);
+  if (!canSend) {
+    await reportBlocked(supabase, userId, host, "no_sender", "Gmail is not connected, so nothing can be sent from the owner's own address.");
+    return json({ ok: false, needsSender: true, error: "Connect Gmail on the Connections page so outreach sends from your own address." }, 200);
+  }
   const plan = prof?.plan === "pro" ? "pro" : "free";
   const { cap, ramping, reason: capReason } = await effectiveDailyCap(supabase, userId, plan);
 
@@ -329,6 +332,7 @@ export async function POST(request) {
     // No usable sender means every send in this batch will fail the same way, so
     // stop rather than marking the whole day's contacts as failed.
     if (res.needsSender || res.needsConfig) {
+      await reportBlocked(supabase, userId, host, "sender_failed", res.error);
       return json({ ok: false, needsSender: true, sent, error: res.error }, 200);
     }
     await supabase.from("outreach_log").insert({
@@ -381,6 +385,31 @@ function json(obj, status = 200) {
 // actually sent, and a draft nobody has approved has not been sent — counting it
 // there would inflate "emails sent" and, worse, make sourceContacts() treat the
 // person as already contacted and never write to them again.
+// ── AN ENGINE THAT STOPS HAS TO SAY SO SOMEWHERE THAT LASTS ──
+// The nightly run starts each engine and lets go on purpose: waiting would get the
+// orchestrator killed at Vercel's 60 seconds and the rest of the pipeline would
+// never start (see lib/genie-jobs.js). The cost of that design is that every
+// sentence these routes return is written into a reply nobody is holding.
+//
+// So an owner whose Gmail disconnects got exactly this, every night, for ever:
+// "Connect Gmail on the Connections page so outreach sends from your own address"
+// — returned at HTTP 200, four seconds after the caller had already walked away.
+// No event, no activity row, no screen. Outreach simply stopped, silently, and the
+// only clue was a number that stayed at zero.
+//
+// One row in `events` per night that produced nothing, with the reason. The
+// self-test reads it, so "nothing was produced" can now say why.
+async function reportBlocked(supabase, userId, host, reason, detail) {
+  try {
+    const { recordEvent } = await import("@/lib/events");
+    await recordEvent(supabase, {
+      userId, host, type: "outreach.blocked", actor: "genie", subject: reason,
+      data: { reason, detail: String(detail || "").slice(0, 300) },
+      dedupeKey: `outreach-blocked:${reason}:${new Date().toISOString().slice(0, 10)}`,
+    });
+  } catch {}
+}
+
 async function stageForApproval(supabase, { userId, host, contact, subject, body, reason, market = null }) {
   try {
     // ── THE CARD MUST NOT ASK THE OWNER TO FILL A BLANK ──

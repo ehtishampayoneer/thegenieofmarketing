@@ -189,3 +189,37 @@ describe("one escalation ladder, not two", () => {
     expect(page).toMatch(/What this needs now:/);
   });
 });
+
+describe("an engine that stops says so somewhere that lasts", () => {
+  // The nightly run starts each engine and lets go on purpose — waiting would get
+  // the orchestrator killed at Vercel's 60 seconds and the rest of the pipeline
+  // would never start. The cost is that everything these routes return goes into a
+  // reply nobody is holding. Neither recorded a single event, so an owner whose
+  // Gmail disconnected got "Connect Gmail on the Connections page" every night for
+  // ever, at HTTP 200, four seconds after the caller walked away.
+  const content = read("app/api/content/route.js");
+
+  it("the writing engine records a night it produced nothing", () => {
+    expect(content).toMatch(/type: "content\.skipped"/);
+    expect(content).toMatch(/reportSkipped\(supabase, userId, host, "writer_unavailable"/);
+    expect(content).toMatch(/reportSkipped\(supabase, userId, host, "all_providers_busy"/);
+  });
+
+  it("the outreach engine records why it could not send", () => {
+    expect(campaign).toMatch(/type: "outreach\.blocked"/);
+    expect(campaign).toMatch(/reportBlocked\(supabase, userId, host, "no_sender"/);
+    expect(campaign).toMatch(/reportBlocked\(supabase, userId, host, "sender_failed"/);
+  });
+
+  it("one row per reason per day, not one per contact", () => {
+    // A disconnected mailbox would otherwise write a row for every company in the
+    // night's list, and bury the worklog under its own error.
+    expect(campaign).toMatch(/dedupeKey: `outreach-blocked:\$\{reason\}:/);
+    expect(content).toMatch(/dedupeKey: `content-skipped:\$\{reason\}:/);
+  });
+
+  it("the self-test reads them, so 'nothing produced' can say why", () => {
+    expect(selftest).toMatch(/\.in\("type", \["outreach\.blocked", "content\.skipped"\]\)/);
+    expect(selftest).toMatch(/The reason is in the detail beside this row/);
+  });
+});
