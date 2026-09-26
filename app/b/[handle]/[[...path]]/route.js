@@ -27,7 +27,20 @@ import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// An ARTICLE never changes once published, so it can be cached hard.
 const CACHE = "public, max-age=300, s-maxage=600, stale-while-revalidate=86400";
+
+// ── A LIST MUST NOT BE SERVED STALE FOR A DAY ──
+// The index gains an article whenever the owner approves one, and it was carrying
+// the same header as the articles: ten minutes fresh, then served STALE for up to
+// twenty-four hours while it revalidated behind the reader's back. So the copy
+// cached while the blog was still empty kept being handed out after the first
+// article went live — the article reachable at its own address, in the sitemap and
+// in the feed, and the blog page still saying "New articles are on their way".
+//
+// A minute is plenty for a page that changes once a day, and the owner seeing
+// their first article appear immediately is worth far more than the cache hit.
+const LIST_CACHE = "public, max-age=0, s-maxage=60, must-revalidate";
 
 export async function GET(_req, { params }) {
   const handle = String(params.handle || "");
@@ -59,14 +72,39 @@ export async function GET(_req, { params }) {
   return notFound();
 }
 
-async function listPages({ admin, userId, handle }, limit = 200) {
+// ── ONE READ, SHARED BY EVERY PAGE THAT LISTS ARTICLES ──
+// The index, the sitemap, the RSS feed and llms.txt each called this with their own
+// limit, and they disagreed: the article appeared in the sitemap, the feed and
+// llms.txt, and not on the index, in the same deployment, for the same owner. An
+// article that is live and invisible on its own blog is the worst version of that
+// bug, because everything else looks right.
+//
+// Whatever the cause, four callers asking the same question four slightly different
+// ways is how it became possible to get four different answers. They now share one
+// read, resolved once per request, so the index cannot ever again show less than
+// the sitemap already knows about.
+//
+// `*` rather than a column list on purpose: the article page has always used `*`
+// and has always worked, while this one named six columns. That is the only other
+// difference between the query that worked and the query that did not.
+async function listPages(ctx, limit = 1000) {
+  if (ctx._pages) return ctx._pages.slice(0, limit);
+  let rows = [];
   try {
-    const { data } = await admin.from("published_pages")
-      .select("slug, title, meta_description, published_at, updated_at, business_name")
-      .eq("user_id", userId).eq("handle", handle).eq("status", "published")
-      .order("published_at", { ascending: false }).limit(limit);
-    return data || [];
-  } catch { return []; }
+    const { data, error } = await ctx.admin.from("published_pages").select("*")
+      .eq("user_id", ctx.userId).eq("handle", ctx.handle).eq("status", "published")
+      .order("published_at", { ascending: false, nullsFirst: false }).limit(1000);
+    if (error) throw error;
+    rows = data || [];
+  } catch (e) {
+    // Silence here is what let the index render an empty page next to a sitemap
+    // that listed the article. It is still not allowed to throw, but it must not
+    // be quiet about it either.
+    try { const { logger } = await import("@/lib/log"); logger.warn("blog.listPages_failed", { handle: ctx.handle, error: String(e?.message || e).slice(0, 160) }); } catch {}
+    rows = [];
+  }
+  ctx._pages = rows;
+  return rows.slice(0, limit);
 }
 
 async function getPage({ admin, userId, handle }, slug) {
@@ -97,7 +135,7 @@ async function indexPage(ctx) {
     </div>`;
   return html(doc({
     ctx, title: `Articles & guides | ${name}`, description: `Guides and answers from ${name}.`, canonical: ctx.base, body,
-  }));
+  }), LIST_CACHE);
 }
 
 async function articlePage(ctx, slug) {
@@ -178,7 +216,7 @@ async function sitemap(ctx) {
   const urls = [`  <url><loc>${xml(ctx.base)}</loc></url>`].concat(pages.map((p) =>
     `  <url><loc>${xml(ownArticleUrl(ctx.base, p.slug))}</loc><lastmod>${new Date(p.updated_at || p.published_at || Date.now()).toISOString()}</lastmod></url>`));
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`;
-  return new Response(body, { status: 200, headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": CACHE } });
+  return new Response(body, { status: 200, headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": LIST_CACHE } });
 }
 
 async function rss(ctx) {
@@ -189,7 +227,7 @@ async function rss(ctx) {
     return `    <item><title>${xml(p.title)}</title><link>${xml(link)}</link><guid isPermaLink="true">${xml(link)}</guid><pubDate>${new Date(p.published_at || Date.now()).toUTCString()}</pubDate><description>${xml(p.meta_description || "")}</description></item>`;
   }).join("\n");
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>\n    <title>${xml(name)}: articles</title>\n    <link>${xml(ctx.base)}</link>\n    <description>Guides and answers from ${xml(name)}.</description>\n${items}\n  </channel></rss>`;
-  return new Response(body, { status: 200, headers: { "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": CACHE } });
+  return new Response(body, { status: 200, headers: { "Content-Type": "application/rss+xml; charset=utf-8", "Cache-Control": LIST_CACHE } });
 }
 
 async function llms(ctx) {
@@ -197,7 +235,7 @@ async function llms(ctx) {
   const name = pages[0]?.business_name || ctx.site.replace(/^https?:\/\//, "");
   const out = [`# ${one(name)}: articles`, "", `> Guides and answers from ${one(name)} (${ctx.site}). Each page has a plain-markdown version at its URL followed by /md.`, ""];
   for (const p of pages) out.push(`- [${one(p.title)}](${ownArticleUrl(ctx.base, p.slug)})${p.meta_description ? `: ${one(p.meta_description)}` : ""}`);
-  return new Response(out.join("\n") + "\n", { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": CACHE } });
+  return new Response(out.join("\n") + "\n", { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": LIST_CACHE } });
 }
 
 // ── Pieces ───────────────────────────────────────────────────────────────────
@@ -249,8 +287,8 @@ function doc({ ctx, title, description, canonical, body, extraHead = "" }) {
 </html>`;
 }
 
-function html(s) {
-  return new Response(s, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": CACHE } });
+function html(s, cache = CACHE) {
+  return new Response(s, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
 }
 function notFound() {
   return new Response("<!doctype html><title>Not found</title><p>Not found.</p>", { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } });
