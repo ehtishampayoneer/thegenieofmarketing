@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/v2/primitives";
 import { EmptyState } from "@/components/ui/v2/DataState";
 import { fetchLive } from "@/lib/live";
 import { climbFrom } from "@/lib/keyword-health";
-import { campaignStatus, difficultyTier } from "@/lib/keyword-plan";
+import { campaignStatus, difficultyTier, nextMove } from "@/lib/keyword-plan";
 
 const RANGE_OPTS = [{ id: 7, label: "Last 7 days" }, { id: 30, label: "Last 30 days" }, { id: 90, label: "Last 90 days" }, { id: 9999, label: "All time" }];
 const COMPARE_OPTS = [{ id: "prev", label: "Previous period" }, { id: "start", label: "Start of tracking" }];
@@ -567,7 +567,13 @@ function KeywordDetail({ k }) {
     ["Target", s.target ? `Top ${s.target.position} in ~${s.target.days}d` : "—"],
     ["AI citation", k.ai_cited ? "Cited ✓" : "Not yet"],
   ];
-  const move = moveFor(s.state);
+  // ── ONE LADDER, NOT TWO ──
+  // This page had its own copy of the escalation ladder, six states written out
+  // again in different words, while lib/keyword-plan.js exported the real one with
+  // zero callers. Two ladders drift, and the one that drifts is always the one the
+  // owner reads. The library's version also knows the live numbers — how many spots
+  // it climbed, what position it won at — which the copy here could not say.
+  const move = nextMove(s).why;
   return (
     <div className="flex flex-col gap-2.5">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -575,20 +581,10 @@ function KeywordDetail({ k }) {
       </div>
       <div className="flex items-start gap-2 pt-1">
         <Icon.spark size={14} style={{ color: "var(--accent-ink)", marginTop: 2, flexShrink: 0 }} />
-        <p className="text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>Genie’s next move:</span> {move}</p>
+        <p className="text-[13px] mg-muted"><span className="font-semibold" style={{ color: "var(--fg)" }}>What this needs now:</span> {move}</p>
       </div>
     </div>
   );
-}
-function moveFor(state) {
-  return {
-    achieved: "Won. Refresh it periodically and defend the position.",
-    climbing: "Climbing. Keep internal links flowing and don’t touch what’s working.",
-    stalled: "Stuck despite content. Building authority: a supporting cluster and getting listed on the pages Google already trusts.",
-    indexing: "Published. Waiting for Google to index and place it, usually days to weeks.",
-    working: "Early. Adding a supporting piece and internal links to build topical strength.",
-    not_started: "Queued. Writing the answer page that targets this next.",
-  }[state] || "Feeding it content and links.";
 }
 
 function AddKeyword({ host, onAdded, onCancel }) {

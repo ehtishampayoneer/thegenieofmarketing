@@ -168,3 +168,24 @@ describe("the capabilities page does not promise what the product does not do", 
     expect(caps).toMatch(/the only channel with a ramp/);
   });
 });
+
+describe("one escalation ladder, not two", () => {
+  // lib/keyword-plan.js exported nextMove with zero callers while app/growth
+  // re-implemented the same six states in its own words. Two ladders drift, and
+  // the one that drifts is always the one the owner reads.
+  it("the page uses the library's ladder", () => {
+    const page = read("app/growth/page.js");
+    expect(page).toMatch(/import \{ campaignStatus, difficultyTier, nextMove \}/);
+    expect(page).toMatch(/nextMove\(s\)\.why/);
+    expect(page).not.toMatch(/function moveFor/);
+  });
+
+  it("does not claim Genie acts on rungs it does not act on", () => {
+    // Genie writes the page for not_started, escalates a stalled one, refreshes a
+    // won one. It does nothing for indexing, working or climbing, so calling all
+    // six "Genie's next move" promised three things that never happen.
+    const page = read("app/growth/page.js");
+    expect(page).not.toMatch(/next move:/i);
+    expect(page).toMatch(/What this needs now:/);
+  });
+});
