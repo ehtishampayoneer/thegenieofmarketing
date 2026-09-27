@@ -13,7 +13,7 @@ import { createTrackedLink } from "@/lib/links";
 import { isSuppressed, unsubUrl } from "@/lib/compliance";
 import { decideExecution } from "@/lib/autonomy";
 import { strategyPromptBlock } from "@/lib/strategy-store";
-import { dueFollowUps, draftFollowUp, markCold } from "@/lib/followup";
+import { dueFollowUps, draftFollowUp, markCold, MAX_FOLLOWUPS } from "@/lib/followup";
 import { audienceOf, PARTNER } from "@/lib/audience";
 import { repliedProfile, lookalikeNiche } from "@/lib/lookalike";
 import { genieBrain } from "@/lib/brain";
@@ -152,11 +152,29 @@ export async function POST(request) {
   // Chasing someone who already let a message through is worth more than finding
   // a stranger, so when the day is tight the follow-up is the one that sends.
   let followedUp = 0, wentCold = 0;
+  let stagedFollowUps = 0;
   try {
     const { due, cold } = await dueFollowUps(supabase, userId, host, { limit: Math.max(0, Math.min(room, 6)) });
     wentCold = await markCold(supabase, { userId, host, cold });
+    // A follow-up already waiting in Approvals is not due again tonight. Without
+    // this, one unapproved follow-up would be drafted afresh every night and the
+    // queue would fill with copies of the same second email.
+    //
+    // And a follow-up the owner SKIPPED is an answer: do not follow up with this
+    // person. Asking again the next night, and the night after, would turn one
+    // decision into a chore that never ends.
+    let waiting = new Set();
+    try {
+      const { data: pend } = await supabase.from("actions").select("payload, status")
+        .eq("user_id", userId).eq("type", "outreach_email")
+        .in("status", ["proposed", "needs_review", "dismissed"]).limit(3000);
+      waiting = new Set((pend || [])
+        .filter((a) => a.status !== "dismissed" || a.payload?.followup)
+        .map((a) => String(a.payload?.to || "").toLowerCase()).filter(Boolean));
+    } catch {}
     for (const c of due) {
       if (followedUp >= room) break;
+      if (waiting.has(String(c.email || "").toLowerCase())) continue;
       if (await isSuppressed(supabase, userId, c.email)) continue;
       const d = await draftFollowUp({
         contact: c, business: { name: prof.company_name }, step: c.step,
@@ -165,6 +183,26 @@ export async function POST(request) {
       // No writer-grade model free, or the model failed: this person waits for
       // tomorrow rather than getting a weak message today.
       if (d.failed) continue;
+
+      // -- A FOLLOW-UP IS AN EMAIL, AND ASKS THE SAME QUESTION --
+      // First emails went through lib/autonomy.js and waited in Approvals until
+      // the owner approved them. Follow-ups did not: the second and third emails
+      // to the same people were written and sent from the owner's Gmail every
+      // night with nobody ever seeing them, while the product told the owner
+      // nothing sends until they approve it. They now take exactly the same gate.
+      // Approved, they carry their step with them, so the sequence advances.
+      const gate = await decideExecution(supabase, {
+        userId, host, channel: "email", content: `${d.subject}\n\n${d.body}`,
+      });
+      if (!gate.execute) {
+        const didStage = await stageForApproval(supabase, {
+          userId, host, contact: { email: c.email, name: c.name || null, company: c.company || null, source: c.source || null },
+          subject: d.subject, body: d.body, reason: gate.reason, market: c.market || null,
+          followup: { step: c.step, of: MAX_FOLLOWUPS },
+        });
+        if (didStage) stagedFollowUps++;
+        continue;
+      }
       const res = await deliverEmail(supabase, userId, {
         to: c.email, subject: d.subject, body: d.body,
         unsubscribeUrl: unsubUrl((process.env.APP_URL || "").replace(/\/+$/, ""), userId, c.email),
@@ -354,6 +392,16 @@ export async function POST(request) {
       detail: `${cap - already - sent} more allowed today`, meta: { sent, plan },
     });
   }
+  if (stagedFollowUps > 0) {
+    try {
+      await logActivity(supabase, userId, {
+        host, verb: "staged", icon: "\u21a9",
+        message: `${stagedFollowUps} follow-up${stagedFollowUps > 1 ? "s are" : " is"} waiting for you to approve`,
+        detail: "People you emailed a few days ago who have not replied. Each one is a new angle, not a resend, and nothing sends until you approve it.",
+        meta: { stagedFollowUps },
+      });
+    } catch {}
+  }
   if (staged > 0) {
     await logActivity(supabase, userId, {
       host, verb: "staged", icon: "✉️",
@@ -369,7 +417,7 @@ export async function POST(request) {
     ? ` Skipped ${undeliverable} dead address${undeliverable > 1 ? "es" : ""} to protect your sender reputation.`
     : "";
   const fu = followedUp > 0 ? ` Also followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.` : "";
-  return json({ ok: true, sent, followedUp, wentCold, failed, undeliverable, cap, ramping, capReason, lookalike: lookalike.reason || null, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
+  return json({ ok: true, sent, followedUp, stagedFollowUps, wentCold, failed, undeliverable, cap, ramping, capReason, lookalike: lookalike.reason || null, remaining: Math.max(0, cap - already - sent - followedUp), message: sent > 0 ? `Sent ${sent} email${sent > 1 ? "s" : ""} to new potential clients.${fu}${protectedNote}` : followedUp > 0 ? `Followed up with ${followedUp} ${followedUp === 1 ? "person" : "people"} who hadn't replied.${protectedNote}` : `Couldn't send right now.${protectedNote}` });
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -412,7 +460,7 @@ async function reportBlocked(supabase, userId, host, reason, detail) {
   } catch {}
 }
 
-async function stageForApproval(supabase, { userId, host, contact, subject, body, reason, market = null }) {
+async function stageForApproval(supabase, { userId, host, contact, subject, body, reason, market = null, followup = null }) {
   try {
     // ── THE CARD MUST NOT ASK THE OWNER TO FILL A BLANK ──
     // The send path already refuses one, but by then the owner has read the draft.
@@ -436,7 +484,11 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
       type: "outreach_email",
       // Provenance travels with the draft: by the time the owner approves this,
       // days later, the contact row it came from is no longer in hand.
-      title: `Email ${contact.name || contact.company || contact.email}`,
+      // A follow-up says so on the card, so the owner never mistakes the second
+      // email to a company for a first one to a new find.
+      title: followup
+        ? `Follow-up ${followup.step} of ${followup.of}: ${contact.name || contact.company || contact.email}`
+        : `Email ${contact.name || contact.company || contact.email}`,
       status: "proposed",
       priority: "medium",
       target: { host, email: contact.email, source: contact.source || null },
@@ -451,6 +503,9 @@ async function stageForApproval(supabase, { userId, host, contact, subject, body
         body,
         text: body,              // what the Approvals editor reads and edits
         heldBecause: reason || null,
+        // Travels to /api/actions/[id]/execute so the send is logged as the
+        // follow-up it is and the sequence moves on to the next step.
+        followup: followup || null,
       },
     });
     // ── THE COUNT HAS TO BE OF THINGS THAT EXIST ──

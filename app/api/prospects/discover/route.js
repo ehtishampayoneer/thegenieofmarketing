@@ -57,7 +57,19 @@ export async function POST(request) {
     rivalCat = rivalCategory({ ai: scanAi, strategy });
   } catch {}
 
-  let { prospects, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit, needsPlatform, rivalCat });
+  // -- NOBODY THE OWNER HAS ALREADY WRITTEN TO --
+  // Every search used to start from nothing, so a company emailed on Monday came
+  // back on Wednesday as a new find, with a new cold pitch that ignored the one
+  // already in their inbox. They are left out now, before their site is fetched,
+  // and their next email comes from the follow-up schedule instead.
+  let exclude = null;
+  try {
+    const { contactedSet } = await import("@/lib/contacted");
+    exclude = await contactedSet(supabase, userId);
+  } catch {}
+
+  let { prospects, stats, debug } = await discoverProspects({ niche, userBusiness, limit: 8, ctx, fit, needsPlatform, rivalCat, exclude });
+  stats = stats || { alreadyContacted: 0, noSuchDomain: 0, wouldNotLoad: 0 };
 
   // RECOVERY: if the main path came up empty (a transient provider hiccup), run the
   // candidate call once more — it reliably names companies at this calmer moment —
@@ -67,12 +79,25 @@ export async function POST(request) {
   if (!prospects.length) {
     diag = await diagnoseCandidates(niche);
     if (diag.companies?.length) {
-      prospects = await buildProspectsFromCompanies(diag.companies, userBusiness, 8);
+      // The fallback obeys the same two rules as the main path: nobody already
+      // contacted, and nobody whose site will not load.
+      const { alreadyContacted } = await import("@/lib/contacted");
+      const fresh = exclude ? diag.companies.filter((c) => !alreadyContacted(exclude, { domain: c.domain })) : diag.companies;
+      stats.alreadyContacted += diag.companies.length - fresh.length;
+      prospects = await buildProspectsFromCompanies(fresh, userBusiness, 8, { exclude, stats });
       debug = { ...(debug || {}), recovered: prospects.length };
     }
   }
 
-  return json({ ok: true, niche, prospects, count: prospects.length, debug: { ...(debug || {}), diag } });
+  // What was left out, and why, so a short list explains itself instead of
+  // looking like Genie did not try.
+  const left = [];
+  if (stats.alreadyContacted) left.push(`${stats.alreadyContacted} you have already contacted (their follow-ups come through Approvals)`);
+  const dead = (stats.noSuchDomain || 0) + (stats.wouldNotLoad || 0);
+  if (dead) left.push(`${dead} whose website no longer exists or would not load`);
+  const leftOut = left.length ? `Left out: ${left.join("; ")}.` : "";
+
+  return json({ ok: true, niche, prospects, count: prospects.length, stats, leftOut, debug: { ...(debug || {}), diag } });
 }
 
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } }); }

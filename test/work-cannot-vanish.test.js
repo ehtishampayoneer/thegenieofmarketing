@@ -79,9 +79,17 @@ describe("a draft is only counted when it exists", () => {
   });
 
   it("the owner is only told about emails that are really waiting", () => {
-    const at = campaign.indexOf("waiting for you to approve");
-    expect(at).toBeGreaterThan(-1);
-    expect(campaign.slice(at - 200, at)).toMatch(/if \(staged > 0\)/);
+    // Every place that says "waiting for you to approve", not just the first.
+    // Comments that quote the old wording are not messages to the owner.
+    const isComment = (at) => campaign.slice(campaign.lastIndexOf(String.fromCharCode(10), at) + 1, at).trim().startsWith("//");
+    const hits = [...campaign.matchAll(/waiting for you to approve/g)].map((m) => m.index).filter((at) => !isComment(at));
+    expect(hits.length).toBeGreaterThanOrEqual(2);
+    for (const at of hits) {
+      expect(campaign.slice(Math.max(0, at - 400), at)).toMatch(/if \((staged|stagedFollowUps) > 0\)/);
+    }
+    // ...and both counters only move when a draft actually landed.
+    expect(campaign).toMatch(/if \(didStage\) staged\+\+/);
+    expect(campaign).toMatch(/if \(didStage\) stagedFollowUps\+\+/);
   });
 });
 

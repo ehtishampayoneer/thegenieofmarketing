@@ -179,6 +179,6 @@ describe("it works for whatever the owner sells, not one industry", () => {
   it("is read from the plan at the point of discovery", () => {
     const route = read("app/api/prospects/discover/route.js");
     expect(route).toMatch(/rivalCat = rivalCategory\(\{ ai: scanAi, strategy \}\)/);
-    expect(route).toMatch(/discoverProspects\(\{[^}]*rivalCat \}\)/);
+    expect(route).toMatch(/discoverProspects\(\{[^}]*\brivalCat\b[^}]*\}\)/);
   });
 });

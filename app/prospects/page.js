@@ -19,6 +19,9 @@ export default function ProspectsPage() {
   const [err, setErr] = useState("");
   const [rows, setRows] = useState(null); // null = not run yet
   const [debug, setDebug] = useState(null);
+  // What the search left out and why: companies already contacted, and ones whose
+  // website no longer exists. Without it a short list looks like Genie gave up.
+  const [leftOut, setLeftOut] = useState("");
   const [toast, setToast] = useState("");
 
   // Takes an override so a suggestion chip can fill the box AND run in one tap.
@@ -31,7 +34,7 @@ export default function ProspectsPage() {
     setBusy(true); setErr(""); setRows(null); setDebug(null);
     try {
       const j = await fetch("/api/prospects/discover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche: q }) }).then((r) => r.json());
-      if (j?.ok) { setRows((j.prospects || []).map((p) => ({ ...p, subject: p.pitch?.subject || "", body: p.pitch?.body || "", state: "idle" }))); setDebug(j.debug || null); }
+      if (j?.ok) { setRows((j.prospects || []).map((p) => ({ ...p, subject: p.pitch?.subject || "", body: p.pitch?.body || "", state: "idle" }))); setDebug(j.debug || null); setLeftOut(j.leftOut || ""); }
       else setErr(j?.error || "Couldn't run that search. Try again.");
     } catch { setErr("Something interrupted the search. Try again."); }
     setBusy(false);
@@ -96,7 +99,10 @@ export default function ProspectsPage() {
 
       {rows !== null && !busy && rows.length === 0 && (
         <Card className="mt-5 p-8 text-center">
-          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>{debug && debug.companies > 0 ? "Found companies, but couldn’t reach their sites." : "Couldn’t pull companies just now."}</p>
+          <p className="text-[15px] font-bold" style={{ color: "var(--fg)" }}>{debug?.alreadyContacted && !debug?.wouldNotLoad && !debug?.noSuchDomain
+            ? "Every company this search turned up, you have already contacted."
+            : debug && debug.companies > 0 ? "Found companies, but couldn’t reach their sites." : "Couldn’t pull companies just now."}</p>
+          {leftOut ? <p className="text-[12.5px] mg-subtle" style={{ marginTop: 4 }}>{leftOut} Try a different kind of company for new names.</p> : null}
           <p className="mt-1.5 text-[13px] mg-muted max-w-md mx-auto">
             {debug && debug.companies > 0
               ? "Their sites blocked the crawl. Try again, or a slightly different niche."
@@ -115,6 +121,7 @@ export default function ProspectsPage() {
       {rows !== null && rows.length > 0 && (
         <div className="mt-5 flex flex-col gap-4">
           <p className="mg-klabel">Genie found {rows.length} {rows.length === 1 ? "prospect" : "prospects"}</p>
+          {leftOut ? <p className="text-[12.5px] mg-subtle" style={{ marginTop: 4 }}>{leftOut}</p> : null}
           {rows.map((p, i) => (
             <Card key={i} className="p-5 mg-lift">
               <div className="flex items-start justify-between gap-3 flex-wrap">

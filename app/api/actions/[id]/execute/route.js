@@ -94,6 +94,10 @@ export async function POST(_request, { params }) {
     }
     await logSend(supabase, {
       user_id: user.id, host, contact_email: to, contact_name: p.toName || null,
+      // A follow-up approved from the queue is logged as one. Logged as a first
+      // email, dueFollowUps would count the steps wrong and write the same second
+      // email again.
+      ...(p.followup?.step ? { is_followup: true, followup_step: p.followup.step } : {}),
       subject: p.subject, body: bodyText, status: "sent",
       email_id: res.id || null, sent_at: new Date().toISOString(),
     }, { where: "execute" });
