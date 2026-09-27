@@ -477,3 +477,33 @@ describe("nobody is chased after they have replied", () => {
     expect(g).toMatch(/const \{ error: markErr \}/);
   });
 });
+
+describe("the morning email says what the app says", () => {
+  // Written for the first version of Genie and never updated: it counted every
+  // waiting draft while the app says "3 for you today", ranked differently from the
+  // queue, linked to a page that only redirects, claimed outreach is "always posted
+  // by you", and never mentioned a held or failed article.
+  const brief = read("app/api/brief/route.js");
+
+  it("reads the same three states the queue and its badge count", () => {
+    expect(brief).not.toMatch(/\.eq\("status", "proposed"\)/);
+    expect((brief.match(/\.in\("status", \["proposed", "needs_review", "failed"\]\)/g) || []).length).toBe(2);
+  });
+
+  it("uses the app's daily number and the app's ranking", () => {
+    expect(brief).toMatch(/import \{ DAILY_CARDS \} from "@\/lib\/queue-count"/);
+    expect(brief).toMatch(/const KIND_RANK = \{ article: 0, outreach_email: 1, media_pitch: 2 \}/);
+  });
+
+  it("puts held and failed work first, and links where the work is", () => {
+    expect(brief).toMatch(/Held by the safety check/);
+    expect(brief).toMatch(/Did not go out/);
+    expect(brief).toMatch(/\/approvals/);
+    expect(brief).not.toMatch(/\/dashboard/);
+  });
+
+  it("no longer says outreach is always posted by the owner", () => {
+    expect(brief).not.toMatch(/always posted by you/);
+    expect(brief).toMatch(/Emails send from your own Gmail when you approve them/);
+  });
+});
