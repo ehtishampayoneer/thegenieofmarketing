@@ -304,8 +304,8 @@ export async function POST(request) {
   //
   // It now asks the same question the rest of the product was built to ask, and
   // that nothing had ever called: lib/autonomy.js. Email sends unattended only
-  // when the owner has granted the email channel "auto" in the Trust Center (or
-  // earned it: six approvals and a win) AND the content guard passes AND
+  // when the owner has switched the email channel to "auto" in the Trust Center
+  // (earning it only makes Genie eligible to ask) AND the content guard passes AND
   // confidence is at least 80. Anything short of all three and the draft goes to
   // Approvals instead, which is the safe default for a new account.
   let staged = 0;
