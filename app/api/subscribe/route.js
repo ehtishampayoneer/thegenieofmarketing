@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublishedPage } from "@/lib/pages";
 import { recordEvent } from "@/lib/events";
 import { CORS } from "@/lib/onsite";
+import { ipOf, isLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,23 @@ export async function POST(request) {
   const slug = String(body?.slug || "").trim();
   const source = String(body?.source || "article").slice(0, 40);
   if (!EMAIL.test(email) || email.length > 200) return json({ ok: false, error: "invalid_email" }, 400);
+
+  // ── A PUBLIC LIST THE OWNER LATER EMAILS FROM THEIR OWN GMAIL ──
+  // Every address accepted here joins "People who left their email on your site",
+  // and "Send an update" mails that list from the owner's own mailbox. With no
+  // limit, a script could fill a customer's list with strangers or spam-trap
+  // addresses, and the owner's next update would spend their sending reputation —
+  // the one thing the daily ramp exists to protect — on people who never asked.
+  // A real person signs up once. The honest fix is double opt-in, which needs a
+  // verified sending domain this product does not have yet; this is the speed
+  // bump until then, and it says so.
+  const ip = ipOf(request);
+  if (isLimited(ip, { key: "subscribe", max: 5, windowMs: 60 * 60 * 1000 })
+    || isLimited(`${ip}:${handle}`, { key: "subscribe-page", max: 3, windowMs: 60 * 60 * 1000 })) {
+    // Answer like a success: a bot learns nothing about the limit, and a real
+    // person who somehow hit it is not shown an error on the owner's own site.
+    return json({ ok: true });
+  }
 
   try {
     const admin = createAdminClient();

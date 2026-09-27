@@ -151,6 +151,37 @@ export async function GET(request) {
     }
   }
 
+  // ── THE LAST PLACE A BLANK CAN BE CAUGHT ──
+  // Drafts are cleaned when they are written, and email is cleaned again when it
+  // is sent. Neither reaches a draft written BEFORE those fixes existed, and
+  // neither reaches "Copy & open", which puts the raw text on the owner's
+  // clipboard for a contact form or a composer. A media pitch two days old still
+  // signed off "Best regards, [Your Name]" on this screen, and pasting it would
+  // have sent the brackets to a stranger. Every draft passes through here on its
+  // way to the screen AND the clipboard, whatever engine wrote it and whenever.
+  try {
+    const { fillBlanks } = await import("@/lib/fill-blanks");
+    let prof = {};
+    try {
+      const { data } = await supabase.from("profiles").select("sender_name, company_name").eq("id", user.id).maybeSingle();
+      prof = data || {};
+    } catch {}
+    const sender = prof.sender_name || prof.company_name || null;
+    const company = prof.company_name || prof.sender_name || null;
+    const clean = (text, i) => (typeof text === "string" && text
+      ? fillBlanks(text, {
+          recipientName: i.pitch?.name || i.toName || null,
+          recipientCompany: i.pitch?.company || i.company || null,
+          senderName: sender, companyName: company,
+        }).text
+      : text);
+    for (const i of items) {
+      i.draft = clean(i.draft, i);
+      if (i.subject) i.subject = clean(i.subject, i);
+      if (i.pitch?.subject) i.pitch.subject = clean(i.pitch.subject, i);
+    }
+  } catch {}
+
   const signal = await ownerSignal(supabase, user.id);
   for (const i of items) {
     const mult = penaltyFor(signal, i.kind, i.platform);
