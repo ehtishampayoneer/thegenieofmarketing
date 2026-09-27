@@ -11,6 +11,7 @@ import { verifyImageUrl } from "@/lib/card-sign";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const HEX = /^#?[0-9a-fA-F]{6}$/;
 const clampHex = (c, d) => (c && HEX.test(c) ? (c[0] === "#" ? c : "#" + c) : d);

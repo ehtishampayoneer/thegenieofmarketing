@@ -9,6 +9,7 @@ import { recordUsage } from "@/lib/keyword-usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // GET ?host= → today's tap plan (grouped, capped, cooldown-aware)
 export async function GET(request) {

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Save a scan (called automatically after a scan completes, if logged in).
 export async function POST(request) {

@@ -10,6 +10,7 @@ import { READING_CSS, fmtDate } from "@/app/p/reading";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Guarded so a missing service-role key or any read error yields [] → a clean 404.
 const load = cache(async (handle) => {

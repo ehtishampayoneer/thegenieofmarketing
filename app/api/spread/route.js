@@ -20,6 +20,7 @@ import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 90;
 
 export async function GET() {

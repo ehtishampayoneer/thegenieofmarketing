@@ -11,6 +11,7 @@ import { MEDIA_TYPE } from "@/lib/media-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function POST(request) {
   let body = {};

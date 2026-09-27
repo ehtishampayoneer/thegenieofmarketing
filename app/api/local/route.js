@@ -11,6 +11,7 @@ import { buildLocalServices, latestLocalServices } from "@/lib/local-services";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 async function context(supabase, userId, hostHint) {

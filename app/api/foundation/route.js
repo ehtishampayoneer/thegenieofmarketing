@@ -12,6 +12,7 @@ import { FOUNDATION_SITES, buildBios } from "@/lib/foundation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const TYPE = "foundation";
 

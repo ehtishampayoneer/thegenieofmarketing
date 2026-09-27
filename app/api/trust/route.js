@@ -9,6 +9,7 @@ import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Email is the only channel with a ramp — the only one where Genie can act on the
 // outside world unattended (app/trust/page.js says so, and lib/autonomy.js is read

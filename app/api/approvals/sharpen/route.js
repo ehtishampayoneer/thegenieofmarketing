@@ -25,6 +25,7 @@ import { craftBlock, PLATFORMS } from "@/lib/platform-craft";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 // The item's platform string is loose ("twitter/x", "Twitter/X", "gbp"), so map

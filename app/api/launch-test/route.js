@@ -28,6 +28,7 @@ import { learningPeriod } from "@/lib/swarm/live";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 180;
 
 const TEST_KINDS = ["ad", "launch", "offer", "landing", "product", "email", "social", "reddit", "pitch", "article"];

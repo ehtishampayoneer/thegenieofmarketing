@@ -9,6 +9,7 @@ import { recordEvent } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 async function handle(u, e, k) {
   if (!u || !e || !k || !verifyUnsub(u, e, k)) return { ok: false };

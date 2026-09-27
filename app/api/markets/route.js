@@ -21,6 +21,7 @@ import { setCardImage } from "@/lib/card-sign";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60; // drafting the localized page calls the AI — give it room
 
 const slugify = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "landing";

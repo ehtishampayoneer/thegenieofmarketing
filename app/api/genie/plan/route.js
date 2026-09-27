@@ -12,6 +12,7 @@ import { hostOf } from "@/lib/business";
 import { genieBrain } from "@/lib/brain";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 // The playbooks Genie knows how to build. Kept server-side so the prompt is

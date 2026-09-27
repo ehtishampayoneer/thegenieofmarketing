@@ -11,6 +11,7 @@ import { verifiedBlogs, ownArticleUrl } from "@/lib/own-blog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET() {
   let rows = [];

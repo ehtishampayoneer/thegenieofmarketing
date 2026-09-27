@@ -10,6 +10,7 @@ import { verticalsFor } from "@/lib/intent-verticals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const PLAT = {
   reddit: { label: "Reddit", color: "#FF4500" },

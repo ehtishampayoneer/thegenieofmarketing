@@ -28,6 +28,7 @@ import { taggedLink } from "@/lib/attribution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export async function GET(request) {
   const q = new URL(request.url).searchParams;

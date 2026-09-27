@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // money_page_url is where Genie sends buyers to CLOSE (pricing/packages page,
 // checkout, or contact form). Genie never processes payment; it points at

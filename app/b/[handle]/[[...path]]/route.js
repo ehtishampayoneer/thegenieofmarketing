@@ -30,6 +30,7 @@ import { cardGrid, rail, related, indexBody } from "@/lib/blog-ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // An ARTICLE never changes once published, so it can be cached hard.
 const CACHE = "public, max-age=300, s-maxage=600, stale-while-revalidate=86400";
@@ -88,9 +89,10 @@ export async function GET(_req, { params }) {
 // read, resolved once per request, so the index cannot ever again show less than
 // the sitemap already knows about.
 //
-// `*` rather than a column list on purpose: the article page has always used `*`
-// and has always worked, while this one named six columns. That is the only other
-// difference between the query that worked and the query that did not.
+// The cause, found later: Next's Data Cache. Each of those four queries was answered
+// with whatever it returned the first time it ever ran, so they froze at different
+// moments. It then froze THIS read with an article the owner no longer had, listed
+// on the blog and 404 when opened. See lib/supabase/no-store.js.
 async function listPages(ctx, limit = 1000) {
   if (ctx._pages) return ctx._pages.slice(0, limit);
   let rows = [];
@@ -111,12 +113,18 @@ async function listPages(ctx, limit = 1000) {
   return rows.slice(0, limit);
 }
 
+// A read that fails must say so: a 404 from a failed query looks exactly like a 404
+// for an article that does not exist, and only the log can tell them apart.
 async function getPage({ admin, userId, handle }, slug) {
   try {
-    const { data } = await admin.from("published_pages").select("*")
+    const { data, error } = await admin.from("published_pages").select("*")
       .eq("user_id", userId).eq("handle", handle).eq("slug", slug).eq("status", "published").maybeSingle();
+    if (error) throw error;
     return data || null;
-  } catch { return null; }
+  } catch (e) {
+    try { const { logger } = await import("@/lib/log"); logger.warn("blog.getPage_failed", { handle, slug: String(slug).slice(0, 120), error: String(e?.message || e).slice(0, 160) }); } catch {}
+    return null;
+  }
 }
 
 // ── Pages ────────────────────────────────────────────────────────────────────

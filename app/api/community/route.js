@@ -16,6 +16,7 @@ import { genieBrain } from "@/lib/brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 const VALID_PRIO = new Set(["high", "quick_win", "strategic", "low", "medium"]);

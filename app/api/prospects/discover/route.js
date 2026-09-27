@@ -13,6 +13,7 @@ import { discoverProspects, diagnoseCandidates, buildProspectsFromCompanies, fit
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 120;
 
 export async function POST(request) {

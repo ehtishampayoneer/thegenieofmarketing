@@ -16,6 +16,7 @@
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const GONE = {
   ok: false,

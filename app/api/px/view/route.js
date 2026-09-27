@@ -19,6 +19,7 @@ import { userFromToken, resolveHost, limited, refHost, safePath, corsJson, CORS 
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // 1x1 transparent GIF, for the no-JS <img> fallback.
 const GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");

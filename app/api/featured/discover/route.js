@@ -15,6 +15,7 @@ import { actionToOpp, MEDIA_TYPE, REAPPLY_DAYS } from "@/lib/media-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 120;
 
 export async function POST(request) {

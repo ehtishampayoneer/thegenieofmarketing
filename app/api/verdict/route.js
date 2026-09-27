@@ -13,6 +13,7 @@ import { publicVerdict } from "@/lib/verdict";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 const WINDOW_MS = 10 * 60 * 1000; // 10 min

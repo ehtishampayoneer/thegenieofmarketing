@@ -13,6 +13,7 @@ import { dealNum } from "@/lib/recovery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const TYPE = "sprint";
 const LEN_DAYS = 30;

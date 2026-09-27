@@ -10,6 +10,7 @@ import { entityTypeOptions } from "@/lib/entity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 async function latestScanAi(supabase, userId, host) {
   try {

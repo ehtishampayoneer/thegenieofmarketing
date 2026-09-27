@@ -12,6 +12,7 @@ import { logger } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 300;
 
 export async function POST(request) {

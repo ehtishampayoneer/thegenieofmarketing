@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Every user-scoped table. `profiles` is intentionally excluded (only its
 // onboarding flag is reset, below) so the login itself survives.

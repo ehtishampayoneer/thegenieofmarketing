@@ -13,6 +13,7 @@ import { functionLimitMs } from "@/lib/function-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 300;
 
 // CRON_SECRET (nightly run, Vercel cron) or HEARTBEAT_SECRET (the GitHub

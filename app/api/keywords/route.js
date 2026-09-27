@@ -24,6 +24,7 @@ import { strategyPromptBlock, getStrategy } from "@/lib/strategy-store";
 import { volumeLabel } from "@/lib/geo-targets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 120;
 
 const VALID_INTENT = new Set(["informational", "commercial", "transactional", "community"]);

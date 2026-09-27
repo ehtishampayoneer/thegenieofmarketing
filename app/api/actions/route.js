@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const ALLOWED_STATUS = new Set([
   "proposed", "approved", "executing", "done", "failed", "rolled_back", "dismissed",

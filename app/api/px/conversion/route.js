@@ -18,6 +18,7 @@ import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // 1x1 transparent GIF for the no-JS <img> beacon fallback.
 const GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");

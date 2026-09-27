@@ -12,6 +12,7 @@ import { htmlToMarkdown } from "@/lib/markdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const MAX_PAGES = 150;
 const MAX_BYTES = 900_000; // keep the file a sane size for a single fetch

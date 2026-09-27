@@ -24,6 +24,7 @@ import { briefBlock } from "@/lib/business-brief";
 import { connScopes } from "@/lib/gmail";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 120;
 
 export async function GET(request) {

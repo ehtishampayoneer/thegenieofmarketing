@@ -32,6 +32,7 @@ import { TIERS } from "@/lib/market-plan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 export { DAILY_CARDS };
 

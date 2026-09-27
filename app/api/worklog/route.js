@@ -39,6 +39,7 @@ import { repliedProfile, lookalikeNote } from "@/lib/lookalike";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 30;
 
 const DAY = 86400000;

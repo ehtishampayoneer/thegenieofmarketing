@@ -14,6 +14,7 @@ import { ACCEPTED, MAX_AUDIO_BYTES, MEDIA_BUCKET } from "@/lib/video";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Re-exported for the client helper; the value itself lives in lib/video.js.
 export const BUCKET = MEDIA_BUCKET;

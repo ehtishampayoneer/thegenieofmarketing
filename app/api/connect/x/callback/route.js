@@ -19,6 +19,7 @@
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const GONE = { ok: false, error: "X is not connectable. Genie writes each post and you paste it from Approvals." };
 

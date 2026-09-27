@@ -18,6 +18,7 @@ import { getEvents } from "@/lib/events";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const DAY_MS = 86_400_000;
 

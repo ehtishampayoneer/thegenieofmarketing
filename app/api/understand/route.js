@@ -17,6 +17,7 @@ import { interviewTurn, InterviewUnavailable } from "@/lib/interview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 const FIELDS = ["businessName", "businessType", "whatTheySell", "targetCustomer", "industry", "subCategory", "differentiator", "idealCustomer", "painPoints", "whyChooseYou", "conversionGoal", "keyProducts", "proof", "avoid", "tone"];

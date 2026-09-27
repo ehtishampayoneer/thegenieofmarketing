@@ -14,6 +14,7 @@ import SubscribeBox from "@/components/p/SubscribeBox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 // Dedupe the fetch between generateMetadata and the page render. Guarded so a
 // missing service-role key or any read error yields null → a clean 404, never a 500.

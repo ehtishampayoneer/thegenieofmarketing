@@ -10,6 +10,7 @@ import { SCHEMA_MANIFEST } from "@/lib/schema-manifest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const has = (k) => !!(process.env[k] && String(process.env[k]).trim());
 

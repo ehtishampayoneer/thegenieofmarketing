@@ -12,6 +12,7 @@ import { hostOf } from "@/lib/business";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const FIELDS = ["data", "process", "proof", "take"];
 const MKEY = "first_party";

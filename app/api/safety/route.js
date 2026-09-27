@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 const DEFAULTS = { permission_level: 1, kill_switch: false, monthly_spend_cap: 0 };
 
