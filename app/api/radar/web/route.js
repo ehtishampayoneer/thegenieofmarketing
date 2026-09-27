@@ -6,6 +6,7 @@
 //   - guest      : blogs accepting contributors → drafted guest-post pitch
 // All are non-owned → human taps. Each is triaged by Genie into the right kind.
 
+import { gateOpportunity } from "@/lib/opportunity-gate";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
@@ -64,6 +65,13 @@ export async function POST(request) {
       }
     }
     if (candidates.length >= 12) break;
+  }
+  // Nothing whose own page shows it is over a year old, and no sellers. Forum
+  // pages often show no date at all, and those are kept.
+  {
+    const current = candidates.filter((c) => gateOpportunity(c, { maxAgeDays: 365, unknownAge: "keep" }).ok);
+    candidates.length = 0;
+    candidates.push(...current);
   }
   if (!candidates.length) return json({ ok: true, staged: 0, message: "No fresh web openings found right now — Genie will keep looking." });
 

@@ -5,6 +5,7 @@
 // each — then records WHY (Decision Ledger) so Genie can explain and learn.
 // Goal: qualified buyers, not traffic.
 
+import { gateOpportunity, REDDIT_ARCHIVE_DAYS, BUYER_MAX_AGE_DAYS } from "@/lib/opportunity-gate";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { cleanText } from "@/lib/markdown";
 import { resolveRadarUser } from "@/lib/radar-auth";
@@ -88,7 +89,22 @@ export async function POST(request) {
   // return the same pages, every one of them is filtered as already-seen, and
   // the hunt reports zero forever while looking broken. Each step is counted so
   // the run can say which one emptied it.
-  const funnel = { pages: candidates.length, lowIntent: 0, alreadyOnList: 0, notBuyers: 0 };
+  const funnel = { pages: candidates.length, lowIntent: 0, alreadyOnList: 0, notBuyers: 0, tooOld: 0, sellers: 0 };
+
+  // -- A BUYER IS SOMEONE LOOKING, NOW --
+  // This hunt offered nine-year-old Reddit threads, and "buyers" who were
+  // developers announcing their own product. Past three months a person asking
+  // for help has bought something or given up, and someone selling the thing is
+  // the opposite of a buyer. Reddit and Quora must show their age to count here:
+  // Reddit's always can be read from its id; a Quora question with no date is
+  // not proof of anyone looking today. Other sources with no visible date are
+  // kept and left to the judge.
+  candidates = candidates.filter((c) => {
+    const strict = c.platform === "reddit" || c.platform === "quora";
+    const g = gateOpportunity(c, { maxAgeDays: BUYER_MAX_AGE_DAYS, unknownAge: strict ? "drop" : "keep" });
+    if (!g.ok) { if (String(g.reason).startsWith("seller")) funnel.sellers++; else funnel.tooOld++; }
+    return g.ok;
+  });
 
   // 4) Score every candidate for buyer intent, competitor-aware; keep the best.
   //
@@ -102,7 +118,9 @@ export async function POST(request) {
   const floorFor = (c) => (c.group === "growth" ? 25 : 45);
   candidates = candidates.map((c) => ({ ...c, intent: scoreIntent(`${c.title} ${c.snippet || ""}`, { competitors }) }))
     .filter((c) => c.intent.score >= floorFor(c));
-  funnel.lowIntent = funnel.pages - candidates.length;
+  // Pages dropped as too old or as sellers were counted above; do not count them
+  // again here as "low intent", or the run explains itself wrongly.
+  funnel.lowIntent = funnel.pages - funnel.tooOld - funnel.sellers - candidates.length;
   candidates = rankOpportunities(candidates);
 
   // Don't re-surface things already staged — including ones the owner skipped,

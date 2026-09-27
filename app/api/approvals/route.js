@@ -22,6 +22,7 @@
 // low-traffic directory listing in the twenties — and this queue already sorted
 // by it. The cap simply stops showing the tail.
 
+import { pinpoint } from "@/lib/pinpoint";
 import { createClient } from "@/lib/supabase/server";
 import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
@@ -380,6 +381,13 @@ function normalizeAction(a) {
   };
 }
 
+// Reddit hides posts from new accounts, automatically and silently: the owner
+// sees their comment, nobody else does. Said on every Reddit card because it is
+// the difference between a reply that works and one that quietly never existed.
+// This is how to become an account the filters trust, never how to get around
+// them: extra accounts and bought "aged" accounts get the business banned.
+const REDDIT_NOTE = "Reddit hides replies from new accounts automatically. Post from one account, answer helpfully in this community for a week or two before mentioning the business, and never add a link until you have standing there. To check a reply is visible, open it in a private window.";
+
 function normalizePlacement(p) {
   const meta = p.meta || {};
   const owned = !!p.owned;
@@ -393,7 +401,12 @@ function normalizePlacement(p) {
     brand: p.platform,
     title: p.target_title || p.platform,
     outcome: meta.buyer_intent ? `Reach a ${stage || "buyer"} who’s deciding now` : "Show up where your customers are",
-    draft: p.draft || "", why: meta.reason || null, target_url: p.target_url || null,
+    // Opens on the buyer's own words, not the top of a long thread (lib/pinpoint.js).
+    draft: p.draft || "",
+    why: String(p.platform || "").toLowerCase() === "reddit"
+      ? [meta.reason, REDDIT_NOTE].filter(Boolean).join(" ")
+      : (meta.reason || null),
+    target_url: pinpoint(p.target_url, meta.evidence, meta.snippet),
     keyword: p.keyword || null,
     relatedKeywords: [],
     impact: clampNum(meta.intent_score, 70),

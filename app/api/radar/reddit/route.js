@@ -9,6 +9,7 @@
 //   - Value-first: the draft helps first; the product is mentioned only where it
 //     genuinely fits — this is what avoids bans and actually ranks.
 
+import { gateOpportunity, REDDIT_ARCHIVE_DAYS, BUYER_MAX_AGE_DAYS } from "@/lib/opportunity-gate";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { redditSearch } from "@/lib/search";
@@ -75,8 +76,25 @@ export async function POST(request) {
     if (candidates.length >= 8) break;
   }
 
+  // -- ONLY THREADS THAT CAN STILL BE ANSWERED, BY SOMEONE LOOKING --
+  // Reddit archives a thread after six months and takes no new comments on it,
+  // and this used to suggest threads nine years old. A seller announcing their
+  // own product is not an opening either. Freshest first, so the drafts go to
+  // the conversations still happening.
+  let tooOld = 0, sellers = 0;
+  const open = [];
+  for (const c of candidates) {
+    const g = gateOpportunity({ ...c, platform: "reddit" }, { maxAgeDays: REDDIT_ARCHIVE_DAYS });
+    if (g.ok) { open.push({ ...c, ageDays: g.ageDays }); continue; }
+    if (String(g.reason).startsWith("seller")) sellers++; else tooOld++;
+  }
+  open.sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
+  candidates.length = 0;
+  candidates.push(...open);
+
   if (candidates.length === 0) {
-    return json({ ok: true, staged: 0, message: "No fresh Reddit openings found right now — Genie will keep looking." });
+    const why = [tooOld ? `${tooOld} too old to reply to` : "", sellers ? `${sellers} people selling rather than asking` : ""].filter(Boolean).join(", ");
+    return json({ ok: true, staged: 0, message: why ? `No open Reddit threads worth answering today (left out: ${why}). Genie will keep looking.` : "No fresh Reddit openings found right now — Genie will keep looking." });
   }
 
   // 4) Genie writes a value-first placement for each candidate.
@@ -84,7 +102,7 @@ export async function POST(request) {
   try {
     const result = await callAI({
       system:
-        "You are Genie, doing authentic Reddit community marketing. For each thread, write a GENUINELY helpful reply that a knowledgeable human would post. Value first — actually answer or add insight. Mention the product ONLY if it truly helps the reader, and never as a pitch — no marketing voice, no links unless natural, no 'check out'. Redditors instantly smell ads and ban them; the goal is to be helpful and let the product surface naturally. If a thread doesn't fit the product at all, set fit:false. Return ONLY valid JSON.",
+        "You are Genie, doing authentic Reddit community marketing. For each thread, write a GENUINELY helpful reply that a knowledgeable human would post. Value first — actually answer or add insight. Mention the product ONLY if it truly helps the reader, and never as a pitch — no marketing voice, NO LINKS AT ALL, no 'check out'. Name the business in plain words at most once, and only if it genuinely answers the question. Redditors instantly smell ads and ban them; the goal is to be helpful and let the product surface naturally. If a thread doesn't fit the product at all, set fit:false. Return ONLY valid JSON.",
       json: true,
       maxTokens: 4500, timeoutMs: 45000,
       temperature: 0.75,
@@ -109,8 +127,15 @@ export async function POST(request) {
       keyword: c.keyword,
       target_url: c.url,
       target_title: `${c.subreddit || "reddit"} · ${c.title}`.slice(0, 200),
-      kind: it.kind === "new_post" ? "new_post" : "reply",
-      draft: it.draft,
+      // -- BUILT TO SURVIVE REDDIT'S NEW-ACCOUNT FILTERS --
+      // Posts from new accounts were being removed automatically. Two things
+      // trip those filters more than anything: a link, and a new post (rather
+      // than a comment) from an account without history. So Reddit openings
+      // are always replies to an existing thread, and any link the model slips
+      // in is taken out. The owner can add one later, once the account has
+      // standing in that community.
+      kind: "reply",
+      draft: stripLinks(it.draft),
       status: "ready",
       cooldown_days: cooldownFor("reddit"),
       meta: { subreddit: c.subreddit, threadId: c.threadId, snippet: c.snippet, reason: it.reason || null },
@@ -166,4 +191,17 @@ Only include threads that genuinely fit (fit:true). It's correct and expected to
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+}
+
+// Links out of a Reddit draft. A markdown link keeps its words; a bare address
+// becomes the site's plain name ("arqr360.com"), which is how a person mentions a
+// site in conversation and is not a clickable link — deleting it outright left
+// sentences like "Have a look at for an example." that the owner could not post.
+function stripLinks(text) {
+  return String(text || "")
+    .replace(/\[([^\]]+)\]\((?:https?:\/\/|www\.)[^)]+\)/gi, "$1")
+    .replace(/\(?\b(?:https?:\/\/)?(?:www\.)?((?:[a-z0-9-]+\.)+[a-z]{2,})(?:\/[^\s)]*)?\)?/gi, (m, host) =>
+      (/^https?:\/\//i.test(m.replace(/^\(/, "")) || /^\(?www\./i.test(m)) ? host.toLowerCase() : m)
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }

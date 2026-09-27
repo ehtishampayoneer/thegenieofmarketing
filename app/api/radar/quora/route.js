@@ -6,6 +6,7 @@
 //   - Quora is not owned → owned:false → human taps to post.
 //   - One great answer per question (long cooldown); value-first, no ad voice.
 
+import { gateOpportunity } from "@/lib/opportunity-gate";
 import { callAI, AllProvidersFailedError } from "@/lib/ai-router";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { webSearch } from "@/lib/search";
@@ -56,7 +57,22 @@ export async function POST(request) {
     }
     if (candidates.length >= 8) break;
   }
-  if (!candidates.length) return json({ ok: true, staged: 0, message: "No fresh Quora questions found right now — Genie will keep looking." });
+  // -- NOT YEARS-OLD QUESTIONS, NOT SELLERS --
+  // Quora does not archive, and a good question is read for years, so one with
+  // no visible date is kept. One whose own page says it was answered five years
+  // ago is not a live conversation, and was being offered as one.
+  let tooOld = 0, sellers = 0;
+  const current = candidates.filter((c) => {
+    const g = gateOpportunity({ ...c, platform: "quora" }, { maxAgeDays: 365, unknownAge: "keep" });
+    if (!g.ok) { if (String(g.reason).startsWith("seller")) sellers++; else tooOld++; }
+    return g.ok;
+  });
+  candidates.length = 0;
+  candidates.push(...current);
+  if (!candidates.length) {
+    const why = [tooOld ? `${tooOld} over a year old` : "", sellers ? `${sellers} people selling rather than asking` : ""].filter(Boolean).join(", ");
+    return json({ ok: true, staged: 0, message: why ? `No current Quora questions today (left out: ${why}). Genie will keep looking.` : "No fresh Quora questions found right now — Genie will keep looking." });
+  }
 
   let drafted;
   try {
