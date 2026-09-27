@@ -484,6 +484,9 @@ describe("the morning email says what the app says", () => {
   // queue, linked to a page that only redirects, claimed outreach is "always posted
   // by you", and never mentioned a held or failed article.
   const brief = read("app/api/brief/route.js");
+  // The comment explaining the fix quotes the old wording; judge the code.
+  const briefCode = brief.split(String.fromCharCode(10))
+    .filter((l) => !l.trim().startsWith("//")).join(String.fromCharCode(10));
 
   it("reads the same three states the queue and its badge count", () => {
     expect(brief).not.toMatch(/\.eq\("status", "proposed"\)/);
@@ -499,11 +502,11 @@ describe("the morning email says what the app says", () => {
     expect(brief).toMatch(/Held by the safety check/);
     expect(brief).toMatch(/Did not go out/);
     expect(brief).toMatch(/\/approvals/);
-    expect(brief).not.toMatch(/\/dashboard/);
+    expect(briefCode).not.toMatch(/\/dashboard/);
   });
 
   it("no longer says outreach is always posted by the owner", () => {
-    expect(brief).not.toMatch(/always posted by you/);
+    expect(briefCode).not.toMatch(/always posted by you/);
     expect(brief).toMatch(/Emails send from your own Gmail when you approve them/);
   });
 });
