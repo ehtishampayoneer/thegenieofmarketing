@@ -1,0 +1,7 @@
+# Every text file is stored with LF line endings, and is checked out with LF on
+# every machine whatever core.autocrlf says. Without this, a Windows checkout
+# converted some files to CRLF and left others LF, so any test searching for text
+# that spans a line break passed or failed depending on which files git had last
+# rewritten. It blocked a push on 27 Sep with identical code. Vercel builds on
+# Linux, which wants LF anyway. Binary files are detected and left alone.
+* text=auto eol=lf

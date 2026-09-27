@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { repairable, repairNote, MAX_ATTEMPTS } from "@/lib/self-repair";
 import { CLAIM_RULES, scanClaims } from "@/lib/claim-rules";
 
-const read = (p) => readFileSync(join(process.cwd(), p), "utf8");
+// Line endings normalised: Git on Windows checks files out with CRLF, and a
+// literal that spans a line break must match however the file was checked out.
+const read = (p) => readFileSync(join(process.cwd(), p), "utf8").split(String.fromCharCode(13, 10)).join(String.fromCharCode(10));
 
 vi.mock("@/lib/ai-router", () => ({ callAI: vi.fn() }));
 const { callAI } = await import("@/lib/ai-router");
