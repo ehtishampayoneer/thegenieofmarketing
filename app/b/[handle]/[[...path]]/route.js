@@ -20,6 +20,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appBase } from "@/lib/pages";
+import { makeIngestToken } from "@/lib/commerce";
 import { blogOwnerByHandle, ownArticleUrl, rewriteBodyLinks, markerValue } from "@/lib/own-blog";
 import { htmlToMarkdown } from "@/lib/markdown";
 import { READING_CSS, fmtDate, ensureHttp } from "@/app/p/reading";
@@ -270,6 +271,18 @@ function subscribeForm(page, author) {
       </script>`;
 }
 
+// ── THE BLOG COUNTS ITS OWN VISITS ──
+// The owner pastes the embed tag into their own site's pages, but these pages are
+// served by Genie, so a visit to yoursite.com/blog was never counted. The same tag,
+// with the owner's own key, goes on every blog page. Absolute URL: a relative one
+// would be asked of the owner's domain (see the note at the top).
+function visitCounter(ctx) {
+  try {
+    const k = makeIngestToken(ctx.userId);
+    return k ? `<script src="${attr(`${appBase()}/api/embed?k=${encodeURIComponent(k)}`)}" async></script>` : "";
+  } catch { return ""; }
+}
+
 function doc({ ctx, title, description, canonical, body, extraHead = "" }) {
   return `<!doctype html>
 <html lang="en">
@@ -283,6 +296,7 @@ function doc({ ctx, title, description, canonical, body, extraHead = "" }) {
   <meta name="genie-blog" content="${attr(ctx.marker)}">
   <link rel="alternate" type="application/rss+xml" href="${attr(ctx.base)}/rss.xml">
   ${extraHead}
+  ${visitCounter(ctx)}
   <style>${READING_CSS}.gp-eyebrow a+a{margin-left:0}</style>
 </head>
 <body style="margin:0"><main class="gp">${body}</main></body>
