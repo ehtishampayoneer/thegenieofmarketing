@@ -148,7 +148,7 @@ const RULES = [
 const TRUST = [
   { level: "Review", tone: "neutral", means: "Everything waits for your approval. The starting point for every channel.", how: "Default" },
   { level: "Assisted", tone: "info", means: "Genie drafts and you approve with one tap.", how: "After 3 approvals on that channel" },
-  { level: "Auto", tone: "live", means: "Genie acts on that channel without waiting for you.", how: "Only when you switch it on. Genie tells you when it has earned it: 6 approvals and a real reply on that channel" },
+  { level: "Auto", tone: "live", means: "Genie acts on that channel without waiting for you.", how: "Only when you switch it on in the Trust Center, and only once that channel has earned it: 6 approvals and a real reply" },
 ];
 
 // ── 09 · honest limits ────────────────────────────────────────────────────────
