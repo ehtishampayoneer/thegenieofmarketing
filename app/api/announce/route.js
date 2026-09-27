@@ -8,6 +8,7 @@
 // until now there was no way to tell it you had. This is that: the owner's words,
 // Genie's sending discipline.
 
+import { logSend } from "@/lib/send-log";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { createClient } from "@/lib/supabase/server";
 import { hostOf } from "@/lib/business";
@@ -110,7 +111,7 @@ export async function POST(request) {
       return json({ ok: false, needsSender: true, sent, error: res.error }, 200);
     }
     try {
-      await supabase.from("outreach_log").insert({
+      await logSend(supabase, {
         user_id: userId, host, contact_email: person.email, contact_name: person.name || null,
         subject, body: `${greeting}${text}`, status: res.ok ? "sent" : "failed",
         email_id: res.id || null, sent_at: res.ok ? new Date().toISOString() : null,
@@ -118,7 +119,7 @@ export async function POST(request) {
         // announcement has its own step so the follow-up engine never counts it as
         // a chase and starts a sequence off the back of it.
         is_followup: false, followup_step: -1, source: "announcement",
-      });
+      }, { where: "announce" });
     } catch (e) { logger.warn("announce.log_failed", { error: String(e?.message || e).slice(0, 140) }); }
 
     if (res.ok) { sent++; left--; await new Promise((r) => setTimeout(r, 400)); } else failed++;

@@ -10,6 +10,7 @@
 // On success: action.result = { url, postId }, status → done, outcome logged.
 // On failure: status → failed with the reason saved, outcome logged.
 
+import { logSend } from "@/lib/send-log";
 import { createClient } from "@/lib/supabase/server";
 import { markdownToHtml } from "@/lib/markdown";
 import { taggedLink } from "@/lib/attribution";
@@ -90,11 +91,11 @@ export async function POST(_request, { params }) {
     if (!res.ok) {
       return json({ ok: false, error: res.error || "Genie couldn't send that email. Check your Gmail connection." }, 400);
     }
-    await supabase.from("outreach_log").insert({
+    await logSend(supabase, {
       user_id: user.id, host, contact_email: to, contact_name: p.toName || null,
       subject: p.subject, body: bodyText, status: "sent",
       email_id: res.id || null, sent_at: new Date().toISOString(),
-    });
+    }, { where: "execute" });
     const result = { to, subject: p.subject, publishedAt: new Date().toISOString(), channel: "email", emailId: res.id || null };
     await supabase.from("actions").update({ status: "done", result: reviewNote ? { ...result, flagged: reviewNote } : result, executed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", action.id);
     try {

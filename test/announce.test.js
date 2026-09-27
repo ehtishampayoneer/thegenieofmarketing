@@ -83,7 +83,11 @@ describe("it obeys every rule the nightly run obeys", () => {
   });
 
   it("logs every one so it can be read back afterwards", () => {
-    expect(route).toMatch(/from\("outreach_log"\)\.insert\(/);
+    // Through the shared logger, which reads the insert's result and falls back to
+    // the columns the daily cap counts. A bare insert here could fail silently and
+    // leave the sending limit blind (lib/send-log.js).
+    expect(route).toMatch(/await logSend\(supabase, \{/);
+    expect(route).toMatch(/import \{ logSend \} from "@\/lib\/send-log"/);
     expect(route).toMatch(/source: "announcement"/);
   });
 

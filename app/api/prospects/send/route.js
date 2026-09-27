@@ -4,6 +4,7 @@
 // daily cap, and opt-outs, adds a compliant unsubscribe, and logs to outreach_log so
 // it shows in the Genie Inbox as "sent". Never sends to an invalid/opted-out address.
 
+import { logSend } from "@/lib/send-log";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { hostOf } from "@/lib/business";
 import { sentToday, deliverEmail } from "@/lib/email-engine";
@@ -72,11 +73,11 @@ export async function POST(request) {
 
   const r = await deliverEmail(supabase, userId, { to, subject, body: emailBody, unsubscribeUrl: unsubUrl(base, userId, to), source: body?.source || "discovery", name, company });
   try {
-    await supabase.from("outreach_log").insert({
+    await logSend(supabase, {
       user_id: userId, host, contact_email: to, contact_name: name || company,
       subject, body: emailBody, status: r.ok ? "sent" : "failed",
       email_id: r.id || null, sent_at: r.ok ? new Date().toISOString() : null,
-    });
+    }, { where: "prospects-send" });
   } catch {}
 
   if (!r.ok) return json({ ok: false, needsConfig: !!r.needsConfig, error: r.error || "Couldn't send just then." }, r.needsConfig ? 400 : 502);

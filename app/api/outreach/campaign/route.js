@@ -4,6 +4,7 @@
 //         personalized emails from the profile, drips sends (small batches),
 //         logs everything. Returns a report.
 
+import { logSend } from "@/lib/send-log";
 import { createClient } from "@/lib/supabase/server";
 import { resolveRadarUser } from "@/lib/radar-auth";
 import { DAILY_CAP, sentToday, sourceContacts, draftEmail, deliverEmail } from "@/lib/email-engine";
@@ -169,12 +170,12 @@ export async function POST(request) {
         source: c.source, name: c.name || null, company: c.company || null,
       });
       if (res.needsSender || res.needsConfig) break;
-      await supabase.from("outreach_log").insert({
+      await logSend(supabase, {
         user_id: userId, host, contact_email: c.email, contact_name: c.name,
         subject: d.subject, body: d.body, status: res.ok ? "sent" : "failed",
         email_id: res.id || null, sent_at: res.ok ? new Date().toISOString() : null,
         is_followup: true, followup_step: c.step, source: c.source || null,
-      });
+      }, { where: "campaign" });
       if (res.ok) { followedUp++; await sleep(400); }
     }
   } catch {}
@@ -335,14 +336,14 @@ export async function POST(request) {
       await reportBlocked(supabase, userId, host, "sender_failed", res.error);
       return json({ ok: false, needsSender: true, sent, error: res.error }, 200);
     }
-    await supabase.from("outreach_log").insert({
+    await logSend(supabase, {
       user_id: userId, host, contact_email: c.email, contact_name: c.name,
       subject, body: emailBody, status: res.ok ? "sent" : "failed",
       email_id: res.id || null, sent_at: res.ok ? new Date().toISOString() : null,
       // Step 0 is the first message. Provenance lives on the send record too, so a
       // follow-up months later can still say where the address came from.
       is_followup: false, followup_step: 0, source: c.source || null,
-    });
+    }, { where: "campaign" });
     if (res.ok) { sent++; await sleep(400); } else failed++;
   }
 

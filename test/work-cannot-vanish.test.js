@@ -410,3 +410,70 @@ describe("copying is not posting", () => {
     expect(page.slice(at, at + 300)).not.toMatch(/removeById|setDone/);
   });
 });
+
+describe("an email that left is always written down", () => {
+  // Five places logged a sent email and none read the result. That row is what
+  // the daily sending cap counts, so a failed insert left the cap blind: Genie
+  // could keep sending from the owner's Gmail past the limit, re-email the same
+  // stranger, and lose track of who to follow up.
+  const SENDERS = {
+    "app/api/actions/[id]/execute/route.js": "execute",
+    "app/api/announce/route.js": "announce",
+    "app/api/outreach/campaign/route.js": "campaign",
+    "app/api/prospects/send/route.js": "prospects-send",
+  };
+
+  it("nothing writes the send log directly any more", () => {
+    for (const f of Object.keys(SENDERS)) {
+      expect(read(f), f).not.toMatch(/from\("outreach_log"\)\.insert\(/);
+      expect(read(f), f).toMatch(/logSend\(supabase, /);
+    }
+  });
+
+  it("the shared logger falls back to the columns the cap counts, then raises an alarm", () => {
+    const log = read("lib/send-log.js");
+    expect(log).toMatch(/const CORE = \["user_id", "host", "contact_email"/);
+    expect(log).toMatch(/type: "system\.send_unlogged"/);
+  });
+
+  it("an unlogged send turns the self-test red before anything else", () => {
+    const at = selftest.indexOf('.eq("type", "system.send_unlogged")');
+    expect(at).toBeGreaterThan(-1);
+    // It is checked before the ordinary produced/not-produced verdicts.
+    expect(at).toBeLessThan(selftest.indexOf("const known = [articles, emailsDrafted, emailsSent, published]"));
+  });
+
+  it("really does fall back when the full row is refused", async () => {
+    const { logSend } = await import("@/lib/send-log");
+    const inserted = [];
+    const fake = {
+      from: () => ({
+        insert: async (row) => {
+          // Refuse any row carrying a column the live table "does not have".
+          if ("market" in row) return { error: { message: "column market does not exist" } };
+          inserted.push(row); return { error: null };
+        },
+        upsert: () => ({ select: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+      }),
+    };
+    const r = await logSend(fake, { user_id: "u", contact_email: "a@b.co", status: "sent", sent_at: "t", market: "AE" }, { where: "test" });
+    expect(r).toEqual({ ok: true, degraded: true });
+    expect(inserted[0]).toEqual({ user_id: "u", contact_email: "a@b.co", status: "sent", sent_at: "t" });
+  });
+});
+
+describe("nobody is chased after they have replied", () => {
+  it("the follow-up engine accepts either record of a reply", () => {
+    const f = read("lib/followup.js");
+    expect(f).toMatch(/\.eq\("type", "outreach\.reply"\)/);
+    expect(f).toMatch(/msgs\.some\(\(m\) => m\.replied_at\) \|\| repliedByEvent\.has\(email\)/);
+  });
+
+  it("the reply is matched to the address exactly as it was stored", () => {
+    const g = read("lib/gmail-read.js");
+    // .eq() is case-sensitive: "John@Shop.com" never matched "john@shop.com".
+    expect(g).toMatch(/\.in\("contact_email", variants\)/);
+    expect(g).not.toMatch(/\.eq\("contact_email", rep\.email\)/);
+    expect(g).toMatch(/const \{ error: markErr \}/);
+  });
+});
