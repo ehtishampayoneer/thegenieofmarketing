@@ -140,7 +140,9 @@ export async function POST(request) {
 
   await logActivityBatch(supabase, userId, [
     { host, verb: "discovered", icon: "🔮", message: `${engineNames.join(" & ") || "AI"} name you in ${summary.visible}/${summary.total} buyer answers`, detail: `Asked ${engineNames.join(" · ")} directly — ${summary.gaps.slice(0, 2).map((g) => g.question).join(" · ")}`, meta: { score: summary.score, engines: engineNames } },
-    summary.gaps.length ? { host, verb: "learning", message: `${summary.gaps.length} AI-search gaps found — Genie drafted content plans to win them`, meta: { gaps: summary.gaps.length } } : null,
+    // It had drafted nothing at this point: the gaps become keywords that jump the
+    // writing queue, and the answer page is written on the next nightly run.
+    summary.gaps.length ? { host, verb: "learning", message: `${summary.gaps.length} AI-search gap${summary.gaps.length === 1 ? "" : "s"} found — Genie writes the answer page for the first one on the next run, and it will appear under AI Search in Approvals`, meta: { gaps: summary.gaps.length } } : null,
   ].filter(Boolean));
 
   return json({

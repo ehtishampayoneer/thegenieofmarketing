@@ -62,7 +62,10 @@ describe("the queue asks for three, not forty", () => {
   it("counts the backlog in emails, not in cards", () => {
     // Otherwise batching five emails into one card would silently claim four fewer
     // things were waiting.
-    expect(route).toMatch(/shown\.reduce\(\(n, i\) => n \+ \(i\.batch\?\.length \|\| 1\), 0\)/);
+    // Measured against today's focus now that every item is returned, not against
+    // a list sliced to three: the rule is unchanged, one email card still counts
+    // as every email inside it.
+    expect(route).toMatch(/focusCards\.reduce\(\(n, i\) => n \+ \(i\.batch\?\.length \|\| 1\), 0\)/);
   });
 
   it("never batches when the owner asked to see everything", () => {
@@ -100,7 +103,9 @@ describe("the queue asks for three, not forty", () => {
 
   it("tells the owner before they start, not only when they finish", () => {
     expect(page).toMatch(/for you today/);
-    expect(page).toMatch(/lined up behind them/);
+    // What is waiting beyond today's focus, and now also WHERE: every section is
+    // on this page rather than held behind the cap.
+    expect(page).toMatch(/more across the sections below/);
   });
 
   it("offers a way to carry on, so the cap is a pace and not a wall", () => {

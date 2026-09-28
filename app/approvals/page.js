@@ -53,6 +53,30 @@ function typeLabel(it) {
 function cap(s) { return String(s || "").charAt(0).toUpperCase() + String(s || "").slice(1); }
 const PLATFORM_NAME = { x: "X", twitter: "X", linkedin: "LinkedIn", reddit: "Reddit", instagram: "Instagram", facebook: "Facebook", medium: "Medium", quora: "Quora", tiktok: "TikTok", youtube: "YouTube", pinterest: "Pinterest", gbp: "Google Business", review_request: "Google review" };
 function plat(p) { return PLATFORM_NAME[String(p || "").toLowerCase()] || cap(p); }
+// -- EVERY SECTION, ON THE ONE PAGE THE OWNER OPENS EVERY DAY --
+// Named as the menu names them, so a tab here means the same thing as the page
+// the work came from. "Today's focus" is the default: the best few, so a morning
+// still takes minutes. Every other section is one click away instead of being
+// held behind "72 lined up" where it was never seen.
+const SECTIONS = [
+  { id: "focus", label: "Today\u2019s focus" },
+  { id: "emails", label: "Emails" },
+  { id: "articles", label: "Articles" },
+  { id: "buyers", label: "Buyer Hunt" },
+  { id: "communities", label: "Reddit, Quora & forums" },
+  { id: "featured", label: "Get featured" },
+  { id: "ai_search", label: "AI Search" },
+  { id: "social", label: "Social posts" },
+  { id: "listings", label: "Listings" },
+  { id: "other", label: "Other" },
+  { id: "all", label: "Everything" },
+];
+function matchesSection(it, f) {
+  if (f === "all") return true;
+  if (f === "focus") return !!it.focus;
+  return (it.section || "other") === f;
+}
+
 function matchesType(it, f) {
   if (f === "all") return true;
   if (f === "blog") return it.kind === "article";
@@ -105,6 +129,7 @@ export default function ApprovalsPage() {
   // taking the address of the page with it.
   const [published, setPublished] = useState([]);
   const [typeFilter, setTypeFilter] = useState("all");
+  const [sectionFilter, setSectionFilter] = useState("focus");
   const [impactFilter, setImpactFilter] = useState("all");
   const [marketFilter, setMarketFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
@@ -188,7 +213,19 @@ export default function ApprovalsPage() {
   useEffect(() => { if (marketFilter !== "all" && marketFilter !== "global" && !markets.some((m) => m.code === marketFilter)) setMarketFilter("all"); }, [markets, marketFilter]);
   useEffect(() => { if (tierFilter !== "all" && !tiers.includes(tierFilter)) setTierFilter("all"); }, [tiers, tierFilter]);
 
-  const view = useMemo(() => items.filter((it) => matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesTier(it, tierFilter) && matchesMarket(it, marketFilter)), [items, typeFilter, impactFilter, tierFilter, marketFilter]);
+  const view = useMemo(() => items.filter((it) => matchesSection(it, sectionFilter) && matchesType(it, typeFilter) && matchesImpact(it, impactFilter) && matchesTier(it, tierFilter) && matchesMarket(it, marketFilter)), [items, sectionFilter, typeFilter, impactFilter, tierFilter, marketFilter]);
+  // Counted from what is loaded, in items rather than cards (one email card can
+  // carry a whole country's day of emails).
+  const sectionCounts = useMemo(() => {
+    const c = { focus: 0, all: 0 };
+    for (const it of items) {
+      const n = it.batch?.length || 1;
+      c.all += n;
+      if (it.focus) c.focus += n;
+      c[it.section || "other"] = (c[it.section || "other"] || 0) + n;
+    }
+    return c;
+  }, [items]);
   useEffect(() => { setIdx((i) => Math.max(0, Math.min(i, view.length - 1))); }, [view.length]);
   const current = view[idx] || null;
   useEffect(() => { setExpandReason(false); setEditing(false); setSharpenNotes(null); setConfirmPost(null); }, [current?.id]);
@@ -499,7 +536,9 @@ export default function ApprovalsPage() {
             <p className="mt-2 text-[13.5px] mg-muted">
               {showAll
                 ? <>Showing everything — <span className="mg-num">{view.length}</span> waiting.</>
-                : <><span className="mg-num">{view.length}</span> for you today{backlog > 0 ? <> · <span className="mg-num">{backlog}</span> lined up behind them</> : null}. About a minute each.</>}
+                : sectionFilter === "focus"
+                  ? <><span className="mg-num">{view.length}</span> for you today{backlog > 0 ? <> · <span className="mg-num">{backlog}</span> more across the sections below</> : null}. About a minute each.</>
+                  : <><span className="mg-num">{view.length}</span> waiting in {(SECTIONS.find((x) => x.id === sectionFilter) || {}).label || "this section"}.</>}
             </p>
           )}
         </div>
@@ -525,6 +564,14 @@ export default function ApprovalsPage() {
       {/* HOW HARD THE COUNTRY IS, then WHICH COUNTRY, then the tasks inside it.
           Market Testing has always known which countries are winnable; until now
           this screen showed one flat pile and the ranking reached nobody. */}
+      {state === "real" && items.length > 0 && (
+        <div className="mt-4 flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
+          {SECTIONS.filter((x) => x.id === "focus" || x.id === "all" || sectionCounts[x.id] > 0).map((x) => (
+            <MTab key={x.id} active={sectionFilter === x.id} onClick={() => { setSectionFilter(x.id); setIdx(0); }} label={x.label} count={sectionCounts[x.id] || 0} />
+          ))}
+        </div>
+      )}
+
       {state === "real" && showTiers && (
         <div className="mt-4">
           <div className="flex items-center gap-1.5 overflow-x-auto thin-scroll pb-1">
@@ -577,7 +624,7 @@ export default function ApprovalsPage() {
           <div className="mg-surface p-6" style={{ minHeight: 160 }}><div className="mg-skel" style={{ height: 16, width: "60%" }} /><div className="mg-skel mt-3" style={{ height: 90 }} /></div>
         </div>
       ) : empty ? (
-        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); setMarketFilter("all"); }} backlog={backlog} showingAll={showAll} onShowAll={() => setShowAll(true)} />
+        <AllClear done={done} drafting={drafting} onDraft={draftFirstContent} filtered={items.length > 0} onClear={() => { setTypeFilter("all"); setImpactFilter("all"); setMarketFilter("all"); setTierFilter("all"); setSectionFilter("focus"); }} backlog={backlog} showingAll={showAll || sectionFilter === "all"} onShowAll={() => { setSectionFilter("all"); setIdx(0); }} />
       ) : (
         <div className="mt-5 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
           {/* ── LEFT: progress + the current approval ── */}
@@ -608,7 +655,7 @@ export default function ApprovalsPage() {
           </div>
 
           {/* ── RIGHT: the up-next queue ── */}
-          <ApprovalQueue view={view} idx={idx} onPick={(i) => { setIdx(i); setEditing(false); }} />
+          <ApprovalQueue view={view} idx={idx} onPick={(i) => { setIdx(i); setEditing(false); }} onViewAll={() => { setSectionFilter("all"); setIdx(0); }} />
         </div>
       )}
 
@@ -1003,7 +1050,7 @@ function PubRow({ icon: I, label, value }) {
 }
 
 // ── THE QUEUE — up next, compact, always visible ────────────────────────────
-function ApprovalQueue({ view, idx, onPick }) {
+function ApprovalQueue({ view, idx, onPick, onViewAll }) {
   const upNext = view.filter((_, i) => i !== idx);
   return (
     <div className="xl:sticky xl:top-4">
@@ -1029,7 +1076,9 @@ function ApprovalQueue({ view, idx, onPick }) {
           );
         })}
       </div>
-      <a href="/tasks" className="mt-2.5 mg-btn mg-btn--ghost w-full" style={{ fontSize: 13 }}>View all queue ({view.length}) →</a>
+      {/* This linked to /tasks, a V1 redirect straight back to this page, so it
+          never showed "all" of anything. */}
+      <button onClick={onViewAll} className="mt-2.5 mg-btn mg-btn--ghost w-full" style={{ fontSize: 13 }}>View everything waiting →</button>
     </div>
   );
 }

@@ -276,6 +276,9 @@ export async function POST(request) {
   let actionIds = [];
   if (userId && data.article) {
     if (pick) { data.article.targetKeyword = pick.keyword; data.article.relatedKeywords = pick.related; }
+    // Written to win back a question AI assistants answer with a rival's name.
+    // Marked so it appears under AI Search in the queue, not as a plain article.
+    if (pick?.aeo) data.article.fromAiSearch = true;
     // The country it was written for travels with the draft, so the approvals
     // queue can group by market and the next rotation knows this one is served.
     if (articleMarket?.name) {

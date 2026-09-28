@@ -264,27 +264,63 @@ export async function GET(request) {
   // were written, allowed to send, and never shown to anyone. So each country's
   // email card survives the cap, and the cap applies to everything else.
   const emailCards = batched.filter((i) => i.kind === "outreach_email");
-  const shown = showAll
-    ? batched
-    : [...batched.filter((i) => i.kind !== "outreach_email").slice(0, DAILY_CARDS), ...emailCards].sort(order);
+  const focusCards = [...batched.filter((i) => i.kind !== "outreach_email").slice(0, DAILY_CARDS), ...emailCards];
+
+  // -- EVERY SECTION'S WORK, IN THE ONE PLACE THE OWNER LOOKS --
+  // This used to return only the best three and hold everything else back.
+  // Buyer Hunt, Reddit, Quora and forum finds all reached the queue — and all
+  // ranked behind articles, emails and pitches, so they sat in "72 lined up
+  // behind them" and were never seen. The owner concluded those sections were
+  // not producing anything, and went looking on each section's own page, which
+  // is the opposite of what this page is for.
+  //
+  // Now everything waiting comes back, each item says which section made it,
+  // and the best few are MARKED as today's focus rather than being the only
+  // things sent. The morning can still take three minutes; nothing is out of
+  // reach behind it.
+  const focusIds = new Set(focusCards.map((i) => i.id));
+  for (const i of batched) {
+    i.section = sectionOf(i);
+    i.focus = focusIds.has(i.id);
+  }
+  const shown = [...batched].sort((a, b) => Number(b.focus) - Number(a.focus) || order(a, b));
+  const sections = {};
+  for (const i of shown) sections[i.section] = (sections[i.section] || 0) + (i.batch?.length || 1);
   // The true size of the queue, counted rather than measured off a list three
   // `.limit()` calls have already trimmed — and counted by the SAME function the
   // menu badge uses, so the two can never again show different numbers for the
   // same thing on the same screen.
   const waiting = await countWaiting(supabase, user.id);
   const total = Math.max(waiting, items.length);
-  const backlog = Math.max(0, total - shown.reduce((n, i) => n + (i.batch?.length || 1), 0));
+  // Waiting beyond today's focus, counted in items rather than cards.
+  const backlog = Math.max(0, total - focusCards.reduce((n, i) => n + (i.batch?.length || 1), 0));
   return json({
     ok: true, live: true,
     // `count` stays the size of the whole queue: the screen says "3 for you today,
     // 12 waiting", and a number that quietly meant something else is the bug this
     // codebase keeps having.
     count: total, ownedCount, backlog, showingAll: showAll, perDay: DAILY_CARDS,
+    focusCount: focusCards.length, sections,
     // The plan's countries and how hard each is, so the screen can show a colour
     // with nothing under it yet rather than pretending that country is not live.
     markets: planMarkets, tiers: TIERS.map((t) => ({ id: t.id, label: t.label, why: t.why })),
     items: shown,
   });
+}
+
+// Which of the app's sections made this — named as the owner knows them from the
+// menu, so a tab here means the same thing as the page it came from.
+function sectionOf(i) {
+  const kind = String(i.kind || "");
+  const platform = String(i.platform || "").toLowerCase();
+  if (kind === "outreach_email") return "emails";
+  if (kind === "article") return i.fromAiSearch ? "ai_search" : "articles";
+  if (kind === "media_pitch") return "featured";
+  if (kind === "directory_submission") return "listings";
+  if (i.source === "placement") return i.buyerIntent ? "buyers" : "communities";
+  if (/reddit|quora|forum/.test(platform) || kind === "community_engagement") return "communities";
+  if (kind === "social_post" || kind === "distribution" || /x|twitter|linkedin|pinterest|insta|gbp|review_request|medium/.test(platform)) return "social";
+  return "other";
 }
 
 function normalizeAction(a) {
@@ -359,6 +395,7 @@ function normalizeAction(a) {
       : (p.rationale || null),
     target_url,
     keyword: p.targetKeyword || null,
+    fromAiSearch: !!p.fromAiSearch,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
     market: p.market || a.target?.market || null,
     marketName: p.marketName || null,
@@ -398,6 +435,7 @@ function normalizePlacement(p) {
   ].filter(Boolean);
   return {
     id: p.id, source: "placement", kind: p.kind || "reply", platform: p.platform, owned, executable: false,
+    buyerIntent: !!meta.buyer_intent,
     brand: p.platform,
     title: p.target_title || p.platform,
     outcome: meta.buyer_intent ? `Reach a ${stage || "buyer"} who’s deciding now` : "Show up where your customers are",
