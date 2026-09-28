@@ -21,6 +21,7 @@ const sectionOf = new Function(src.slice(0, src.indexOf("\n}\n") + 2) + "; retur
 describe("every item says which section made it", () => {
   const cases = [
     [{ kind: "outreach_email" }, "emails"],
+    [{ kind: "recovery" }, "winback"],
     [{ kind: "article" }, "articles"],
     [{ kind: "article", fromAiSearch: true }, "ai_search"],
     [{ kind: "media_pitch" }, "featured"],
@@ -92,5 +93,30 @@ describe("AI Search work is labelled as AI Search, and says what it has really d
     const ai = read("app/api/ai-search/route.js");
     expect(ai).not.toMatch(/Genie drafted content plans to win them/);
     expect(ai).toMatch(/writes the answer page for the first one on the next run/);
+  });
+});
+
+describe("win-back emails are on the approvals page, and counted the same way", () => {
+  const count = read("lib/queue-count.js");
+
+  it("the badge counts win-back emails still to send, and not the ones sent", async () => {
+    const { isPendingWinback } = await import("@/lib/queue-count");
+    expect(isPendingWinback({ email: "a@b.co" })).toBe(true);
+    expect(isPendingWinback({ email: "a@b.co", sent: true })).toBe(false);
+    expect(isPendingWinback({ email: "a@b.co", outcome: "won" })).toBe(false);
+    expect(count).toMatch(/\.eq\("type", "recovery"\)[\s\S]{0,120}isPendingWinback/);
+  });
+
+  it("the queue reads the same ones with the same rule", () => {
+    expect(api).toMatch(/\.filter\(\(r\) => isPendingWinback\(r\.payload\)\)\) items\.push\(normalizeWinback\(a\)\)/);
+  });
+
+  it("'I sent it' marks it sent where Revenue Recovery keeps it", () => {
+    expect(page).toMatch(/fetch\("\/api\/recover\/act"[\s\S]{0,160}act: "sent"/);
+    expect(page).toMatch(/"Yes, I sent it"/);
+  });
+
+  it("the mail link never carries the raw draft, which would skip blank-filling and edits", () => {
+    expect(api).not.toMatch(/mailto:[^`]*&body=/);
   });
 });

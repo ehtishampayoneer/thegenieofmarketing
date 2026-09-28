@@ -14,7 +14,8 @@ describe("the queue asks for three, not forty", () => {
     // The number now lives in lib/queue-count.js, so the queue and the badge
     // beside it read the same constant instead of each keeping their own.
     expect(readFileSync(join(process.cwd(), "lib/queue-count.js"), "utf8")).toMatch(/DAILY_CARDS = 3/);
-    expect(route).toMatch(/countWaiting, DAILY_CARDS \} from "@\/lib\/queue-count"/);
+    // The same module the badge reads; other names may come with it.
+    expect(route).toMatch(/import \{[^}]*countWaiting[^}]*DAILY_CARDS[^}]*\} from "@\/lib\/queue-count"/);
     expect(route).toMatch(/\.slice\(0,\s*DAILY_CARDS\)/);
   });
 

@@ -28,7 +28,7 @@ import { recoverStuckActions } from "@/lib/stuck";
 import { toOutcome } from "@/lib/outcomes";
 import { MEDIA_TYPE, isPendingPitch, pitchToApproval } from "@/lib/media-store";
 import { ownerSignal, penaltyFor } from "@/lib/owner-signal";
-import { countWaiting, DAILY_CARDS } from "@/lib/queue-count";
+import { countWaiting, DAILY_CARDS, isPendingWinback } from "@/lib/queue-count";
 import { TIERS } from "@/lib/market-plan";
 
 export const runtime = "nodejs";
@@ -78,6 +78,19 @@ export async function GET(request) {
       .from("actions").select("id, payload, created_at")
       .eq("user_id", user.id).eq("type", MEDIA_TYPE).order("created_at", { ascending: false }).limit(60);
     for (const a of (pitches || []).filter(isPendingPitch).slice(0, 20)) items.push(pitchToApproval(a));
+  } catch {}
+
+  // -- WIN-BACK EMAILS --
+  // Drafted when the owner imports past customers on Revenue Recovery, and kept
+  // off this page until now, so they were one more section the owner had to go
+  // and check. Genie does not send these: they go to people the owner already
+  // knows, from the owner's own mail, and are marked sent when the owner says so.
+  try {
+    const { data: wb } = await supabase
+      .from("actions").select("id, title, payload, target, created_at")
+      .eq("user_id", user.id).eq("type", "recovery").eq("status", "proposed")
+      .order("created_at", { ascending: false }).limit(300);
+    for (const a of (wb || []).filter((r) => isPendingWinback(r.payload))) items.push(normalizeWinback(a));
   } catch {}
 
   try {
@@ -181,6 +194,10 @@ export async function GET(request) {
       i.draft = clean(i.draft, i);
       if (i.subject) i.subject = clean(i.subject, i);
       if (i.pitch?.subject) i.pitch.subject = clean(i.pitch.subject, i);
+      // A win-back's mail link carries the subject, so it gets the cleaned one.
+      if (i.kind === "recovery" && i.subject && String(i.target_url || "").startsWith("mailto:")) {
+        i.target_url = `${i.target_url.split("?")[0]}?subject=${encodeURIComponent(i.subject)}`;
+      }
     }
   } catch {}
 
@@ -314,6 +331,7 @@ function sectionOf(i) {
   const kind = String(i.kind || "");
   const platform = String(i.platform || "").toLowerCase();
   if (kind === "outreach_email") return "emails";
+  if (kind === "recovery") return "winback";
   if (kind === "article") return i.fromAiSearch ? "ai_search" : "articles";
   if (kind === "media_pitch") return "featured";
   if (kind === "directory_submission") return "listings";
@@ -424,6 +442,28 @@ function normalizeAction(a) {
 // This is how to become an account the filters trust, never how to get around
 // them: extra accounts and bought "aged" accounts get the business banned.
 const REDDIT_NOTE = "Reddit hides replies from new accounts automatically. Post from one account, answer helpfully in this community for a week or two before mentioning the business, and never add a link until you have standing there. To check a reply is visible, open it in a private window.";
+
+function normalizeWinback(a) {
+  const p = a.payload || {};
+  const subject = String(p.subject || "");
+  const body = String(p.body || "");
+  return {
+    id: a.id, source: "action", kind: "recovery", platform: "email",
+    owned: false, executable: false, brand: "mail",
+    title: a.title || `Win-back: ${p.name || p.email}`,
+    outcome: p.dealValue ? `A past customer worth ${p.dealValue}` : "A past customer worth hearing from again",
+    draft: body, subject,
+    // Opens a new message in the owner's own mail, addressed. The body is NOT put
+    // in the link: it would be the raw draft, before blanks are filled and before
+    // any edit the owner makes. The text on the clipboard is the finished one.
+    target_url: `mailto:${encodeURIComponent(p.email)}?subject=${encodeURIComponent(subject)}`,
+    why: p.segment ? `${String(p.segment).replace(/_/g, " ")}. ${p.notes || ""}`.trim() : (p.notes || null),
+    pitch: { name: p.name || null, company: p.company || null },
+    keyword: null, relatedKeywords: [],
+    impact: 70, tags: [{ label: "Win-back", tone: "dawn" }],
+    market: null,
+  };
+}
 
 function normalizePlacement(p) {
   const meta = p.meta || {};

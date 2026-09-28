@@ -65,6 +65,7 @@ const SECTIONS = [
   { id: "buyers", label: "Buyer Hunt" },
   { id: "communities", label: "Reddit, Quora & forums" },
   { id: "featured", label: "Get featured" },
+  { id: "winback", label: "Win-back" },
   { id: "ai_search", label: "AI Search" },
   { id: "social", label: "Social posts" },
   { id: "listings", label: "Listings" },
@@ -240,6 +241,15 @@ export default function ApprovalsPage() {
   // "I posted it" is the only thing that marks a draft-and-you-post item done.
   async function confirmPosted(item) {
     setConfirmPost(null);
+    if (item.kind === "recovery") {
+      // Marked sent where Revenue Recovery keeps it, so the two pages agree and
+      // it can still be marked won or lost there.
+      await fetch("/api/recover/act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, act: "sent" }) }).catch(() => {});
+      setToast("Marked as sent. Mark it won or lost on Revenue Recovery when they answer.");
+      setDone((d) => d + 1);
+      removeById(item.id);
+      return;
+    }
     await fireApprove(item, item.draft);
     setToast("Marked as posted. It will not come back.");
     setDone((d) => d + 1);
@@ -951,8 +961,8 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
           /* ── COPYING IS NOT POSTING ── The composer is open with the text in it.
              Only the owner knows whether it went out, so only the owner can say. */
           <>
-            <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>Did you post it?</span>
-            <button className="mg-btn mg-btn--dawn" onClick={onPosted} disabled={working}>Yes, I posted it</button>
+            <span className="text-[13px] font-semibold" style={{ color: "var(--fg)" }}>{item.kind === "recovery" ? "Did you send it?" : "Did you post it?"}</span>
+            <button className="mg-btn mg-btn--dawn" onClick={onPosted} disabled={working}>{item.kind === "recovery" ? "Yes, I sent it" : "Yes, I posted it"}</button>
             <button className="mg-btn mg-btn--quiet" onClick={onNotPosted}>Not yet — keep it</button>
             <span className="text-[12px] mg-subtle">Nothing is marked done until you say so.</span>
           </>
