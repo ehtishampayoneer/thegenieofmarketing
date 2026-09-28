@@ -12,7 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not 20. @supabase/supabase-js 2.110 needs the WebSocket that Node
+          # only ships from 22, and throws when a client is built without it. The
+          # app runs on 22+ in production (on 20 every page would fail), so CI on
+          # 20 was testing a runtime nothing uses — and has failed every push since
+          # test/no-stale-reads.test.js began building real clients on 27 Sep.
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
