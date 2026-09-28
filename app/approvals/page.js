@@ -831,10 +831,30 @@ function CurrentApproval({ item, editing, editDraft, setEditDraft, onEdit, onCan
                 </ul>
               </div>
             )}
-            <button onClick={onEdit} className="mg-btn mg-btn--dawn mt-2.5" style={{ fontSize: 13 }}>
-              Edit this and try again
-            </button>
-            <p className="mt-1.5 text-[12.5px] mg-subtle">Genie re-checks it when you approve.</p>
+            {/* The owner asked for this in so many words: "genie needs to solve such
+                things automatically, not tell the user to do that". Genie wrote
+                these sentences, so the first button hands them back to Genie, which
+                rewrites what it can, removes what it cannot back up, and publishes
+                — or throws the article away and writes another. Editing it yourself
+                stays available, second, for when you would rather. */}
+            {item.ownerEdited ? (
+              <>
+                <button onClick={onEdit} className="mg-btn mg-btn--dawn mt-2.5" style={{ fontSize: 13 }}>
+                  Edit this and try again
+                </button>
+                <p className="mt-1.5 text-[12.5px] mg-subtle">You edited these words yourself, so the call is yours. Genie re-checks it when you approve.</p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                  <button onClick={onApprove} disabled={working} className="mg-btn mg-btn--dawn" style={{ fontSize: 13 }}>
+                    {working ? "Fixing\u2026" : "Let Genie fix it and publish"}
+                  </button>
+                  <button onClick={onEdit} className="mg-btn mg-btn--ghost" style={{ fontSize: 13 }}>Edit it myself</button>
+                </div>
+                <p className="mt-1.5 text-[12.5px] mg-subtle">Genie rewrites what it can, removes what it cannot back up, and publishes. If it still is not safe, Genie throws it away and writes a different one.</p>
+              </>
+            )}
           </div>
         )}
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--hair)" }}>

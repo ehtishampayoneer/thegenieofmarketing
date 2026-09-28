@@ -62,7 +62,14 @@ export async function POST(request) {
       // Remember which field the text went into, so the learning below compares
       // the new words against the words they replaced and not against nothing.
       let field = null;
-      if (typeof draft === "string") { field = (a?.type === "article" || payload.body != null || payload.text == null) ? "body" : "text"; payload[field] = draft; }
+      if (typeof draft === "string") {
+        field = (a?.type === "article" || payload.body != null || payload.text == null) ? "body" : "text";
+        // The words are now partly the owner's. If the brand check objects to them
+        // later, that is the owner's call to make, not something Genie rewrites or
+        // throws away on their behalf.
+        if (draft !== payload[field]) payload.ownerEdited = true;
+        payload[field] = draft;
+      }
       if (image !== undefined) { if (a?.type === "article") payload.heroImage = image || null; else payload.image = image || null; }
       if (imageRaw !== undefined) payload.imageRaw = imageRaw || null;
       if (typeof hook === "string") payload.cardHeadline = hook;

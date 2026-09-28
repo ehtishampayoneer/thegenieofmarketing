@@ -414,6 +414,9 @@ function normalizeAction(a) {
     target_url,
     keyword: p.targetKeyword || null,
     fromAiSearch: !!p.fromAiSearch,
+    // The owner edited the text themselves. Only then is a held article theirs to
+    // fix; Genie's own writing is repaired or rewritten without asking.
+    ownerEdited: !!p.ownerEdited,
     relatedKeywords: Array.isArray(p.relatedKeywords) ? p.relatedKeywords : [],
     market: p.market || a.target?.market || null,
     marketName: p.marketName || null,

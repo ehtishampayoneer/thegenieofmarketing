@@ -83,11 +83,14 @@ describe("Genie rewrites its own sentences", () => {
     expect(r.text).toBe(body);
   });
 
-  it("does nothing when the claim cannot be found word for word", async () => {
-    const r = await repairClaims(body, [{ claim: "a sentence that is not in the text" }]);
+  it("does nothing, and spends nothing, when the claim is not in the article at all", async () => {
+    callAI.mockClear();
+    const r = await repairClaims(body, [{ claim: "a sentence about something else entirely that is not here" }]);
     expect(r.ok).toBe(false);
-    expect(r.reason).toBe("claims_not_found_verbatim");
-    expect(callAI).not.toHaveBeenCalled;
+    expect(r.reason).toBe("claims_not_found");
+    // This assertion used to read `.not.toHaveBeenCalled` with no brackets, which
+    // asserts nothing at all.
+    expect(callAI).not.toHaveBeenCalled();
   });
 
   it("returns the original, never nothing, when the AI is down", async () => {
@@ -136,8 +139,33 @@ describe("a near-duplicate never becomes the owner's problem", () => {
   const worklog = read("app/api/worklog/route.js");
 
   it("repairs before it blocks", () => {
-    expect(route.indexOf("repairClaims(guardText")).toBeLessThan(route.indexOf('if (guard.decision === "block") {\n    // Still refused'));
-    expect(route).toMatch(/const after = await guardContent\(/);
+    // The old version compared against text that no longer existed, so indexOf
+    // returned -1 and the check passed whatever the route did.
+    const repair = route.indexOf("await repairClaims(");
+    const block = route.indexOf('if (guard.decision === "block") {\n    // Still refused');
+    expect(repair).toBeGreaterThan(-1);
+    expect(block).toBeGreaterThan(-1);
+    expect(repair).toBeLessThan(block);
+  });
+
+  it("whatever is still flagged is removed, and the last check is not another AI reading", () => {
+    // A second AI reading of 850 words nearly always objects to something new,
+    // which is why the repair never settled and the owner was handed the article.
+    expect(route).toMatch(/const cut = removeClaims\(text, current\.claims\)/);
+    expect(route).toMatch(/if \(cut\.removed\.length && !cut\.missing\.length\)/);
+    expect(route).toMatch(/current = await check\(text, false\)/);
+  });
+
+  it("an article Genie wrote is never handed back to the owner to fix", () => {
+    expect(route).toMatch(/if \(!ownerWords && isArticle\) \{[\s\S]{0,200}status: "dismissed"/);
+    expect(route).toMatch(/discarded: "unfixable"/);
+    expect(route).toMatch(/Nothing for you to do/);
+  });
+
+  it("words the owner wrote are the owner's call, and are not rewritten behind their back", () => {
+    expect(route).toMatch(/const ownerWords = !!p\.ownerEdited;/);
+    expect(route).toMatch(/repairable\(guard\) && !ownerWords/);
+    expect(read("app/api/approvals/act/route.js")).toMatch(/if \(draft !== payload\[field\]\) payload\.ownerEdited = true;/);
   });
 
   it("drops the duplicate instead of queueing a rewriting job", () => {
@@ -147,7 +175,7 @@ describe("a near-duplicate never becomes the owner's problem", () => {
   });
 
   it("keeps the original words so the owner can see what changed under their name", () => {
-    expect(route).toMatch(/repairedClaims: fix\.fixed, originalBody: repaired\.before/);
+    expect(route).toMatch(/repairedClaims: fixedList, removedClaims: removedList, originalBody: repaired\.before/);
   });
 
   it("takes the card out of the queue rather than leaving it to be re-approved", () => {

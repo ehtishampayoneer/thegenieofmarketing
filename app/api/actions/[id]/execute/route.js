@@ -121,7 +121,7 @@ export async function POST(_request, { params }) {
     ? (Array.isArray(p.draft) ? p.draft.join("\n\n") : (p.text || p.draft || p.body || ""))
     : (p.body || "");
   const { guardContent } = await import("@/lib/publish-guard");
-  const { repairClaims, repairable } = await import("@/lib/self-repair");
+  const { repairClaims, repairable, removeClaims } = await import("@/lib/self-repair");
   let guard = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: guardText, title: p.title || null, deep: true, excludeActionId: action.id });
   // ── GENIE FIXES ITS OWN WRITING FIRST ──
   // The guard is right to refuse "the best online retailers" and "ensures your
@@ -131,26 +131,66 @@ export async function POST(_request, { params }) {
   // sentence is an unverifiable superlative is Genie's job, and Genie already holds
   // the exact sentence and the exact reason at the moment it decides to refuse.
   let repaired = null;
-  if (guard.decision === "block" && repairable(guard)) {
-    const fix = await repairClaims(guardText, guard.claims, { entity: { label: action.target?.host || null } });
+  // The owner's own words are the owner's call. Genie's words are Genie's to fix.
+  const ownerWords = !!p.ownerEdited;
+  if (guard.decision === "block" && repairable(guard) && !ownerWords) {
+    // -- THE REPAIR ALWAYS FINISHES, AND NEVER WITH THE OWNER --
+    // It used to be: rewrite the flagged sentences, then ask the AI checker to
+    // read the whole article again, and hand it to the owner if that second
+    // reading objected to anything. A second AI reading of 850 words nearly always
+    // objects to something new, so this rarely settled, and the owner was shown
+    // "4 claims need verification — edit this and try again" for sentences Genie
+    // wrote, including a customer story it had invented outright.
+    //
+    // Now: rewrite what can be rewritten; whatever the checker still flags is
+    // taken out; and the last check is the non-AI one (toxic language, a near-
+    // copy, too thin), because removing a sentence cannot add a new claim.
+    const host = action.target?.host || null;
+    const check = (content, deep) => guardContent(supabase, { userId: user.id, host, channel: guardChannel, content, title: p.title || null, deep, excludeActionId: action.id });
+    let text = guardText, current = guard, fixedList = [], removedList = [];
+
+    const fix = await repairClaims(text, current.claims, { entity: { label: host } });
     if (fix.ok) {
-      const after = await guardContent(supabase, { userId: user.id, host: action.target?.host || null, channel: guardChannel, content: fix.text, title: p.title || null, deep: true, excludeActionId: action.id });
-      if (after.decision !== "block") {
-        // Publish the repaired words, and keep the originals so the owner can see
-        // exactly what was changed under their name rather than taking it on trust.
-        repaired = { fixed: fix.fixed, before: guardText.slice(0, 4000) };
-        if (isX) { /* X drafts are short and rarely reach here; leave the draft alone. */ }
-        else { p.body = fix.text; }
-        guardText = fix.text;
-        guard = after;
-        try {
-          await supabase.from("actions").update({
-            payload: { ...p, repairedClaims: fix.fixed, originalBody: repaired.before },
-            updated_at: new Date().toISOString(),
-          }).eq("id", action.id).eq("user_id", user.id);
-        } catch {}
-        logger.info("publish.self_repaired", { actionId: action.id, fixed: fix.fixed.length });
+      text = fix.text;
+      fixedList = fix.fixed;
+      current = await check(text, true);
+    }
+    if (current.decision === "block" && repairable(current)) {
+      const cut = removeClaims(text, current.claims);
+      // Only when every flagged claim was found and taken out: an article with a
+      // flagged sentence that could not be located is not known to be clean.
+      if (cut.removed.length && !cut.missing.length) {
+        text = cut.text;
+        removedList = cut.removed;
+        current = await check(text, false);
       }
+    }
+    if (current.decision !== "block") {
+      // Publish the repaired words, and keep the originals so the owner can see
+      // exactly what was changed under their name rather than taking it on trust.
+      repaired = { fixed: fixedList, removed: removedList, before: guardText.slice(0, 4000) };
+      if (!isX) p.body = text;
+      guardText = text;
+      guard = current;
+      try {
+        await supabase.from("actions").update({
+          payload: { ...p, repairedClaims: fixedList, removedClaims: removedList, originalBody: repaired.before },
+          updated_at: new Date().toISOString(),
+        }).eq("id", action.id).eq("user_id", user.id);
+      } catch {}
+      try {
+        const { logActivity } = await import("@/lib/activity");
+        const parts = [];
+        if (fixedList.length) parts.push(`rewrote ${fixedList.length} sentence${fixedList.length === 1 ? "" : "s"}`);
+        if (removedList.length) parts.push(`removed ${removedList.length} it could not back up`);
+        await logActivity(supabase, user.id, {
+          host, verb: "fixed", icon: "\u2713",
+          message: `Genie ${parts.join(" and ")} before publishing`,
+          detail: (removedList[0] || fixedList[0]?.from || "").slice(0, 160) || null,
+          meta: { actionId: action.id, fixed: fixedList.length, removed: removedList.length },
+        });
+      } catch {}
+      logger.info("publish.self_repaired", { actionId: action.id, fixed: fixedList.length, removed: removedList.length });
     }
   }
 
@@ -190,8 +230,49 @@ export async function POST(_request, { params }) {
       }, 200);
     }
 
+    // -- STILL NOT SAFE, AND GENIE WROTE IT: START AGAIN, DO NOT ASK --
+    // Every reason left here is a fault in Genie's own writing. The owner asked
+    // for exactly this: "genie needs to solve such things automatically, not tell
+    // the user to do that". So it is thrown away like a near-duplicate, the topic
+    // is given back, it says so where the work log shows it, and a different
+    // article is written on the next run. Only words the OWNER wrote are held
+    // for the owner, below.
+    if (!ownerWords && isArticle) {
+      await supabase.from("actions").update({
+        status: "dismissed",
+        result: { discarded: "unfixable", reasons: guard.reasons, flags: guard.flags },
+        updated_at: new Date().toISOString(),
+      }).eq("id", action.id);
+      try {
+        const { releaseUsage } = await import("@/lib/keyword-usage");
+        await releaseUsage(supabase, user.id, action.target?.host || null, { refId: action.id, primary: p.targetKeyword || null });
+      } catch {}
+      try {
+        const { recordEvent } = await import("@/lib/events");
+        await recordEvent(supabase, {
+          userId: user.id, host: action.target?.host || null, type: "content.discarded", actor: "genie",
+          subject: p.title || action.title || "Article",
+          data: { reason: "unfixable", reasons: (guard.reasons || []).slice(0, 3), flags: guard.flags },
+        });
+      } catch {}
+      try {
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity(supabase, user.id, {
+          host: action.target?.host || null, verb: "discarded", icon: "\u21bb",
+          message: "Genie could not make an article safe to publish, so it threw it away",
+          detail: `${(guard.reasons || [])[0] || "It failed the brand check"}. A different article on the same topic is written on the next run.`,
+          meta: { actionId: action.id },
+        });
+      } catch {}
+      return json({
+        ok: false, discarded: true,
+        error: "Genie could not make this article safe to publish, so it threw it away. Nothing for you to do — it writes a different one on the next run.",
+      }, 200);
+    }
+
     // Keep the offending claims, not just the count. "2 claim(s) need
     // verification" tells the owner nothing they can act on; the sentences do.
+    // Reached only for words the owner wrote themselves.
     await supabase.from("actions").update({
       status: "needs_review",
       result: { blocked: true, reasons: guard.reasons, flags: guard.flags, claims: (guard.claims || []).slice(0, 4), triedRepair: true },
